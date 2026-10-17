@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="De speelhal van Zandv320: browsergames die je direct speelt, alleen of met vrienden.">
+<title>Zandv320 Speelhal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;600;700&display=swap">
+<style>
+/* Layout: one dark arcade-floor page; header strip, then a grid of game cabinets (cards) whose cover is the click target */
+:root{
+  --night:#0c1015;
+  --floor:#121820;
+  --line:#26303b;
+  --sodium:#ffb21a;
+  --cash:#5fd38d;
+  --paper:#efe9dc;
+  --muted:#97a1ab;
+  --display:'Bungee','Impact','Arial Black',sans-serif;
+  --ui:'Chakra Petch','Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--night);color:var(--paper);font-family:var(--ui)}
+body{
+  background:
+    radial-gradient(1200px 500px at 50% -10%,rgba(255,178,26,.10),transparent 70%),
+    repeating-linear-gradient(90deg,transparent 0 47px,rgba(255,255,255,.025) 47px 48px),
+    repeating-linear-gradient(0deg,transparent 0 47px,rgba(255,255,255,.025) 47px 48px),
+    var(--night);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(28px,env(safe-area-inset-top,0px)) max(40px,env(safe-area-inset-bottom,0px));
+}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:1px solid var(--line);padding-bottom:20px}
+.brand{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,7vw,56px);line-height:.95;margin:0;color:var(--sodium);text-shadow:3px 3px 0 #7a3d00;text-wrap:balance}
+.intro{margin:0;color:var(--muted);max-width:42ch;line-height:1.5}
+.count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:24px}
+.card{position:relative;display:flex;flex-direction:column;background:var(--floor);border:1px solid var(--line);color:inherit;text-decoration:none;overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.card:hover,.card:focus-visible{transform:translateY(-3px);border-color:var(--sodium);box-shadow:0 18px 50px rgba(0,0,0,.5),0 0 0 1px var(--sodium)}
+.card:focus-visible{outline:2px solid var(--paper);outline-offset:3px}
+.cover{position:relative;aspect-ratio:16/10;max-width:100%;overflow:hidden;background:#1d2126}
+.cover img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.card:hover .cover img,.card:focus-visible .cover img{transform:scale(1.05)}
+.cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,16,21,0) 35%,rgba(12,16,21,.92) 100%)}
+.title{position:absolute;left:20px;right:20px;bottom:18px;z-index:1;margin:0;font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:.95;color:var(--sodium);text-shadow:3px 3px 0 #0c1015;text-wrap:balance}
+.play{position:absolute;z-index:1;top:16px;right:16px;display:flex;align-items:center;gap:8px;background:var(--sodium);color:#1a1100;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:9px 14px 9px 12px;transition:transform .18s ease}
+.play svg{width:14px;height:14px;fill:currentColor}
+.card:hover .play,.card:focus-visible .play{transform:scale(1.06)}
+.live{position:absolute;z-index:1;top:16px;left:16px;display:flex;align-items:center;gap:7px;background:rgba(12,16,21,.85);border:1px solid var(--line);font-size:12px;letter-spacing:.06em;padding:6px 10px;color:var(--paper)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--cash);box-shadow:0 0 8px var(--cash)}
+.body{display:flex;flex-direction:column;gap:14px;padding:18px 20px 20px}
+.body p{margin:0;color:var(--muted);line-height:1.5}
+.tags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
+.tags li{font-size:12px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);padding:4px 8px;color:var(--paper)}
+.keys{font-size:13px;color:var(--muted)}
+kbd{font:600 12px var(--ui);background:#232c36;border:1px solid var(--line);padding:1px 6px;color:var(--paper)}
+@media (min-width:860px){.grid:has(> .card:only-child) .card{display:grid;grid-template-columns:3fr 2fr}.grid:has(> .card:only-child) .cover{aspect-ratio:auto;min-height:420px}.grid:has(> .card:only-child) .body{justify-content:center;padding:28px}}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.card,.cover img,.play{transition:none}.card:hover{transform:none}.card:hover .cover img{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="eyebrow">Zandv320 · browsergames</span>
+      <h1>Speelhal</h1>
+      <p class="intro">Klik op een spel om te beginnen. Alles draait in je browser, je hoeft niets te installeren.</p>
+    </div>
+    <span class="count">2 spellen</span>
+  </header>
+
+  <main class="grid">
+    <a class="card" href="steel-een-voertuig/" aria-label="Speel Steel een Voertuig">
+      <div class="cover">
+        <img src="cover.jpg" alt="Bovenaanzicht van een kruispunt in Havenstad met politiewagens, een taxi en voetgangers" width="1200" height="750">
+        <span class="live"><i></i>Multiplayer</span>
+        <span class="play"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5v13L14 8z"/></svg>Speel</span>
+        <h2 class="title">Steel een Voertuig</h2>
+      </div>
+      <div class="body">
+        <p>Havenstad, een open stad aan het water. Jat auto's of een tank uit de kazerne, start met een RPG, doe klussen en ontloop de politie. Andere spelers zie je live rijden in dezelfde auto's.</p>
+        <ul class="tags">
+          <li>Top-down</li>
+          <li>Open wereld</li>
+          <li>Multiplayer</li>
+          <li>Tanks</li>
+          <li>RPG</li>
+          <li>Voortgang opslaan</li>
+          <li>Ook op mobiel</li>
+        </ul>
+        <span class="keys"><kbd>WASD</kbd> rijden · <kbd>E</kbd> auto in/uit · <kbd>muis</kbd> schieten · <kbd>T</kbd> chat</span>
+      </div>
+    </a>
+
+    <a class="card" href="velmora/" aria-label="Speel Velmora">
+      <div class="cover">
+        <img src="cover-velmora.jpg" alt="Een magiër en avonturiers in het roverkamp van Velmora, met tenten rond een kampvuur" width="1200" height="750" loading="lazy">
+        <span class="live"><i></i>Multiplayer</span>
+        <span class="play"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5v13L14 8z"/></svg>Speel</span>
+        <h2 class="title">Velmora</h2>
+      </div>
+      <div class="body">
+        <p>Een fantasy-MMORPG in 3D. Maak een held als krijger, magiër of jager, doe quests in Zilverbron en het Schemerwoud, verzamel buit, daag andere spelers uit in PvP en versla met je groep de Knekelkoning in zijn crypte.</p>
+        <ul class="tags">
+          <li>3D</li>
+          <li>MMORPG</li>
+          <li>Multiplayer</li>
+          <li>Quests</li>
+          <li>PvP</li>
+          <li>Kerker en baas</li>
+          <li>Voortgang opslaan</li>
+          <li>Ook op mobiel</li>
+        </ul>
+        <span class="keys"><kbd>WASD</kbd> lopen · <kbd>klik</kbd> doelwit · <kbd>1</kbd>–<kbd>7</kbd> vaardigheden · <kbd>F</kbd> praten · <kbd>Enter</kbd> chat</span>
+      </div>
+    </a>
+  </main>
+
+  <footer>zandv320.github.io</footer>
+</div>
+</body>
+</html>
