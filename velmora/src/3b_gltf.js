@@ -31,13 +31,6 @@ function tintedMap(src,skin,hair){
     for(let i=0;i<p.length;i+=4){const l=(p[i]*.3+p[i+1]*.59+p[i+2]*.11)/avg;p[i]=Math.min(255,c.r*255*l);p[i+1]=Math.min(255,c.g*255*l);p[i+2]=Math.min(255,c.b*255*l)}cx.putImageData(d,ix*cell,0)};
   paint(0,skin);paint(1,hair);
   t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.flipY=src.flipY;t.minFilter=THREE.LinearMipmapLinearFilter;t.anisotropy=4;tintCache.set(key,t);return t}
-/* welke losse onderdelen van het spelersmodel zichtbaar zijn, per klasse en uitrusting */
-function gltfProps(o){const on=[];
-  if(o.cls==='krijger'){if(o.eqHead)on.push('Knight_Helmet');on.push('Knight_Cape');on.push(['Round_Shield','Badge_Shield','Rectangle_Shield','Spike_Shield'][clamp(o.rar|0,0,3)])}
-  if(o.cls==='magier'){if(o.eqHead)on.push('Mage_Hat');if(o.rar>=2)on.push('Mage_Cape');if(o.eqChest)on.push('Spellbook')}
-  if(o.cls==='jager'){if(o.rar>=1)on.push('Rogue_Cape');if(o.eqChest)on.push('Knife_Offhand')}
-  return on}
-const WM={krijger:{zwaard:'1H_Sword',bijl:'2H_Sword'},magier:{staf:'2H_Staff',zwaard:'1H_Wand'},jager:{boog:'2H_Crossbow',zwaard:'Knife'}};
 /* KayKit mensachtigen: standaard clipkaart */
 const ATK_1H=['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Stab','1H_Melee_Attack_Chop'],ATK_2H=['2H_Melee_Attack_Chop','2H_Melee_Attack_Slice','2H_Melee_Attack_Spin'];
 const CM_KAY={idle:'Idle',cidle:'Blocking',walk:'Walking_A',run:'Running_A',jumpS:'Jump_Start',jumpI:'Jump_Idle',land:'Jump_Land',cast:'Spellcasting',die:'Death_A',hit:'Hit_A',
@@ -58,14 +51,15 @@ function buildGltfRig(spec){
     const slotR=m.getObjectByName('handslotr'),slotL=m.getObjectByName('handslotl');
     if(spec.weaponMesh){const w=m.getObjectByName(spec.weaponMesh);if(w){w.visible=true;const rc=RCOL[spec.wr|0];if(rc){w.material=w.material.clone();w.material.emissive=new THREE.Color(rc);w.material.emissiveIntensity=.12+(spec.wr|0)*.08}r.weapon=w}}
     else if(spec.wt&&spec.wt!=='none'&&slotR){const w=weaponMesh(spec.wt,spec.wr||0);w.rotation.set(0,0,0);w.scale.setScalar(1/s);(spec.wt==='boog'&&slotL?slotL:slotR).add(w);r.weapon=w}
+    if(spec.o&&spec.o.gear)dressGltf(r,m,spec.o);
     if(spec.eye){m.traverse(x=>{if(x.isMesh&&x.material.isMeshBasicMaterial){x.material=x.material.clone();x.material.color.set(spec.eye)}})}
     r.mixer=new THREE.AnimationMixer(m);r.clips=src.clips;r.ready=true;
     r.g.traverse(x=>{if(x.isMesh)x.castShadow=true});if(spec.onReady)spec.onReady(r)});
   return r}
 /* spelers */
 function buildGltfChar(o){
-  const R=RACES[o.race]||RACES.mens;const s0=o.scale||1;const wn=(WM[o.cls]||{})[o.wt]||Object.values(WM[o.cls]||{})[0];
-  return buildGltfRig({model:GLTF_MODELS[o.cls],h:1.78*R.h*s0,props:gltfProps(o),weaponMesh:wn,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
+  const R=RACES[o.race]||RACES.mens;const s0=o.scale||1;
+  return buildGltfRig({model:playerModel(o),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:weaponProp(o),wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
 /* NPC's en wachters */
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
   bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'}};
@@ -93,7 +87,7 @@ function gLoop(r,name,fade=.18){if(r.cur===name)return r.acts[name];const a=gAct
 function animGltf(r,a,dt){
   if(r.fallback){animRig(r.fallback,a,dt);return}
   if(!r.ready)return;const S=r.st,cm=r.cm;const mv=clamp(a.spd||0,0,1.6);S.amt=ease(S.amt||0,Math.min(mv,1),clamp(dt*8,0,1));const am=S.amt;
-  const cls=r.o.cls,wt=a.wt||r.wt||'zwaard';
+  const cls=r.o.cls,wt=(a.wt||r.wt)&&(a.wt||r.wt)!=='none'?(a.wt||r.wt):(r.o.awt||'zwaard');
   /* --- doodgaan --- */
   if(a.dead){if(!S.dead){S.dead=true;const d=gAct(r,cm.die,true);if(d){for(const k in r.acts)if(r.acts[k]!==d)r.acts[k].fadeOut(.15);d.reset().fadeIn(.1).play()}r.cur=cm.die;S.atkAct=null}r.mixer.update(dt);return}
   if(S.dead){S.dead=false;const d=r.acts[cm.die];if(d)d.stop();r.cur=null}
