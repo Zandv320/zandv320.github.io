@@ -35,7 +35,7 @@ function pickAt(cx,cy,right){_ndc.set(cx/innerWidth*2-1,-(cy/innerHeight)*2+1);r
   if(e.kind==='mon'&&e.dead){if(e.loot){if(Math.hypot(e.x-ME.pos.x,e.z-ME.pos.z)<6)lootMon(e);else toast('Loop dichterbij om te plunderen')}return}
   if(e.kind==='npc'){setTarget(e);if(Math.hypot(e.x-ME.pos.x,e.z-ME.pos.z)<6)openNpc(e);else toast('Loop naar '+e.n+' toe om te praten');return}
   if((ME.target===e||right)&&isEnemy(e)){ME.auto=true;faceTo(e.x,e.z)}setTarget(e)}
-function interact(){if(ME.dead)return;if(fishHook())return;let best=null,bd=6;for(const m of MONS)if(m.dead&&m.loot){const d=Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z);if(d<bd){bd=d;best=m}}
+function interact(){if(ME.dead)return;if(fishHook())return;if(arenaInteract())return;let best=null,bd=6;for(const m of MONS)if(m.dead&&m.loot){const d=Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z);if(d<bd){bd=d;best=m}}
   if(best)return lootMon(best);let bn=null;bd=6;for(const n of NPCOBJ){const d=Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z);if(d<bd){bd=d;bn=n}}if(bn){setTarget(bn);return openNpc(bn)}
   const nd=nearNode();if(nd)return startGather(nd);
   const stn=STATIONS.find(s=>Math.hypot(s.x-ME.pos.x,s.z-ME.pos.z)<4.5);if(stn){lifeTab=stn.k==='vuur'?'koken':'alchemie';return openPanel('pLife')}
@@ -99,8 +99,9 @@ function updPlayer(dt){
   if(ME.cast){const c=ME.cast;c.t+=dt;setBar($('#castbar'),c.t,c.dur,c.a.n);if(c.t>=c.dur){ME.cast=null;$('#castbar').hidden=true;if(!c.a.need||(c.tg&&!c.tg.dead&&distTo(c.tg)-c.tg.size*.6<=c.a.range+2)){if(c.tg)faceTo(c.tg.x,c.tg.z);execAbility(c.a,c.tg)}else toast('Doelwit verloren')}}
   /* auto attack */
   ME.swing-=dt;const tg=ME.target;
-  if(ME.auto&&isEnemy(tg)&&!ME.dead&&!ME.cast&&!ME.dash&&ME.swing<=0){const C=CLASSES[P.cls];const d=distTo(tg)-tg.size*.6;if(d<=C.range){ME.swing=ST.spd;faceTo(tg.x,tg.z);ME.combat=6;
-    if(P.cls==='krijger'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){dealDamage(tg,hitDmg(1));sfx('hit')}},150);P.mp=Math.min(ST.maxmp,P.mp+6)}
+  if(ME.auto&&isEnemy(tg)&&!ME.dead&&!ME.cast&&!ME.dash&&ME.swing<=0){const C=CLASSES[P.cls];const ak=!!(P.eq.wapen&&P.eq.wapen.wt==='ak');const d=distTo(tg)-tg.size*.6;if(d<=(ak?AK_RANGE:C.range)){ME.swing=ST.spd;faceTo(tg.x,tg.z);ME.combat=6;
+    if(ak)akShoot(tg);
+    else if(P.cls==='krijger'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){dealDamage(tg,hitDmg(1));sfx('hit')}},150);P.mp=Math.min(ST.maxmp,P.mp+6)}
     else if(P.cls==='jager'){swingAnim(true);sfx('bow');proj('arrow',myHand(),tg,48,()=>dealDamage(tg,hitDmg(1)));fxEmit({k:'p',t:'arrow',f:myHand().toArray(),m:tg.id})}
     else{swingAnim(true);proj('arcane',myHand(),tg,24,()=>dealDamage(tg,hitDmg(.85)));fxEmit({k:'p',t:'arcane',f:myHand().toArray(),m:tg.id})}}}
   if(ME.target&&ME.target.kind==='mon'&&ME.target.dead&&!ME.target.loot)setTarget(null);
@@ -206,7 +207,7 @@ let lastTick=performance.now();
 setInterval(()=>{if(!document.hidden)return;const now=performance.now();const dt=Math.min(1,(now-lastTick)/1000);lastTick=now;try{updMonsters(dt);updProj(dt);if(isAuth())sendSnap();presSkip=99;presT=0;sendPresence(dt)}catch(e){}},500);
 let FRAME=0;
 function loop(){requestAnimationFrame(loop);FRAME++;lastTick=performance.now();const rdt=clock.getDelta();const dt=Math.min(rdt,window.__MAXDT||.05);perfWatch(Math.min(rdt,.2));S.t+=dt;const t=S.t;const W=innerWidth,H=innerHeight;
-  if(S.mode==='play'){updPlayer(dt);updCamera(dt);updHud(dt);saveT-=dt;if(saveT<=0){saveT=10;saveGame(true)}}
+  if(S.mode==='play'){updPlayer(dt);updArena(dt);updCamera(dt);updHud(dt);saveT-=dt;if(saveT<=0){saveT=10;saveGame(true)}}
   else{menuT+=dt;mmT-=dt;if(mmT<=0){mmT=1;netStatus()}const px=6,pz=14,py=groundH(px,pz);const a=.5+Math.sin(menuT*.15)*.35;const wide=innerWidth>760;camTarget.set(px+(wide?-2.2:0),py+(wide?1.3:1.6),pz);
     camera.position.set(px+Math.sin(a)*7.2,py+2.6,pz+Math.cos(a)*7.2);camera.lookAt(camTarget);if(menu.preview){menu.preview.g.rotation.y=a+Math.sin(menuT*.6)*.1;animRig(menu.preview,{spd:0,atk:-1},dt)}}
   updMonsters(dt);updRemotes(dt);updProj(dt);updFx(dt);updTrail(dt);updWorld(dt,t);
@@ -214,6 +215,6 @@ function loop(){requestAnimationFrame(loop);FRAME++;lastTick=performance.now();c
   if(!window.__NORENDER){if(GFX.post)composer.render();else renderer.render(scene,camera)}updPlates(W,H);updFloat(dt,W,H)}
 let snapAcc=0;const perf={t:0,n:0};
 function perfWatch(dt){if(S.mode!=='play'||S.noPerf||GFX.auto>=2||GFX.q==='laag')return;perf.t+=dt;perf.n++;if(perf.t>=5){const avg=perf.t/perf.n;perf.t=perf.n=0;if(avg>.042){GFX.q=GFX.q==='hoog'?'middel':'laag';GFX.auto++;applyGfx();$('#bGfx').textContent='Grafiek: '+GFX_N[GFX.q];log('De grafische kwaliteit is verlaagd naar '+GFX_N[GFX.q].toLowerCase()+' voor soepeler spelen (aan te passen in het menu).','sys')}}}
-window.__V={animRig,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
+window.__V={animRig,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
 loadSave();startNet();netStatus();$('#loadMsg').textContent='Karaktermodellen worden geladen';
 Promise.all([preloadModels(),buildEnv()]).then(()=>{showMenu();$('#loading').hidden=true;loop()});

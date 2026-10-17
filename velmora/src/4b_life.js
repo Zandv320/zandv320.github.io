@@ -2,7 +2,7 @@
 /* ===================== life skills (gathering, fishing, processing, cooking, alchemy) ===================== */
 const NODES=[];
 {const r=mulberry(9091);
-  const place=(type,item,count,cx,cz,rad,ok)=>{for(let i=0,t=0;i<count&&t<900;t++){const a=r()*6.28,d=Math.sqrt(r())*rad,x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d;if(Math.abs(x)>240||Math.abs(z)>245)continue;if(pathDist(x,z)<3.5||Math.hypot(x,z)<58||Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.1||Math.hypot(x-CAMP.x,z-CAMP.z)<28||Math.hypot(x-CRYPT.x,z-CRYPT.z)<22||Math.hypot(x-CAVE.x,z-CAVE.z)<20)continue;if(ok&&!ok(x,z))continue;NODES.push({id:'n'+NODES.length,type,item,x,z});i++}};
+  const place=(type,item,count,cx,cz,rad,ok)=>{for(let i=0,t=0;i<count&&t<900;t++){const a=r()*6.28,d=Math.sqrt(r())*rad,x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d;if(Math.abs(x)>240||Math.abs(z)>245)continue;if(pathDist(x,z)<3.5||Math.hypot(x,z)<58||Math.hypot(x-ARENA.x,z-ARENA.z)<36||Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.1||Math.hypot(x-CAMP.x,z-CAMP.z)<28||Math.hypot(x-CRYPT.x,z-CRYPT.z)<22||Math.hypot(x-CAVE.x,z-CAVE.z)<20)continue;if(ok&&!ok(x,z))continue;NODES.push({id:'n'+NODES.length,type,item,x,z});i++}};
   place('hout','Hout',12,-60,-62,90,(x,z)=>z<-50&&z>-90);place('hout','Hout',6,-130,30,45);
   place('erts','IJzererts',8,-140,-150,45);place('erts','IJzererts',7,175,-150,40);place('erts','Zilvererts',4,215,-205,30);place('erts','IJzererts',4,120,40,40);
   place('kruid','Zonnekruid',14,30,90,80,(x,z)=>!inForest(x,z));place('kruid','Zonnekruid',5,-80,20,40);

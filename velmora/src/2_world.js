@@ -67,14 +67,14 @@ const LAKE={x:-150,z:60,r:46};
 const PATHS=[[[0,0],[0,-60],[-12,-120],[-80,-178],[-158,-204]],[[0,0],[62,-32],[128,-88],[176,-140],[200,-168]],[[0,0],[0,70],[8,140]],[[0,0],[-62,22],[-104,44]]];
 function segDist(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-ax-dx*t,pz-az-dz*t)}
 function pathDist(x,z){let m=1e9;for(const p of PATHS)for(let i=0;i<p.length-1;i++){const d=segDist(x,z,p[i][0],p[i][1],p[i+1][0],p[i+1][1]);if(d<m)m=d}return m}
-const TOWN={x:0,z:0,r:50},CAMP={x:150,z:-100,r:26},CRYPT={x:-172,z:-222},FARM={x:10,z:125},CAVE={x:206,z:-182};
+const ARENA={x:92,z:34,r:22};const TOWN={x:0,z:0,r:50},CAMP={x:150,z:-100,r:26},CRYPT={x:-172,z:-222},FARM={x:10,z:125},CAVE={x:206,z:-182};
 function baseH(x,z){
   let h=(fbm(x*.011+3.1,z*.011+7.7)-.5)*16+(fbm(x*.045,z*.045)-.5)*3;
   h+=Math.max(0,1-Math.hypot(x+180,z+240)/95)**1.3*22;
   h+=Math.max(0,1-Math.hypot(x-200,z+190)/90)*14;
   const e=Math.max(Math.abs(x),Math.abs(z));if(e>235)h+=Math.pow(e-235,1.35)*.45;
   return h}
-const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22}];
+const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:ARENA.x,z:ARENA.z,r:34}];
 for(const f of FLAT)if(f.h==null)f.h=baseH(f.x,f.z);
 function rawH(x,z){
   let h=baseH(x,z);
@@ -94,6 +94,7 @@ function inForest(x,z){return z<-52&&z>-262&&x<112&&x>-250}
 function zoneAt(x,z){
   if(x>1250)return'Vuurgrot van Ignaroth';if(x>700)return'Crypte van Kaal-Morath';
   if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Asbergen';
+  if(Math.hypot(x-ARENA.x,z-ARENA.z)<ARENA.r+8)return'Arena van Zilverbron';
   if(Math.hypot(x,z)<58)return'Zilverbron';
   if(Math.hypot(x-CRYPT.x,z-CRYPT.z)<70)return'Knekelheuvels';
   if(Math.hypot(x-LAKE.x,z-LAKE.z)<75)return'Spiegelmeer';
@@ -178,14 +179,14 @@ function addFlame(par,x,y,z,s=1,color=0xffa030){const f=mesh(new THREE.ConeGeome
 /* ---------- vegetation ---------- */
 const RV=mulberry(777);
 const pineT=[],oakT=[],rockT=[],grassT=[],flowerT=[],deadT=[];
-function okSpot(x,z,pathClear=6){return pathDist(x,z)>pathClear&&Math.hypot(x-CAVE.x,z-CAVE.z)>26&&Math.hypot(x,z)>60&&Math.hypot(x-CAMP.x,z-CAMP.z)>32&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>24&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.15&&!(Math.abs(x-FARM.x)<56&&Math.abs(z-FARM.z)<44)}
+function okSpot(x,z,pathClear=6){return pathDist(x,z)>pathClear&&Math.hypot(x-ARENA.x,z-ARENA.z)>36&&Math.hypot(x-CAVE.x,z-CAVE.z)>26&&Math.hypot(x,z)>60&&Math.hypot(x-CAMP.x,z-CAMP.z)>32&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>24&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.15&&!(Math.abs(x-FARM.x)<56&&Math.abs(z-FARM.z)<44)}
 for(let i=0;i<5200;i++){const x=rand(-250,250),z=rand(-262,250);const x2=-250+RV()*500,z2=-262+RV()*512;
   if(inForest(x2,z2)&&okSpot(x2,z2)&&RV()<.62)pineT.push([x2,z2,.8+RV()*.7,RV()*6.28]);
   else if(!inForest(x2,z2)&&okSpot(x2,z2,5)&&RV()<.09&&Math.hypot(x2-CRYPT.x,z2-CRYPT.z)>60)oakT.push([x2,z2,.8+RV()*.6,RV()*6.28]);
   if(Math.hypot(x2-CRYPT.x,z2-CRYPT.z)<60&&okSpot(x2,z2)&&RV()<.06)deadT.push([x2,z2,.8+RV()*.5,RV()*6.28]);
   void x;void z}
 for(let i=0;i<420;i++){const x=-250+RV()*500,z=-262+RV()*512;if(okSpot(x,z,4)&&(RV()<.5||x>100))rockT.push([x,z,.5+RV()*1.8,RV()*6.28])}
-for(let i=0;i<14000&&grassT.length<8000;i++){const x=-240+RV()*480,z=-250+RV()*490;if(pathDist(x,z)>3&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.05&&Math.hypot(x,z)>21&&!(x>100&&z<-10&&RV()<.6))grassT.push([x,z,.6+RV()*.8,RV()*6.28])}
+for(let i=0;i<14000&&grassT.length<8000;i++){const x=-240+RV()*480,z=-250+RV()*490;if(pathDist(x,z)>3&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.05&&Math.hypot(x,z)>21&&Math.hypot(x-ARENA.x,z-ARENA.z)>30&&!(x>100&&z<-10&&RV()<.6))grassT.push([x,z,.6+RV()*.8,RV()*6.28])}
 for(let i=0;i<1500&&flowerT.length<700;i++){const x=-220+RV()*440,z=-60+RV()*300;if(!inForest(x,z)&&pathDist(x,z)>3&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.1&&Math.hypot(x,z)>21)flowerT.push([x,z,.6+RV()*.6,RV()*6.28])}
 function tuftGeo(){const pos=[],col=[];const base=new THREE.Color().setRGB(.42,.5,.3),tip=new THREE.Color().setRGB(1.05,1.08,.9);for(let k=0;k<5;k++){const a=k/5*Math.PI*2+.3,lean=.12+(k%2)*.1,w=.035,h=.42+(k%3)*.1,cx=Math.cos(a)*.05,cz=Math.sin(a)*.05,tx=Math.cos(a)*lean,tz=Math.sin(a)*lean,px=-Math.sin(a)*w,pz=Math.cos(a)*w;
   pos.push(cx-px,0,cz-pz, cx+px,0,cz+pz, cx+tx,h,cz+tz);col.push(base.r,base.g,base.b,base.r,base.g,base.b,tip.r,tip.g,tip.b)}

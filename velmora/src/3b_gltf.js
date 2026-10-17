@@ -34,7 +34,7 @@ function tintedMap(src,skin,hair){
 /* KayKit mensachtigen: standaard clipkaart */
 const ATK_1H=['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Stab','1H_Melee_Attack_Chop'],ATK_2H=['2H_Melee_Attack_Chop','2H_Melee_Attack_Slice','2H_Melee_Attack_Spin'];
 const CM_KAY={idle:'Idle',cidle:'Blocking',walk:'Walking_A',run:'Running_A',jumpS:'Jump_Start',jumpI:'Jump_Idle',land:'Jump_Land',cast:'Spellcasting',die:'Death_A',hit:'Hit_A',
-  atk:{krijger:['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Chop'],bijl:ATK_2H,magier:['Spellcast_Shoot'],jager:['2H_Ranged_Shoot'],staf:['Spellcast_Shoot'],boog:['2H_Ranged_Shoot'],def:ATK_1H}};
+  atk:{krijger:['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Chop'],bijl:ATK_2H,magier:['Spellcast_Shoot'],jager:['2H_Ranged_Shoot'],staf:['Spellcast_Shoot'],boog:['2H_Ranged_Shoot'],ak:['2H_Ranged_Shoot'],def:ATK_1H}};
 /* generieke bouwer: model, hoogte, zichtbare props, eigen wapen, kleur-tints, clipkaart */
 function buildGltfRig(spec){
   const g=new THREE.Group();const r={g,gltf:true,h:spec.h,ph:Math.random()*6,wt:spec.wt,o:spec.o||{},cm:spec.cm||CM_KAY,st:{land:0,idle:0},cur:null,acts:{},ready:false,quad:spec.quad,spider:spec.spider};

@@ -6,6 +6,10 @@ function weaponMesh(wt,rar=0){
   if(wt==='zwaard'){mesh(new THREE.BoxGeometry(.1,1.15,.03),metal,0,.75,0,g);mesh(new THREE.ConeGeometry(.07,.2,4),metal,0,1.42,0,g);mesh(new THREE.BoxGeometry(.42,.07,.1),gold,0,.18,0,g);mesh(new THREE.CylinderGeometry(.04,.04,.3,6),grip,0,0,0,g);g.rotation.x=.55}
   else if(wt==='bijl'){mesh(new THREE.CylinderGeometry(.04,.05,1.3,10),grip,0,.5,0,g);const h=mesh(new THREE.CylinderGeometry(.42,.42,.08,12,1,false,0,Math.PI),metal,.02,1.0,0,g);h.rotation.z=Math.PI/2;h.rotation.y=Math.PI/2;mesh(new THREE.ConeGeometry(.06,.25,4),metal,0,1.25,0,g);g.rotation.x=.5}
   else if(wt==='staf'){mesh(new THREE.CylinderGeometry(.035,.05,2,10),sm(0x5a3a22),0,.35,0,g);const orb=mesh(new THREE.IcosahedronGeometry(.15,3),mat(rar>=3?0xd08aff:0x7ad8ff,{e:rar>=3?0xb04aff:0x3aa8ff,ei:2.6,flat:false}),0,1.42,0,g,false);orb.userData.orb=1;for(let i=0;i<3;i++){const p=mesh(new THREE.ConeGeometry(.03,.3,4),gold,Math.cos(i*2.1)*.1,1.3,Math.sin(i*2.1)*.1,g);p.rotation.z=Math.cos(i*2.1)*.4}}
+  else if(wt==='ak'){/* AK-47: loop langs +y, greep bij de oorsprong */const gun=mat(0x1f1f22,{m:.8,r:.35,flat:false}),wd=mat(0x6a3f1e,{r:.7,flat:false});
+    mesh(new THREE.BoxGeometry(.07,.62,.11),gun,0,.28,0,g);/* kast */mesh(new THREE.CylinderGeometry(.018,.018,.5,8),gun,0,.82,.02,g);/* loop */mesh(new THREE.BoxGeometry(.05,.3,.07),wd,0,.6,.0,g);/* handgreep voor */
+    const magz=mesh(new THREE.BoxGeometry(.05,.22,.08),gun,0,.3,-.1,g);magz.rotation.x=-.5;/* banaanmagazijn */mesh(new THREE.BoxGeometry(.06,.36,.09),wd,0,-.2,-.03,g);/* kolf */mesh(new THREE.BoxGeometry(.045,.12,.06),wd,0,.08,-.1,g);/* pistoolgreep */
+    mesh(new THREE.BoxGeometry(.03,.06,.04),gun,0,.9,.06,g);/* korrel */g.rotation.x=.1}
   else if(wt==='boog'){const b=mesh(new THREE.TorusGeometry(.62,.032,8,28,Math.PI*1.1),sm(0x6a4422),0,0,0,g);b.rotation.z=-Math.PI*.55;const s=mesh(new THREE.CylinderGeometry(.006,.006,1.15,3),mat(0xeeeeee),-.19,0,0,g,false);void s;g.rotation.y=Math.PI/2}
   return g}
 const sm=(c,o={})=>mat(c,{...o,flat:false});
@@ -346,6 +350,7 @@ function drawIcon(cv,ic,sz=64){
   g.save();g.scale(sz/64,sz/64);g.lineCap='round';g.lineJoin='round';g.strokeStyle='#fff';g.fillStyle='#fff';g.shadowColor='rgba(0,0,0,.6)';g.shadowBlur=4;g.lineWidth=5;
   const P=(...pts)=>{g.beginPath();g.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)g.lineTo(pts[i],pts[i+1])};
   if(k==='sword'||k==='zwaard'){P(16,48,46,18);g.stroke();P(12,40,24,52);g.stroke();g.lineWidth=3;P(46,18,50,14);g.stroke()}
+  else if(k==='ak'){g.lineWidth=5;P(10,40,50,22);g.stroke();g.lineWidth=7;P(16,38,40,28);g.stroke();g.lineWidth=4;P(14,42,8,52);g.stroke();P(28,34,30,46);g.stroke()}
   else if(k==='bijl'){g.lineWidth=4;P(18,50,44,18);g.stroke();g.beginPath();g.moveTo(36,12);g.quadraticCurveTo(58,18,52,38);g.lineTo(40,24);g.closePath();g.fill()}
   else if(k==='staf'){g.lineWidth=4;P(18,52,42,22);g.stroke();g.beginPath();g.arc(45,18,8,0,7);g.fill()}
   else if(k==='boog'||k==='arrow'){if(k==='boog'){g.lineWidth=4;g.beginPath();g.arc(20,32,24,-1.2,1.2);g.stroke();g.lineWidth=1.5;P(28,10,28,54);g.stroke()}else{g.lineWidth=4;P(12,52,48,16);g.stroke();g.beginPath();g.moveTo(52,12);g.lineTo(38,16);g.lineTo(48,26);g.closePath();g.fill();g.lineWidth=3;P(12,52,10,42);g.stroke();P(12,52,22,54);g.stroke()}}

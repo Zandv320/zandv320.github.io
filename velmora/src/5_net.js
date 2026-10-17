@@ -101,7 +101,7 @@ async function startNet(){
       if(pr.ac!==r.lastAc){r.lastAc=pr.ac;r.atk=0;r.atkRanged=!!pr.rg}
       let look=null;if(pr.lk&&typeof pr.lk==='object'){look={};for(const[k,v]of Object.entries(pr.lk)){if(k.length<12&&(typeof v==='number'||typeof v==='boolean'||(typeof v==='string'&&v.length<12)))look[k]=v}
         /* uitrusting: alleen de velden die 3d_dress kent, met lengtes begrensd */const sanD=(d)=>{if(!d||typeof d!=='object')return null;const o={c:+d.c||0,r:clamp(d.r|0,0,3)};if(typeof d.p==='string'&&d.p.length<40&&/^[\w.-]+$/.test(d.p))o.p=d.p;if(typeof d.g==='string'&&d.g.length<120&&/^models\/[\w./-]+\.glb$/.test(d.g))o.g=d.g;if(typeof d.s==='number'&&d.s>0&&d.s<10)o.s=d.s;if(Array.isArray(d.ro)&&d.ro.length===3&&d.ro.every(x=>typeof x==='number'))o.ro=d.ro;return o};
-        if(pr.lk.gear&&typeof pr.lk.gear==='object'){look.gear={};for(const sl of ['hoofd','borst','handen','benen','voeten'])look.gear[sl]=sanD(pr.lk.gear[sl])}look.wvis=sanD(pr.lk.wvis);look.race=r.race;if(!['zwaard','bijl','staf','boog','none'].includes(look.wt))look.wt=CLASSES[r.cls].wt}
+        if(pr.lk.gear&&typeof pr.lk.gear==='object'){look.gear={};for(const sl of ['hoofd','borst','handen','benen','voeten'])look.gear[sl]=sanD(pr.lk.gear[sl])}look.wvis=sanD(pr.lk.wvis);look.race=r.race;if(!['zwaard','bijl','staf','boog','ak','none'].includes(look.wt))look.wt=CLASSES[r.cls].wt}
       if(!look)look=playerLook({race:r.race,cls:r.cls,hair:pr.h|0,eq:{wapen:r.eqv[0]?{wt:r.eqv[0],r:r.eqv[1]|0}:null,borst:r.eqv[2]>=0?{r:r.eqv[2]}:null,hoofd:r.eqv[3]?{}:null,handen:r.eqv[4]?{}:null}});
       const key=JSON.stringify(look);if(key!==r.lookKey){r.lookKey=key;if(r.rig)scene.remove(r.rig.g);r.rig=buildHumanoid(look);r.rig.g.userData.ent=r;r.rig.g.position.set(r.x,r.y,r.z);scene.add(r.rig.g)}}
     for(const r of[...REMOTES.values()])if(!seen.has(r.id))removeRemote(r,true);
@@ -121,10 +121,11 @@ async function startNet(){
     else{const k=REMOTES.get(d.by);log('⚔ '+(k?esc(k.n):'Iemand')+' versloeg '+victim+'.','err',true)}});
   room.on('bossmsg',m=>{const d=m.data||{};if(typeof d.t==='string'&&S.mode==='play'&&ME.pos.x>700&&((d.b==='ignaroth')===(ME.pos.x>1250)))bossSay(d.t.slice(0,90),d.b)});
   room.on('fx',m=>{if(S.mode!=='play')return;const d=m.data||{};const r=REMOTES.get(m.peer);
-    if(d.k==='p'&&Array.isArray(d.f)){const from=new THREE.Vector3(+d.f[0],+d.f[1],+d.f[2]);let tg=null;if(d.m)tg=MONMAP.get(d.m);else if(d.p)tg=d.p===myId()?'me':REMOTES.get(d.p);else if(d.x!=null)tg=[+d.x,groundH(+d.x,+d.z),+d.z];if(tg&&PCOL[d.t])proj(d.t,from,tg,d.t==='arrow'?46:d.t==='meteor'?34:22,null)}
+    if(d.k==='p'&&Array.isArray(d.f)){const from=new THREE.Vector3(+d.f[0],+d.f[1],+d.f[2]);let tg=null;if(d.m)tg=MONMAP.get(d.m);else if(d.p)tg=d.p===myId()?'me':REMOTES.get(d.p);else if(d.x!=null)tg=[+d.x,groundH(+d.x,+d.z),+d.z];if(tg&&PCOL[d.t])proj(d.t,from,tg,d.t==='arrow'?46:d.t==='meteor'?34:d.t==='kogel'?95:22,null)}
     else if(d.k==='r')ringFx(+d.x,+d.z,clamp(+d.r,1,12),+d.c||0xffffff,.5);
     else if(d.k==='tele')teleFx(+d.x,+d.z,clamp(+d.r,1,12),clamp(+d.d,.2,4));
     else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);if(r)log(esc(r.n)+' heeft een niveau bereikt!','sys',true)}});
+  room.on('arena',m=>{if(S.mode!=='play')return;arenaNet(m.peer,m.data||{})});
   /* groups */
   room.on('ginv',m=>{const d=m.data||{};if(d.to!==myId()||S.mode!=='play')return;if(GROUP){netEmit('gdec',{to:m.peer,n:P.name,why:'zit al in een groep'});return}showInvite(m.peer,String(d.n||'Iemand').slice(0,14))});
   room.on('gdec',m=>{const d=m.data||{};if(d.to===myId())log(esc(String(d.n||'Iemand'))+' '+(d.why?esc(d.why):'heeft je uitnodiging afgewezen')+'.','grp',true)});
