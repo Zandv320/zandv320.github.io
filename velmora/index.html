@@ -306,6 +306,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import {GTAOPass} from 'three/addons/postprocessing/GTAOPass.js';
 import {SMAAPass} from 'three/addons/postprocessing/SMAAPass.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 /* ===================== utils ===================== */
 const $=s=>document.querySelector(s);
@@ -479,6 +480,11 @@ const TEX={
   shingle:canvasTex(128,128,(g,w,h)=>{g.fillStyle='#fff';g.fillRect(0,0,w,h);for(let r=0;r<8;r++)for(let c=0;c<9;c++){const v=170+R0()*85;g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(c*16-(r%2)*8,r*16,15,14);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(c*16-(r%2)*8,r*16+12,15,3)}}),
   wood:canvasTex(128,128,(g,w,h)=>{for(let x=0;x<w;x+=16){const v=150+R0()*80;g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(x,0,16,h);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x,0,1,h);for(let k=0;k<8;k++){g.fillStyle='rgba(0,0,0,.08)';g.fillRect(x+2+R0()*12,R0()*h,1,20+R0()*40)}}}),
   plaster:canvasTex(128,128,(g,w,h)=>{const d=g.createImageData(w,h);for(let i=0;i<w*h;i++){const v=225+fbm((i%w)*.2,Math.floor(i/w)*.2)*30+R0()*8;d.data[i*4]=v;d.data[i*4+1]=v;d.data[i*4+2]=v;d.data[i*4+3]=255}g.putImageData(d,0,0)}),
+  /* 'hand-painted' penseelstreken voor het terrein: zachte ellipsen in warme/koele tinten, vermenigvuldigd met de vertexkleur */
+  paint:canvasTex(1024,1024,(g,w,h)=>{g.fillStyle='#bdbdb8';g.fillRect(0,0,w,h);
+    for(let i=0;i<5200;i++){const v=165+R0()*95,x=R0()*w,y=R0()*h,a=14+R0()*44,b=5+R0()*14,r=R0()*3.14,warm=R0()<.5;const col=warm?`rgba(${v},${v*.97},${v*.86},.55)`:`rgba(${v*.9},${v*.98},${v},.55)`;g.fillStyle=col;for(const ox of[-w,0,w])for(const oy of[-h,0,h]){g.beginPath();g.ellipse(x+ox,y+oy,a,b,r,0,7);g.fill()}}
+    for(let i=0;i<2600;i++){const v=200+R0()*55,x=R0()*w,y=R0()*h,a=3+R0()*9,b=1.2+R0()*2.2,r=-.6+R0()*1.2;g.fillStyle=`rgba(${v},${v},${v*.92},.5)`;for(const ox of[-w,0,w])for(const oy of[-h,0,h]){g.beginPath();g.ellipse(x+ox,y+oy,b,a,r,0,7);g.fill()}}
+    for(let i=0;i<1400;i++){const v=120+R0()*60,x=R0()*w,y=R0()*h,a=6+R0()*18,b=3+R0()*7,r=R0()*3.14;g.fillStyle=`rgba(${v},${v*1.02},${v*.9},.35)`;for(const ox of[-w,0,w])for(const oy of[-h,0,h]){g.beginPath();g.ellipse(x+ox,y+oy,a,b,r,0,7);g.fill()}}}),
   stripe:canvasTex(64,64,(g,w,h)=>{for(let i=0;i<4;i++){g.fillStyle=i%2?'#fff':'#c9c9c9';g.fillRect(i*16,0,16,h)}})
 };
 const matCache=new Map();const NIGHT_MATS=new Set();
@@ -554,8 +560,8 @@ const terrain=(()=>{
     const td=Math.hypot(x,z);if(td<20)c.lerp(COB,smooth(clamp((20-td)/3,0,1)));
     const jit=.92+hash(i,j)*.16;col[k*3]=c.r*jit;col[k*3+1]=c.g*jit;col[k*3+2]=c.b*jit}
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.computeVertexNormals();
-  const tex=TEX.grain.clone();tex.needsUpdate=true;tex.repeat.set(70,70);
-  const m=new THREE.Mesh(geo,new THREE.MeshToonMaterial({vertexColors:true,map:tex,bumpMap:tex,bumpScale:.05,gradientMap:RAMP}));m.receiveShadow=true;scene.add(m);return m})();
+  const tex=TEX.paint.clone();tex.needsUpdate=true;tex.repeat.set(36,36);
+  const m=new THREE.Mesh(geo,new THREE.MeshToonMaterial({vertexColors:true,map:tex,bumpMap:tex,bumpScale:.08,gradientMap:RAMP}));m.receiveShadow=true;scene.add(m);return m})();
 /* plaza cobbles */
 {const g=new THREE.CircleGeometry(19,48);g.rotateX(-Math.PI/2);mesh(g,mat(0xc8c0b0,{tex:'cobble',rx:15,ry:15}),0,1.23,0,scene,false,true)}
 /* water: eigen shader met golvende normalen, fresnel-reflectie van de lucht, zonneglans en schuim langs de oever */
@@ -623,7 +629,8 @@ function tuftGeo(){const pos=[],col=[];const base=new THREE.Color().setRGB(.42,.
   pos.push(cx-px,0,cz-pz, cx+px,0,cz+pz, cx+tx,h,cz+tz);col.push(base.r,base.g,base.b,base.r,base.g,base.b,tip.r,tip.g,tip.b)}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.computeVertexNormals();const n=g.attributes.normal;for(let i=0;i<n.count;i++)n.setXYZ(i,0,1,0);return g}
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_s=new THREE.Vector3(),_p=new THREE.Vector3(),_e=new THREE.Euler(),_c=new THREE.Color();
-function instance(geo,material,list,fn,cast=true){const im=new THREE.InstancedMesh(geo,material,list.length);list.forEach((t,i)=>{const o=fn(t,i);_p.set(t[0],groundH(t[0],t[1])+(o.y||0),t[1]);_e.set(o.rx||0,t[3],o.rz||0);_q.setFromEuler(_e);_s.set(o.sx||t[2],o.sy||t[2],o.sz||t[2]);_m.compose(_p,_q,_s);im.setMatrixAt(i,_m);if(o.c!=null)im.setColorAt(i,_c.setHex(o.c).multiplyScalar(o.cm||1))});im.castShadow=cast;im.receiveShadow=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;scene.add(im);return im}
+const VEG_IM=[];
+function instance(geo,material,list,fn,cast=true){const im=new THREE.InstancedMesh(geo,material,list.length);VEG_IM.push({im,list});list.forEach((t,i)=>{const o=fn(t,i);_p.set(t[0],groundH(t[0],t[1])+(o.y||0),t[1]);_e.set(o.rx||0,t[3],o.rz||0);_q.setFromEuler(_e);_s.set(o.sx||t[2],o.sy||t[2],o.sz||t[2]);_m.compose(_p,_q,_s);im.setMatrixAt(i,_m);if(o.c!=null)im.setColorAt(i,_c.setHex(o.c).multiplyScalar(o.cm||1))});im.castShadow=cast;im.receiveShadow=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;scene.add(im);return im}
 const pineCols=[0x2f5a2e,0x3a6a33,0x27502c,0x456f35];
 instance(new THREE.CylinderGeometry(.16,.3,3,8).translate(0,1.5,0),mat(0x5a3f28,{flat:false}),pineT,()=>({}));
 instance(new THREE.ConeGeometry(2.3,4.2,10).translate(0,4.2,0),mat(0xffffff,{flat:false,r:.9}),pineT,(t,i)=>({c:pineCols[i%4]}));
@@ -647,8 +654,9 @@ const clouds=new THREE.Group();scene.add(clouds);
 for(let i=0;i<22;i++){const g=new THREE.Group();const n=3+Math.floor(RV()*4);for(let k=0;k<n;k++){const m=new THREE.Mesh(new THREE.IcosahedronGeometry(8+RV()*9,2),cm.clone());m.position.set(k*11-n*5,RV()*4,RV()*10-5);m.scale.y=.5;g.add(m)}g.position.set(-500+RV()*1000,120+RV()*40,-500+RV()*1000);clouds.add(g)}}
 
 /* ---------- buildings ---------- */
+const HOUSES=[],STALLS=[],CRATES=[];
 function house(x,z,w,d,h,rot,roof=0x8a3b2a,wall=0xe8dcc0,par=scene){
-  const g=new THREE.Group();g.position.set(x,groundH(x,z),z);g.rotation.y=rot?Math.PI/2:0;par.add(g);
+  const g=new THREE.Group();g.position.set(x,groundH(x,z),z);g.rotation.y=rot?Math.PI/2:0;par.add(g);HOUSES.push({g,x,z,w,d,h,rot,par});
   mesh(new THREE.BoxGeometry(w+.6,.8,d+.6),mat(0x8a8478,{tex:'brick',rx:w/3,ry:.4}),0,.2,0,g);
   mesh(new THREE.BoxGeometry(w,h,d),mat(wall,{tex:'plaster',rx:w/4,ry:h/4}),0,h/2+.5,0,g);
   const beam=mat(0x4a3220,{tex:'wood',rx:.2,ry:1});
@@ -669,7 +677,7 @@ function tower(x,z,r,h,roof=0x2a3f6a){const g=new THREE.Group();g.position.set(x
 house(-24,-24,10,8,6,0,0x8a3b2a);house(23,-27,9,8,5.5,1,0x3a5a8a);house(-27,-4,14,10,7,1,0x7a4a2a,0xf0e2c4);
 house(-22,32,10,8,5.5,0,0x3a5a8a);house(21,32,9,9,6,0,0x8a3b2a);house(-16,-40,8,8,5,0,0x5a6a3a);house(16,-41,9,7,5,1,0x8a3b2a);house(34,-6,8,7,5,1,0x5a6a3a);house(-38,16,8,8,5,0,0x8a3b2a);
 /* chapel */
-{const g=house(31,13,9,15,8,1,0x3d4a6a,0xe8e4da);const t=new THREE.Group();t.position.set(0,0,-6);g.add(t);mesh(new THREE.BoxGeometry(4,15,4),mat(0xd8d2c4,{tex:'brick',rx:1.5,ry:5}),0,7.5,0,t);mesh(new THREE.ConeGeometry(3.4,6,4).rotateY(Math.PI/4),mat(0x3d4a6a,{tex:'shingle',rx:3,ry:2}),0,18,0,t);mesh(new THREE.BoxGeometry(.3,2.2,.3),mat(0xffd76a,{m:.8,r:.3,e:0x8a6a10,ei:.4}),0,22,0,t);mesh(new THREE.BoxGeometry(1.3,.3,.3),mat(0xffd76a,{m:.8,r:.3,e:0x8a6a10,ei:.4}),0,22.4,0,t)}
+{const g=house(31,13,9,15,8,1,0x3d4a6a,0xe8e4da);g.userData.keep=1;const t=new THREE.Group();t.position.set(0,0,-6);g.add(t);mesh(new THREE.BoxGeometry(4,15,4),mat(0xd8d2c4,{tex:'brick',rx:1.5,ry:5}),0,7.5,0,t);mesh(new THREE.ConeGeometry(3.4,6,4).rotateY(Math.PI/4),mat(0x3d4a6a,{tex:'shingle',rx:3,ry:2}),0,18,0,t);mesh(new THREE.BoxGeometry(.3,2.2,.3),mat(0xffd76a,{m:.8,r:.3,e:0x8a6a10,ei:.4}),0,22,0,t);mesh(new THREE.BoxGeometry(1.3,.3,.3),mat(0xffd76a,{m:.8,r:.3,e:0x8a6a10,ei:.4}),0,22.4,0,t)}
 /* inn sign */
 {const s=mesh(new THREE.BoxGeometry(2.2,1.1,.12),mat(0x6a4422,{tex:'wood'}),-20.6,4.2,-4,scene);s.rotation.y=Math.PI/2;mesh(new THREE.CylinderGeometry(.5,.35,.6,10),mat(0xffd34d,{m:.9,r:.3}),-20.5,4.2,-4,scene)}
 /* fountain */
@@ -686,7 +694,7 @@ const fountainDrops=(()=>{const n=160,g=new THREE.BufferGeometry(),p=new Float32
 function lamp(x,z){const y=groundH(x,z);mesh(new THREE.CylinderGeometry(.08,.12,3.6,6),mat(0x2a2a2a,{m:.6,r:.4}),x,y+1.8,z);{const lm=mat(0xffd27a,{e:0xffa030,ei:1.6});NIGHT_MATS.add(lm);mesh(new THREE.BoxGeometry(.3,.4,.3),lm,x,y+3.7,z,scene,false)}mesh(new THREE.ConeGeometry(.3,.3,4).rotateY(Math.PI/4),mat(0x222222,{m:.6,r:.4}),x,y+4.05,z,scene,false);addLight(x,y+3.8,z,0xffb050,22,18)}
 lamp(9,9);lamp(-9,9);lamp(9,-9);lamp(-9,-9);
 /* market stalls */
-function stall(x,z,rot,col){const g=new THREE.Group();g.position.set(x,groundH(x,z),z);g.rotation.y=rot;scene.add(g);const wd=mat(0x6a4a2a,{tex:'wood'});
+function stall(x,z,rot,col){const g=new THREE.Group();g.position.set(x,groundH(x,z),z);g.rotation.y=rot;scene.add(g);STALLS.push({g,x,z,rot,i:STALLS.length});const wd=mat(0x6a4a2a,{tex:'wood'});
   for(const sx of[-1,1])for(const sz of[-1,1])mesh(new THREE.BoxGeometry(.18,2.6,.18),wd,sx*1.6,1.3,sz*1,g);mesh(new THREE.BoxGeometry(3.4,.9,1.6),wd,0,.45,0,g);
   const aw=mesh(new THREE.BoxGeometry(3.8,.12,2.6),mat(col,{tex:'stripe',rx:4}),0,2.7,0,g);aw.rotation.x=-.18;
   for(let i=0;i<5;i++)mesh(new THREE.SphereGeometry(.18,6,5),mat(pick([0xd94a3a,0xe8b23a,0x7ab83a,0xa05ad0])),-1.2+i*.6,1,0,g);addCol(x,z,1.6)}
@@ -697,8 +705,8 @@ const flags=[];flagPole(-6,-50,0x8a1f2a);flagPole(6,-50,0x8a1f2a);flagPole(48,-2
 /* guard tower near Aldren */
 tower(13,-20,1.8,6,0x8a3b2a);
 /* crates & barrels */
-function crate(x,z,s=1){mesh(new THREE.BoxGeometry(s,s,s),mat(0x9a7444,{tex:'wood',rx:1,ry:1}),x,groundH(x,z)+s/2,z).rotation.y=Math.random();addCol(x,z,s*.6)}
-function barrel(x,z){mesh(new THREE.CylinderGeometry(.45,.45,1.1,10),mat(0x7a5432,{tex:'wood',rx:2}),x,groundH(x,z)+.55,z);addCol(x,z,.5)}
+function crate(x,z,s=1){const m=mesh(new THREE.BoxGeometry(s,s,s),mat(0x9a7444,{tex:'wood',rx:1,ry:1}),x,groundH(x,z)+s/2,z);m.rotation.y=Math.random();CRATES.push({m,x,z,ry:m.rotation.y,s,kind:'crate'});addCol(x,z,s*.6)}
+function barrel(x,z){const m=mesh(new THREE.CylinderGeometry(.45,.45,1.1,10),mat(0x7a5432,{tex:'wood',rx:2}),x,groundH(x,z)+.55,z);CRATES.push({m,x,z,ry:0,s:1.1,kind:'barrel'});addCol(x,z,.5)}
 crate(-12,-16);crate(-11,-17,.7);barrel(-18,-8);barrel(-18,-9.2);crate(18,-14);barrel(26,-17);crate(-30,6,1.1);
 
 /* ---------- farm ---------- */
@@ -891,6 +899,55 @@ function applyGfx(){const q=GFX.q;const dpr=devicePixelRatio||1;
   scene.traverse(o=>{if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true)}});
   try{localStorage.setItem('velmora-gfx',q)}catch(e){}if(typeof resize==='function')resize()}
 applyGfx();
+/* ===================== omgevingsmodellen (Quaternius Nature / Medieval Village, CC0) =====================
+   Bomen, rotsen, huizen, kramen, kisten en tonnen worden vervangen door low-poly modellen in dezelfde stijl als de karakters.
+   De procedurele versies blijven bestaan als fallback (en worden verborgen zodra het model er is); colliders veranderen niet. */
+const ENV_BASE=new URL('models/env/',location.href).href;
+const envCache=new Map();let _envLoader=null;
+function envLoader(){if(!_envLoader){_envLoader=new GLTFLoader();_envLoader.setMeshoptDecoder(MeshoptDecoder)}return _envLoader}
+function loadEnv(name){let e=envCache.get(name);if(e)return e;
+  e=new Promise(res=>{envLoader().load(ENV_BASE+name+'.glb',g=>res(g),undefined,err=>{console.warn('omgevingsmodel mislukt',name,err);res(null)})});envCache.set(name,e);return e}
+/* alle primitieven van een model samenvoegen tot één geometrie met vertexkleuren (voor InstancedMesh) */
+function envMerged(g){const parts=[];g.scene.updateMatrixWorld(true);
+  g.scene.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.clone();for(const k of['position','normal']){const a=geo.attributes[k];if(!a)continue;const f=new Float32Array(a.count*3);for(let i=0;i<a.count;i++){f[i*3]=a.getX(i);f[i*3+1]=a.getY(i);f[i*3+2]=a.getZ(i)}geo.setAttribute(k,new THREE.BufferAttribute(f,3))}geo.applyMatrix4(o.matrixWorld);for(const k of Object.keys(geo.attributes))if(k!=='position'&&k!=='normal')geo.deleteAttribute(k);
+    const n=geo.attributes.position.count,col=new Float32Array(n*3);const c=o.material.color||new THREE.Color(1,1,1);for(let i=0;i<n;i++){col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b}geo.setAttribute('color',new THREE.BufferAttribute(col,3));parts.push(geo.index?geo.toNonIndexed():geo)});
+  const m=BufferGeometryUtils.mergeGeometries(parts,false);m.computeBoundingBox();const b=m.boundingBox;m.translate(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);m.computeBoundingBox();return m}
+const ENV_MAT=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:RAMP});
+const ENV_IM=[];
+/* instanced vegetatie: list = [[x,z,s,ry],...]; pick(i) → variant-index; size(geo,t) → schaal */
+async function envInstances(names,list,groupOf,scaleOf,cast=true){
+  const geos=await Promise.all(names.map(async n=>{const g=await loadEnv(n);return g?envMerged(g):null}));if(geos.some(g=>!g))return false;
+  const buckets=names.map(()=>[]);list.forEach((t,i)=>buckets[groupOf(t,i)%names.length].push(t));
+  buckets.forEach((b,vi)=>{if(!b.length)return;const geo=geos[vi];const bb=geo.boundingBox;const im=new THREE.InstancedMesh(geo,ENV_MAT,b.length);
+    b.forEach((t,i)=>{const s=scaleOf(t,bb);_p.set(t[0],groundH(t[0],t[1])-.05,t[1]);_e.set(0,t[3],0);_q.setFromEuler(_e);_s.set(s[0],s[1],s[2]);_m.compose(_p,_q,_s);im.setMatrixAt(i,_m)});
+    im.castShadow=cast;im.receiveShadow=true;im.frustumCulled=false;scene.add(im);ENV_IM.push(im)});return true}
+/* losse objecten (huizen, kramen, kisten): gekloond model met toon-materialen; vensters gloeien 's nachts */
+const envMatCache=new Map();
+function envClone(g){const m=g.scene.clone(true);m.traverse(o=>{if(!o.isMesh)return;const sm=o.material;let tm=envMatCache.get(sm.uuid);
+  if(!tm){const win=/window|glass|licht/i.test(sm.name);tm=new THREE.MeshToonMaterial({color:sm.color.clone(),gradientMap:RAMP,emissive:win?new THREE.Color(0xffb347):new THREE.Color(0),emissiveIntensity:win?.4:0});if(win)NIGHT_MATS.add(tm);envMatCache.set(sm.uuid,tm)}o.material=tm;o.castShadow=true;o.receiveShadow=true});
+  m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);const w=new THREE.Group();m.position.set(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);w.add(m);w.userData.size=[b.max.x-b.min.x,b.max.y-b.min.y,b.max.z-b.min.z];return w}
+async function envPlace(name,x,z,ry,fit,par=scene,yOff=0){const g=await loadEnv(name);if(!g)return null;const o=envClone(g);const sz=o.userData.size;
+  const s=fit(sz);o.scale.set(s[0],s[1],s[2]);o.position.set(x,groundH(x,z)+yOff,z);o.rotation.y=ry;par.add(o);return o}
+/* ---- toepassen op de wereld ---- */
+async function buildEnv(){
+  if(window.__NOGLTF)return;
+  const hide=(lists)=>{for(const r of VEG_IM)if(lists.includes(r.list))r.im.visible=false};
+  /* bomen en rotsen: zelfde posities en colliders als de procedurele versie */
+  const jobs=[];
+  jobs.push(envInstances(['PineTree_1','PineTree_2','PineTree_3'],pineT,(t,i)=>i,(t,bb)=>{const k=9.2*t[2]/(bb.max.y-bb.min.y);return[k,k,k]}).then(ok=>ok&&hide([pineT])));
+  jobs.push(envInstances(['CommonTree_1','CommonTree_2','CommonTree_3'],oakT,(t,i)=>i,(t,bb)=>{const k=7.4*t[2]/(bb.max.y-bb.min.y);return[k,k,k]}).then(ok=>ok&&hide([oakT])));
+  jobs.push(envInstances(['CommonTree_Dead_1','CommonTree_Dead_2'],deadT,(t,i)=>i,(t,bb)=>{const k=5.2*t[2]/(bb.max.y-bb.min.y);return[k,k,k]}).then(ok=>ok&&hide([deadT])));
+  jobs.push(envInstances(['Rock_1','Rock_2','Rock_3','Rock_4','Rock_5','Rock_Moss_1','Rock_Moss_2','Rock_Moss_3'],rockT,(t,i)=>Math.floor(t[2]*37+i),(t,bb)=>{const w=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);const k=2*t[2]/w;return[k,k*.8,k]}).then(ok=>ok&&hide([rockT])));
+  /* struiken erbij langs bosranden en het meer */
+  const bushT=[];{const r=mulberry(4242);for(let i=0;i<900&&bushT.length<260;i++){const x=-240+r()*480,z=-250+r()*490;if(okSpot(x,z,4)&&(inForest(x,z)?r()<.5:r()<.25))bushT.push([x,z,.7+r()*.8,r()*6.28])}}
+  jobs.push(envInstances(['Bush_1','Bush_2','BushBerries_1'],bushT,(t,i)=>i,(t,bb)=>{const k=1.3*t[2]/(bb.max.y-bb.min.y);return[k,k,k]},false));
+  /* huizen: model over de voetafdruk van het procedurele huis, dat verborgen wordt */
+  const HN=['House_1','House_2','Inn','House_3','House_4','Blacksmith'];
+  HOUSES.forEach((h,i)=>{if(h.g.userData.keep)return;jobs.push(envPlace(HN[i%HN.length],h.x,h.z,h.rot?Math.PI/2:0,sz=>{const fw=h.w+1.2,fd=h.d+1.2;const hh=h.h+Math.max(h.w,h.d)*.42+1.6;return[fw/sz[0],hh/sz[1],fd/sz[2]]},h.par).then(o=>{if(o){h.g.visible=false;h.model=o}}))});
+  /* kramen, kisten en tonnen */
+  for(const s of STALLS)jobs.push(envPlace(s.i%2?'MarketStand_2':'MarketStand_1',s.x,s.z,s.rot,sz=>{const k=3.6/Math.max(sz[0],sz[2]);return[k,k,k]}).then(o=>{if(o)s.g.visible=false}));
+  for(const c of CRATES)jobs.push(envPlace(c.kind==='barrel'?'Barrel':'Crate',c.x,c.z,c.ry,sz=>{const k=(c.kind==='barrel'?1.1:c.s)/sz[1];return[k,k,k]}).then(o=>{if(o)c.m.visible=false}));
+  await Promise.all(jobs)}
 
 /* ===================== character models ===================== */
 function weaponMesh(wt,rar=0){
@@ -2261,9 +2318,9 @@ function loop(){requestAnimationFrame(loop);lastTick=performance.now();const rdt
   if(!window.__NORENDER){if(GFX.post)composer.render();else renderer.render(scene,camera)}updPlates(W,H);updFloat(dt,W,H)}
 let snapAcc=0;const perf={t:0,n:0};
 function perfWatch(dt){if(S.mode!=='play'||S.noPerf||GFX.auto>=2||GFX.q==='laag')return;perf.t+=dt;perf.n++;if(perf.t>=5){const avg=perf.t/perf.n;perf.t=perf.n=0;if(avg>.042){GFX.q=GFX.q==='hoog'?'middel':'laag';GFX.auto++;applyGfx();$('#bGfx').textContent='Grafiek: '+GFX_N[GFX.q];log('De grafische kwaliteit is verlaagd naar '+GFX_N[GFX.q].toLowerCase()+' voor soepeler spelen (aan te passen in het menu).','sys')}}}
-window.__V={animRig,preloadModels,gltfCache,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
+window.__V={animRig,preloadModels,gltfCache,ENV_IM,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
 loadSave();startNet();netStatus();$('#loadMsg').textContent='Karaktermodellen worden geladen';
-preloadModels().then(()=>{showMenu();$('#loading').hidden=true;loop()});
+Promise.all([preloadModels(),buildEnv()]).then(()=>{showMenu();$('#loading').hidden=true;loop()});
 </script>
 </body>
 </html>
