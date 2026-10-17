@@ -884,11 +884,11 @@ function heaterShieldGeo(w,h,d){const s=new THREE.Shape();s.moveTo(-w/2,h*.42);s
 function greatswordMesh(rar){
   const g=new THREE.Group();const glow=[0,0,0x2a5aff,0xa04aff][rar]||0;
   const steel=mat(rar>=3?0xcdb0ff:0xcfd6de,{m:.9,r:.3,flat:false,e:glow||undefined,ei:glow?.5:undefined}),dark=mat(0x3a3f48,{m:.8,r:.4,flat:false}),gold=mat(0xd9a441,{m:.9,r:.3,flat:false}),grip=sm(0x3a2416);
-  const blade=mesh(new THREE.BoxGeometry(.17,1.7,.035),steel,0,1.05,0,g);void blade;mesh(new THREE.BoxGeometry(.05,1.45,.04),dark,0,1.0,0,g);/* fuller */
-  mesh(new THREE.ConeGeometry(.12,.3,4).rotateY(Math.PI/4),steel,0,2.05,0,g).scale.set(1,1,.3);
-  mesh(new THREE.BoxGeometry(.62,.08,.1),steel,0,.2,0,g);for(const s of[-1,1]){const t=mesh(new THREE.BoxGeometry(.12,.14,.1),steel,s*.33,.14,0,g);t.rotation.z=s*.5}
-  mesh(new THREE.CylinderGeometry(.045,.05,.42,10),grip,0,-.06,0,g);mesh(new THREE.TorusGeometry(.045,.012,6,14).rotateX(Math.PI/2),gold,0,.05,0,g);mesh(new THREE.SphereGeometry(.07,10,8),gold,0,-.32,0,g);
-  g.rotation.x=.55;return g}
+  const blade=mesh(new THREE.BoxGeometry(.16,1.55,.035),steel,0,1.03,0,g);void blade;mesh(new THREE.BoxGeometry(.045,1.3,.04),dark,0,.98,0,g);/* fuller */
+  mesh(new THREE.ConeGeometry(.11,.28,4).rotateY(Math.PI/4),steel,0,1.94,0,g).scale.set(1,1,.3);
+  mesh(new THREE.BoxGeometry(.58,.08,.1),steel,0,.25,0,g);for(const s of[-1,1]){const t=mesh(new THREE.BoxGeometry(.12,.14,.1),steel,s*.31,.19,0,g);t.rotation.z=s*.5}
+  mesh(new THREE.CylinderGeometry(.042,.048,.4,10),grip,0,0,0,g);mesh(new THREE.TorusGeometry(.045,.012,6,14).rotateX(Math.PI/2),gold,0,.12,0,g);mesh(new THREE.SphereGeometry(.065,10,8),gold,0,-.25,0,g);
+  return g}
 function lionPauldron(side){const g=new THREE.Group();const st=mat(0xc8ccd2,{m:.9,r:.3,flat:false}),dk=mat(0x8a9098,{m:.85,r:.35,flat:false});
   const base=mesh(SPH(.17,16,10,0,Math.PI*2,0,Math.PI/2),st,0,0,0,g);base.scale.set(1.25,.9,1.15);
   const head=new THREE.Group();head.position.set(side*.03,.1,.06);head.rotation.x=-.35;g.add(head);
@@ -967,11 +967,11 @@ function buildWarrior(o){
   const capeG=new THREE.Group();capeG.position.set(0,neckY+.02,-.17);torso.add(capeG);
   const cg=capeGeo(.5*W,1.45*H);mesh(cg,cape,0,0,0,capeG).userData.noOutline=1;const inner=mesh(cg,capeIn,0,0,.012,capeG);inner.userData.noOutline=1;inner.scale.set(.97,.99,1);
   /* weapon & shield */
-  let weapon=null;const wt=o.wt||'zwaard';
+  let weapon=null,shieldG=null;const wt=o.wt||'zwaard';
   if(wt==='bijl'){weapon=weaponMesh('bijl',o.wr||0);weapon.position.set(0,-.045*H,.03);handR.add(weapon)}
-  else{weapon=greatswordMesh(o.wr||0);weapon.position.set(0,-.045*H,.03);handR.add(weapon);
+  else{weapon=greatswordMesh(o.wr||0);weapon.position.set(0,-.045*H,.045);handR.add(weapon);
     /* heater shield on the left forearm */
-    const sh=new THREE.Group();sh.position.set(.05,-.17*H,.1);sh.rotation.set(.08,.45,0);elbowL.add(sh);
+    const sh=new THREE.Group();sh.position.set(.03,-.16*H,.09);elbowL.add(sh);shieldG=sh;
     const shBody=mesh(heaterShieldGeo(.62,.86,.05),steelD,0,0,0,sh);void shBody;
     const rim=mesh(heaterShieldGeo(.56,.78,.012),steel,0,0,.032,sh);rim.scale.set(1,1,1);
     mesh(new THREE.TorusGeometry(.14,.018,8,24),gold,0,.05,.05,sh);mesh(SPH(.075,12,8),gold,0,.07,.06,sh).scale.set(1,1.1,.6);mesh(new THREE.ConeGeometry(.03,.06,6),gold,0,.14,.06,sh);
@@ -980,7 +980,7 @@ function buildWarrior(o){
     for(let i=0;i<5;i++)mesh(new THREE.OctahedronGeometry(.016,0),steel,-.18+i*.09,-.1,.06,sh)}
   g.traverse(m=>{if(m.isMesh){m.castShadow=true}});
   const s=o.scale||1;g.scale.setScalar(s);
-  return{g,body,legL,legR,kneeL,kneeR,ankleL,ankleR,armL,armR,elbowL,elbowR,handL,handR,torso,head,cape:capeG,weapon,wings:[],wt,warrior:true,h:H*1.85*s,ph:Math.random()*6}}
+  return{g,body,legL,legR,kneeL,kneeR,ankleL,ankleR,armL,armR,elbowL,elbowR,handL,handR,torso,head,cape:capeG,weapon,shield:shieldG,wings:[],wt,warrior:true,h:H*1.85*s,ph:Math.random()*6}}
 
 function buildHumanoid(o){
   if(o.warrior)return buildWarrior(o);
@@ -1069,6 +1069,7 @@ function buildMonster(type,lvl){
    knee bend = positive rotation (shin goes back), elbow bend = negative rotation (forearm comes forward).
    r: rig with hip/knee/ankle/shoulder/elbow joints. a:{spd (0..1+), atk (0..1|-1), ranged, cast, dead, air, vy, hurt, turn, wt} */
 const ease=(a,b,k)=>a+(b-a)*k;
+const _bv=new THREE.Vector3(),_Y=new THREE.Vector3(0,1,0),_qRoot=new THREE.Quaternion(),_qP=new THREE.Quaternion(),_qA=new THREE.Quaternion(),_qW=new THREE.Quaternion(),_eA=new THREE.Euler();
 function gaitCurves(ph,amt,run){
   /* one stride = 2π. Left leg: heel strike at ph=0 (leg forward), toe-off at ~π·0.6, swing π·0.6→2π. */
   const s=Math.sin(ph),c=Math.cos(ph);
@@ -1124,35 +1125,40 @@ function animRig(r,a,dt){
     let shLz=.12+am*.05,shRz=-.12-am*.05,twistA=0;
     if(S.idle>0){shL+=Math.sin(now*1.2)*.025;shR+=Math.cos(now*1.2)*.025;elL=.22+Math.sin(now*1.1)*.03;elR=.22+Math.cos(now*1.1)*.03}
     if(a.air){shL=-.9;shR=-.9;elL=.5;elR=.5;shLz=.55;shRz=-.55}
-    const wt=a.wt||r.wt||'zwaard';let wrot=null;
+    const wt=a.wt||r.wt||'zwaard';let bladeDir=null,shieldYaw=.3;
     if(a.cast){const w=Math.sin(now*9)*.08;shL=-1.9+w;shR=-1.8-w;elL=1.3;elR=1.3;shLz=.35;shRz=-.35}
     if(a.atk>=0){const p=a.atk;
       if(a.ranged&&wt==='boog'){/* draw: left arm out, right hand to the cheek, then release */shL=-1.55;shLz=.08;elL=.08;if(p<.55){const q=p/.55;shR=ease(-.6,-1.35,q);elR=ease(.6,2.3,q);shRz=-.25;twistA=.4*q}else{const q=(p-.55)/.45;shR=ease(-1.35,-1.5,q);elR=ease(2.3,.4,Math.min(1,q*1.8));twistA=.4*(1-q)}}
       else if(a.ranged){/* staff: gather, then thrust forward */if(p<.45){const q=p/.45;shR=ease(-.3,-2.2,q);elR=ease(.4,1.2,q);shL=ease(0,-1.5,q);elL=.9;twistA=-.3*q}else{const q=(p-.45)/.55;shR=ease(-2.2,-1.4,Math.min(1,q*2));elR=ease(1.2,.1,Math.min(1,q*2));shL=ease(-1.5,-.3,q);elL=.4;twistA=ease(-.3,.3,q)}}
-      else if(r.warrior&&wt!=='bijl'){/* MELEE COMBO: 0 horizontal, 1 upward, 2 downward; shield stays up, body drives the swing */
-        const c=(a.combo||0)%3;const w=p<.3?p/.3:0,st=clamp((p-.3)/.3,0,1),rec=clamp((p-.6)/.4,0,1);shL=-1.0;shLz=.3;elL=1.4;
-        if(c===0){/* horizontal: wind out to the right, sweep across to the left */shR=ease(ease(-.55,-.2,w),-.9,st);shRz=ease(ease(-.3,-1.35,w),.9,st);elR=ease(ease(1.75,.5,w),.35,st);twistA=ease(ease(0,.55,w),-.7,st);wrot=ease(ease(3.05,1.9,w),1.55,st)}
-        else if(c===1){/* upward: dip low-right, rip up and over the left shoulder */shR=ease(ease(-.55,.35,w),-2.7,st);shRz=ease(ease(-.3,-.75,w),.45,st);elR=ease(ease(1.75,.6,w),.3,st);twistA=ease(ease(0,.4,w),-.55,st);S.lean=ease(S.lean,ease(.45,-.1,st),.4);wrot=ease(ease(3.05,2.3,w),1.6,st)}
-        else{/* downward: raise overhead, slam down and forward, deep knee */shR=ease(ease(-.55,-3.15,w),-.45,st);shRz=ease(ease(-.3,-.15,w),.1,st);elR=ease(ease(1.75,.9,w),.2,st);twistA=ease(ease(0,-.25,w),.35,st);S.lean=ease(S.lean,ease(-.15,.5,st),.5);wrot=ease(ease(3.05,1.4,w),1.5,st)}
-        /* recovery: ease the sword arm back toward guard */if(rec>0){shR=ease(shR,-.55,rec);shRz=ease(shRz,-.3,rec);elR=ease(elR,1.75,rec);twistA=ease(twistA,0,rec);wrot=ease(wrot,3.05,rec)}}
+      else if(r.warrior&&wt!=='bijl'){/* MELEE COMBO: 0 horizontal, 1 upward, 2 downward; blade direction is keyframed in body space */
+        const c=(a.combo||0)%3;const w=p<.3?p/.3:0,st=clamp((p-.3)/.3,0,1),rec=clamp((p-.6)/.4,0,1);shL=-.95;shLz=.08;elL=1.3;shieldYaw=.15;
+        const L3=(A,B,t)=>[ease(A[0],B[0],t),ease(A[1],B[1],t),ease(A[2],B[2],t)];const G=[-.12,1,.18];
+        if(c===0){/* horizontal: wind out to the right, sweep across to the left */shR=ease(ease(-.5,-.3,w),-1.0,st);shRz=ease(ease(-.3,-1.2,w),.8,st);elR=ease(ease(1.55,.4,w),.3,st);twistA=ease(ease(0,.55,w),-.7,st);bladeDir=L3(L3(G,[-1,.25,-.3],w),[1,.05,.5],st)}
+        else if(c===1){/* upward: dip low-right, rip up and over the left shoulder */shR=ease(ease(-.5,.3,w),-2.4,st);shRz=ease(ease(-.3,-.7,w),.4,st);elR=ease(ease(1.55,.5,w),.3,st);twistA=ease(ease(0,.4,w),-.55,st);S.lean=ease(S.lean,ease(.45,-.1,st),.4);bladeDir=L3(L3(G,[-.6,-.6,.6],w),[.6,1,-.1],st)}
+        else{/* downward: raise overhead, slam down and forward with a deep knee */shR=ease(ease(-.5,-3.0,w),-.5,st);shRz=ease(ease(-.3,-.15,w),.1,st);elR=ease(ease(1.55,.8,w),.2,st);twistA=ease(ease(0,-.25,w),.35,st);S.lean=ease(S.lean,ease(-.15,.5,st),.5);bladeDir=L3(L3(G,[0,1,-.5],w),[.2,-.7,1],st)}
+        if(rec>0){shR=ease(shR,-.5,rec);shRz=ease(shRz,-.3,rec);elR=ease(elR,1.55,rec);twistA=ease(twistA,0,rec);bladeDir=L3(bladeDir,G,rec)}}
       else if(wt==='bijl'){/* two-handed overhead chop (axe) */if(p<.42){const q=p/.42;shR=ease(0,-3.25,q);elR=ease(.3,1.0,q);shL=ease(0,-3.0,q);elL=1.0;twistA=-.15*q;S.lean=ease(S.lean,-.2,.3)}else{const q=clamp((p-.42)/.28,0,1);shR=ease(-3.25,-.6,q);elR=ease(1.0,.2,q);shL=ease(-3.0,-.4,q);elL=.3;twistA=ease(-.15,.12,q);S.lean=ease(S.lean,.35,.5)}}
       else{/* sword: wind up behind the shoulder, slash across the body */if(p<.3){const q=p/.3;shR=ease(0,-3.3,q);shRz=ease(-.12,-.7,q);elR=ease(.3,1.5,q);twistA=-.6*q;shL=ease(.05,-.5,q);elL=1.0}else{const q=clamp((p-.3)/.3,0,1);shR=ease(-3.3,-.9,q);shRz=ease(-.7,.7,q);elR=ease(1.5,.15,q);twistA=ease(-.6,.55,q);shL=ease(-.5,.4,q);elL=.5}}
       r.torso.rotation.y=ease(r.torso.rotation.y,-twistA,clamp(dt*22,0,1));r.torso.rotation.x=S.lean}
     if(r.warrior&&a.atk<0&&!a.cast&&!a.dead&&!a.air){
       const bw=Math.sin(now*2)*.03;
-      if(a.combat){/* READY / GUARD: wide stance, sword upright at the right shoulder, shield squared in front of the chest */
-        shR=-.55+bw;shRz=-.3;elR=1.75;shL=-1.0-bw;shLz=.3;elL=1.4;wrot=3.05}
-      else if(am<.08){/* IDLE: upright, sword resting point-up beside the hip, shield held loosely in front */
-        shR=.12+bw;shRz=-.18;elR=.55;shL=-.6-bw*.5;shLz=.25;elL=1.2;wrot=.12}
-      else{/* WALK / RUN: shield forward and steady, sword pointing ahead, arms barely swing because both hands are full */
-        shR=-.45-sw*.15;shRz=-.25;elR=.95+Math.max(0,-sw)*.15;shL=-.85+sw*.12;shLz=.28;elL=1.15;wrot=2.75}}
+      if(a.combat){/* READY / GUARD: low wide stance, sword upright beside the right shoulder, shield squared forward */
+        shR=-.5+bw;shRz=-.3;elR=1.55;shL=-.95-bw;shLz=.08;elL=1.3;bladeDir=[-.12,1,.18];shieldYaw=.15}
+      else if(am<.08){/* IDLE: upright, arm relaxed, blade straight up beside the hip, shield resting across the chest */
+        shR=.04+bw;shRz=-.14;elR=.22;shL=-.5-bw*.5;shLz=-.12;elL=1.25;bladeDir=[.08,1,.12];shieldYaw=.45}
+      else{/* WALK / RUN: shield pushed forward, blade pointing ahead and up, arms steady */
+        shR=-.3-sw*.1;shRz=-.22;elR=.55;shL=-.8+sw*.1;shLz=.06;elL=1.05;bladeDir=[-.05,.55,1];shieldYaw=.2}}
     if(a.dead){shL=-.3;shR=-.2;shLz=1.1;shRz=-1.2;elL=.2;elR=.3}
-    if(r.warrior&&r.weapon){const wt=wrot??(a.atk>=0?1.3:1.5);r.weapon.rotation.x=ease(r.weapon.rotation.x,wt,clamp(dt*(a.atk>=0?22:10),0,1));r.weapon.rotation.z=ease(r.weapon.rotation.z,0,clamp(dt*10,0,1))}
+    if(r.warrior){S.blade=S.blade||new THREE.Vector3(.08,1,.12);S.shy=S.shy??.3;if(bladeDir)S.blade.lerp(_bv.set(bladeDir[0],bladeDir[1],bladeDir[2]),clamp(dt*(a.atk>=0?22:9),0,1));S.shy=ease(S.shy,shieldYaw,clamp(dt*8,0,1));r.aimLater=true}
     const ka=clamp(dt*(a.atk>=0?26:14),0,1);
     r.armL.rotation.x=ease(r.armL.rotation.x,shL,ka);r.armR.rotation.x=ease(r.armR.rotation.x,shR,ka);r.armL.rotation.z=ease(r.armL.rotation.z,shLz,ka);r.armR.rotation.z=ease(r.armR.rotation.z,shRz,ka);
     r.elbowL.rotation.x=ease(r.elbowL.rotation.x,-elL,ka);r.elbowR.rotation.x=ease(r.elbowR.rotation.x,-elR,ka);
     /* wrists follow through a little */
     if(r.handL){r.handL.rotation.x=ease(r.handL.rotation.x,-.15-elL*.1,ka);r.handR.rotation.x=ease(r.handR.rotation.x,-.15-elR*.1,ka)}
+    if(r.aimLater){/* world-space aiming of sword & shield: they follow the hand but keep their own heading */
+      r.g.updateWorldMatrix(true,true);r.g.getWorldQuaternion(_qRoot);
+      if(r.weapon&&r.weapon.parent){r.weapon.parent.getWorldQuaternion(_qP);_qA.setFromUnitVectors(_Y,_bv.copy(S.blade).normalize());r.weapon.quaternion.copy(_qP.invert()).multiply(_qW.copy(_qRoot).multiply(_qA))}
+      if(r.shield&&r.shield.parent){r.shield.parent.getWorldQuaternion(_qP);_qA.setFromEuler(_eA.set(.1,S.shy,0));r.shield.quaternion.copy(_qP.invert()).multiply(_qW.copy(_qRoot).multiply(_qA))}}
     /* ---- cape: spring that trails movement and turning ---- */
     if(r.cape){const tgt=.1+am*.75+(a.air?.5:0)+(S.hurt>0?.3:0);const cdt=Math.min(dt,.04);const acc=(tgt-S.capeA)*60-S.capeV*9;S.capeV+=acc*cdt;S.capeA=clamp(S.capeA+S.capeV*cdt,-.2,1.5);r.cape.rotation.x=S.capeA+Math.sin(now*3.1)*.03*(1+am);S.capeZ=ease(S.capeZ,-(a.turn||0)*.35,clamp(dt*6,0,1));r.cape.rotation.z=S.capeZ+Math.sin(now*2.3)*.02}
     /* ---- death ---- */
