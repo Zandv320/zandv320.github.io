@@ -861,8 +861,8 @@ applyGfx();
 function weaponMesh(wt,rar=0){
   const g=new THREE.Group();const glow=[0,0,0x2a5aff,0xa04aff][rar]||0;
   const metal=mat(rar>=3?0xc9a8ff:rar>=2?0xbcd4ff:0xc8ccd2,{m:.85,r:.3,e:glow||undefined,ei:glow?.5:undefined}),grip=mat(0x4a2a18),gold=mat(0xd9a441,{m:.9,r:.3});
-  if(wt==='zwaard'){mesh(new THREE.BoxGeometry(.1,1.15,.03),metal,0,.75,0,g);mesh(new THREE.ConeGeometry(.07,.2,4),metal,0,1.42,0,g);mesh(new THREE.BoxGeometry(.42,.07,.1),gold,0,.18,0,g);mesh(new THREE.CylinderGeometry(.04,.04,.3,6),grip,0,0,0,g);g.rotation.x=Math.PI/2}
-  else if(wt==='bijl'){mesh(new THREE.CylinderGeometry(.04,.05,1.3,10),grip,0,.5,0,g);const h=mesh(new THREE.CylinderGeometry(.42,.42,.08,12,1,false,0,Math.PI),metal,.02,1.0,0,g);h.rotation.z=Math.PI/2;h.rotation.y=Math.PI/2;mesh(new THREE.ConeGeometry(.06,.25,4),metal,0,1.25,0,g);g.rotation.x=Math.PI/2}
+  if(wt==='zwaard'){mesh(new THREE.BoxGeometry(.1,1.15,.03),metal,0,.75,0,g);mesh(new THREE.ConeGeometry(.07,.2,4),metal,0,1.42,0,g);mesh(new THREE.BoxGeometry(.42,.07,.1),gold,0,.18,0,g);mesh(new THREE.CylinderGeometry(.04,.04,.3,6),grip,0,0,0,g);g.rotation.x=.55}
+  else if(wt==='bijl'){mesh(new THREE.CylinderGeometry(.04,.05,1.3,10),grip,0,.5,0,g);const h=mesh(new THREE.CylinderGeometry(.42,.42,.08,12,1,false,0,Math.PI),metal,.02,1.0,0,g);h.rotation.z=Math.PI/2;h.rotation.y=Math.PI/2;mesh(new THREE.ConeGeometry(.06,.25,4),metal,0,1.25,0,g);g.rotation.x=.5}
   else if(wt==='staf'){mesh(new THREE.CylinderGeometry(.035,.05,2,10),sm(0x5a3a22),0,.35,0,g);const orb=mesh(new THREE.IcosahedronGeometry(.15,3),mat(rar>=3?0xd08aff:0x7ad8ff,{e:rar>=3?0xb04aff:0x3aa8ff,ei:2.6,flat:false}),0,1.42,0,g,false);orb.userData.orb=1;for(let i=0;i<3;i++){const p=mesh(new THREE.ConeGeometry(.03,.3,4),gold,Math.cos(i*2.1)*.1,1.3,Math.sin(i*2.1)*.1,g);p.rotation.z=Math.cos(i*2.1)*.4}}
   else if(wt==='boog'){const b=mesh(new THREE.TorusGeometry(.62,.032,8,28,Math.PI*1.1),sm(0x6a4422),0,0,0,g);b.rotation.z=-Math.PI*.55;const s=mesh(new THREE.CylinderGeometry(.006,.006,1.15,3),mat(0xeeeeee),-.19,0,0,g,false);void s;g.rotation.y=Math.PI/2}
   return g}
@@ -876,10 +876,10 @@ function buildHumanoid(o){
   const skin=o.golem?mat(o.skin,{e:0xff5a10,ei:.28,r:1}):sm(o.skin??R.skin,{r:.7}),chestM=o.chestMetal?mat(o.chest,{m:.75,r:.35,flat:false}):sm(o.chest??0x777777,{r:.65}),pantsM=o.legPlate?mat(o.pants,{m:.7,r:.4,flat:false}):sm(o.pants??0x333333),bootM=sm(o.boots??0x3a2818,{r:.55}),hairM=sm(o.hair??0x3b2414,{r:.55}),dark=sm(0x151010,{r:.3});
   const bone=o.bone||o.golem;const lr=o.golem?.14:o.bone?.035:.075;
   const legL=new THREE.Group(),legR=new THREE.Group();legL.position.set(-.12*W,.92*H,0);legR.position.set(.12*W,.92*H,0);body.add(legL,legR);
-  const kneeL=new THREE.Group(),kneeR=new THREE.Group();
-  for(const[lg,kn]of[[legL,kneeL],[legR,kneeR]]){mesh(CAP(lr*1.15*W,.34*H),bone?skin:pantsM,0,-.23*H,0,lg);kn.position.set(0,-.46*H,0);lg.add(kn);
-    mesh(SPH(lr*1.1*W,10,8),bone?skin:pantsM,0,0,0,kn);mesh(CAP(lr*W,.28*H),bone?skin:pantsM,0,-.19*H,0,kn);
-    const bt=mesh(CAP(.075*W,.13),bone?skin:bootM,0,-.40*H,.05,kn);bt.rotation.x=Math.PI/2;bt.scale.set(1.15,1,.85);if(o.bootsBig&&!bone){mesh(new THREE.CylinderGeometry(.095*W,.085*W,.2*H,14),bootM,0,-.28*H,0,kn)}if(o.legPlate&&!bone){const k2=mesh(SPH(.075,10,8),pantsM,0,.01,.05,kn);k2.scale.set(1,1,.75)}}
+  const kneeL=new THREE.Group(),kneeR=new THREE.Group(),ankleL=new THREE.Group(),ankleR=new THREE.Group();
+  for(const[lg,kn,an]of[[legL,kneeL,ankleL],[legR,kneeR,ankleR]]){mesh(CAP(lr*1.15*W,.34*H),bone?skin:pantsM,0,-.23*H,0,lg);kn.position.set(0,-.46*H,0);lg.add(kn);
+    mesh(SPH(lr*1.1*W,10,8),bone?skin:pantsM,0,0,0,kn);mesh(CAP(lr*W,.28*H),bone?skin:pantsM,0,-.19*H,0,kn);an.position.set(0,-.40*H,0);kn.add(an);
+    const bt=mesh(CAP(.075*W,.13),bone?skin:bootM,0,-.02,.06,an);bt.rotation.x=Math.PI/2;bt.scale.set(1.15,1,.85);if(o.bootsBig&&!bone){mesh(new THREE.CylinderGeometry(.095*W,.085*W,.2*H,14),bootM,0,-.28*H,0,kn)}if(o.legPlate&&!bone){const k2=mesh(SPH(.075,10,8),pantsM,0,.01,.05,kn);k2.scale.set(1,1,.75)}}
   const torso=new THREE.Group();torso.position.y=.92*H;body.add(torso);
   if(o.golem){const ch=mesh(new THREE.DodecahedronGeometry(.34,1),skin,0,.4*H,0,torso);ch.scale.set(W*1.5,1.15,1.05);mesh(new THREE.DodecahedronGeometry(.24,1),skin,0,.05,0,torso).scale.set(W*1.4,.8,1);for(let i=0;i<5;i++){const v=mesh(new THREE.BoxGeometry(.04,.3,.02),mat(0xff8a20,{e:0xff6a10,ei:2.5}),(-.2+i*.1)*W,.35+(i%2)*.12,.31,torso,false);v.rotation.z=(i-2)*.3}}
   else if(bone){for(let i=0;i<4;i++){const r=mesh(new THREE.TorusGeometry(.13*W-i*.012,.018,5,14,Math.PI*1.4),skin,0,.25+i*.09,0,torso);r.rotation.set(Math.PI/2,0,Math.PI*.8);r.scale.z=.8}
@@ -905,18 +905,27 @@ function buildHumanoid(o){
   if(o.horns)for(const s of[-1,1]){const hn=mesh(new THREE.ConeGeometry(.04,.22,8),sm(0x2a1a14),s*.1,.2,0,head);hn.rotation.z=-s*.5}
   if(o.crown){for(let i=0;i<6;i++){const a=i/6*Math.PI*2;mesh(new THREE.ConeGeometry(.035,.16,8),mat(0xffd34d,{m:.9,r:.25,e:0x6a4a00,ei:.5,flat:false}),Math.cos(a)*.14,.28,Math.sin(a)*.14,head)}mesh(new THREE.CylinderGeometry(.16,.17,.06,20),mat(0xffd34d,{m:.9,r:.25,flat:false}),0,.2,0,head)}
   const armL=new THREE.Group(),armR=new THREE.Group();armL.position.set(-.27*W,neckY-.03,0);armR.position.set(.27*W,neckY-.03,0);torso.add(armL,armR);
-  const elbowL=new THREE.Group(),elbowR=new THREE.Group();
-  for(const[ar,el]of[[armL,elbowL],[armR,elbowR]]){mesh(CAP(lr*.88,.22*H),bone?skin:chestM,0,-.14*H,0,ar);el.position.set(0,-.30*H,0);ar.add(el);
-    mesh(SPH(lr*.9,10,8),bone?skin:chestM,0,0,0,el);mesh(CAP(lr*.78,.2*H),skin,0,-.15*H,0,el);mesh(SPH(o.golem?.17:.058,10,8),o.gloves?sm(o.gloves):skin,0,-.39*H,0,el);
+  const elbowL=new THREE.Group(),elbowR=new THREE.Group();const handL=new THREE.Group(),handR=new THREE.Group();
+  const handM=o.gloves?sm(o.gloves):skin;
+  function buildHand(hg,side,grip){/* palm + four fingers + thumb; grip curls the fingers around a weapon */
+    if(o.golem){mesh(SPH(.17,10,8),skin,0,-.02,0,hg);return}
+    const pw=bone?.05:.075,pd=bone?.02:.03;const palm=mesh(new THREE.BoxGeometry(pw*W,.075*H,pd),handM,0,-.03*H,0,hg);palm.geometry.translate(0,0,0);
+    const fl=.042*H,fr=bone?.009:.012;const curl=grip?1.5:.35;
+    for(let i=0;i<4;i++){const fg=new THREE.Group();fg.position.set((-1.5+i)*pw*W*.42,-.068*H,.005);hg.add(fg);fg.rotation.x=-curl*(.85+i*.05);fg.rotation.z=(i-1.5)*.05*side;
+      mesh(new THREE.CapsuleGeometry(fr,fl*.6,3,6),handM,0,-fl*.3,0,fg);const f2=new THREE.Group();f2.position.y=-fl*.6;fg.add(f2);f2.rotation.x=-curl*.9;mesh(new THREE.CapsuleGeometry(fr*.92,fl*.5,3,6),handM,0,-fl*.25,0,f2)}
+    const th=new THREE.Group();th.position.set(side*pw*W*.55,-.02*H,.012);hg.add(th);th.rotation.set(-.5-curl*.4,0,side*(1.1-curl*.3));mesh(new THREE.CapsuleGeometry(fr*1.05,fl*.55,3,6),handM,0,-fl*.28,0,th)}
+  for(const[ar,el,hg,side]of[[armL,elbowL,handL,-1],[armR,elbowR,handR,1]]){mesh(CAP(lr*.88,.22*H),bone?skin:chestM,0,-.14*H,0,ar);el.position.set(0,-.30*H,0);ar.add(el);
+    mesh(SPH(lr*.9,10,8),bone?skin:chestM,0,0,0,el);mesh(CAP(lr*.78,.2*H),skin,0,-.15*H,0,el);hg.position.set(0,-.33*H,0);el.add(hg);
+    const grip=!!(o.wt&&o.wt!=='none')&&(o.wt==='boog'?side<0:side>0)||!!(o.shield&&side<0);buildHand(hg,side,grip);
     if(o.gloves&&!bone){mesh(new THREE.CylinderGeometry(o.glovesBig?.075:.062,o.glovesBig?.068:.058,.12*H,12),o.glovesBig?mat(o.gloves,{m:.75,r:.35,flat:false}):sm(o.gloves),0,-.30*H,0,el)}}
   if(o.pads){for(const[ar,s]of[[armL,-1],[armR,1]]){const p=mesh(SPH(.13,14,8,0,Math.PI*2,0,Math.PI/2),o.padsMetal===false?sm(o.pads):mat(o.pads,{m:o.padsMetal?.75:.2,r:.4,flat:false}),s*.02,.0,0,ar);p.scale.set(1.15,.85,1.1);if(o.trim){const t=mesh(new THREE.TorusGeometry(.13,.012,6,20).rotateX(Math.PI/2),mat(o.trim,{e:o.trim,ei:1.6,flat:false}),s*.02,0,0,ar);t.scale.set(1.15,1,1.1)}}}
   const wings=[];if(o.wings){for(const s of[-1,1]){const w=mesh(new THREE.CircleGeometry(.42,10,0,Math.PI*.7),mat(0x6a1a10,{side:1,flat:false}),s*.12,neckY-.1,-.16,torso);w.rotation.set(0,s*.6,s>0?-.3:Math.PI+.3);w.userData.wing=s;w.userData.noOutline=1;wings.push(w)}}
   let cape=null;if(o.cape){cape=new THREE.Group();cape.position.set(0,neckY-.02,-.15);torso.add(cape);mesh(capeGeo(.42*W,1*H),sm(o.cape,{side:1}),0,0,0,cape).userData.noOutline=1}
-  let weapon=null;if(o.wt&&o.wt!=='none'){weapon=weaponMesh(o.wt,o.wr||0);weapon.position.set(0,-.39*H,.02);elbowR.add(weapon);if(o.wt==='boog'){elbowR.remove(weapon);elbowL.add(weapon);weapon.position.set(0,-.37*H,.05)}}
+  let weapon=null;if(o.wt&&o.wt!=='none'){weapon=weaponMesh(o.wt,o.wr||0);weapon.position.set(0,-.045*H,.03);handR.add(weapon);if(o.wt==='boog'){handR.remove(weapon);handL.add(weapon);weapon.position.set(0,-.03*H,.05)}}
   if(o.shield){const s=mesh(new THREE.CylinderGeometry(.3,.3,.06,24),sm(0x6a5a3a),0,-.15*H,.11,elbowL);s.rotation.x=Math.PI/2;mesh(new THREE.TorusGeometry(.3,.025,6,24),metal,0,-.15*H,.11,elbowL);mesh(SPH(.07,10,8),metal,0,-.15*H,.15,elbowL)}
   g.traverse(m=>{if(m.isMesh){m.castShadow=true}});outline(g,o.golem?.07:.04);
   const s=o.scale||1;g.scale.setScalar(s);
-  return{g,body,legL,legR,kneeL,kneeR,armL,armR,elbowL,elbowR,torso,head,cape,weapon,wings,wt:o.wt,h:H*1.8*s,ph:Math.random()*6}}
+  return{g,body,legL,legR,kneeL,kneeR,ankleL,ankleR,armL,armR,elbowL,elbowR,handL,handR,torso,head,cape,weapon,wings,wt:o.wt,h:H*1.8*s,ph:Math.random()*6}}
 function buildQuad(o){/* boar & wolf */
   const g=new THREE.Group(),body=new THREE.Group();g.add(body);const c=sm(o.col,{r:.8}),d=sm(new THREE.Color(o.col).multiplyScalar(.7).getHex(),{r:.8});const wolf=o.kind==='wolf';
   const L=wolf?1.25:1.1,Hh=wolf?.72:.6;
@@ -950,72 +959,92 @@ function buildMonster(type,lvl){
   if(t.kind==='skel')return buildHumanoid({race:'mens',bone:1,skin:t.col,wt:t.wt,robe:t.robe,crown:t.boss,eye:t.boss?0x7aff5a:type==='kmagier'?0xc06aff:0x6ad8ff,scale:sc,shield:type==='knekel',cape:t.boss?0x3a0d4a:null,wr:t.boss?3:0})}
 /* procedural animation */
 /* ===================== skeletal animation (procedural) =====================
-   r: rig with hip/knee/shoulder/elbow joints. a:{spd (0..1+), atk (0..1|-1), ranged, cast, dead, air, vy, hurt, turn, wt} */
-const _tmpQ=new THREE.Quaternion();
+   Conventions (model faces +z): hip/shoulder rotation.x NEGATIVE swings the limb forward, POSITIVE backward.
+   knee bend = positive rotation (shin goes back), elbow bend = negative rotation (forearm comes forward).
+   r: rig with hip/knee/ankle/shoulder/elbow joints. a:{spd (0..1+), atk (0..1|-1), ranged, cast, dead, air, vy, hurt, turn, wt} */
 const ease=(a,b,k)=>a+(b-a)*k;
+function gaitCurves(ph,amt,run){
+  /* one stride = 2π. Left leg: heel strike at ph=0 (leg forward), toe-off at ~π·0.6, swing π·0.6→2π. */
+  const s=Math.sin(ph),c=Math.cos(ph);
+  const A=run?.9:.62;                    /* hip swing amplitude */
+  const hip=-s*A;                        /* forward (negative) at ph=π/2 */
+  const swing=Math.max(0,-c);            /* 1 while leg travels forward (mid swing) */
+  const stance=Math.max(0,c);            /* 1 at mid stance */
+  const knee=.08+swing*swing*(run?1.55:1.15)*amt+stance*(run?.35:.18)*amt*Math.max(0,s*-1+.3);
+  /* ankle: toes down at toe-off (just before swing), level in stance, slightly up before heel strike */
+  const ankle=(-Math.max(0,Math.sin(ph-.5))*.45+Math.max(0,Math.sin(ph+2.2))*.25)*amt;
+  return{hip,knee,ankle}}
 function animRig(r,a,dt){
   const mv=clamp(a.spd||0,0,1.6),amt=Math.min(mv,1);const now=performance.now()*.001;
-  r.st=r.st||{idle:0,land:0,prevAir:false,step:0,capeA:0,capeV:0,capeZ:0,hurt:0,lean:0,hip:0};const S=r.st;
+  r.st=r.st||{idle:0,land:0,prevAir:false,capeA:0,capeV:0,capeZ:0,hurt:0,lean:0,amt:0};const S=r.st;
   S.hurt=Math.max(0,S.hurt-dt);if(a.hurt&&S.hurt<=0)S.hurt=.35;
-  const freq=mv>.02?(5.2+5.5*amt):0;const prevPh=r.ph;r.ph+=dt*freq;
-  /* footsteps: feet plant at phase 0 and π */
-  if(r.legL&&!a.air&&amt>.25&&Math.floor(prevPh/Math.PI)!==Math.floor(r.ph/Math.PI)){S.step=1;if(a.onStep)a.onStep(Math.floor(r.ph/Math.PI)%2===0?-1:1)}
+  S.amt=ease(S.amt,amt,clamp(dt*8,0,1));const am=S.amt;const run=am>.62;
+  const freq=mv>.03?(run?7.2+3.5*amt:5.6+2.4*amt):0;const prevPh=r.ph;r.ph+=dt*freq;
+  if(r.legL&&!a.air&&am>.25&&Math.floor(prevPh/Math.PI)!==Math.floor(r.ph/Math.PI)){if(a.onStep)a.onStep(Math.floor(r.ph/Math.PI)%2===0?-1:1)}
   if(r.legL){
-    const ph=r.ph,s=Math.sin(ph),c=Math.cos(ph);
-    const k=clamp(dt*16,0,1);
-    /* ---- legs: hips swing, knees bend in swing phase ---- */
-    let hipL=s*.78*amt,hipR=-s*.78*amt;
-    let kneeL=-(.06+Math.max(0,c)*1.05*amt+Math.max(0,-s)*.25*amt),kneeR=-(.06+Math.max(0,-c)*1.05*amt+Math.max(0,s)*.25*amt);
-    /* jump: tuck when rising, extend when falling */
-    if(a.air){const up=(a.vy||0)>0;hipL=ease(hipL,up?-.55:-.25,.9);hipR=ease(hipR,up?.45:-.15,.9);kneeL=up?-1.35:-.5;kneeR=up?-1.1:-.4}
-    if(a.dead){hipL=-.25;hipR=.2;kneeL=-1.4;kneeR=-1.1}
+    const ph=r.ph;const k=clamp(dt*18,0,1);
+    const L=gaitCurves(ph,am,run),R=gaitCurves(ph+Math.PI,am,run);
+    let hipL=L.hip,hipR=R.hip,kneeL=L.knee,kneeR=R.knee,ankL=L.ankle,ankR=R.ankle;
+    if(a.air){const up=(a.vy||0)>0;hipL=up?-.75:-.35;hipR=up?-.25:.05;kneeL=up?1.5:.6;kneeR=up?1.1:.45;ankL=up?.3:-.4;ankR=up?.3:-.4}
+    if(a.dead){hipL=-.25;hipR=.2;kneeL=1.2;kneeR=.9}
+    if(am<.05&&!a.air&&!a.dead){/* idle: knees relaxed, feet flat, slight weight shift */const w=Math.sin(now*.6);hipL=.02+w*.02;hipR=.02-w*.02;kneeL=.06+Math.max(0,w)*.06;kneeR=.06+Math.max(0,-w)*.06;ankL=ankR=0}
     r.legL.rotation.x=ease(r.legL.rotation.x,hipL,k);r.legR.rotation.x=ease(r.legR.rotation.x,hipR,k);
     r.kneeL.rotation.x=ease(r.kneeL.rotation.x,kneeL,k);r.kneeR.rotation.x=ease(r.kneeR.rotation.x,kneeR,k);
-    /* ---- body: bob twice per stride, lean into run, twist shoulders ---- */
-    const bob=Math.abs(s)*.075*amt;S.idle=amt<.05&&!a.atk>=0?S.idle+dt:0;
-    const breathe=Math.sin(now*2.1+r.ph*.1)*.012;
-    const landK=S.land>0?Math.sin(Math.min(1,S.land/.22)*Math.PI)*.18:0;S.land=Math.max(0,S.land-dt);
-    if(S.prevAir&&!a.air)S.land=.22;S.prevAir=!!a.air;
+    if(r.ankleL){r.ankleL.rotation.x=ease(r.ankleL.rotation.x,ankL,k);r.ankleR.rotation.x=ease(r.ankleR.rotation.x,ankR,k)}
+    /* legs splay a touch outward when standing */
+    r.legL.rotation.z=ease(r.legL.rotation.z,.04*(1-am),k);r.legR.rotation.z=ease(r.legR.rotation.z,-.04*(1-am),k);
+    /* ---- pelvis & torso ---- */
+    const bob=(Math.abs(Math.sin(ph))*(run?.075:.04)-(run?.03:0))*am;
+    S.idle=am<.05&&a.atk<0&&!a.cast?S.idle+dt:0;
+    const breathe=Math.sin(now*1.9)*.012;
+    if(S.prevAir&&!a.air)S.land=.22;S.prevAir=!!a.air;const landK=S.land>0?Math.sin(Math.min(1,S.land/.22)*Math.PI)*.16:0;S.land=Math.max(0,S.land-dt);
     r.torso.position.y=r.legL.position.y+bob-landK*.5;
-    r.body.scale.y=ease(r.body.scale.y,1-landK*.6+breathe,clamp(dt*14,0,1));r.body.scale.x=r.body.scale.z=2-r.body.scale.y;
-    const leanT=a.dead?0:(amt*.16+(a.air?.08:0)+(S.hurt>0?-.25*Math.sin(S.hurt/.35*Math.PI):0));S.lean=ease(S.lean,leanT,clamp(dt*8,0,1));
-    r.torso.rotation.x=S.lean;r.torso.rotation.y=ease(r.torso.rotation.y,s*.11*amt+(a.turn||0)*.08,k);r.torso.rotation.z=ease(r.torso.rotation.z,-c*.045*amt,k);
-    /* idle: weight shift + look around */
-    let headY=-(r.torso.rotation.y)*.7,headX=0;if(S.idle>1.2){headY+=Math.sin(S.idle*.45)*.35*Math.min(1,(S.idle-1.2)/1.5);headX=Math.sin(S.idle*.3)*.08}
-    if(amt>.3)headX=-.08;
-    r.head.rotation.y=ease(r.head.rotation.y,headY,clamp(dt*5,0,1));r.head.rotation.x=ease(r.head.rotation.x,headX,clamp(dt*5,0,1));
-    /* ---- arms ---- */
-    let shL=-s*.55*amt+.08,shR=s*.55*amt+.08,elL=.3+amt*.5+Math.max(0,s)*.35*amt,elR=.3+amt*.5+Math.max(0,-s)*.35*amt,shLz=.1,shRz=-.1,twist=0;
-    if(S.idle>0){shL+=Math.sin(now*1.3)*.03;shR+=Math.cos(now*1.3)*.03}
-    if(a.air){shL=-1.1;shR=-1.1;elL=.4;elR=.4;shLz=.45;shRz=-.45}
+    r.body.scale.y=ease(r.body.scale.y,1-landK*.5+breathe,clamp(dt*14,0,1));r.body.scale.x=r.body.scale.z=1-(r.body.scale.y-1)*.5;
+    /* pelvis yaw follows the legs, shoulders counter-rotate */
+    const pelvisYaw=Math.sin(ph)*.09*am;r.body.rotation.y=ease(r.body.rotation.y,pelvisYaw,k);
+    const leanT=a.dead?0:(am*(run?.18:.06)+(a.air?.1:0)+(S.hurt>0?-.3*Math.sin(S.hurt/.35*Math.PI):0));S.lean=ease(S.lean,leanT,clamp(dt*8,0,1));
+    const twist=-Math.sin(ph)*.16*am;const sway=Math.cos(ph)*.035*am;
+    r.torso.rotation.x=S.lean;r.torso.rotation.y=ease(r.torso.rotation.y,twist-pelvisYaw+(a.turn||0)*.06,k);r.torso.rotation.z=ease(r.torso.rotation.z,sway,k);
+    /* head stays level and looks ahead; idle look-around */
+    let headY=-(r.torso.rotation.y+r.body.rotation.y)*.8,headX=-S.lean*.6-am*.04;if(S.idle>1.5){const f=Math.min(1,(S.idle-1.5)/1.5);headY+=Math.sin(S.idle*.5)*.4*f;headX+=Math.sin(S.idle*.33)*.08*f}
+    r.head.rotation.y=ease(r.head.rotation.y,headY,clamp(dt*6,0,1));r.head.rotation.x=ease(r.head.rotation.x,headX,clamp(dt*6,0,1));r.head.rotation.z=ease(r.head.rotation.z,-sway*.5,k);
+    /* ---- arms: counter-swing, elbows bend on the forward swing, run pumps the arms ---- */
+    const sw=Math.sin(ph)*(run?.95:.5)*am;
+    let shL=sw+.05,shR=-sw+.05;            /* left arm forward (negative) when left leg is back (hip positive) */
+    let elL=(run?.9:.25)+Math.max(0,sw)*(run?.4:.55),elR=(run?.9:.25)+Math.max(0,-sw)*(run?.4:.55);
+    let shLz=.12+am*.05,shRz=-.12-am*.05,twistA=0;
+    if(S.idle>0){shL+=Math.sin(now*1.2)*.025;shR+=Math.cos(now*1.2)*.025;elL=.22+Math.sin(now*1.1)*.03;elR=.22+Math.cos(now*1.1)*.03}
+    if(a.air){shL=-.9;shR=-.9;elL=.5;elR=.5;shLz=.55;shRz=-.55}
     const wt=a.wt||r.wt||'zwaard';
-    if(a.cast){const w=Math.sin(now*9)*.1;shL=-2.1+w;shR=-2.0-w;elL=1.1;elR=1.1;shLz=.3;shRz=-.3}
+    if(a.cast){const w=Math.sin(now*9)*.08;shL=-1.9+w;shR=-1.8-w;elL=1.3;elR=1.3;shLz=.35;shRz=-.35}
     if(a.atk>=0){const p=a.atk;
-      if(a.ranged&&wt==='boog'){shL=-1.5;shLz=.05;elL=.05;if(p<.55){shR=-1.25;elR=2.1+p*.3;shRz=-.15;twist=.35}else{const q=(p-.55)/.45;shR=ease(-1.25,-1.5,q);elR=ease(2.4,.3,q*1.6);twist=.35*(1-q)}}
-      else if(a.ranged){/* staff / spell: gather then thrust */if(p<.45){const q=p/.45;shR=ease(-.4,-2.3,q);elR=ease(.4,1.2,q);shL=ease(.1,-1.6,q);elL=.8;twist=-.3*q}else{const q=(p-.45)/.55;shR=ease(-2.3,-1.35,Math.min(1,q*2));elR=ease(1.2,.1,Math.min(1,q*2));shL=ease(-1.6,-.2,q);elL=.4;twist=ease(-.3,.25,q)}}
-      else if(wt==='bijl'){if(p<.4){const q=p/.4;shR=ease(0,-3.0,q);elR=ease(.3,1.3,q);shL=ease(0,-2.7,q);elL=1.1;twist=-.2*q;S.lean=ease(S.lean,-.15,.3)}else{const q=clamp((p-.4)/.3,0,1);shR=ease(-3.0,.9,q);elR=ease(1.3,.15,q);shL=ease(-2.7,.6,q);elL=.3;twist=ease(-.2,.15,q);S.lean=ease(S.lean,.3,.5)}}
-      else{/* sword: windup across body, then horizontal slash */if(p<.32){const q=p/.32;shR=ease(0,-2.4,q);shRz=ease(-.1,-.9,q);elR=ease(.3,1.4,q);twist=-.55*q;shL=ease(.1,-.6,q);elL=.9}else{const q=clamp((p-.32)/.3,0,1);shR=ease(-2.4,.4,q);shRz=ease(-.9,.5,q);elR=ease(1.4,.1,q);twist=ease(-.55,.5,q);shL=ease(-.6,.3,q);elL=.5}}
-      r.torso.rotation.y=ease(r.torso.rotation.y,twist,clamp(dt*20,0,1));r.torso.rotation.x=S.lean}
+      if(a.ranged&&wt==='boog'){/* draw: left arm out, right hand to the cheek, then release */shL=-1.55;shLz=.08;elL=.08;if(p<.55){const q=p/.55;shR=ease(-.6,-1.35,q);elR=ease(.6,2.3,q);shRz=-.25;twistA=.4*q}else{const q=(p-.55)/.45;shR=ease(-1.35,-1.5,q);elR=ease(2.3,.4,Math.min(1,q*1.8));twistA=.4*(1-q)}}
+      else if(a.ranged){/* staff: gather, then thrust forward */if(p<.45){const q=p/.45;shR=ease(-.3,-2.2,q);elR=ease(.4,1.2,q);shL=ease(0,-1.5,q);elL=.9;twistA=-.3*q}else{const q=(p-.45)/.55;shR=ease(-2.2,-1.4,Math.min(1,q*2));elR=ease(1.2,.1,Math.min(1,q*2));shL=ease(-1.5,-.3,q);elL=.4;twistA=ease(-.3,.3,q)}}
+      else if(wt==='bijl'){/* two-handed overhead chop */if(p<.42){const q=p/.42;shR=ease(0,-3.25,q);elR=ease(.3,1.0,q);shL=ease(0,-3.0,q);elL=1.0;twistA=-.15*q;S.lean=ease(S.lean,-.2,.3)}else{const q=clamp((p-.42)/.28,0,1);shR=ease(-3.25,-.6,q);elR=ease(1.0,.2,q);shL=ease(-3.0,-.4,q);elL=.3;twistA=ease(-.15,.12,q);S.lean=ease(S.lean,.35,.5)}}
+      else{/* sword: wind up behind the shoulder, slash across the body */if(p<.3){const q=p/.3;shR=ease(0,-3.3,q);shRz=ease(-.12,-.7,q);elR=ease(.3,1.5,q);twistA=-.6*q;shL=ease(.05,-.5,q);elL=1.0}else{const q=clamp((p-.3)/.3,0,1);shR=ease(-3.3,-.9,q);shRz=ease(-.7,.7,q);elR=ease(1.5,.15,q);twistA=ease(-.6,.55,q);shL=ease(-.5,.4,q);elL=.5}}
+      r.torso.rotation.y=ease(r.torso.rotation.y,twistA,clamp(dt*22,0,1));r.torso.rotation.x=S.lean}
     if(a.dead){shL=-.3;shR=-.2;shLz=1.1;shRz=-1.2;elL=.2;elR=.3}
     const ka=clamp(dt*(a.atk>=0?26:14),0,1);
     r.armL.rotation.x=ease(r.armL.rotation.x,shL,ka);r.armR.rotation.x=ease(r.armR.rotation.x,shR,ka);r.armL.rotation.z=ease(r.armL.rotation.z,shLz,ka);r.armR.rotation.z=ease(r.armR.rotation.z,shRz,ka);
-    r.elbowL.rotation.x=ease(r.elbowL.rotation.x,elL,ka);r.elbowR.rotation.x=ease(r.elbowR.rotation.x,elR,ka);
+    r.elbowL.rotation.x=ease(r.elbowL.rotation.x,-elL,ka);r.elbowR.rotation.x=ease(r.elbowR.rotation.x,-elR,ka);
+    /* wrists follow through a little */
+    if(r.handL){r.handL.rotation.x=ease(r.handL.rotation.x,-.15-elL*.1,ka);r.handR.rotation.x=ease(r.handR.rotation.x,-.15-elR*.1,ka)}
     /* ---- cape: spring that trails movement and turning ---- */
-    if(r.cape){const tgt=.1+amt*.7+(a.air?.5:0)+(S.hurt>0?.3:0);const acc=(tgt-S.capeA)*60-S.capeV*9;S.capeV+=acc*dt;S.capeA+=S.capeV*dt;r.cape.rotation.x=S.capeA+Math.sin(now*3.1)*.03*(1+amt);S.capeZ=ease(S.capeZ,-(a.turn||0)*.35,clamp(dt*6,0,1));r.cape.rotation.z=S.capeZ+Math.sin(now*2.3)*.02}
+    if(r.cape){const tgt=.1+am*.75+(a.air?.5:0)+(S.hurt>0?.3:0);const acc=(tgt-S.capeA)*60-S.capeV*9;S.capeV+=acc*dt;S.capeA+=S.capeV*dt;r.cape.rotation.x=S.capeA+Math.sin(now*3.1)*.03*(1+am);S.capeZ=ease(S.capeZ,-(a.turn||0)*.35,clamp(dt*6,0,1));r.cape.rotation.z=S.capeZ+Math.sin(now*2.3)*.02}
     /* ---- death ---- */
     const dead=a.dead?1:0;r.body.rotation.x=ease(r.body.rotation.x,dead?-Math.PI/2*.92:0,clamp(dt*5,0,1));r.body.position.y=ease(r.body.position.y,dead?.28:0,clamp(dt*5,0,1));
     if(r.wings)for(const w of r.wings){w.rotation.z=(w.userData.wing>0?-.3:Math.PI+.3)+Math.sin(now*14)*.5*w.userData.wing}
   } else if(r.quad){
-    const ph=r.ph,gallop=amt>.75;
-    r.legs.forEach((l,i)=>{const front=i<2,right=i%2===1;let off=gallop?(front?0:Math.PI*.9)+(right?.35:0):((i===0||i===3)?0:Math.PI);const sw=Math.sin(ph+off)*(gallop?.95:.7)*amt;l.rotation.x=ease(l.rotation.x,sw,clamp(dt*18,0,1))});
-    const bounce=gallop?Math.max(0,Math.sin(ph))*.16*amt:Math.abs(Math.sin(ph))*.05*amt;r.body.position.y=ease(r.body.position.y,bounce,clamp(dt*16,0,1));
-    r.body.rotation.x=ease(r.body.rotation.x,gallop?Math.cos(ph)*.12*amt:0,clamp(dt*12,0,1));
-    if(r.tail)r.tail.rotation.y=Math.sin(now*6)*.3+Math.sin(ph)*.2*amt;
-    if(a.atk>=0){const p=a.atk;r.head.rotation.x=p<.4?-.6*p/.4:ease(-.6,.35,clamp((p-.4)/.3,0,1));r.body.position.z=p<.5?p*.5:.25-(p-.5)*.5}else{r.head.rotation.x=ease(r.head.rotation.x,-Math.cos(ph)*.08*amt+(S.idle>2?Math.sin(now*.7)*.15:0),dt*8);r.body.position.z=ease(r.body.position.z,0,dt*8);r.head.rotation.y=ease(r.head.rotation.y,S.idle>2?Math.sin(now*.5)*.4:0,dt*4)}
-    S.idle=amt<.05?S.idle+dt:0;
+    const ph=r.ph,gallop=am>.72;
+    r.legs.forEach((l,i)=>{const front=i<2,right=i%2===1;let off=gallop?(front?0:Math.PI*.9)+(right?.35:0):((i===0||i===3)?0:Math.PI);const sw=Math.sin(ph+off)*(gallop?.95:.7)*am;l.rotation.x=ease(l.rotation.x,sw,clamp(dt*18,0,1))});
+    const bounce=gallop?Math.max(0,Math.sin(ph))*.16*am:Math.abs(Math.sin(ph))*.05*am;r.body.position.y=ease(r.body.position.y,bounce,clamp(dt*16,0,1));
+    r.body.rotation.x=ease(r.body.rotation.x,gallop?Math.cos(ph)*.12*am:0,clamp(dt*12,0,1));
+    if(r.tail)r.tail.rotation.y=Math.sin(now*6)*.3+Math.sin(ph)*.2*am;
+    S.idle=am<.05?S.idle+dt:0;
+    if(a.atk>=0){const p=a.atk;r.head.rotation.x=p<.4?-.6*p/.4:ease(-.6,.35,clamp((p-.4)/.3,0,1));r.body.position.z=p<.5?p*.5:.25-(p-.5)*.5}else{r.head.rotation.x=ease(r.head.rotation.x,-Math.cos(ph)*.08*am+(S.idle>2?Math.sin(now*.7)*.15:0),dt*8);r.body.position.z=ease(r.body.position.z,0,dt*8);r.head.rotation.y=ease(r.head.rotation.y,S.idle>2?Math.sin(now*.5)*.4:0,dt*4)}
     r.body.rotation.z=ease(r.body.rotation.z,a.dead?Math.PI/2.2:0,clamp(dt*6,0,1));
   }
-  else if(r.spider){const ph=r.ph*1.4;r.legs.forEach((l,i)=>{const grp=(i%2===0)!==(i<4)?0:Math.PI;const lift=Math.max(0,Math.sin(ph+grp))*.45*amt;l.rotation.z=lift*(i<4?1:1);l.rotation.y=(l.userData.by??(l.userData.by=l.rotation.y))+Math.cos(ph+grp)*.22*amt});r.body.position.y=Math.sin(ph*2)*.04*amt+Math.sin(now*2)*.01;
+  else if(r.spider){const ph=r.ph*1.4;r.legs.forEach((l,i)=>{const grp=(i%2===0)!==(i<4)?0:Math.PI;const lift=Math.max(0,Math.sin(ph+grp))*.45*am;l.rotation.z=lift;l.rotation.y=(l.userData.by??(l.userData.by=l.rotation.y))+Math.cos(ph+grp)*.22*am});r.body.position.y=Math.sin(ph*2)*.04*am+Math.sin(now*2)*.01;
     if(a.atk>=0){r.body.rotation.x=a.atk<.4?-.4:ease(-.4,0,(a.atk-.4)/.6)}else r.body.rotation.x=ease(r.body.rotation.x,0,dt*8);
     r.body.rotation.z=ease(r.body.rotation.z,a.dead?Math.PI/2.2:0,clamp(dt*6,0,1))}
   if(r.weapon)r.weapon.traverse(m=>{if(m.userData.orb){m.rotation.y+=dt*2;m.material.emissiveIntensity=a.cast?3.5+Math.sin(now*12):2.6}})}
@@ -1946,7 +1975,7 @@ function loop(){requestAnimationFrame(loop);lastTick=performance.now();const rdt
   if(!window.__NORENDER){if(GFX.post)composer.render();else renderer.render(scene,camera)}updPlates(W,H);updFloat(dt,W,H)}
 let snapAcc=0;const perf={t:0,n:0};
 function perfWatch(dt){if(S.mode!=='play'||S.noPerf||GFX.auto>=2||GFX.q==='laag')return;perf.t+=dt;perf.n++;if(perf.t>=5){const avg=perf.t/perf.n;perf.t=perf.n=0;if(avg>.042){GFX.q=GFX.q==='hoog'?'middel':'laag';GFX.auto++;applyGfx();$('#bGfx').textContent='Grafiek: '+GFX_N[GFX.q];log('De grafische kwaliteit is verlaagd naar '+GFX_N[GFX.q].toLowerCase()+' voor soepeler spelen (aan te passen in het menu).','sys')}}}
-window.__V={DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
+window.__V={animRig,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
 loadSave();showMenu();startNet();netStatus();
 requestAnimationFrame(()=>{$('#loading').hidden=true});loop();
 </script>
