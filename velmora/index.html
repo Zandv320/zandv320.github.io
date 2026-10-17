@@ -1095,7 +1095,7 @@ function animRig(r,a,dt){
     if(a.dead){hipL=-.25;hipR=.2;kneeL=1.2;kneeR=.9}
     if(am<.05&&!a.air&&!a.dead){/* idle: knees relaxed, feet flat, slight weight shift */const w=Math.sin(now*.6);hipL=.02+w*.02;hipR=.02-w*.02;kneeL=.06+Math.max(0,w)*.06;kneeR=.06+Math.max(0,-w)*.06;ankL=ankR=0}
     /* warrior stance: bent knees, wide feet, hunched shoulders (heavier in combat) */
-    const WS=r.warrior&&!a.dead&&!a.air?{knee:(a.combat?.55:.22)*(1-am*.55),hip:(a.combat?-.32:-.12)*(1-am*.55),splay:a.combat?.17:.09,lean:a.combat?.3:.12,drop:(a.combat?.09:.035)*(1-am*.55)}:null;
+    const WS=r.warrior&&!a.dead&&!a.air?{knee:(a.combat?.6:.12)*(1-am*.6),hip:(a.combat?-.35:-.06)*(1-am*.6),splay:a.combat?.22:.06,lean:a.combat?.22:.04,drop:(a.combat?.1:.02)*(1-am*.6)}:null;
     if(WS){hipL+=WS.hip;hipR+=WS.hip;kneeL+=WS.knee;kneeR+=WS.knee;ankL+=WS.knee*.45;ankR+=WS.knee*.45}
     r.legL.rotation.x=ease(r.legL.rotation.x,hipL,k);r.legR.rotation.x=ease(r.legR.rotation.x,hipR,k);
     r.kneeL.rotation.x=ease(r.kneeL.rotation.x,kneeL,k);r.kneeR.rotation.x=ease(r.kneeR.rotation.x,kneeR,k);
@@ -1124,23 +1124,30 @@ function animRig(r,a,dt){
     let shLz=.12+am*.05,shRz=-.12-am*.05,twistA=0;
     if(S.idle>0){shL+=Math.sin(now*1.2)*.025;shR+=Math.cos(now*1.2)*.025;elL=.22+Math.sin(now*1.1)*.03;elR=.22+Math.cos(now*1.1)*.03}
     if(a.air){shL=-.9;shR=-.9;elL=.5;elR=.5;shLz=.55;shRz=-.55}
-    const wt=a.wt||r.wt||'zwaard';
+    const wt=a.wt||r.wt||'zwaard';let wrot=null;
     if(a.cast){const w=Math.sin(now*9)*.08;shL=-1.9+w;shR=-1.8-w;elL=1.3;elR=1.3;shLz=.35;shRz=-.35}
     if(a.atk>=0){const p=a.atk;
       if(a.ranged&&wt==='boog'){/* draw: left arm out, right hand to the cheek, then release */shL=-1.55;shLz=.08;elL=.08;if(p<.55){const q=p/.55;shR=ease(-.6,-1.35,q);elR=ease(.6,2.3,q);shRz=-.25;twistA=.4*q}else{const q=(p-.55)/.45;shR=ease(-1.35,-1.5,q);elR=ease(2.3,.4,Math.min(1,q*1.8));twistA=.4*(1-q)}}
       else if(a.ranged){/* staff: gather, then thrust forward */if(p<.45){const q=p/.45;shR=ease(-.3,-2.2,q);elR=ease(.4,1.2,q);shL=ease(0,-1.5,q);elL=.9;twistA=-.3*q}else{const q=(p-.45)/.55;shR=ease(-2.2,-1.4,Math.min(1,q*2));elR=ease(1.2,.1,Math.min(1,q*2));shL=ease(-1.5,-.3,q);elL=.4;twistA=ease(-.3,.3,q)}}
-      else if(wt==='bijl'||r.warrior){/* two-handed overhead chop (greatsword & axe) */if(p<.42){const q=p/.42;shR=ease(0,-3.25,q);elR=ease(.3,1.0,q);shL=ease(0,-3.0,q);elL=1.0;twistA=-.15*q;S.lean=ease(S.lean,-.2,.3)}else{const q=clamp((p-.42)/.28,0,1);shR=ease(-3.25,-.6,q);elR=ease(1.0,.2,q);shL=ease(-3.0,-.4,q);elL=.3;twistA=ease(-.15,.12,q);S.lean=ease(S.lean,.35,.5)}}
+      else if(r.warrior&&wt!=='bijl'){/* MELEE COMBO: 0 horizontal, 1 upward, 2 downward; shield stays up, body drives the swing */
+        const c=(a.combo||0)%3;const w=p<.3?p/.3:0,st=clamp((p-.3)/.3,0,1),rec=clamp((p-.6)/.4,0,1);shL=-1.0;shLz=.3;elL=1.4;
+        if(c===0){/* horizontal: wind out to the right, sweep across to the left */shR=ease(ease(-.55,-.2,w),-.9,st);shRz=ease(ease(-.3,-1.35,w),.9,st);elR=ease(ease(1.75,.5,w),.35,st);twistA=ease(ease(0,.55,w),-.7,st);wrot=ease(ease(3.05,1.9,w),1.55,st)}
+        else if(c===1){/* upward: dip low-right, rip up and over the left shoulder */shR=ease(ease(-.55,.35,w),-2.7,st);shRz=ease(ease(-.3,-.75,w),.45,st);elR=ease(ease(1.75,.6,w),.3,st);twistA=ease(ease(0,.4,w),-.55,st);S.lean=ease(S.lean,ease(.45,-.1,st),.4);wrot=ease(ease(3.05,2.3,w),1.6,st)}
+        else{/* downward: raise overhead, slam down and forward, deep knee */shR=ease(ease(-.55,-3.15,w),-.45,st);shRz=ease(ease(-.3,-.15,w),.1,st);elR=ease(ease(1.75,.9,w),.2,st);twistA=ease(ease(0,-.25,w),.35,st);S.lean=ease(S.lean,ease(-.15,.5,st),.5);wrot=ease(ease(3.05,1.4,w),1.5,st)}
+        /* recovery: ease the sword arm back toward guard */if(rec>0){shR=ease(shR,-.55,rec);shRz=ease(shRz,-.3,rec);elR=ease(elR,1.75,rec);twistA=ease(twistA,0,rec);wrot=ease(wrot,3.05,rec)}}
+      else if(wt==='bijl'){/* two-handed overhead chop (axe) */if(p<.42){const q=p/.42;shR=ease(0,-3.25,q);elR=ease(.3,1.0,q);shL=ease(0,-3.0,q);elL=1.0;twistA=-.15*q;S.lean=ease(S.lean,-.2,.3)}else{const q=clamp((p-.42)/.28,0,1);shR=ease(-3.25,-.6,q);elR=ease(1.0,.2,q);shL=ease(-3.0,-.4,q);elL=.3;twistA=ease(-.15,.12,q);S.lean=ease(S.lean,.35,.5)}}
       else{/* sword: wind up behind the shoulder, slash across the body */if(p<.3){const q=p/.3;shR=ease(0,-3.3,q);shRz=ease(-.12,-.7,q);elR=ease(.3,1.5,q);twistA=-.6*q;shL=ease(.05,-.5,q);elL=1.0}else{const q=clamp((p-.3)/.3,0,1);shR=ease(-3.3,-.9,q);shRz=ease(-.7,.7,q);elR=ease(1.5,.15,q);twistA=ease(-.6,.55,q);shL=ease(-.5,.4,q);elL=.5}}
       r.torso.rotation.y=ease(r.torso.rotation.y,-twistA,clamp(dt*22,0,1));r.torso.rotation.x=S.lean}
-    let wrot=null;
     if(r.warrior&&a.atk<0&&!a.cast&&!a.dead&&!a.air){
-      if(a.combat){/* combat stance (ref): sword arm back and out, blade up behind; off-hand fist forward with the shield */
-        const bw=Math.sin(now*2.2)*.03;shR=.55+bw+sw*.35;shRz=-.45;elR=.7;shL=-1.05-bw-sw*.3;shLz=.12;elL=1.15;wrot=-.75}
-      else if(am<.08){/* relaxed stance (ref): greatsword held low across the front with both hands */
-        const bw=Math.sin(now*1.9)*.025;shR=-.3+bw;shRz=-.15;elR=1.25;shL=-.45+bw;shLz=-.5;elL=1.3;wrot=2.9}
-      else{/* travelling: sword arm swings less because it carries the weight */shR=-.2-sw*.35;shRz=-.22;elR=.6+Math.max(0,-sw)*.3;shL=sw*1.1+.05;elL=.35+Math.max(0,sw)*.5;wrot=.8}}
+      const bw=Math.sin(now*2)*.03;
+      if(a.combat){/* READY / GUARD: wide stance, sword upright at the right shoulder, shield squared in front of the chest */
+        shR=-.55+bw;shRz=-.3;elR=1.75;shL=-1.0-bw;shLz=.3;elL=1.4;wrot=3.05}
+      else if(am<.08){/* IDLE: upright, sword resting point-up beside the hip, shield held loosely in front */
+        shR=.12+bw;shRz=-.18;elR=.55;shL=-.6-bw*.5;shLz=.25;elL=1.2;wrot=.12}
+      else{/* WALK / RUN: shield forward and steady, sword pointing ahead, arms barely swing because both hands are full */
+        shR=-.45-sw*.15;shRz=-.25;elR=.95+Math.max(0,-sw)*.15;shL=-.85+sw*.12;shLz=.28;elL=1.15;wrot=2.75}}
     if(a.dead){shL=-.3;shR=-.2;shLz=1.1;shRz=-1.2;elL=.2;elR=.3}
-    if(r.warrior&&r.weapon){const wt=wrot??(a.atk>=0?1.3:1.5);r.weapon.rotation.x=ease(r.weapon.rotation.x,wt,clamp(dt*10,0,1));r.weapon.rotation.z=ease(r.weapon.rotation.z,a.combat&&a.atk<0?.25:0,clamp(dt*10,0,1))}
+    if(r.warrior&&r.weapon){const wt=wrot??(a.atk>=0?1.3:1.5);r.weapon.rotation.x=ease(r.weapon.rotation.x,wt,clamp(dt*(a.atk>=0?22:10),0,1));r.weapon.rotation.z=ease(r.weapon.rotation.z,0,clamp(dt*10,0,1))}
     const ka=clamp(dt*(a.atk>=0?26:14),0,1);
     r.armL.rotation.x=ease(r.armL.rotation.x,shL,ka);r.armR.rotation.x=ease(r.armR.rotation.x,shR,ka);r.armL.rotation.z=ease(r.armL.rotation.z,shLz,ka);r.armR.rotation.z=ease(r.armR.rotation.z,shRz,ka);
     r.elbowL.rotation.x=ease(r.elbowL.rotation.x,-elL,ka);r.elbowR.rotation.x=ease(r.elbowR.rotation.x,-elR,ka);
@@ -1642,7 +1649,7 @@ async function startNet(){
     for(const p of ch.peers){if(p.isMe)continue;seen.add(p.peer);const pr=p.presence||{};let r=REMOTES.get(p.peer);
       if(!pr.in){if(r){removeRemote(r)}continue}
       if(!r){r={kind:'pl',size:1,id:p.peer,x:pr.x,y:pr.y,z:pr.z,ry:pr.ry||0,inW:true,rig:null,lookKey:'',atk:-1,lastAc:pr.ac,joinedT:performance.now()};REMOTES.set(p.peer,r);if(S.mode==='play')log(esc(pr.n||'Iemand')+' betreedt Velmora.','sys',true)}
-      Object.assign(r,{n:String(pr.n||'Held').slice(0,14),lvl:pr.l|0,race:RACES[pr.ra]?pr.ra:'mens',cls:CLASSES[pr.c]?pr.c:'krijger',hp:pr.hp|0,mhp:pr.mh|0,dead:!!pr.dd,tx:+pr.x||0,ty:+pr.y||0,tz:+pr.z||0,try:+pr.ry||0,mv:+pr.mv||0,cs:!!pr.cs,g:pr.g||'',eqv:pr.e||[],pvp:!!pr.pv,honor:pr.ho|0,cb:!!pr.cb});
+      Object.assign(r,{n:String(pr.n||'Held').slice(0,14),lvl:pr.l|0,race:RACES[pr.ra]?pr.ra:'mens',cls:CLASSES[pr.c]?pr.c:'krijger',hp:pr.hp|0,mhp:pr.mh|0,dead:!!pr.dd,tx:+pr.x||0,ty:+pr.y||0,tz:+pr.z||0,try:+pr.ry||0,mv:+pr.mv||0,cs:!!pr.cs,g:pr.g||'',eqv:pr.e||[],pvp:!!pr.pv,honor:pr.ho|0,cb:!!pr.cb,co:pr.co|0});
       if(pr.ac!==r.lastAc){r.lastAc=pr.ac;r.atk=0;r.atkRanged=!!pr.rg}
       let look=null;if(pr.lk&&typeof pr.lk==='object'){look={};for(const[k,v]of Object.entries(pr.lk)){if(k.length<12&&(typeof v==='number'||typeof v==='boolean'||(typeof v==='string'&&v.length<12)))look[k]=v}look.race=r.race;if(!['zwaard','bijl','staf','boog','none'].includes(look.wt))look.wt=CLASSES[r.cls].wt}
       if(!look)look=playerLook({race:r.race,cls:r.cls,hair:pr.h|0,eq:{wapen:r.eqv[0]?{wt:r.eqv[0],r:r.eqv[1]|0}:null,borst:r.eqv[2]>=0?{r:r.eqv[2]}:null,hoofd:r.eqv[3]?{}:null,handen:r.eqv[4]?{}:null}});
@@ -1704,7 +1711,7 @@ function applySnap(d){if(!d||!Array.isArray(d.l))return;const now=performance.no
   if(ids)for(const m of[...MONS])if(m.add&&!ids.has(m.id))removeMon(m)}
 let presT=0,lastPres='',presSkip=0;
 function sendPresence(dt){if(!room||!room.connected())return;presT-=dt;if(presT>0)return;presT=.1;
-  let pr;if(S.mode==='play'&&P){const e=P.eq;pr={in:1,n:P.name,ra:P.race,c:P.cls,h:P.hair|0,l:P.level,x:Math.round(ME.pos.x*100)/100,y:Math.round(ME.pos.y*100)/100,z:Math.round(ME.pos.z*100)/100,ry:Math.round(ME.ry*100)/100,hp:Math.round(P.hp),mh:ST.maxhp,mv:Math.round(ME.spd*10)/10,ac:ME.ac||0,rg:ME.atkRanged?1:0,cs:ME.cast?1:0,dd:ME.dead?1:0,cb:(ME.combat>0||isEnemy(ME.target))?1:0,pv:P.pvp?1:0,ho:P.honor|0,lk:ME.look||null,g:GROUP?GROUP.leader:'',e:[e.wapen?e.wapen.wt:'',e.wapen?e.wapen.r:0,e.borst?e.borst.r:-1,e.hoofd?1:0,e.handen?1:0]}}else pr={in:0};
+  let pr;if(S.mode==='play'&&P){const e=P.eq;pr={in:1,n:P.name,ra:P.race,c:P.cls,h:P.hair|0,l:P.level,x:Math.round(ME.pos.x*100)/100,y:Math.round(ME.pos.y*100)/100,z:Math.round(ME.pos.z*100)/100,ry:Math.round(ME.ry*100)/100,hp:Math.round(P.hp),mh:ST.maxhp,mv:Math.round(ME.spd*10)/10,ac:ME.ac||0,rg:ME.atkRanged?1:0,cs:ME.cast?1:0,dd:ME.dead?1:0,cb:(ME.combat>0||isEnemy(ME.target))?1:0,co:ME.combo||0,pv:P.pvp?1:0,ho:P.honor|0,lk:ME.look||null,g:GROUP?GROUP.leader:'',e:[e.wapen?e.wapen.wt:'',e.wapen?e.wapen.r:0,e.borst?e.borst.r:-1,e.hoofd?1:0,e.handen?1:0]}}else pr={in:0};
   const s=JSON.stringify(pr);if(s===lastPres&&++presSkip<10)return;presSkip=0;lastPres=s;room.presence(pr)}
 function netStatus(){const el=$('#net');const on=room&&room.connected();const n=on?room.count():0;const playing=on?[...REMOTES.values()].filter(r=>r.inW).length+(S.mode==='play'?1:0):0;
   if(el){el.classList.toggle('on',!!on);const nt=on?(n<=1?'Online · jij bent nu de enige in Velmora':'Online · '+n+' spelers in Velmora'):(typeof Peer==='undefined'&&room===null?'Offline · alleen spelen':'Verbinden met Velmora…');const sp=el.querySelector('span');if(sp.textContent!==nt)sp.textContent=nt}
@@ -1993,19 +2000,19 @@ function updPlayer(dt){
   if(ME.portalCd<=0&&!ME.dead){if(ME.pos.x<700&&Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-(CAVE.z+.6))<2.6)enterCave();else if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-(D2.exit.z+1.4))<2)leaveCave();else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-(CRYPT.z+.5))<2.3)enterDungeon();else if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-(DUN_EXIT.z+1.4))<2)leaveDungeon()}
   /* visuals */
   const g=ME.rig.g;g.position.copy(ME.pos);if(ME.spin>0){ME.spin-=dt;g.rotation.y+=dt*22}else g.rotation.y=ME.ry;
-  animRig(ME.rig,{spd:sp/7,atk:ME.atk,ranged:ME.atkRanged,cast:!!ME.cast,dead:ME.dead,air:ME.air,vy:ME.vy,hurt:ME.hurtT>0,turn:PHY.turn,combat:ME.combat>0||isEnemy(ME.target),onStep:side=>{if(ME.pos.x<700||true){const px=ME.pos.x+Math.cos(ME.ry)*side*.16,pz=ME.pos.z-Math.sin(ME.ry)*side*.16;dustFx(px,pz,3);if(sp>3&&S.sound)tone(90+Math.random()*30,.06,.018,'triangle',.6)}}},dt);ME.hurtT=Math.max(0,(ME.hurtT||0)-dt)}
-function swingAnim(r){ME.atk=0;ME.atkRanged=r;ME.ac=((ME.ac||0)+1)%100}
+  animRig(ME.rig,{spd:sp/7,atk:ME.atk,ranged:ME.atkRanged,cast:!!ME.cast,dead:ME.dead,air:ME.air,vy:ME.vy,hurt:ME.hurtT>0,turn:PHY.turn,combat:ME.combat>0||isEnemy(ME.target),combo:ME.combo||0,onStep:side=>{if(ME.pos.x<700||true){const px=ME.pos.x+Math.cos(ME.ry)*side*.16,pz=ME.pos.z-Math.sin(ME.ry)*side*.16;dustFx(px,pz,3);if(sp>3&&S.sound)tone(90+Math.random()*30,.06,.018,'triangle',.6)}}},dt);ME.hurtT=Math.max(0,(ME.hurtT||0)-dt)}
+function swingAnim(r){ME.atk=0;ME.atkRanged=r;ME.ac=((ME.ac||0)+1)%100;if(!r)ME.combo=((ME.combo||0)+1)%3}
 function updMonsters(dt){const auth=isAuth()&&S.mode!=='menu';const pl=auth?players():null;const k=clamp(dt*10,0,1);
   for(const m of[...MONS]){
     if(auth){const near=pl.some(p=>Math.abs(p.x-m.x)<90&&Math.abs(p.z-m.z)<90);if(near||m.tgt||m.dead||m.evade)aiUpdate(m,dt,pl)}
     else{m.x=lerp(m.x,m.nx,k);m.z=lerp(m.z,m.nz,k);m.ry+=angDiff(m.ry,m.nry)*k;if(m.atk>=0){m.atk+=dt*2.2;if(m.atk>1)m.atk=-1}if(m.root>0)m.root-=dt;if(m.stun>0)m.stun-=dt}
     if(!MONMAP.has(m.id))continue;
     m.y=groundH(m.x,m.z);const g=m.rig.g;g.position.set(m.x,m.y,m.z);g.rotation.y=m.ry;
-    if(Math.abs(m.x-camTarget.x)<70&&Math.abs(m.z-camTarget.z)<70){g.visible=true;m.vis=lerp(m.vis||0,m.mv*.5,clamp(dt*6,0,1));animRig(m.rig,{spd:m.vis,atk:m.atk,dead:m.dead,hurt:m.hurtT>0,wt:m.t.wt,ranged:!!m.t.ranged},dt);m.hurtT=Math.max(0,(m.hurtT||0)-dt)}else g.visible=false;
+    if(Math.abs(m.x-camTarget.x)<70&&Math.abs(m.z-camTarget.z)<70){g.visible=true;m.vis=lerp(m.vis||0,m.mv*.5,clamp(dt*6,0,1));animRig(m.rig,{spd:m.vis,atk:m.atk,dead:m.dead,hurt:m.hurtT>0,wt:m.t.wt,ranged:!!m.t.ranged,combo:m.ac%3,combat:!!m.tgt},dt);m.hurtT=Math.max(0,(m.hurtT||0)-dt)}else g.visible=false;
     if(m.spark){const p=m.spark.geometry.attributes.position;const t=performance.now()*.002;for(let i=0;i<m.spark.userData.n;i++){const a=t+i*.9;p.setXYZ(i,Math.cos(a)*(.6+i%3*.2),.3+((t*.5+i*.13)%1.4),Math.sin(a)*(.6+i%3*.2))}p.needsUpdate=true;m.spark.position.set(m.x,m.y,m.z)}}
   if(auth)for(let i=PENDING.length-1;i>=0;i--){PENDING[i].t-=dt;if(PENDING[i].t<=0){const f=PENDING[i].fn;PENDING.splice(i,1);f()}}}
 function updRemotes(dt){const k=clamp(dt*10,0,1);for(const r of REMOTES.values()){if(!r.rig)continue;const far=Math.hypot(r.tx-r.x,r.tz-r.z)>30;r.x=far?r.tx:lerp(r.x,r.tx,k);r.y=far?r.ty:lerp(r.y,r.ty,k);r.z=far?r.tz:lerp(r.z,r.tz,k);r.ry+=angDiff(r.ry,r.try)*k;
-  if(r.atk>=0){r.atk+=dt*2.6;if(r.atk>1)r.atk=-1}r.rig.g.position.set(r.x,r.y,r.z);r.rig.g.rotation.y=r.ry;const pry=r.pry??r.ry;r.turnR=lerp(r.turnR||0,angDiff(pry,r.ry)/Math.max(dt,.001)/8,clamp(dt*8,0,1));r.pry=r.ry;animRig(r.rig,{spd:r.mv/7,atk:r.atk,ranged:r.atkRanged,cast:r.cs,dead:r.dead,combat:!!r.cb,air:r.y>groundH(r.x,r.z)+.3,vy:(r.y-(r.py??r.y))/Math.max(dt,.001),hurt:false,turn:r.turnR,onStep:()=>{if(Math.abs(r.x-camTarget.x)<40)dustFx(r.x,r.z,2)}},dt);r.py=r.y}}
+  if(r.atk>=0){r.atk+=dt*2.6;if(r.atk>1)r.atk=-1}r.rig.g.position.set(r.x,r.y,r.z);r.rig.g.rotation.y=r.ry;const pry=r.pry??r.ry;r.turnR=lerp(r.turnR||0,angDiff(pry,r.ry)/Math.max(dt,.001)/8,clamp(dt*8,0,1));r.pry=r.ry;animRig(r.rig,{spd:r.mv/7,atk:r.atk,ranged:r.atkRanged,cast:r.cs,dead:r.dead,combat:!!r.cb,combo:r.co|0,air:r.y>groundH(r.x,r.z)+.3,vy:(r.y-(r.py??r.y))/Math.max(dt,.001),hurt:false,turn:r.turnR,onStep:()=>{if(Math.abs(r.x-camTarget.x)<40)dustFx(r.x,r.z,2)}},dt);r.py=r.y}}
 let lightT=0,dunF=0;
 function updWorld(dt,t){
   /* lights pool */
