@@ -7,7 +7,8 @@ function treeSpent(tr){return tr.nodes.reduce((s,n)=>s+talentRank(n.id),0)}
 function talentSpent(){return talentTrees().reduce((s,t)=>s+treeSpent(t),0)}
 function talentFree(){return talentPoints()-talentSpent()}
 function talentNode(id){for(const t of talentTrees())for(const n of t.nodes)if(n.id===id)return{tree:t,node:n};return null}
-function TM(k){if(!TMC){TMC={};for(const t of talentTrees())for(const n of t.nodes){const r=talentRank(n.id);if(!r||!n.mod)continue;for(const key in n.mod)TMC[key]=(TMC[key]||0)+n.mod[key]*r}}return TMC[k]||0}
+function TM(k){if(!TMC){TMC={};for(const t of talentTrees())for(const n of t.nodes){const r=talentRank(n.id);if(!r||!n.mod)continue;for(const key in n.mod)TMC[key]=(TMC[key]||0)+n.mod[key]*r}
+  /* legendarische uitrusting: dezelfde sleutels als talenten */if(P&&P.eq)for(const s of SLOTS){const it=P.eq[s];if(it&&it.mods&&typeof it.mods==='object')for(const key in it.mods)if(typeof it.mods[key]==='number')TMC[key]=(TMC[key]||0)+it.mods[key]}}return TMC[k]||0}
 function canLearn(id){const f=talentNode(id);if(!f)return false;const r=talentRank(id);if(r>=f.node.max)return false;if(talentFree()<=0)return false;return treeSpent(f.tree)>=TIER_REQ[f.node.t]}
 function learnTalent(id){if(!canLearn(id))return false;P.talents=P.talents||{};P.talents[id]=talentRank(id)+1;TMC=null;const f=P.hp/ST.maxhp;calcStats();P.hp=Math.round(ST.maxhp*f);buildBar(true);
   const fnd=talentNode(id);if(fnd.node.skill)log('Nieuwe vaardigheid geleerd: '+fnd.node.skill.n,'sys');sfx('loot');healFx&&emitP({x:ME.pos.x,y:ME.pos.y+1.6,z:ME.pos.z,life:.6,size:.4,size1:1.6,col:0xffe08a,a:1,a1:0,cell:FXC.crit,must:1});saveGame(true);return true}

@@ -40,6 +40,7 @@ function interact(){if(ME.dead)return;if(fishHook())return;if(arenaInteract())re
   const nd=nearNode();if(nd)return startGather(nd);
   const stn=STATIONS.find(s=>Math.hypot(s.x-ME.pos.x,s.z-ME.pos.z)<4.5);if(stn){lifeTab=stn.k==='vuur'?'koken':'alchemie';return openPanel('pLife')}
   if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z-1)<6)return enterCave();if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-D2.exit.z)<6)return leaveCave();
+  if(drakeInteract())return;
   if(atShore())return startFish();
   if(Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-CRYPT.z-1)<6)return enterDungeon();if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-DUN_EXIT.z)<6)return leaveDungeon();
   toast('Er is hier niets te doen')}
@@ -110,7 +111,8 @@ function updPlayer(dt){
   /* portals */
   updActivity(dt,ME.spd>.5||!!ME.dash);updNodes(dt);
   if(ME.pos.x>1250&&!ME.dead&&D2.cell(ME.pos.x,ME.pos.z)==='~'&&!ME.air){ME.lavaT=(ME.lavaT||0)-dt;if(ME.lavaT<=0){ME.lavaT=.5;const d=Math.round(ST.maxhp*.04);P.hp-=d;ME.combat=6;floatText('me','-'+d+' lava','hurt');if(P.hp<=0){P.hp=0;die()}}}
-  if(ME.portalCd<=0&&!ME.dead){if(ME.pos.x<700&&Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-(CAVE.z+.6))<2.6)enterCave();else if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-(D2.exit.z+1.4))<2)leaveCave();else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-(CRYPT.z+.5))<2.3)enterDungeon();else if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-(DUN_EXIT.z+1.4))<2)leaveDungeon()}
+  drakeLava(dt);
+  if(ME.portalCd<=0&&!ME.dead){if(drakePortals()){}else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-(CAVE.z+.6))<2.6)enterCave();else if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-(D2.exit.z+1.4))<2)leaveCave();else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-(CRYPT.z+.5))<2.3)enterDungeon();else if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-(DUN_EXIT.z+1.4))<2)leaveDungeon()}
   /* visuals */
   const g=ME.rig.g;g.position.copy(ME.pos);if(ME.spin>0){ME.spin-=dt;g.rotation.y+=dt*22}else g.rotation.y=ME.ry;
   animRig(ME.rig,{spd:sp/7,atk:ME.atk,ranged:ME.atkRanged,cast:!!ME.cast,dead:ME.dead,air:ME.air,vy:ME.vy,hurt:ME.hurtT>0,turn:PHY.turn,combat:ME.combat>0||isEnemy(ME.target),combo:ME.combo||0,onStep:side=>{if(ME.pos.x<700||true){const px=ME.pos.x+Math.cos(ME.ry)*side*.16,pz=ME.pos.z-Math.sin(ME.ry)*side*.16;dustFx(px,pz,3);if(sp>3&&S.sound)tone(90+Math.random()*30,.06,.018,'triangle',.6)}}},dt);ME.hurtT=Math.max(0,(ME.hurtT||0)-dt)}
@@ -120,13 +122,13 @@ function updMonsters(dt){const auth=isAuth()&&S.mode!=='menu';const pl=auth?play
     if(auth){const near=pl.some(p=>Math.abs(p.x-m.x)<90&&Math.abs(p.z-m.z)<90);if(near||m.tgt||m.dead||m.evade)aiUpdate(m,dt,pl)}
     else{m.x=lerp(m.x,m.nx,k);m.z=lerp(m.z,m.nz,k);m.ry+=angDiff(m.ry,m.nry)*k;if(m.atk>=0){m.atk+=dt*2.2;if(m.atk>1)m.atk=-1}if(m.root>0)m.root-=dt;if(m.stun>0)m.stun-=dt}
     if(!MONMAP.has(m.id))continue;
-    m.y=groundH(m.x,m.z);const g=m.rig.g;g.position.set(m.x,m.y,m.z);g.rotation.y=m.ry;
+    {const hov=(m.dead?0:(m.t.hover||0))+(m.flyH||0);m.yo=lerp(m.yo||0,hov,clamp(dt*(m.dead?4:2.5),0,1));m.y=groundH(m.x,m.z)+m.yo}const g=m.rig.g;g.position.set(m.x,m.y,m.z);g.rotation.y=m.ry;
     const mdx=Math.abs(m.x-camTarget.x),mdz=Math.abs(m.z-camTarget.z);const vr=camTarget.x>700?58:70;if(mdx<vr&&mdz<vr){g.visible=true;/* schaduw alleen dichtbij */const sh=mdx+mdz<40;if(m.shOn!==sh){m.shOn=sh;g.traverse(o=>{if(o.isMesh&&o.userData.cs0===undefined)o.userData.cs0=o.castShadow;if(o.isMesh)o.castShadow=sh&&o.userData.cs0})}m.vis=lerp(m.vis||0,m.mv*.5,clamp(dt*6,0,1));/* animatie-LOD: ver weg maar om de 3 frames bijwerken */m.adt=(m.adt||0)+dt;const farM=mdx+mdz>45;if(!farM||((FRAME+m.lodk)%3===0)){animRig(m.rig,{spd:m.vis,atk:m.atk,dead:m.dead,hurt:m.hurtT>0,wt:m.t.wt,ranged:!!m.t.ranged,combo:m.ac%3,combat:!!m.tgt},m.adt);m.adt=0}m.hurtT=Math.max(0,(m.hurtT||0)-dt)}else g.visible=false;
     if(m.spark){const p=m.spark.geometry.attributes.position;const t=performance.now()*.002;for(let i=0;i<m.spark.userData.n;i++){const a=t+i*.9;p.setXYZ(i,Math.cos(a)*(.6+i%3*.2),.3+((t*.5+i*.13)%1.4),Math.sin(a)*(.6+i%3*.2))}p.needsUpdate=true;m.spark.position.set(m.x,m.y,m.z)}}
   if(auth)for(let i=PENDING.length-1;i>=0;i--){PENDING[i].t-=dt;if(PENDING[i].t<=0){const f=PENDING[i].fn;PENDING.splice(i,1);f()}}}
 function updRemotes(dt){const k=clamp(dt*10,0,1);for(const r of REMOTES.values()){if(!r.rig)continue;const far=Math.hypot(r.tx-r.x,r.tz-r.z)>30;r.x=far?r.tx:lerp(r.x,r.tx,k);r.y=far?r.ty:lerp(r.y,r.ty,k);r.z=far?r.tz:lerp(r.z,r.tz,k);r.ry+=angDiff(r.ry,r.try)*k;
   if(r.atk>=0){r.atk+=dt*2.6;if(r.atk>1)r.atk=-1}r.rig.g.position.set(r.x,r.y,r.z);r.rig.g.rotation.y=r.ry;const pry=r.pry??r.ry;r.turnR=lerp(r.turnR||0,angDiff(pry,r.ry)/Math.max(dt,.001)/8,clamp(dt*8,0,1));r.pry=r.ry;animRig(r.rig,{spd:r.mv/7,atk:r.atk,ranged:r.atkRanged,cast:r.cs,dead:r.dead,combat:!!r.cb,combo:r.co|0,air:r.y>groundH(r.x,r.z)+.3,vy:(r.y-(r.py??r.y))/Math.max(dt,.001),hurt:false,turn:r.turnR,onStep:()=>{if(Math.abs(r.x-camTarget.x)<40)dustFx(r.x,r.z,2)}},dt);r.py=r.y}}
-let lightT=0,dunF=0;
+let lightT=0,dunF=0,drkF=0;const FOG_D3=new THREE.Color(0x3a1408),FOG_DRK=new THREE.Color(0x8a6050),DRK_SUN=new THREE.Color(0xff9a5a);
 let lodAcc=-1;
 function updWorld(dt,t){
   /* lights pool */
@@ -136,10 +138,12 @@ function updWorld(dt,t){
   /* dungeon ambience */
   const inD=camTarget.x>700;dunF=lerp(dunF,inD?1:0,clamp(dt*3,0,1));if(Math.abs(dunF-(inD?1:0))<.01)dunF=inD?1:0;
   updDayNight();WIND.value=t;
-  scene.fog.color.copy(FOG_DAY).lerp(camTarget.x>1250?FOG_D2:FOG_DUN,dunF);scene.background.copy(scene.fog.color);scene.fog.near=lerp(lerp(70,40,DAY.night),6,dunF);scene.fog.far=lerp(lerp(340,220,DAY.night),58,dunF);hemi.intensity=lerp(DAY.hemiInt,.22,dunF);sun.intensity=lerp(DAY.sunInt,.12,dunF);sun.color.copy(DAY.sunCol);fill.intensity=lerp(.55*(1-DAY.night*.5),0,dunF);skyMat.uniforms.dun.value=dunF;clouds.visible=dunF<.99;clouds.children.forEach(c=>c.children.forEach(m=>{m.material.emissiveIntensity=.35*(1-DAY.night*.8)}));
+  scene.fog.color.copy(FOG_DAY).lerp(camTarget.x>1250?FOG_D2:FOG_DUN,dunF);scene.background.copy(scene.fog.color);scene.fog.near=lerp(lerp(70,40,DAY.night),6,dunF);scene.fog.far=lerp(lerp(340,220,DAY.night),58,dunF);hemi.intensity=lerp(DAY.hemiInt,.22,dunF);sun.intensity=lerp(DAY.sunInt,.12,dunF);sun.color.copy(DAY.sunCol);fill.intensity=lerp(.55*(1-DAY.night*.5),0,dunF);skyMat.uniforms.dun.value=dunF;clouds.visible=dunF<.99;
+  {const inK=camTarget.x<-1000;drkF=lerp(drkF,inK?1:0,clamp(dt*2,0,1));if(Math.abs(drkF-(inK?1:0))<.005)drkF=inK?1:0;if(drkF>0){scene.fog.color.lerp(FOG_DRK,drkF*(.85-DAY.night*.4));scene.background.copy(scene.fog.color);scene.fog.near=lerp(scene.fog.near,28,drkF);scene.fog.far=lerp(scene.fog.far,250,drkF);sun.color.lerp(DRK_SUN,drkF*.55);hemi.intensity*=1-.08*drkF;skyMat.uniforms.dun.value=Math.max(skyMat.uniforms.dun.value,drkF*.3)}}
+  /* Hart van de Vulkaan: warm lavalicht */if(camTarget.x>1700&&dunF>0){scene.fog.color.lerp(FOG_D3,dunF);scene.background.copy(scene.fog.color);scene.fog.far=lerp(scene.fog.far,90,dunF);hemi.intensity=lerp(hemi.intensity,.8,dunF);fill.color.setHex(0xff7a3a);fill.intensity=.7*dunF;sun.intensity=lerp(sun.intensity,.35,dunF)}else fill.color.setHex(0x8fb4ff);clouds.children.forEach(c=>c.children.forEach(m=>{m.material.emissiveIntensity=.35*(1-DAY.night*.8)}));
   {const B=fireflies.userData.base,P2=fireflies.geometry.attributes.position;for(let i=0;i<B.length;i+=1){P2.setY(i,B[i][1]+Math.sin(t*1.3+i)*.35);P2.setX(i,B[i][0]+Math.sin(t*.7+i*2.1)*.6)}P2.needsUpdate=true;const E=embers.userData.base,P3=embers.geometry.attributes.position;for(let i=0;i<E.length;i++){P3.setY(i,.3+((E[i][1]+t*.9+i*.37)%6.5));P3.setX(i,E[i][0]+Math.sin(t*.8+i)*.4)}P3.needsUpdate=true}
   torchLight.intensity=dunF*26;torchLight.position.set(camTarget.x,camTarget.y+3.2,camTarget.z);
-  sun.position.copy(camTarget).add(SUN_OFF);sun.target.position.copy(camTarget);sky.position.copy(camera.position);waterMat.uniforms.time.value=t;ambientFx(dt,camTarget.x,camTarget.z);
+  sun.position.copy(camTarget).add(SUN_OFF);sun.target.position.copy(camTarget);sky.position.copy(camera.position);waterMat.uniforms.time.value=t;ambientFx(dt,camTarget.x,camTarget.z);drakeAmbient(dt);
   lodAcc+=dt;if(lodAcc>.3||lodAcc<0){lodAcc=0;updEnvLod(camTarget.x,camTarget.z,GFX.q==='hoog'?110:GFX.q==='middel'?80:50)}
   clouds.children.forEach((c,i)=>{c.position.x+=dt*(1.5+i%3);if(c.position.x>520)c.position.x=-520});
   for(const f of flags)f.rotation.y=Math.sin(t*2+f.position.x)*.25;
@@ -151,7 +155,7 @@ function updWorld(dt,t){
 function updCamera(dt){
   cam.dist=lerp(cam.dist,cam.tdist,clamp(dt*8,0,1));cam.drag=Math.max(0,cam.drag-dt);
   const tx=ME.pos.x,ty=ME.pos.y+1.7,tz=ME.pos.z;if(snapCam){camTarget.set(tx,ty,tz);snapCam=false}else camTarget.lerp(_v.set(tx,ty,tz),clamp(dt*14,0,1));
-  const inD=camTarget.x>700;let dist=inD?Math.min(cam.dist,14):cam.dist;const cp=Math.cos(cam.pitch);
+  const inD=camTarget.x>700;let dist=inD?Math.min(cam.dist,camTarget.x>1700?20:14):cam.dist;const cp=Math.cos(cam.pitch);
   {const ox=Math.sin(cam.yaw)*cp,oy=Math.sin(cam.pitch),oz=Math.cos(cam.yaw)*cp;let lim=dist;for(let f=.3;f<=1.001;f+=.1){const d=dist*f;if(camBlocked(camTarget.x+ox*d,camTarget.y+oy*d,camTarget.z+oz*d)){lim=Math.max(2.5,d-1.2);break}}cam.cdist=lerp(cam.cdist||lim,lim,clamp(dt*(lim<(cam.cdist||lim)?12:3),0,1));dist=Math.min(dist,cam.cdist)}
   camera.position.set(camTarget.x+Math.sin(cam.yaw)*cp*dist,camTarget.y+Math.sin(cam.pitch)*dist,camTarget.z+Math.cos(cam.yaw)*cp*dist);
   const gh=groundH(camera.position.x,camera.position.z)+.6;if(camera.position.y<gh)camera.position.y=gh;camera.lookAt(camTarget)}
@@ -217,6 +221,6 @@ function loop(){requestAnimationFrame(loop);FRAME++;lastTick=performance.now();c
   if(!window.__NORENDER){if(GFX.post)composer.render();else renderer.render(scene,camera)}updPlates(W,H);updFloat(dt,W,H)}
 let snapAcc=0;const perf={t:0,n:0};
 function perfWatch(dt){if(S.mode!=='play'||S.noPerf||GFX.auto>=2||GFX.q==='laag')return;perf.t+=dt;perf.n++;if(perf.t>=5){const avg=perf.t/perf.n;perf.t=perf.n=0;if(avg>.042){GFX.q=GFX.q==='hoog'?'middel':'laag';GFX.auto++;applyGfx();$('#bGfx').textContent='Grafiek: '+GFX_N[GFX.q];log('De grafische kwaliteit is verlaagd naar '+GFX_N[GFX.q].toLowerCase()+' voor soepeler spelen (aan te passen in het menu).','sys')}}}
-window.__V={PERF,DUN_ENTRY,batchStatic,NODES,learnTalent,talentSkills,talentFree,TM,respecTalents,respecCost,bar,useAbility,execAbility:typeof execAbility!=='undefined'?execAbility:null,refreshTalent,openPanel,gainXp,TALENTS,animRig,ambientFx,lvlFx,buildBar,projImpact,projTrail,novaFx,whirlFx,hitFx,healFx,twirlFx,shoutFx,muzzleFx,updParticles,emitP,FXC,AMBIENT,refreshBag,log,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
+window.__V={hitDmg,monDmg,monHp,groundH,cam,killMon,dealDamage,myId,coneFx,breathFx,fireTele,DRK,D3,D3_HALL,DRK_GATE,DRK_ENTRY,VOLC,VOLC_DOOR,DRK_CAMP,makeLegendary,enterDrake,enterVolcano,leaveVolcano,leaveDrake,drkLava,dragonAI,DPOOLS,PERF,DUN_ENTRY,batchStatic,NODES,learnTalent,talentSkills,talentFree,TM,respecTalents,respecCost,bar,useAbility,execAbility:typeof execAbility!=='undefined'?execAbility:null,refreshTalent,openPanel,gainXp,TALENTS,animRig,ambientFx,lvlFx,buildBar,projImpact,projTrail,novaFx,whirlFx,hitFx,healFx,twirlFx,shoutFx,muzzleFx,updParticles,emitP,FXC,AMBIENT,refreshBag,log,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
 loadSave();startNet();netStatus();$('#loadMsg').textContent='Karaktermodellen worden geladen';
-Promise.all([preloadModels(),buildEnv()]).then(()=>{try{ambientInit();if(!window.__NOBATCH)batchStatic()}catch(e){console.warn('batching mislukt',e)}showMenu();$('#loading').hidden=true;loop()});
+Promise.all([preloadModels(),buildEnv(),buildDrakeEnv()]).then(()=>{try{ambientInit();if(!window.__NOBATCH)batchStatic()}catch(e){console.warn('batching mislukt',e)}showMenu();$('#loading').hidden=true;loop()});

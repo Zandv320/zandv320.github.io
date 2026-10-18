@@ -74,7 +74,15 @@ const MON={
   vuurimp:{n:'Vuurimp',kind:'imp',col:0xc8401a,lv:[10,11],aggro:15,spd:6.2,size:.8,xpM:1,ranged:16,proj:'fire'},
   lavagolem:{n:'Lavagolem',kind:'golem',col:0x3a302a,lv:[11,12],aggro:12,spd:4.4,size:1.35,xpM:1.5,hpM:1.7},
   ignaroth:{n:'Ignaroth de Smeltende',kind:'golem',col:0x2a201c,lv:[12,12],aggro:18,spd:4.8,size:2.6,boss:1,elite:1,xpM:1.2,respawn:120,fire:1,hpM:1.5},
-  vonk:{n:'Vonkimp',kind:'imp',col:0xff7a2a,lv:[10,10],aggro:40,spd:7,size:.65,xpM:.3,ranged:14,proj:'fire',add:1}
+  vonk:{n:'Vonkimp',kind:'imp',col:0xff7a2a,lv:[10,10],aggro:40,spd:7,size:.65,xpM:.3,ranged:14,proj:'fire',add:1},
+  /* Drakenrijk (niveau 13–20) */
+  raptor:{n:'Asraptor',kind:'raptor',col:0x5a5550,lv:[13,14],aggro:15,spd:7.4,size:1.1,xpM:1},
+  vleer:{n:'Vuurvleermuis',kind:'bat',col:0x3a1410,lv:[14,15],aggro:15,spd:6.8,size:.9,xpM:1,hover:1.6},
+  welp:{n:'Drakenwelp',kind:'dragon',col:0xb83a1a,lv:[15,16],aggro:15,spd:6.2,size:1.25,xpM:1.05,ranged:14,proj:'fire'},
+  drakonier:{n:'Drakenpriester',kind:'human',col:0x8a2a1a,lv:[16,17],aggro:17,spd:5.4,size:1,xpM:1.1,ranged:18,proj:'fire',wt:'staf'},
+  lavadrake:{n:'Lavadrake',kind:'trex',col:0x2a1a16,lv:[17,18],aggro:16,spd:5.8,size:2.3,elite:1,xpM:1,hpM:1.2,respawn:75},
+  broedling:{n:'Vuurbroedling',kind:'dragon',col:0xd85a1a,lv:[19,19],aggro:40,spd:7.2,size:.95,xpM:.3,ranged:12,proj:'fire',add:1},
+  vyraxion:{n:'Vyraxion de Asvorst',kind:'dragon',col:0x8a1a12,lv:[22,22],aggro:26,spd:6,size:4.2,boss:1,elite:1,dragon:1,dmgM:1.6,xpM:1.6,hpM:4,respawn:300,fire:1}
 };
 const QUESTS=[
   {id:'q1',n:'Everplaag',giver:'wilma',lvl:1,txt:'Die wilde evers ploegen mijn akkers om voor ik ze kan zaaien! Jaag er vijf weg van de velden ten zuiden van het dorp, alsjeblieft.',obj:{kill:['ever'],n:5,lbl:'Wilde Ever gedood'},xp:160,gold:6,item:1,done:'Ha! Eindelijk rust op mijn akkers. Neem dit, het lag nog in de schuur.'},
@@ -87,6 +95,12 @@ const QUESTS=[
   {id:'ql3',n:'Proef de Keuken',giver:'wilma',lvl:2,req:'ql2',txt:'Een hongerige boer is een luie boer. Bak twee gegrilde vissen bij het kookvuur naast de fontein. Gegrilde vis geeft je trouwens extra levenspunten.',obj:{craft:'gvis',n:2,lbl:'Gegrilde vis gebakken'},xp:220,gold:10,life:{koken:90},done:'Heerlijk! Je wordt nog eens een echte kok.'},
   {id:'q6',n:'De Knekelkoning',giver:'anselm',lvl:8,req:'q5',txt:'Kaal-Morath, de Knekelkoning, zit op zijn troon diep in de crypte. Zolang hij bestaat, zullen de doden blijven opstaan. Verzamel bondgenoten en versla hem.',obj:{kill:['boss'],n:1,lbl:'Kaal-Morath verslagen'},xp:2400,gold:80,item:3,done:'Je hebt het onmogelijke gedaan. Zilverbron zal je naam bezingen, held!'},
   {id:'q7',n:'Vuur in de Diepte',giver:'dorrik',lvl:10,txt:'Sinds de mijn openbrak naar de Vuurgrot, kruipen er imps en lavagolems naar buiten. Ga de grot in, hier achter mij, en versla er tien.',obj:{kill:['vuurimp','lavagolem'],n:10,lbl:'Vuurwezens verslagen'},xp:2600,gold:60,item:2,done:'Dat koelt de boel een beetje af. Maar het hart van de grot gloeit nog altijd…'},
+  {id:'d1',n:'Asraptors op de Vlakte',giver:'vaelra',lvl:13,txt:'Welkom in het Drakenrijk, avonturier. Eerst het begin: roedels Asraptors jagen op alles wat beweegt, ten noorden van ons kamp. Dun ze uit: tien stuks.',obj:{kill:['raptor'],n:10,lbl:'Asraptor gedood'},xp:3200,gold:70,item:2,done:'Snel en vals, die beesten. Goed werk. Nu kunnen we verder kijken.'},
+  {id:'d2',n:'Vuur in de Lucht',giver:'vaelra',lvl:14,req:'d1',txt:'Boven de Vuurvelden, ten noorden van de vulkaan, zwermen Vuurvleermuizen. Ze steken ons kamp elke nacht bijna in brand. Haal er acht uit de lucht.',obj:{kill:['vleer'],n:8,lbl:'Vuurvleermuis gedood'},xp:3700,gold:80,item:2,done:'Eindelijk een nacht zonder vonkenregen. Dank je.'},
+  {id:'d3',n:'Het Broed van Vyraxion',giver:'vaelra',lvl:15,req:'d2',txt:'In de nesten ten zuiden van de vulkaan zijn de eieren van Vyraxion uitgekomen. Als die welpen opgroeien zijn we verloren. Versla tien Drakenwelpen.',obj:{kill:['welp'],n:10,lbl:'Drakenwelp verslagen'},xp:4300,gold:95,item:2,done:'Het broed is uitgedund. Maar de moeder… die zal dit niet vergeten.'},
+  {id:'d4',n:'De Drakenpriesters',giver:'vaelra',lvl:16,req:'d3',txt:'Bij de schrijnen in het oosten aanbidden fanatieke Drakenpriesters de Asvorst en voeden hem met hun vuur. Breek hun macht: versla er acht.',obj:{kill:['drakonier'],n:8,lbl:'Drakenpriester verslagen'},xp:4900,gold:110,item:3,done:'Hun gezangen zwijgen. Je bent sterker dan ik dacht.'},
+  {id:'d5',n:'Reuzen van Lava',giver:'vaelra',lvl:17,req:'d4',txt:'Op de flanken van de vulkaan stampen Lavadrakes rond: enorme beesten met een huid van gestold gesteente. Versla er drie. Neem drankjes mee.',obj:{kill:['lavadrake'],n:3,lbl:'Lavadrake verslagen'},xp:5600,gold:130,item:3,done:'Drie! Je bent klaar voor wat komen gaat.'},
+  {id:'d6',n:'Het Hart van de Vulkaan',giver:'vaelra',lvl:19,req:'d5',txt:'Halverwege de westflank van de vulkaan ligt de ingang naar zijn hart. Daar ligt Vyraxion de Asvorst op haar schat. Ze vliegt op, spuwt vuur en roept haar broed. Ontwijk haar adem, blijf uit het vuur, en versla haar. Wie haar velt, krijgt een legendarisch wapenstuk uit haar schat.',obj:{kill:['vyraxion'],n:1,lbl:'Vyraxion verslagen'},xp:12000,gold:400,item:3,done:'Vyraxion is gevallen! Het Drakenrijk is vrij, en jouw naam wordt in elk lied bezongen, Drakendoder.'},
   {id:'q8',n:'Het Smeltende Hart',giver:'dorrik',lvl:11,req:'q7',txt:'Diep in de grot woont Ignaroth, een golem van lava zo oud als de bergen. Zolang hij leeft, smelt de grot steeds verder door. Neem vrienden mee en dooft zijn vuur.',obj:{kill:['ignaroth'],n:1,lbl:'Ignaroth verslagen'},xp:5200,gold:150,item:3,done:'Ignaroth is gedoofd! De Asbergen zijn je eeuwig dankbaar, held.'}
 ];
 const NPCS=[
@@ -96,9 +110,10 @@ const NPCS=[
   {id:'anselm',n:'Broeder Anselm',t:'Priester van het Licht',x:22,z:12,ry:-Math.PI/2,look:{skin:0xe2b48e,hair:0xd9d9d9,chest:0xe8e2d0,pants:0xd0c8b0,cape:0xd9b44a,wt:'staf',beard:1},hi:'Moge het Licht je pad verlichten, kind.'},
   {id:'bram',n:'Handelaar Bram',t:'Koopman',x:-8,z:-10,ry:0,look:{skin:0xd99b7a,hair:0xb5541c,chest:0x8a5a2a,pants:0x4a3a2a,wt:'none',beard:1,dwarf:1},hi:'Drankjes, vers van de ketel! En ik koop al je oude rommel.',shop:1},
   {id:'dorrik',n:'Mijnwerker Dorrik',t:'Mijnbaas',x:198,z:-166,ry:Math.PI*.2,look:{skin:0xd99b7a,hair:0x6b4a2b,chest:0x6a5a4a,pants:0x3a3028,wt:'bijl',beard:1,dwarf:1,helm:1},hi:'Pas op voor de hitte, vriend. Achter mij ligt de Vuurgrot van Ignaroth.'},
+  {id:'vaelra',n:'Vaelra de Drakenjager',t:'Drakenjagerskamp',x:-1736,z:20,ry:-Math.PI/2,look:{skin:0xd9a98a,hair:0x9a2a1a,chest:0x6a2a1a,pants:0x3a2a20,cape:0x6a1a10,wt:'boog'},hi:'Welkom in het Drakenrijk. Blijf uit de lava, en kijk altijd omhoog.'},
   {id:'thorne',n:'Wachter Thorne',t:'Cryptewachter',x:-160,z:-196,ry:Math.PI*.85,look:{skin:0x6f9a4a,hair:0x1d1d1d,chest:0x5a5a5a,pants:0x2a2a2a,cape:0x5a1a1a,wt:'bijl',helm:1,tusks:1},hi:'De crypte achter mij is geen plek voor zwakkelingen. Ga met een groep, of ga helemaal niet.'}
 ];
-const RARITY=[{n:'Gewoon',c:'#ffffff'},{n:'Ongewoon',c:'#2bd94a'},{n:'Zeldzaam',c:'#3b8cff'},{n:'Episch',c:'#b65cff'}];
+const RARITY=[{n:'Gewoon',c:'#ffffff'},{n:'Ongewoon',c:'#2bd94a'},{n:'Zeldzaam',c:'#3b8cff'},{n:'Episch',c:'#b65cff'},{n:'Legendarisch',c:'#ff8000'}];
 const SLOTS=['hoofd','borst','handen','benen','voeten','ring','wapen'];
 const SLOT_NL={wapen:'Wapen',hoofd:'Hoofd',borst:'Borst',handen:'Handen',benen:'Benen',voeten:'Voeten',ring:'Vinger'};
 const MAT={krijger:['IJzeren','Stalen','Maliën','Gehavende'],magier:['Zijden','Linnen','Runen','Sterrenstof'],jager:['Leren','Wolfsleren','Schubben','Valkenveren']};

@@ -100,10 +100,10 @@ async function startNet(){
       Object.assign(r,{n:String(pr.n||'Held').slice(0,14),lvl:pr.l|0,race:RACES[pr.ra]?pr.ra:'mens',cls:CLASSES[pr.c]?pr.c:'krijger',hp:pr.hp|0,mhp:pr.mh|0,dead:!!pr.dd,tx:+pr.x||0,ty:+pr.y||0,tz:+pr.z||0,try:+pr.ry||0,mv:+pr.mv||0,cs:!!pr.cs,g:pr.g||'',eqv:pr.e||[],pvp:!!pr.pv,honor:pr.ho|0,cb:!!pr.cb,co:pr.co|0});
       if(pr.ac!==r.lastAc){r.lastAc=pr.ac;r.atk=0;r.atkRanged=!!pr.rg}
       let look=null;if(pr.lk&&typeof pr.lk==='object'){look={};for(const[k,v]of Object.entries(pr.lk)){if(k.length<12&&(typeof v==='number'||typeof v==='boolean'||(typeof v==='string'&&v.length<12)))look[k]=v}
-        /* uitrusting: alleen de velden die 3d_dress kent, met lengtes begrensd */const sanD=(d)=>{if(!d||typeof d!=='object')return null;const o={c:+d.c||0,r:clamp(d.r|0,0,3)};if(typeof d.p==='string'&&d.p.length<40&&/^[\w.-]+$/.test(d.p))o.p=d.p;if(typeof d.g==='string'&&d.g.length<120&&/^models\/[\w./-]+\.glb$/.test(d.g))o.g=d.g;if(typeof d.s==='number'&&d.s>0&&d.s<10)o.s=d.s;if(Array.isArray(d.ro)&&d.ro.length===3&&d.ro.every(x=>typeof x==='number'))o.ro=d.ro;return o};
+        /* uitrusting: alleen de velden die 3d_dress kent, met lengtes begrensd */const sanD=(d)=>{if(!d||typeof d!=='object')return null;const o={c:+d.c||0,r:clamp(d.r|0,0,4)};if(typeof d.p==='string'&&d.p.length<40&&/^[\w.-]+$/.test(d.p))o.p=d.p;if(typeof d.g==='string'&&d.g.length<120&&/^models\/[\w./-]+\.glb$/.test(d.g))o.g=d.g;if(typeof d.s==='number'&&d.s>0&&d.s<10)o.s=d.s;if(Array.isArray(d.ro)&&d.ro.length===3&&d.ro.every(x=>typeof x==='number'))o.ro=d.ro;return o};
         if(pr.lk.gear&&typeof pr.lk.gear==='object'){look.gear={};for(const sl of ['hoofd','borst','handen','benen','voeten'])look.gear[sl]=sanD(pr.lk.gear[sl])}look.wvis=sanD(pr.lk.wvis);look.race=r.race;if(!['zwaard','bijl','staf','boog','ak','none'].includes(look.wt))look.wt=CLASSES[r.cls].wt}
       if(!look)look=playerLook({race:r.race,cls:r.cls,hair:pr.h|0,eq:{wapen:r.eqv[0]?{wt:r.eqv[0],r:r.eqv[1]|0}:null,borst:r.eqv[2]>=0?{r:r.eqv[2]}:null,hoofd:r.eqv[3]?{}:null,handen:r.eqv[4]?{}:null}});
-      const key=JSON.stringify(look);if(key!==r.lookKey){r.lookKey=key;if(r.rig)scene.remove(r.rig.g);r.rig=buildHumanoid(look);r.rig.g.userData.ent=r;r.rig.g.position.set(r.x,r.y,r.z);scene.add(r.rig.g)}}
+      r.wr=look.wr|0;const key=JSON.stringify(look);if(key!==r.lookKey){r.lookKey=key;if(r.rig)scene.remove(r.rig.g);r.rig=buildHumanoid(look);r.rig.g.userData.ent=r;r.rig.g.position.set(r.x,r.y,r.z);scene.add(r.rig.g)}}
     for(const r of[...REMOTES.values()])if(!seen.has(r.id))removeRemote(r,true);
     netStatus();refreshParty()});
   room.on('chat',m=>{const d=m.data||{};if(typeof d.t!=='string')return;const r=REMOTES.get(m.peer);const who=r?r.n:'Iemand';
@@ -119,11 +119,12 @@ async function startNet(){
   room.on('pkill',m=>{const d=m.data||{};if(S.mode!=='play')return;const victim=esc(String(d.n||'Iemand').slice(0,14));
     if(d.by===myId()){P.honor=(P.honor||0)+1;const r=REMOTES.get(m.peer);const g=Math.max(2,(r?r.lvl:1)*2);P.gold+=g;log('⚔ Je hebt '+victim+' verslagen in een gevecht! +1 eer, +'+g+' goud','sys',true);banner('Overwinning!',victim+' is verslagen',2);sfx('lvl');saveGame()}
     else{const k=REMOTES.get(d.by);log('⚔ '+(k?esc(k.n):'Iemand')+' versloeg '+victim+'.','err',true)}});
-  room.on('bossmsg',m=>{const d=m.data||{};if(typeof d.t==='string'&&S.mode==='play'&&ME.pos.x>700&&((d.b==='ignaroth')===(ME.pos.x>1250)))bossSay(d.t.slice(0,90),d.b)});
+  room.on('bossmsg',m=>{const d=m.data||{};if(typeof d.t==='string'&&S.mode==='play'&&ME.pos.x>700&&(d.b==='vyraxion'?ME.pos.x>1700:d.b==='ignaroth'?(ME.pos.x>1250&&ME.pos.x<1700):ME.pos.x<1250))bossSay(d.t.slice(0,90),d.b)});
   room.on('fx',m=>{if(S.mode!=='play')return;const d=m.data||{};const r=REMOTES.get(m.peer);
     if(d.k==='p'&&Array.isArray(d.f)){const from=new THREE.Vector3(+d.f[0],+d.f[1],+d.f[2]);let tg=null;if(d.m)tg=MONMAP.get(d.m);else if(d.p)tg=d.p===myId()?'me':REMOTES.get(d.p);else if(d.x!=null)tg=[+d.x,groundH(+d.x,+d.z),+d.z];if(tg&&PCOL[d.t])proj(d.t,from,tg,d.t==='arrow'?46:d.t==='meteor'?34:d.t==='kogel'?95:22,null)}
     else if(d.k==='r'){const x=+d.x,z=+d.z,c=+d.c;if(c===0xdde6ff)whirlFx(x,groundH(x,z),z);else if(c===0x9ae0ff)novaFx(x,z);else if(c===0xffc040)shoutFx(x,groundH(x,z),z);else if(c===0xffd36a)rainFx(x,z);else ringFx(x,z,clamp(+d.r,1,12),c||0xffffff,.5)}
     else if(d.k==='tw'){twirlFx(+d.x,groundH(+d.x,+d.z)+1,+d.z,0xc08aff)}
+    else if(drakeFxNet(d)){}
     else if(d.k==='tele')teleFx(+d.x,+d.z,clamp(+d.r,1,12),clamp(+d.d,.2,4));
     else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);lvlFx(+d.x,groundH(+d.x,+d.z),+d.z);if(r)log(esc(r.n)+' heeft een niveau bereikt!','sys',true)}});
   room.on('arena',m=>{if(S.mode!=='play')return;arenaNet(m.peer,m.data||{})});
@@ -150,16 +151,16 @@ let fullSnap=true,snapTick=0;
 function sendSnap(){
   if(!room||!room.isHost()||room.count()<2)return;snapTick++;const full=fullSnap||snapTick%20===0;fullSnap=false;const l=[];
   for(const m of MONS){const fl=(m.dead?1:0)|(m.evade?2:0)|(m.root>0||m.slow>0?4:0);const s=m.sent;
-    if(!full&&s&&Math.abs(s[0]-m.x)<.05&&Math.abs(s[1]-m.z)<.05&&s[2]===m.hp&&s[3]===fl&&s[4]===m.ac&&s[5]===m.mv&&s[6]===m.tgt)continue;
-    m.sent=[m.x,m.z,m.hp,fl,m.ac,m.mv,m.tgt];
-    const e=[m.id,Math.round(m.x*100)/100,Math.round(m.z*100)/100,Math.round(m.ry*100)/100,Math.max(0,Math.round(m.hp)),fl,m.ac,m.mv,(m.t.boss||m.add)?m.mhp:0,m.add?m.type:0,m.add?m.lvl:0,m.tgt||0];l.push(e)}
+    if(!full&&s&&Math.abs(s[0]-m.x)<.05&&Math.abs(s[1]-m.z)<.05&&s[2]===m.hp&&s[3]===fl&&s[4]===m.ac&&s[5]===m.mv&&s[6]===m.tgt&&s[7]===(m.flyH|0))continue;
+    m.sent=[m.x,m.z,m.hp,fl,m.ac,m.mv,m.tgt,m.flyH|0];
+    const e=[m.id,Math.round(m.x*100)/100,Math.round(m.z*100)/100,Math.round(m.ry*100)/100,Math.max(0,Math.round(m.hp)),fl,m.ac,m.mv,(m.t.boss||m.add)?m.mhp:0,m.add?m.type:0,m.add?m.lvl:0,m.tgt||0,Math.round((m.flyH||0)*10)/10];l.push(e)}
   if(l.length||full)netEmit('ms',{f:full?1:0,l})}
 function applySnap(d){if(!d||!Array.isArray(d.l))return;const now=performance.now();const ids=d.f?new Set():null;
   for(const e of d.l){if(!Array.isArray(e))continue;let m=MONMAP.get(e[0]);if(ids)ids.add(e[0]);
     if(!m){if(e[9]&&MON[e[9]]&&!(e[5]&1)){m=makeMon({id:e[0],type:e[9],lvl:e[10]|0||8,x:+e[1],z:+e[2]});burst(m.x,1,m.z,0x7aff5a,30,4)}else continue}
     m.nx=+e[1];m.nz=+e[2];m.nry=+e[3];const hp=+e[4];if(!(now<m.predUntil&&hp>m.hp))m.hp=hp;const dead=!!(e[5]&1);
     if(m.dead&&!dead){respawnMon(m);m.lootDone=0}if(!m.dead&&dead){m.lootDone=0}m.dead=dead;m.evade=!!(e[5]&2);
-    if(e[6]!==m.ac){m.ac=e[6];m.atk=0}m.mv=+e[7];if(e[8])m.mhp=+e[8];m.tgt=e[11]||null;m.seen=now}
+    if(e[6]!==m.ac){m.ac=e[6];m.atk=0}m.mv=+e[7];if(e[8])m.mhp=+e[8];m.tgt=e[11]||null;m.flyH=clamp(+e[12]||0,0,20);m.seen=now}
   if(ids)for(const m of[...MONS])if(m.add&&!ids.has(m.id))removeMon(m)}
 let presT=0,lastPres='',presSkip=0;
 function sendPresence(dt){if(!room||!room.connected())return;presT-=dt;if(presT>0)return;presT=.1;

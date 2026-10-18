@@ -64,7 +64,7 @@ function mesh(geo,m,x=0,y=0,z=0,par=null,cast=true,recv=true){const o=new THREE.
 /* ---------- height field ---------- */
 const WSIZE=640,SEG=200,CELL=WSIZE/SEG,HN=SEG+1;
 const LAKE={x:-150,z:60,r:46};
-const PATHS=[[[0,0],[0,-60],[-12,-120],[-80,-178],[-158,-204]],[[0,0],[62,-32],[128,-88],[176,-140],[200,-168]],[[0,0],[0,70],[8,140]],[[0,0],[-62,22],[-104,44]]];
+const PATHS=[[[0,60],[40,72],[84,80],[150,88],[228,100],[262,104]],[[0,0],[0,-60],[-12,-120],[-80,-178],[-158,-204]],[[0,0],[62,-32],[128,-88],[176,-140],[200,-168]],[[0,0],[0,70],[8,140]],[[0,0],[-62,22],[-104,44]]];
 function segDist(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-ax-dx*t,pz-az-dz*t)}
 function pathDist(x,z){let m=1e9;for(const p of PATHS)for(let i=0;i<p.length-1;i++){const d=segDist(x,z,p[i][0],p[i][1],p[i+1][0],p[i+1][1]);if(d<m)m=d}return m}
 const ARENA={x:92,z:34,r:22};const TOWN={x:0,z:0,r:50},CAMP={x:150,z:-100,r:26},CRYPT={x:-172,z:-222},FARM={x:10,z:125},CAVE={x:206,z:-182};
@@ -74,7 +74,7 @@ function baseH(x,z){
   h+=Math.max(0,1-Math.hypot(x-200,z+190)/90)*14;
   const e=Math.max(Math.abs(x),Math.abs(z));if(e>235)h+=Math.pow(e-235,1.35)*.45;
   return h}
-const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:ARENA.x,z:ARENA.z,r:34}];
+const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:219,z:100,r:18},{x:ARENA.x,z:ARENA.z,r:34}];
 for(const f of FLAT)if(f.h==null)f.h=baseH(f.x,f.z);
 function rawH(x,z){
   let h=baseH(x,z);
@@ -86,14 +86,14 @@ const HM=new Float32Array(HN*HN);
 for(let i=0;i<HN;i++)for(let j=0;j<HN;j++)HM[i*HN+j]=rawH(-WSIZE/2+j*CELL,-WSIZE/2+i*CELL);
 const DUN={x:1000,z:0,c:6};
 function groundH(x,z){
-  if(x>700)return 0;
+  if(x>700)return 0;if(x<-1000)return drkH(x,z);
   const fx=clamp((x+WSIZE/2)/CELL,0,SEG-.001),fz=clamp((z+WSIZE/2)/CELL,0,SEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i;
   const a=HM[i*HN+j],b=HM[i*HN+j+1],c=HM[(i+1)*HN+j],d=HM[(i+1)*HN+j+1];
   return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
 function inForest(x,z){return z<-52&&z>-262&&x<112&&x>-250}
 function zoneAt(x,z){
-  if(x>1250)return'Vuurgrot van Ignaroth';if(x>700)return'Crypte van Kaal-Morath';
-  if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Asbergen';
+  if(x>1700)return'Hart van de Vulkaan';if(x<-1000)return drkZone(x,z);if(x>1250)return'Vuurgrot van Ignaroth';if(x>700)return'Crypte van Kaal-Morath';
+  if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Asbergen';if(x>196&&Math.abs(z-100)<26)return'Drakenpas';
   if(Math.hypot(x-ARENA.x,z-ARENA.z)<ARENA.r+8)return'Arena van Zilverbron';
   if(Math.hypot(x,z)<58)return'Zilverbron';
   if(Math.hypot(x-CRYPT.x,z-CRYPT.z)<70)return'Knekelheuvels';
@@ -162,11 +162,12 @@ function addCol(x,z,r,tree){const k=Math.floor(x/10)+','+Math.floor(z/10);let a=
 function camBlocked(x,y,z){if(x>700)return false;const cx=Math.floor(x/10),cz=Math.floor(z/10);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){if(!c.tree)continue;const R=c.tree*c.r;if((x-c.x)**2+(z-c.z)**2<R*R&&y<groundH(c.x,c.z)+c.r*17)return true}}for(const b of BOXES)if(x>b.x0-.3&&x<b.x1+.3&&z>b.z0-.3&&z<b.z1+.3&&y<groundH(x,z)+11)return true;return false}
 function addBox(x,z,w,d){BOXES.push({x0:x-w/2,x1:x+w/2,z0:z-d/2,z1:z+d/2})}
 function collide(p,r){
-  if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
+  if(p.x>1700){D3.collide(p,r);return}if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
   const cx=Math.floor(p.x/10),cz=Math.floor(p.z/10);
   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){const dx=p.x-c.x,dz=p.z-c.z,rr=c.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr&&dd>1e-6){const d=Math.sqrt(dd),k=(rr-d)/d;p.x+=dx*k;p.z+=dz*k}}}
   for(const b of BOXES){if(p.x<b.x0-r||p.x>b.x1+r||p.z<b.z0-r||p.z>b.z1+r)continue;const qx=clamp(p.x,b.x0,b.x1),qz=clamp(p.z,b.z0,b.z1),dx=p.x-qx,dz=p.z-qz,dd=dx*dx+dz*dz;
     if(dd>1e-6){const d=Math.sqrt(dd);if(d<r){p.x+=dx/d*(r-d);p.z+=dz/d*(r-d)}}else{const l=p.x-b.x0,rr=b.x1-p.x,t=p.z-b.z0,bb=b.z1-p.z,m=Math.min(l,rr,t,bb);if(m===l)p.x=b.x0-r;else if(m===rr)p.x=b.x1+r;else if(m===t)p.z=b.z0-r;else p.z=b.z1+r}}
+  if(p.x<-1000){drkCollide(p,r);return}
   p.x=clamp(p.x,-255,255);p.z=clamp(p.z,-262,255);
   if(Math.hypot(p.x-LAKE.x,p.z-LAKE.z)<LAKE.r*.86){const a=Math.atan2(p.z-LAKE.z,p.x-LAKE.x);p.x=LAKE.x+Math.cos(a)*LAKE.r*.86;p.z=LAKE.z+Math.sin(a)*LAKE.r*.86}
 }
@@ -249,7 +250,7 @@ house(-22,32,10,8,5.5,0,0x3a5a8a);house(21,32,9,9,6,0,0x8a3b2a);house(-16,-40,8,
   mesh(new THREE.CylinderGeometry(.5,.8,3,8),mat(0xd8d0c0),0,2,0,g);mesh(new THREE.CylinderGeometry(1.6,.4,.5,12),mat(0xd8d0c0),0,3.3,0,g);mesh(new THREE.SphereGeometry(.45,10,8),mat(0xe0e8f0,{m:.8,r:.2}),0,3.9,0,g);addCol(0,0,4.6);void w}
 const fountainDrops=(()=>{const n=160,g=new THREE.BufferGeometry(),p=new Float32Array(n*3),v=[];for(let i=0;i<n;i++){v.push({t:Math.random()*1.2,a:Math.random()*6.28,s:rand(1.2,2.2)})}g.setAttribute('position',new THREE.BufferAttribute(p,3));const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xcfefff,size:.18,transparent:true,opacity:.8}));scene.add(pts);return{g,p,v,n}})();
 /* walls with gaps at the roads */
-{const gaps=PATHS.map(p=>Math.atan2(p[1][1],p[1][0]));const wm=mat(0xa49c8e,{tex:'brick',rx:2,ry:1.2});
+{const gaps=PATHS.filter(p=>!p[0][0]&&!p[0][1]).map(p=>Math.atan2(p[1][1],p[1][0]));const wm=mat(0xa49c8e,{tex:'brick',rx:2,ry:1.2});
   for(let a=0;a<Math.PI*2;a+=Math.PI/48){if(gaps.some(g=>Math.abs(angDiff(a,g))<.13))continue;const x=Math.cos(a)*52,z=Math.sin(a)*52,y=groundH(x,z);const s=mesh(new THREE.BoxGeometry(3.6,3.4,1.2),wm,x,y+1.5,z,scene);s.rotation.y=-a+Math.PI/2;
     if(Math.round(a/(Math.PI/48))%2===0){const c=mesh(new THREE.BoxGeometry(1.2,.8,1.3),wm,x,y+3.6,z,scene);c.rotation.y=-a+Math.PI/2}addCol(x,z,1.8)}
   for(const g of gaps)for(const s of[-1,1]){const a=g+s*.16;tower(Math.cos(a)*52,Math.sin(a)*52,2.2,7.5,0x8a3b2a);addLight(Math.cos(g)*52,groundH(Math.cos(g)*52,Math.sin(g)*52)+5,Math.sin(g)*52,0xffa040,30,22)}}
@@ -397,7 +398,7 @@ function buildDun(def){const M=def.map,R=M.length,C=M[0].length,c=def.c,X=def.x,
   const wim=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(c*.78,1),mat(def.wall,{r:1}),walls.length);walls.forEach(([k,r],i)=>{const[x,z]=pos(k,r);_m.compose(_p.set(x,3.5,z),_q.setFromEuler(_e.set(hash(k,r)*3,hash(r,k)*6,0)),_s.set(1,1.9+hash(k+3,r)*.6,1));wim.setMatrixAt(i,_m)});wim.castShadow=true;wim.receiveShadow=true;grp.add(wim);
   let tor=0;
   for(let r=0;r<R;r++)for(let k=0;k<C;k++){const ch=M[r][k];const[x,z]=pos(k,r);
-    if(def.spawn[ch])spawns.push({t:def.spawn[ch],x,z});
+    if(def.spawn[ch]){const s=def.spawn[ch];spawns.push(typeof s==='string'?{t:s,x,z}:{t:s[0],lv:[s[1],s[2]],x,z})}
     if(ch==='E'){exit.x=x;exit.z=z;entry.x=x;entry.z=z-7}
     if(ch==='~'){const l=mesh(new THREE.PlaneGeometry(c,c).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:new THREE.Color().setRGB(.9,.2,.02)}),x,.04,z,grp,false,false);lava.push(l);if((r*7+k)%3===0)addLight(x,1.2,z,0xff5a20,24,12,true)}
     if(ch==='.'&&((r*5+k*3)%11===0)&&tor<30){tor++;const cr=mesh(new THREE.ConeGeometry(.35,1.6,6),mat(def.crystal,{e:def.crystal,ei:1.6}),x+rand(-2,2),.6,z+rand(-2,2),grp,false);cr.rotation.z=rand(-.4,.4);if(tor%3===0)addLight(cr.position.x,1.5,cr.position.z,def.crystal,22,12)}}

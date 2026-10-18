@@ -55,7 +55,11 @@ function genSpawns(){const r=mulberry(4242),L=[];let n=0;
   area('spin',11,-100,-196,38,(x,z)=>z<-152&&pathDist(x,z)>4&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>45);
   area('rover',9,CAMP.x,CAMP.z,19,(x,z)=>Math.hypot(x-CAMP.x,z-CAMP.z)>4);
   L.push({id:'m'+(n++),type:'grisk',lvl:8,x:CAMP.x+3,z:CAMP.z+4});
-  for(const s of[...DSPAWN,...D2.spawns]){const t=MON[s.t];L.push({id:'m'+(n++),type:s.t,lvl:t.lv[0]+Math.floor(r()*(t.lv[1]-t.lv[0]+1)),x:s.x,z:s.z})}
+  for(const s of[...DSPAWN,...D2.spawns,...D3.spawns]){const t=MON[s.t],lv=s.lv||t.lv;L.push({id:'m'+(n++),type:s.t,lvl:lv[0]+Math.floor(r()*(lv[1]-lv[0]+1)),x:s.x,z:s.z})}
+  /* Drakenrijk */
+  const dk=(x,z)=>!drkLava(x,z)&&riverDist(x,z)[0]>4&&Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)>40&&Math.hypot(x-VOLC.x,z-VOLC.z)>VOLC.r*.7;
+  area('raptor',12,DRK.x-95,DRK.z-95,36,dk);area('vleer',10,DRK.x+5,DRK.z-128,34,dk);area('welp',12,DRK.x+5,DRK.z+122,38,dk);area('drakonier',9,DRK.x+118,DRK.z,40,dk);
+  for(const[u,v]of[[58,-52],[56,54],[-12,-74]]){const x=DRK.x+u,z=DRK.z+v;L.push({id:'m'+(n++),type:'lavadrake',lvl:17+Math.floor(r()*2),x,z})}
   return L}
 function makeMon(sp){const t=MON[sp.type];const m={kind:'mon',id:sp.id,type:sp.type,t,lvl:sp.lvl,sx:sp.x,sz:sp.z,x:sp.x,z:sp.z,y:groundH(sp.x,sp.z),ry:Math.random()*6.28,nx:sp.x,nz:sp.z,nry:0,mhp:monHp(t,sp.lvl),hp:1,tgt:null,threat:{},atkT:1,ac:0,mv:0,slow:0,stun:0,root:0,dead:false,deadT:0,taps:new Set(),wan:{x:sp.x,z:sp.z,t:rand(1,8)},evade:false,atk:-1,loot:null,add:!!t.add,predUntil:0,bt:{stomp:9,bolt:5,sum:0,enr:0},sent:null};
   m.hp=m.mhp;m.nry=m.ry;m.lodk=MONS.length%3;m.rig=buildMonster(sp.type,sp.lvl);m.rig.g.position.set(m.x,m.y,m.z);m.rig.g.userData.ent=m;scene.add(m.rig.g);m.size=(t.size||1);MONS.push(m);MONMAP.set(m.id,m);return m}
@@ -164,12 +168,12 @@ function dealDamage(m,dmg,o={}){
   if(isAuth())authDamage(m,dmg,myId(),o);else{netEmit('dmg',{m:m.id,d:dmg,r:o.root||0,s:o.stun||0});m.hp=Math.max(1,m.hp-dmg);m.predUntil=performance.now()+450;if(o.root)m.root=o.root;if(o.stun)m.stun=o.stun}}
 function authDamage(m,dmg,from,o={}){if(m.dead||m.evade)return;m.hp-=dmg;m.threat[from]=(m.threat[from]||0)+dmg;m.taps.add(from);if(!m.tgt){m.tgt=from;if(m.t.boss)bossEngage(m)}if(o.root)m.root=Math.max(m.root,o.root);if(o.stun)m.stun=Math.max(m.stun,o.stun);if(m.hp<=0)killMon(m)}
 function killMon(m){const taps=[...m.taps];m.dead=true;m.hp=0;m.deadT=m.add?6:(m.t.respawn||28);m.tgt=null;m.threat={};m.taps.clear();
-  if(m.t.boss){for(const a of MONS.filter(x=>x.add&&!x.dead&&Math.abs(x.x-m.x)<90))killMon(a);m.bt={stomp:9,bolt:5,sum:0,enr:0}}
+  if(m.t.boss){for(const a of MONS.filter(x=>x.add&&!x.dead&&Math.abs(x.x-m.x)<90))killMon(a);m.bt={stomp:9,bolt:5,sum:0,enr:0};if(m.t.dragon)dragonReset(m)}
   netEmit('mdie',{id:m.id,taps});onMonDeath(m,taps)}
 function onMonDeath(m,taps){m.dead=true;m.hp=0;m.atk=-1;if(ME.target===m)ME.auto=false;
   const me=myId();let ok=taps.includes(me);if(!ok&&GROUP&&taps.some(t=>GROUP.members.includes(t))&&Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z)<90)ok=true;
   if(ok&&P&&S.mode==='play')reward(m);
-  if(m.t.boss&&S.mode==='play'&&Math.abs(ME.pos.x-m.x)<80)banner(m.t.n.split(' ')[0]+' is verslagen!',m.type==='ignaroth'?'Het vuur dooft':'De crypte valt stil');}
+  if(m.t.boss&&S.mode==='play'&&Math.abs(ME.pos.x-m.x)<80)banner(m.t.n.split(' ')[0]+' is verslagen!',m.type==='vyraxion'?'De Asvorst is gevallen — het Drakenrijk is vrij':m.type==='ignaroth'?'Het vuur dooft':'De crypte valt stil');if(m.t.dragon){m.flyH=0;clearPools()}}
 function reward(m){
   const t=m.t;const xp=monXp(t,m.lvl);if(xp)gainXp(xp,m);P.kills++;
   for(const q of QUESTS){const st=P.quests[q.id];if(!st||st.n>=q.obj.n)continue;
@@ -177,7 +181,8 @@ function reward(m){
     if(q.obj.collect&&q.obj.collect.includes(m.type)&&Math.random()<q.obj.chance){st.n++;log(q.obj.item+' verzameld: '+st.n+'/'+q.obj.n,'loot');if(st.n>=q.obj.n){log('Quest klaar: '+q.n+' — keer terug naar '+npcName(q.giver),'sys');sfx('quest')}}}
   const L={gold:Math.round(m.lvl*rand(.6,1.6)*(t.elite?4:1)*(t.boss?6:1)),items:[]};
   if(Math.random()<(t.boss?1:t.elite?1:.3)){const r=rollRarity(t);L.items.push(makeGear(randSlot(),m.lvl,r,P.cls))}
-  if(t.boss){L.items.push(makeGear('wapen',11,3,P.cls));L.items.push(makeGear(randSlot(),11,2,P.cls))}
+  if(t.dragon){L.items.length=0;L.items.push(makeLegendary(P.cls));L.items.push(makeGear(randSlot(),22,3,P.cls));L.items.push(potion('heal',3))}
+  else if(t.boss){L.items.push(makeGear('wapen',11,3,P.cls));L.items.push(makeGear(randSlot(),11,2,P.cls))}
   if(Math.random()<.45&&!t.add)L.items.push(junkItem(m.type,m.lvl));
   if((m.type==='ever'||m.type==='wolf')&&Math.random()<.55)L.items.push(matItem('Rauw vlees',1));
   if(Math.random()<.12)L.items.push(potion(Math.random()<.6?'heal':'mana'));
@@ -196,15 +201,15 @@ function takeHit(dmg,src){if(ME.dead||S.mode!=='play')return;ME.hurtT=.35;if(src
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
 function die(){if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('Je bent verslagen door '+esc(r?r.n:'een andere speler')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('Je bent gesneuveld.','err');saveGame()}
-function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
+function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
 
 /* ---------- monster AI (runs on the lobby host, or locally when offline) ---------- */
 function players(){const L=[];if(P&&S.mode==='play')L.push({id:myId(),x:ME.pos.x,z:ME.pos.z,dead:ME.dead,lvl:P.level,me:1});for(const r of REMOTES.values())if(r.inW)L.push({id:r.id,x:r.x,z:r.z,dead:r.dead,lvl:r.lvl});return L}
 function hitPlayer(pid,dmg,m){if(pid===myId())takeHit(dmg,m);else netEmit('mhit',{to:pid,d:Math.round(dmg),m:m.id})}
 function respawnMon(m){m.dead=false;m.hp=m.mhp=monHp(m.t,m.lvl);m.x=m.nx=m.sx;m.z=m.nz=m.sz;m.loot=null;if(m.spark){scene.remove(m.spark);m.spark=null}m.evade=false;m.tgt=null;m.threat={};m.root=m.stun=m.slow=0;m.rig.g.children[0].rotation.set(0,0,0);m.rig.body.position.y=0}
-function bossEngage(m){const n=Math.max(1,players().filter(p=>!p.dead&&Math.hypot(p.x-m.x,p.z-m.z)<120).length);m.mhp=Math.round(monHp(m.t,m.lvl)*(1+.6*(n-1)));m.hp=m.mhp;m.bt={stomp:9,bolt:5,sum:0,enr:0};const L=bossLines(m);netEmit('bossmsg',{t:L.hi,b:m.type});bossSay(L.hi,m.type)}
-function bossLines(m){return m.type==='ignaroth'?{hi:'Vlees smelt, botten verbranden. Welkom in mijn vuur!',tele:'De grond kookt onder jullie voeten!',sum:'Vonken, verteer ze!',enr:'IK BEN DE BERG! IK BEN HET VUUR!',add:'vonk',bolt:'fire'}:{hi:'Wie durft mijn rust te verstoren? Jullie botten worden de mijne!',tele:'Knielt voor de Knekelkoning!',sum:'Sta op, mijn dienaren!',enr:'Genoeg! Voel mijn ware toorn!',add:'dienaar',bolt:'shadow'}}
-function bossSay(t,type){const nm=type==='ignaroth'?'Ignaroth':'Kaal-Morath';log('<b style="color:'+(type==='ignaroth'?'#ffa060':'#d9a8ff')+'">'+nm+' roept:</b> '+esc(t),'say',true);banner(t.length>40?nm:t,t.length>40?t:'',3)}
+function bossEngage(m){if(m.t.dragon)dragonReset(m);const n=Math.max(1,players().filter(p=>!p.dead&&Math.hypot(p.x-m.x,p.z-m.z)<120).length);m.mhp=Math.round(monHp(m.t,m.lvl)*(1+.6*(n-1)));m.hp=m.mhp;m.bt={stomp:9,bolt:5,sum:0,enr:0};const L=bossLines(m);netEmit('bossmsg',{t:L.hi,b:m.type});bossSay(L.hi,m.type)}
+function bossLines(m){if(m.type==='vyraxion')return VYR_LINES;return m.type==='ignaroth'?{hi:'Vlees smelt, botten verbranden. Welkom in mijn vuur!',tele:'De grond kookt onder jullie voeten!',sum:'Vonken, verteer ze!',enr:'IK BEN DE BERG! IK BEN HET VUUR!',add:'vonk',bolt:'fire'}:{hi:'Wie durft mijn rust te verstoren? Jullie botten worden de mijne!',tele:'Knielt voor de Knekelkoning!',sum:'Sta op, mijn dienaren!',enr:'Genoeg! Voel mijn ware toorn!',add:'dienaar',bolt:'shadow'}}
+function bossSay(t,type){const nm=type==='ignaroth'?'Ignaroth':type==='vyraxion'?'Vyraxion':'Kaal-Morath';log('<b style="color:'+(type==='ignaroth'?'#ffa060':type==='vyraxion'?'#ff6a30':'#d9a8ff')+'">'+nm+' roept:</b> '+esc(t),'say',true);banner(t.length>40?nm:t,t.length>40?t:'',3)}
 let addN=0;const PENDING=[];
 function aiUpdate(m,dt,pl){
   if(m.dead){m.deadT-=dt;if(m.deadT<=0){if(m.add)removeMon(m);else respawnMon(m)}return}
@@ -213,24 +218,24 @@ function aiUpdate(m,dt,pl){
   if(m.slow>0)m.slow-=dt;let spd=m.t.spd*(m.slow>0?.45:1);if(m.root>0){m.root-=dt;spd=0}
   const t=m.t,inD=m.sx>700;
   if(m.evade){const d=Math.hypot(m.sx-m.x,m.sz-m.z);if(d<1.2){m.evade=false;m.hp=m.mhp;m.mv=0}else{moveMon(m,m.sx,m.sz,t.spd*1.6,dt);m.mv=2}return}
-  if(m.tgt){let tp=pl.find(p=>p.id===m.tgt);const leash=t.boss?60:46;
+  if(m.tgt){if(t.dragon&&dragonAI(m,dt,pl))return;let tp=pl.find(p=>p.id===m.tgt);const leash=t.boss?60:46;
     if(!tp||tp.dead||Math.hypot(tp.x-m.sx,tp.z-m.sz)>leash||(tp.x>700)!==inD){delete m.threat[m.tgt];let best=null,bv=0;for(const p of pl){const v=m.threat[p.id];if(v&&!p.dead&&(p.x>700)===inD&&Math.hypot(p.x-m.sx,p.z-m.sz)<leash&&v>bv){bv=v;best=p}}
       if(best){m.tgt=best.id;tp=best}else{m.tgt=null;m.threat={};m.taps.clear();m.evade=true;if(t.boss)bossReset(m);return}}
     else{let best=tp,bv=(m.threat[tp.id]||0)*1.1;for(const p of pl){const v=m.threat[p.id];if(v&&v>bv&&!p.dead&&(p.x>700)===inD){bv=v;best=p}}if(best!==tp){m.tgt=best.id;tp=best}}
     const d=Math.hypot(tp.x-m.x,tp.z-m.z),reach=t.ranged||1.3+m.size*.9;
     if(d>reach*.9){moveMon(m,tp.x,tp.z,spd,dt);m.mv=spd>0?2:0}else{m.mv=0;m.nry=m.ry=Math.atan2(tp.x-m.x,tp.z-m.z)}
     m.atkT-=dt;
-    if(d<=reach&&m.atkT<=0){m.atkT=t.boss?2.2:2;m.ac=(m.ac+1)%100;m.atk=0;const dmg=monDmg(t,m.lvl)*rand(.85,1.15)*(m.bt.enr?1.35:1);
+    if(d<=reach&&m.atkT<=0){m.atkT=t.boss?2.2:2;m.ac=(m.ac+1)%100;m.atk=0;const dmg=monDmg(t,m.lvl)*(t.dmgM||1)*rand(.85,1.15)*(m.bt.enr?1.35:1);
       if(t.ranged){const from=new THREE.Vector3(m.x,m.y+1.8,m.z);const tgtE=tp.me?'me':REMOTES.get(tp.id);if(tgtE){const pt=t.proj||'shadow';proj(pt,from,tgtE,20,()=>hitPlayer(tp.id,dmg,m));netEmit('fx',{k:'p',t:pt,f:from.toArray(),p:tp.id})}}
       else{const id=tp.id;setTimeout(()=>{if(!m.dead)hitPlayer(id,dmg,m)},250)}}
-    if(t.boss)bossAbilities(m,dt,pl)}
+    if(t.boss&&!t.dragon)bossAbilities(m,dt,pl)}
   else{
     if(t.aggro){for(const p of pl){if(p.dead||(p.x>700)!==inD)continue;const r=clamp(t.aggro+(m.lvl-p.lvl)*1.4,4,22);if(d2(p.x,p.z,m.x,m.z)<r*r){m.tgt=p.id;m.threat[p.id]=1;if(t.boss)bossEngage(m);break}}}
     if(!m.tgt){m.wan.t-=dt;if(m.wan.t<=0){m.wan.t=rand(4,10);const a=rand(0,6.28),r=rand(0,t.boss?0:7);m.wan.x=m.sx+Math.cos(a)*r;m.wan.z=m.sz+Math.sin(a)*r}
       if(Math.hypot(m.wan.x-m.x,m.wan.z-m.z)>.6){moveMon(m,m.wan.x,m.wan.z,t.spd*.32,dt);m.mv=.5}else m.mv=0}}}
 function moveMon(m,tx,tz,spd,dt){const dx=tx-m.x,dz=tz-m.z,L=Math.hypot(dx,dz);if(L<.01||spd<=0){m.cs=lerp(m.cs||0,0,clamp(dt*8,0,1));return}m.cs=lerp(m.cs||0,spd,clamp(dt*5,0,1));const st=Math.min(L,m.cs*dt);m.x+=dx/L*st;m.z+=dz/L*st;if(m.sx>700){const p={x:m.x,z:m.z};dunOf(m.sx).collide(p,.5*m.size);m.x=p.x;m.z=p.z}m.ry=Math.atan2(dx,dz);m.nx=m.x;m.nz=m.z;m.nry=m.ry}
-function dunOf(x){return x>1250?D2:x>700?{collide:dunCollide}:null}
-function bossReset(m){for(const a of MONS.filter(x=>x.add&&Math.abs(x.x-m.x)<90))removeMon(a);m.bt={stomp:9,bolt:5,sum:0,enr:0};m.mhp=monHp(m.t,m.lvl)}
+function dunOf(x){return x>1700?D3:x>1250?D2:x>700?{collide:dunCollide}:null}
+function bossReset(m){if(m.t.dragon)dragonReset(m);for(const a of MONS.filter(x=>x.add&&Math.abs(x.x-m.x)<90))removeMon(a);m.bt={stomp:9,bolt:5,sum:0,enr:0};m.mhp=monHp(m.t,m.lvl)}
 function bossAbilities(m,dt,pl){const B=m.bt;const L=bossLines(m);const alive=pl.filter(p=>!p.dead&&p.x>700&&Math.hypot(p.x-m.x,p.z-m.z)<40);if(!alive.length)return;
   B.stomp-=dt;B.bolt-=dt;
   if(B.stomp<=0){B.stomp=rand(11,14);const spots=m.type==='ignaroth'?[[m.x,m.z,6],...alive.map(p=>[p.x,p.z,4.5])]:[[m.x,m.z,7.5]];netEmit('bossmsg',{t:L.tele,b:m.type});bossSay(L.tele,m.type);for(const[x,z,r]of spots){teleFx(x,z,r,2);netEmit('fx',{k:'tele',x,z,r,d:2});PENDING.push({t:2,fn:()=>{for(const p of players())if(!p.dead&&Math.hypot(p.x-x,p.z-z)<r)hitPlayer(p.id,monDmg(m.t,m.lvl)*(m.type==='ignaroth'?1.8:2.4),m)}})}}

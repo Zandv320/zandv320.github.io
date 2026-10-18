@@ -1,7 +1,7 @@
 
 /* ===================== character models ===================== */
 function weaponMesh(wt,rar=0){
-  const g=new THREE.Group();const glow=[0,0,0x2a5aff,0xa04aff][rar]||0;
+  const g=new THREE.Group();const glow=[0,0,0x2a5aff,0xa04aff,0xff6a00][rar]||0;
   const metal=mat(rar>=3?0xc9a8ff:rar>=2?0xbcd4ff:0xc8ccd2,{m:.85,r:.3,e:glow||undefined,ei:glow?.5:undefined}),grip=mat(0x4a2a18),gold=mat(0xd9a441,{m:.9,r:.3});
   if(wt==='zwaard'){mesh(new THREE.BoxGeometry(.1,1.15,.03),metal,0,.75,0,g);mesh(new THREE.ConeGeometry(.07,.2,4),metal,0,1.42,0,g);mesh(new THREE.BoxGeometry(.42,.07,.1),gold,0,.18,0,g);mesh(new THREE.CylinderGeometry(.04,.04,.3,6),grip,0,0,0,g);g.rotation.x=.55}
   else if(wt==='bijl'){mesh(new THREE.CylinderGeometry(.04,.05,1.3,10),grip,0,.5,0,g);const h=mesh(new THREE.CylinderGeometry(.42,.42,.08,12,1,false,0,Math.PI),metal,.02,1.0,0,g);h.rotation.z=Math.PI/2;h.rotation.y=Math.PI/2;mesh(new THREE.ConeGeometry(.06,.25,4),metal,0,1.25,0,g);g.rotation.x=.5}
@@ -205,7 +205,9 @@ function buildSpider(o){
 function buildMonster(type,lvl){const t=MON[type];const sc=(t.size||1)*(1+(lvl-t.lv[0])*.04);if(!window.__NOGLTF){const r=buildGltfMon(type,lvl,sc);if(r)return r}return compactRig(buildMonsterProc(type,lvl))}
 function buildMonsterProc(type,lvl){
   const t=MON[type];const sc=(t.size||1)*(1+(lvl-t.lv[0])*.04);
-  if(t.kind==='boar'||t.kind==='wolf')return buildQuad({kind:t.kind,col:t.col,scale:sc});
+  if(t.kind==='boar'||t.kind==='wolf'||t.kind==='raptor')return buildQuad({kind:t.kind==='raptor'?'wolf':t.kind,col:t.col,scale:sc});
+  if(t.kind==='bat'||t.kind==='dragon')return buildHumanoid({race:'mens',skin:t.col,hair:0x2a1a14,chest:0x7a2010,pants:0x3a1008,wt:'none',horns:1,wings:1,scale:sc*(t.kind==='bat'?.7:1),tusks:1});
+  if(t.kind==='trex')return buildHumanoid({race:'dwerg',golem:1,skin:t.col,wt:'none',scale:sc,fire:1,h:1,w:1.2});
   if(t.kind==='spider')return buildSpider({col:t.col,scale:sc});
   if(t.kind==='human')return buildHumanoid({race:'mens',skin:0xc89070,hair:0x2a1a10,chest:type==='grisk'?0x5a3a1a:0x4a3a2a,pants:0x2a2a22,hood:type==='grisk'?null:t.col,helm:type==='grisk',pads:type==='grisk'?0xb08a20:null,cape:type==='grisk'?0x6a1a1a:null,wt:t.wt,scale:sc,beard:type==='grisk'});
   if(t.kind==='imp')return buildHumanoid({race:'mens',skin:t.col,hair:0x2a1a14,chest:0x7a2010,pants:0x3a1008,wt:'none',horns:1,wings:1,scale:sc,tusks:1});
@@ -329,7 +331,7 @@ function animRig(r,a,dt){
   if(r.weapon)r.weapon.traverse(m=>{if(m.userData.orb){m.rotation.y+=dt*2;m.material.emissiveIntensity=a.cast?3.5+Math.sin(now*12):2.6}})}
 /* class/race appearance for players */
 const GEAR_PAL={krijger:[0x9aa2ac,0x6f7680,0xa8875a,0x4a505c,0xb8b0a0],magier:[0x4b3a8c,0x2a5a9a,0x8a2a4a,0x2a6a5a,0xd8d0b8,0x5a2a7a],jager:[0x6b4b2a,0x4a3a22,0x3e5a2a,0x7a5a3a,0x5a4a3a]};
-const RCOL=[0,0x2bd94a,0x3b8cff,0xb65cff];
+const RCOL=[0,0x2bd94a,0x3b8cff,0xb65cff,0xff8000];
 function strHash(t){let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return h>>>0}
 function gearCol(it,cls){if(!it)return null;if(it.c!=null)return it.c;const pal=GEAR_PAL[cls]||GEAR_PAL.krijger;const col=new THREE.Color(pal[strHash(String(it.n||it.id||''))%pal.length]);const rc=RCOL[it.r|0];if(rc)col.lerp(new THREE.Color(rc),.08+(it.r|0)*.05);return col.getHex()}
 function playerLook(p){/* p: {race,cls,hair,eq}; every equipped slot changes the model */

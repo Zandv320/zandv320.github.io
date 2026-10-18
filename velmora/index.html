@@ -14,7 +14,7 @@
   --gold:#e8c06a;--gold2:#9c7a35;--gold3:#5a4520;
   --ink:#f3ead6;--muted:#b9ab8c;--panel:rgba(16,13,10,.9);--panel2:rgba(28,23,17,.94);
   --hp:#3fbf4f;--hp2:#1f7a2b;--mana:#3d7bff;--energy:#f0c419;--focus:#ff8a2b;--xp:#9a5cff;
-  --r0:#ffffff;--rj:#9d9d9d;--r1:#2bd94a;--r2:#3b8cff;--r3:#b65cff;
+  --r0:#ffffff;--rj:#9d9d9d;--r1:#2bd94a;--r2:#3b8cff;--r3:#b65cff;--r4:#ff8000;
   --head:'Cinzel','Times New Roman',serif;--ui:'Alegreya Sans','Segoe UI',system-ui,sans-serif;
   color-scheme:dark;
 }
@@ -130,7 +130,7 @@ kbd{font:700 12px var(--ui);border:1px solid var(--gold3);background:#1d1812;pad
 .cell{aspect-ratio:1;border:1px solid #3a2f1f;background:rgba(0,0,0,.5);position:relative;padding:0}
 .cell canvas{width:100%;height:100%;display:block}
 .cell .n{position:absolute;right:2px;bottom:0;font-size:11px;font-weight:800;text-shadow:0 1px 1px #000}
-.cell.r1{border-color:var(--r1)}.cell.r2{border-color:var(--r2)}.cell.r3{border-color:var(--r3);box-shadow:0 0 8px rgba(182,92,255,.5)}.cell.rj{border-color:#555}
+.cell.r1{border-color:var(--r1)}.cell.r2{border-color:var(--r2)}.cell.r3{border-color:var(--r3);box-shadow:0 0 8px rgba(182,92,255,.5)}.cell.r4{border-color:var(--r4);box-shadow:0 0 10px rgba(255,128,0,.65)}.cell.rj{border-color:#555}
 .gold{color:#ffd34d;font-weight:800;margin-top:8px;display:flex;justify-content:space-between}
 #pChar{left:max(10px,env(safe-area-inset-left));top:90px;width:330px}
 .eq{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -255,7 +255,7 @@ body.touch #pChar{left:50%;transform:translateX(-50%);top:12px;max-height:calc(1
 /* rugzak- en uitrustingsvakken */
 .cell{border:0;border-radius:10px;background:#2a180b;box-shadow:0 0 0 2px var(--wood3),inset 0 2px 4px rgba(0,0,0,.6);overflow:hidden}
 .cell canvas{border-radius:8px}
-.cell.r1{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r1)}.cell.r2{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r2)}.cell.r3{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r3),0 0 10px rgba(182,92,255,.55)}.cell.rj{box-shadow:0 0 0 2px var(--wood3)}
+.cell.r1{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r1)}.cell.r2{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r2)}.cell.r3{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r3),0 0 10px rgba(182,92,255,.55)}.cell.r4{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r4),0 0 14px rgba(255,128,0,.8);animation:legGlow 1.6s ease-in-out infinite alternate}@keyframes legGlow{to{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px #ffb040,0 0 20px rgba(255,150,30,.95)}}.cell.rj{box-shadow:0 0 0 2px var(--wood3)}
 .grid{gap:7px;padding:3px}
 .eqs{color:#f3dcb0}
 .stats{color:#fff3d6;background:rgba(58,36,16,.35);padding:8px 10px;border-radius:8px}
@@ -330,6 +330,7 @@ body.touch #pBag,body.touch #pChar,body.touch #pQuest,body.touch #pLife,body.tou
 body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(400px,62vw)}body.touch #pChar{width:min(420px,66vw)}
 @media (max-height:500px){body.touch #tframe{left:50%;top:max(8px,env(safe-area-inset-top));width:min(260px,36vw)}#joy{width:132px;height:132px}#tJump{left:calc(max(18px,env(safe-area-inset-left)) + 142px)}body.touch #tracker.show{top:calc(max(8px,env(safe-area-inset-top)) + 64px)}body.touch #feed{top:calc(max(8px,env(safe-area-inset-top)) + 90px)}}
 
+#mapAll{margin-left:auto;font-size:12px;padding:4px 12px;min-height:0;flex:0 0 auto}
 /* talenten */
 #pTalent{left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,96vw)}
 #pTalent h3 .tpts{margin-left:auto;font-size:14px;font-family:var(--body,inherit);color:#fff3d6;background:rgba(40,20,6,.55);border-radius:12px;padding:2px 10px;text-shadow:none}
@@ -354,7 +355,7 @@ body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(
 .ttree.on .trow{gap:22px}
 @media (max-height:500px){.trow{padding:4px 0}.ttree .tdesc{min-height:0}.tfoot{display:none}}
 .tfoot{font-size:12.5px;color:#f0dcb8;margin:10px 0 0;text-align:center}
-#tip .tg{color:#9ff06a}#tip .tk{color:#ffd34d;font-size:12px}
+#tip .tg{color:#9ff06a}#tip .tlg{color:#ffa040;font-style:italic;margin-top:3px}#tip .tk{color:#ffd34d;font-size:12px}
 .mb .tdot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#7adc3a;box-shadow:0 0 6px #9fe060;border:2px solid #2a1a0c}
 .mb{position:relative}
 body.touch #pTalent{left:50%;right:auto;top:auto;bottom:max(6px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(760px,calc(100vw - 16px));max-height:min(92%,calc(100% - 16px));animation:drawerUp .22s ease-out}
@@ -404,7 +405,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
   <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Held</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
   <div id="pTalent" class="panel frame" hidden><h3><span>Talenten</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
   <div id="pQuest" class="panel frame" hidden><h3>Questlog <button class="x" data-close>×</button></h3><div id="qList"></div></div>
-  <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Kaart van Velmora</span><button class="x" data-close>×</button></h3><canvas id="bigmap" width="560" height="560"></canvas></div>
+  <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Kaart van Velmora</span><button class="btn alt" id="mapAll">Overzicht</button><button class="x" data-close>×</button></h3><canvas id="bigmap" width="560" height="560"></canvas></div>
   <div id="pLife" class="panel frame" hidden><h3>Ambacht <button class="x" data-close>×</button></h3><div id="lifeBody"></div></div>
   <div id="fishBar" hidden><div id="fishZone"></div><div id="fishMark"></div><span>Sla toe in het groene vak!</span></div>
   <div id="pDialog" class="panel" hidden><h3><span id="dName"></span><button class="x" data-close>×</button></h3><div id="dBody"></div></div>

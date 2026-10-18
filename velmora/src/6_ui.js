@@ -14,6 +14,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 document.querySelectorAll('#mbtn [data-p]').forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.p)));
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>{closePanel('pMenu');openPanel(b.dataset.open)}));
 $('#mmw').addEventListener('click',()=>togglePanel('pMap'));
+const MAPVIEW={all:false};$('#mapAll').addEventListener('click',()=>{MAPVIEW.all=!MAPVIEW.all;$('#mapAll').textContent=MAPVIEW.all?'Gebied':'Overzicht';drawBigMap()});
 $('#bChat').addEventListener('click',()=>openChat());
 $('#bSave').addEventListener('click',()=>{saveGame(true);toast('');log('Spel opgeslagen.','sys')});
 $('#bSound').addEventListener('click',()=>{S.sound=!S.sound;$('#bSound').textContent='Geluid: '+(S.sound?'aan':'uit')});
@@ -107,7 +108,7 @@ function placeTip(anchor){const r=anchor.getBoundingClientRect();tipEl.hidden=fa
 function showAbilTip(a,el){const ac=a.item?a.cost:abCost(a),at=a.item?a.cast:abCast(a),ad=a.item?a.cd:+abCd(a).toFixed(1);tipEl.innerHTML='<div class="tn">'+esc(a.n)+'</div><div class="ts">'+(ac?ac+' '+resName()+' · ':'')+(at?+at.toFixed(1)+' s spreuktijd · ':'Direct · ')+(ad?ad+' s afkoeltijd':'')+(a.range?' · '+a.range+' m':'')+'</div><div style="margin-top:4px">'+esc(a.d)+'</div>'+(a.talent?'<div class="tk">Geleerd via talenten</div>':'')+(P.level<a.lvl?'<div class="tr">Vereist niveau '+a.lvl+'</div>':'');placeTip(el)}
 function hideTip(){tipEl.hidden=true}
 function itemHtml(it,cmp=true){if(!it)return'';let h='<div class="tn" style="color:'+rarCol(it)+'">'+esc(it.n)+(it.q>1?' x'+it.q:'')+'</div>';
-  if(it.kind==='gear'){h+='<div class="ts">'+SLOT_NL[it.s]+(it.s==='wapen'?' · '+it.wt:'')+' · '+RARITY[it.r].n+'</div>';if(it.s==='wapen')h+='<div>'+it.min+' – '+it.max+' schade · snelheid '+it.spd.toFixed(1)+'</div>';if(it.arm)h+='<div>'+it.arm+' pantser</div>';if(it.pow)h+='<div class="tg">+'+it.pow+' kracht</div>';if(it.sta)h+='<div class="tg">+'+it.sta+' uithouding</div>';
+  if(it.kind==='gear'){h+='<div class="ts">'+SLOT_NL[it.s]+(it.s==='wapen'?' · '+it.wt:'')+' · '+RARITY[it.r].n+'</div>';if(it.s==='wapen')h+='<div>'+it.min+' – '+it.max+' schade · snelheid '+it.spd.toFixed(1)+'</div>';if(it.arm)h+='<div>'+it.arm+' pantser</div>';if(it.pow)h+='<div class="tg">+'+it.pow+' kracht</div>';if(it.sta)h+='<div class="tg">+'+it.sta+' uithouding</div>';if(it.leg)h+='<div class="tlg">'+esc(it.leg)+'</div>';
     h+='<div class="'+(P.level<it.req?'tr':'ts')+'">Vereist niveau '+it.req+'</div>';if(it.cls!==P.cls)h+='<div class="tr">Alleen voor '+CLASSES[it.cls].n+'</div>';
     const cur=P.eq[it.s];if(cmp&&cur&&cur!==it){const df=(k,lbl)=>{const v=(it[k]||0)-(cur[k]||0);return v?'<span class="'+(v>0?'tg':'tr')+'">'+(v>0?'+':'')+v+' '+lbl+'</span> ':''};const avg=x=>x.s==='wapen'?(x.min+x.max)/2:0;const dv=Math.round(avg(it)-avg(cur));h+='<div class="cmp">Vergeleken met '+esc(cur.n)+':<br>'+(dv?'<span class="'+(dv>0?'tg':'tr')+'">'+(dv>0?'+':'')+dv+' gem. schade</span> ':'')+df('arm','pantser')+df('pow','kracht')+df('sta','uithouding')+'</div>'}}
   else if(it.kind==='mat'){const M=MATS[it.n]||{};h+='<div class="ts">'+(M.food?'Voedsel':M.elixir?'Elixir':'Materiaal')+(it.r>0?' · '+RARITY[it.r].n:'')+'</div>';if(M.food||M.elixir)h+='<div class="tg">'+(M.food||M.elixir).d+' gedurende '+Math.round((M.food||M.elixir).dur/60)+' minuten. Je kunt één '+(M.food?'maaltijd':'elixir')+' tegelijk actief hebben.</div>';else h+='<div class="ts">Gebruik dit in je ambachtsboek (K) of verkoop het bij een handelaar.</div>'}
@@ -198,7 +199,8 @@ const mm=$('#mmc'),mg=mm.getContext('2d');
 function w2m(x,z,cx,cz,sc,W){return[W/2+(x-cx)*sc,W/2+(z-cz)*sc]}
 function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0,W,W);mg.beginPath();mg.arc(W/2,W/2,W/2,0,7);mg.clip();mg.fillStyle='#000';mg.fillRect(0,0,W,W);
   const sc=inD?1.6:1.1;const cx=ME.pos.x,cz=ME.pos.z;
-  if(ME.pos.x>1250){const ox=D2.X-D2.C/2*D2.c,oz=D2.Z-D2.R/2*D2.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D2.img,x0,y0,D2.C*D2.c*sc,D2.R*D2.c*sc)}
+  if(ME.pos.x>1250){const D=ME.pos.x>1700?D3:D2;const ox=D.X-D.C/2*D.c,oz=D.Z-D.R/2*D.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D.img,x0,y0,D.C*D.c*sc,D.R*D.c*sc)}
+  else if(inDrk(ME.pos.x)){const[x0,y0]=w2m(DRK.x-DSZ/2,DRK.z-DSZ/2,cx,cz,sc,W);mg.drawImage(drkImg,x0,y0,DSZ*sc,DSZ*sc)}
   else if(inD){const ox=DUN.x-DC/2*DUN.c,oz=DUN.z-DR/2*DUN.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(dunImg,x0,y0,DC*DUN.c*sc,DR*DUN.c*sc)}
   else{const[x0,y0]=w2m(-320,-320,cx,cz,sc,W);mg.drawImage(mapImg,x0,y0,640*sc,640*sc)}
   const dot=(x,z,c,r=3)=>{const[a,b]=w2m(x,z,cx,cz,sc,W);if(a<-5||b<-5||a>W+5||b>W+5)return;mg.fillStyle=c;mg.beginPath();mg.arc(a,b,r,0,7);mg.fill()};
@@ -206,16 +208,27 @@ function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0
   for(const n of NPCOBJ){if(n.mark==='!'||n.mark==='?'){const[a,b]=w2m(n.x,n.z,cx,cz,sc,W);mg.fillStyle='#ffd100';mg.font='800 16px Cinzel,serif';mg.textAlign='center';mg.fillText(n.mark,a,b+6)}else dot(n.x,n.z,'#ffd34d',2.5)}
   if(!inD)for(const n of NODES)if(!n.down&&Math.abs(n.x-cx)<110&&Math.abs(n.z-cz)<110)dot(n.x,n.z,n.type==='kruid'?'#e8ff6a':n.type==='erts'?'#d0d0d8':'#c8945a',1.8);
   for(const r of REMOTES.values())dot(r.x,r.z,GROUP&&GROUP.members.includes(r.id)?'#40ffa0':pvpHostile(r)?'#ff4040':'#5ab0ff',3.5);
-  if(!inD){{const[a,b]=w2m(CAVE.x,CAVE.z,cx,cz,sc,W);mg.fillStyle='#ff7a30';mg.fillRect(a-3,b-3,6,6)}const[a,b]=w2m(CRYPT.x,CRYPT.z,cx,cz,sc,W);mg.fillStyle='#b06aff';mg.fillRect(a-3,b-3,6,6)}
+  if(inDrk(ME.pos.x)){for(const[x,z,c]of[[DRK_EXIT.x,DRK_EXIT.z,'#6ac8ff'],[VOLC_DOOR.x,VOLC_DOOR.z,'#ff7a30']]){const[a,b]=w2m(x,z,cx,cz,sc,W);mg.fillStyle=c;mg.fillRect(a-3,b-3,6,6)}}
+  else if(!inD){{const[a,b]=w2m(DRK_GATE.x,DRK_GATE.z,cx,cz,sc,W);mg.fillStyle='#ff5a1a';mg.fillRect(a-3,b-3,6,6)}{const[a,b]=w2m(CAVE.x,CAVE.z,cx,cz,sc,W);mg.fillStyle='#ff7a30';mg.fillRect(a-3,b-3,6,6)}const[a,b]=w2m(CRYPT.x,CRYPT.z,cx,cz,sc,W);mg.fillStyle='#b06aff';mg.fillRect(a-3,b-3,6,6)}
   mg.restore();mg.save();mg.translate(W/2,W/2);mg.rotate(-ME.ry+Math.PI);mg.fillStyle='#fff';mg.strokeStyle='#000';mg.lineWidth=1.5;mg.beginPath();mg.moveTo(0,-8);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.stroke();mg.restore();
   mg.fillStyle='#e8c06a';mg.font='700 14px Cinzel,serif';mg.textAlign='center';mg.fillText('N',W/2,14)}
 function drawBigMap(){const c=$('#bigmap'),g=c.getContext('2d'),W=c.width;const inD=ME.pos.x>700;g.fillStyle='#000';g.fillRect(0,0,W,W);let tf;
-  if(ME.pos.x>1250){const D=D2,s=W/(Math.max(D.C,D.R)*D.c);g.drawImage(D.img,(W-D.C*D.c*s)/2,(W-D.R*D.c*s)/2,D.C*D.c*s,D.R*D.c*s);tf=(x,z)=>[(W-D.C*D.c*s)/2+(x-(D.X-D.C/2*D.c))*s,(W-D.R*D.c*s)/2+(z-(D.Z-D.R/2*D.c))*s];$('#mapTitle').textContent=D.name}
+  const ovw=MAPVIEW.all&&ME.pos.x<700;
+  if(ovw){/* overzicht: Velmora links, het Drakenrijk rechts, verbonden door de Drakenpas */const s=W/1180,wy=(W-640*s)/2,rx=(640+160)*s,ry=(W-DSZ*s)/2;g.drawImage(mapImg,0,wy,640*s,640*s);g.drawImage(drkImg,rx,ry,DSZ*s,DSZ*s);
+    tf=(x,z)=>inDrk(x)?[rx+(x-(DRK.x-DSZ/2))*s,ry+(z-(DRK.z-DSZ/2))*s]:[(x+320)*s,wy+(z+320)*s];const[a1,b1]=tf(DRK_GATE.x,DRK_GATE.z),[a2,b2]=tf(DRK_EXIT.x,DRK_EXIT.z);
+    g.strokeStyle='#c8a060';g.lineWidth=3;g.setLineDash([8,6]);g.beginPath();g.moveTo(a1,b1);g.bezierCurveTo(a1+50,b1-30,a2-50,b2+30,a2,b2);g.stroke();g.setLineDash([]);
+    g.font='700 13px Cinzel,serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;for(const[t,x,y]of[['Velmora',320*s,wy-8],['Drakenrijk',rx+DSZ*s/2,ry-8],['Drakenpas',(a1+a2)/2,(b1+b2)/2-14]]){g.strokeText(t,x,y);g.fillText(t,x,y)}
+    $('#mapTitle').textContent='Velmora — overzicht'}
+  else if(inDrk(ME.pos.x)){const s=W/DSZ;g.drawImage(drkImg,0,0,W,W);tf=(x,z)=>[(x-(DRK.x-DSZ/2))*s,(z-(DRK.z-DSZ/2))*s];$('#mapTitle').textContent='Het Drakenrijk';
+    g.font='700 15px Cinzel,serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;for(const[t,u,v]of[['Drakenjagerskamp',-138,48],['Vulkaan Drakenrust',0,-24],['Drakennesten',10,150],['Schrijnen',122,-62],['Vuurvelden',0,-150],['Asvlakte',-95,-110]]){const[a,b]=tf(DRK.x+u,DRK.z+v);g.strokeText(t,a,b);g.fillText(t,a,b)}
+    for(const[x,z,c]of[[DRK_EXIT.x,DRK_EXIT.z,'#6ac8ff'],[VOLC_DOOR.x,VOLC_DOOR.z,'#ff7a30']]){const[a,b]=tf(x,z);g.fillStyle=c;g.fillRect(a-5,b-5,10,10)}}
+  else if(ME.pos.x>1250){const D=ME.pos.x>1700?D3:D2,s=W/(Math.max(D.C,D.R)*D.c);g.drawImage(D.img,(W-D.C*D.c*s)/2,(W-D.R*D.c*s)/2,D.C*D.c*s,D.R*D.c*s);tf=(x,z)=>[(W-D.C*D.c*s)/2+(x-(D.X-D.C/2*D.c))*s,(W-D.R*D.c*s)/2+(z-(D.Z-D.R/2*D.c))*s];$('#mapTitle').textContent=D.name}
   else if(inD){const s=W/(Math.max(DC,DR)*DUN.c);g.drawImage(dunImg,(W-DC*DUN.c*s)/2,(W-DR*DUN.c*s)/2,DC*DUN.c*s,DR*DUN.c*s);tf=(x,z)=>[(W-DC*DUN.c*s)/2+(x-(DUN.x-DC/2*DUN.c))*s,(W-DR*DUN.c*s)/2+(z-(DUN.z-DR/2*DUN.c))*s];$('#mapTitle').textContent='Crypte van Kaal-Morath'}
   else{g.drawImage(mapImg,0,0,W,W);const s=W/640;tf=(x,z)=>[(x+320)*s,(z+320)*s];$('#mapTitle').textContent='Kaart van Velmora';
     g.font='700 15px Cinzel,serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;for(const[t,x,z]of[['Asbergen',205,-215],['Zilverbron',0,-62],['Schemerwoud',-30,-150],['Roversheide',165,-140],['Knekelheuvels',-170,-255],['Spiegelmeer',-150,125],['Gouden Velden',10,178],['Zilverdal',120,60]]){const[a,b]=tf(x,z);g.strokeText(t,a,b);g.fillText(t,a,b)}
+    {const[a,b]=tf(DRK_GATE.x,DRK_GATE.z);g.fillStyle='#ff5a1a';g.fillRect(a-5,b-5,10,10);g.strokeText('Drakenpas',a-34,b-10);g.fillStyle='#fff';g.fillText('Drakenpas',a-34,b-10)}
     const[a,b]=tf(CRYPT.x,CRYPT.z);g.fillStyle='#b06aff';g.fillRect(a-5,b-5,10,10);const[c2,d2_]=tf(CAVE.x,CAVE.z);g.fillStyle='#ff7a30';g.fillRect(c2-5,d2_-5,10,10)}
   for(const n of NPCOBJ){const[a,b]=tf(n.x,n.z);if(n.mark==='!'||n.mark==='?'){g.fillStyle='#ffd100';g.font='800 18px Cinzel,serif';g.fillText(n.mark,a,b+6)}}
   for(const r of REMOTES.values()){const[a,b]=tf(r.x,r.z);g.fillStyle='#5ab0ff';g.beginPath();g.arc(a,b,4,0,7);g.fill()}
   const[px,pz]=tf(ME.pos.x,ME.pos.z);g.save();g.translate(px,pz);g.rotate(-ME.ry+Math.PI);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=2;g.beginPath();g.moveTo(0,-11);g.lineTo(8,9);g.lineTo(0,4);g.lineTo(-8,9);g.closePath();g.fill();g.stroke();g.restore()}
-let zoneName='';function updZone(force){const z=zoneAt(ME.pos.x,ME.pos.z);if(z!==zoneName||force){const changed=z!==zoneName;zoneName=z;$('#zone').textContent=z;if(changed&&S.mode==='play'){banner(z,z==='Crypte van Kaal-Morath'?'Aanbevolen: niveau 8+ en een groep':z==='Zilverbron'?'Een veilige haven':z==='Arena van Zilverbron'?'PvP is hier altijd actief — wie de kist opent, krijgt de AK-47':'',2.2)}}}
+let zoneName='';function updZone(force){const z=zoneAt(ME.pos.x,ME.pos.z);if(z!==zoneName||force){const changed=z!==zoneName;zoneName=z;$('#zone').textContent=z;if(changed&&S.mode==='play'){banner(z,z==='Crypte van Kaal-Morath'?'Aanbevolen: niveau 8+ en een groep':z==='Hart van de Vulkaan'?'Aanbevolen: niveau 18–20 · Vyraxion de Asvorst wacht':z==='Asvlakte'||z==='Drakenjagerskamp'?'Het Drakenrijk · niveau 13–20':z==='Drakenpas'?'Naar het Drakenrijk (niveau 13+)':z==='Zilverbron'?'Een veilige haven':z==='Arena van Zilverbron'?'PvP is hier altijd actief — wie de kist opent, krijgt de AK-47':'',2.2)}}}
