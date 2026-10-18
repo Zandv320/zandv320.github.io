@@ -22,7 +22,7 @@ async function envInstances(names,list,groupOf,scaleOf,cast=true,tint=null){
   const buckets=names.map(()=>[]);list.forEach((t,i)=>buckets[groupOf(t,i)%names.length].push(t));
   buckets.forEach((b,vi)=>{if(!b.length)return;const geo=geos[vi];const bb=geo.boundingBox;const mats=new Float32Array(b.length*16),pos=new Float32Array(b.length*2);
     b.forEach((t,i)=>{const s=scaleOf(t,bb);_p.set(t[0],groundH(t[0],t[1])-.05,t[1]);_e.set(0,t[3],0);_q.setFromEuler(_e);_s.set(s[0],s[1],s[2]);_m.compose(_p,_q,_s);_m.toArray(mats,i*16);pos[i*2]=t[0];pos[i*2+1]=t[1]});
-    const mk=(g)=>{const im=new THREE.InstancedMesh(g,ENV_MAT,b.length);im.castShadow=cast;im.receiveShadow=true;im.frustumCulled=false;im.count=0;scene.add(im);ENV_IM.push(im);return im};
+    const mk=(g)=>{const im=new THREE.InstancedMesh(g,ENV_MAT,b.length);im.userData.wx=b[0][0];im.castShadow=cast;im.receiveShadow=true;im.frustumCulled=false;im.count=0;scene.add(im);ENV_IM.push(im);return im};
     const imHi=mk(geo),imLo=lods[vi]?mk(lods[vi]):null;ENV_LOD.push({n:b.length,mats,pos,imHi,imLo})});return true}
 function updEnvLod(cx,cz,R){const R2=R*R;const far=R*8;const F2=far*far;
   for(const L of ENV_LOD){const hi=L.imHi.instanceMatrix.array,lo=L.imLo&&L.imLo.instanceMatrix.array;let nh=0,nl=0;

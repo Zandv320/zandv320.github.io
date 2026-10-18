@@ -73,6 +73,7 @@ const CM_SKEL={...CM_KAY,cidle:'Idle_Combat'};
 const CM_DRAGON={idle:'Dragon_Flying',cidle:'Dragon_Flying',walk:'Dragon_Flying',run:'Dragon_Flying',die:'Dragon_Death',hit:'Dragon_Hit',atk:{def:['Dragon_Attack','Dragon_Attack2']}};
 const CM_BAT={idle:'Bat_Flying',cidle:'Bat_Flying',walk:'Bat_Flying',run:'Bat_Flying',die:'Bat_Death',hit:'Bat_Hit',atk:{def:['Bat_Attack','Bat_Attack2']}};
 const CM_RAPTOR={idle:'Velociraptor_Idle',cidle:'Velociraptor_Idle',walk:'Velociraptor_Walk',run:'Velociraptor_Run',die:'Velociraptor_Death',hit:null,jumpS:'Velociraptor_Jump',atk:{def:['Velociraptor_Attack']}};
+const CM_MON={idle:'Idle',cidle:'Idle',walk:'Walk',run:'Run',die:'Death',hit:'HitReact',jumpS:'Jump',jumpI:'Jump_Idle',land:'Jump_Land',atk:{def:['Punch','Weapon']}};
 const CM_TREX={idle:'TRex_Idle',cidle:'TRex_Idle',walk:'TRex_Walk',run:'TRex_Run',die:'TRex_Death',hit:null,atk:{def:['TRex_Attack']}};
 const MON_GLTF={
   ever:{m:'Bull',h:1.75,cm:{...CM_ANIMAL,atk:{def:['Attack_Headbutt','Attack_Kick']},land:'Jump_toIdle'},tint:{Main:0x5a3e2a,Main_Light:0x8a6a4a,Horns:0xf0e6d0,Muzzle:0x3a2a20,Hooves:0x2a2018},quad:1},
@@ -84,6 +85,10 @@ const MON_GLTF={
   kmagier:{m:'Skeleton_Mage',h:1.78,props:['Skeleton_Mage_Hat'],wt:'staf',cm:{...CM_SKEL,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},eye:0xc06aff},
   boss:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'bijl',wr:3,cm:{...CM_SKEL,cidle:'2H_Melee_Idle',atk:{def:ATK_2H}},eye:0x7aff5a},
   dienaar:{m:'Skeleton_Minion',h:1.78,props:[],wt:'zwaard',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x6ad8ff},
+  vuurimp:{drk:1,m:'Demon',h:1.35,props:['Trident'],cm:{...CM_MON,atk:{def:['Weapon']}},tint:{Atlas:0xffb890}},
+  vonk:{drk:1,m:'Demon',h:.95,props:[],cm:CM_MON,tint:{Atlas:0xffe070}},
+  lavagolem:{drk:1,m:'Orc',h:2.4,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0xd08a6a}},
+  ignaroth:{drk:1,m:'Demon',h:5.4,props:['Trident'],cm:{...CM_MON,hit:null},tint:{Atlas:0xd07a60}},
   raptor:{drk:1,m:'Velociraptor',h:1.7,cm:CM_RAPTOR,tint:{Brown:0x6a625a,Black:0x1a1614,LightBrown:0xa8643a},quad:1},
   vleer:{drk:1,m:'Bat',h:1.25,cm:CM_BAT,tint:{Main:0x4a1a12,Black:0x1a0806,Belly:0xff8a2a,Nose:0x5a1a10},glow:{Eyes:0xffb030}},
   welp:{drk:1,m:'Dragon',h:1.55,cm:CM_DRAGON,tint:{Main:0xc0441e,Wings:0x6a1a10,Belly:0xf0b860,Claws:0x2a1a14},glow:{Eyes:0xffd040}},

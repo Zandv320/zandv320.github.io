@@ -44,7 +44,7 @@ function batchStatic(){const t0=performance.now();scene.updateMatrixWorld(true);
 function zoneLayers(){const keep=new Set([sky,moon]);const b=new THREE.Box3();
   for(const c of scene.children){if(keep.has(c)||c.isLight||c.userData.ent||c.userData.batch||c===ME.g||(ME.rig&&c===ME.rig.g))continue;
     let ent=false;c.traverse(o=>{if(o.userData&&o.userData.ent)ent=true});if(ent)continue;
-    let dun;if(c.isInstancedMesh){const mm=new THREE.Matrix4();c.getMatrixAt(0,mm);_p.setFromMatrixPosition(mm);dun=_p.x>700}
+    let dun;if(c.userData.wx!=null)dun=c.userData.wx>700;else if(c.isInstancedMesh){const mm=new THREE.Matrix4();c.getMatrixAt(0,mm);_p.setFromMatrixPosition(mm);dun=_p.x>700}
     else{b.setFromObject(c);if(b.isEmpty())continue;dun=b.max.x>700}
     const L=dun?PERF.L_DUN:PERF.L_OVER;c.traverse(o=>o.layers.set(L))}
   PERF.inDun=null;setZoneLayer(camTarget.x>700)}

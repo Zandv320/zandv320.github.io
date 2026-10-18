@@ -9,6 +9,7 @@ const arenaG=new THREE.Group();arenaG.position.set(ARENA.x,ARENA_H,ARENA.z);scen
   {const sand=TEX.paint.clone();sand.needsUpdate=true;sand.repeat.set(6,6);const fl=mesh(new THREE.CircleGeometry(ARENA.r,64).rotateX(-Math.PI/2),new THREE.MeshToonMaterial({color:0xd9c08c,map:sand,gradientMap:RAMP}),0,.06,0,arenaG,false);void fl;
     /* bloedvlekken en strijdlijnen in het zand */for(let i=0;i<9;i++){const a=i*2.3,rr=4+(i*7)%15;const sp=mesh(new THREE.CircleGeometry(.6+(i%3)*.4,10).rotateX(-Math.PI/2),mat(0x6a2a1a,{r:1}),Math.cos(a)*rr,.08,Math.sin(a)*rr,arenaG,false);sp.scale.x=1.6}
     mesh(new THREE.RingGeometry(6,6.4,48).rotateX(-Math.PI/2),mat(0xb89a68),0,.09,0,arenaG,false)}
+  PROC='arena';
   /* tribunes: drie getrapte ringen, met twee poortopeningen (noord/zuid) */
   const SEG=56,gapAt=(a)=>Math.abs(Math.sin(a))>.985&&Math.cos(a)>-.2?false:Math.abs(Math.cos(a))>.96;/* poorten op ±x */
   for(let i=0;i<SEG;i++){const a=i/SEG*Math.PI*2;const gate=Math.abs(Math.cos(a))>.965;
@@ -28,6 +29,7 @@ const arenaG=new THREE.Group();arenaG.position.set(ARENA.x,ARENA_H,ARENA.z);scen
   /* keizersloge aan de noordkant */
   {const lg=new THREE.Group();lg.position.set(0,4.2,-(ARENA.r+3));arenaG.add(lg);mesh(new THREE.BoxGeometry(7,.4,3.6),marble,0,0,0,lg);for(const sx of[-3,3])mesh(new THREE.CylinderGeometry(.22,.25,3,8),marble,sx,1.7,-1.2,lg);mesh(new THREE.BoxGeometry(7.6,.3,4),mat(0x8a1f2a,{r:.8}),0,3.3,-.2,lg);mesh(new THREE.BoxGeometry(2.2,1.2,1),mat(0xd9a441,{m:.9,r:.3}),0,.8,-.6,lg);
     const ban=mesh(new THREE.PlaneGeometry(2.6,3.2),mat(0x8a1f2a,{side:1}),0,-2,.3,lg);ban.userData.wave=1;flags.push(ban)}
+  PROC=null;
 }
 /* de kist in het midden */
 const arenaChest=(()=>{const g=new THREE.Group();g.position.set(ARENA.x,ARENA_H+.05,ARENA.z);scene.add(g);const wd=mat(0x6a4422,{tex:'wood',rx:2,ry:1}),gold=mat(0xd9a441,{m:.9,r:.3});

@@ -32,7 +32,7 @@ function drkRaw(x,z){const u=x-DRK.x,v=z-DRK.z;
   const d=Math.hypot(u,v);
   if(d<VOLC.r){const k=1-d/VOLC.r;h+=VOLC.h*Math.pow(k,1.25)*(1+.06*Math.sin(Math.atan2(v,u)*7))}
   const rimH=VOLC.h*Math.pow(1-VOLC.cr/VOLC.r,1.25)+2;if(d<VOLC.cr){h=rimH-12*(1-(d/VOLC.cr)**2)}
-  const e=Math.max(Math.abs(u),Math.abs(v));if(e>158)h+=Math.pow(e-158,1.3)*.65;
+  const e=Math.max(Math.abs(u),Math.abs(v));if(e>158)h+=(e-158)*.3;
   /* kamp en aankomst vlak; paden zacht */
   for(const f of[{x:DRK_CAMP.x,z:DRK_CAMP.z,r:24},{x:DRK_EXIT.x+8,z:DRK_EXIT.z,r:16}]){const fd=Math.hypot(x-f.x,z-f.z);if(fd<f.r)h=lerp(1.5,h,smooth(clamp((fd-f.r*.6)/(f.r*.4),0,1)))}
   const pd=drkPathDist(x,z);if(pd<6&&d>VOLC.r*.55)h=lerp(h*.7+.4,h,smooth(pd/6));
@@ -116,7 +116,7 @@ const D3MAP=[
 '###########...###########',
 '###########.E.###########',
 '#########################'];
-const D3=buildDun({x:1800,z:0,c:6,map:D3MAP,floor:0x6a4636,wall:0x4a2a20,crystal:0xff5a20,spawn:{w:['welp',18,19],p:['drakonier',19,19],L:['lavadrake',19,19],B:'vyraxion'},name:'Hart van de Vulkaan'});
+const D3=buildDun({x:1800,z:0,c:6,map:D3MAP,floor:0x7a5242,wall:0x4a2a20,crystal:0xff5a20,spawn:{w:['welp',18,19],p:['drakonier',19,19],L:['lavadrake',19,19],B:'vyraxion'},name:'Hart van de Vulkaan'});
 /* de drakenhal: middelpunt en straal (voor de baas) */
 const D3_HALL=(()=>{const[x,z]=D3.pos(12,5);return{x,z,r:30}})();
 /* ---- overzichtskaart van het Drakenrijk ---- */
@@ -140,21 +140,20 @@ async function buildDrakeEnv(){if(window.__NOGLTF)return;
   jobs.push(envInstances(['Tree_Lava_1','Tree_Lava_2','Tree_Lava_3'],lavaL,(t,i)=>i,(t,bb)=>{const k=5*t[2]/(bb.max.y-bb.min.y);return[k,k,k]}));
   jobs.push(envInstances(['Rock_1','Rock_2','Rock_3','Rock_4','Rock_5','Rock_6','Rock_7'],rockL,(t,i)=>Math.floor(t[2]*31+i),(t,bb)=>{const w=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);const k=2*t[2]/w;return[k,k*.85,k]},true,dark));
   for(const t of deadL)addCol(t[0],t[1],.45*t[2]);for(const t of lavaL)addCol(t[0],t[1],.5*t[2]);for(const t of rockL)if(t[2]>1)addCol(t[0],t[1],.75*t[2]);
-  const BONE=new THREE.Color(.78,.7,.58);const tintObj=(o,c)=>{if(o)o.traverse(x=>{if(x.isMesh){x.material=x.material.clone();x.material.color.multiply(c)}})};
+  const BONE=new THREE.Color(.78,.7,.58);
   const P=(n,x,z,ry,s,par=scene,y=0)=>jobs.push(envPlace(n,x,z,ry,sz=>[s,s,s],par,y).then(o=>{if(/Skull|Bones/.test(n))tintObj(o,BONE);return o}));
   /* botten en drakenschedels over de vlakte */
   for(let i=0,t=0;i<26&&t<600;t++){const x=DRK.x-150+R()*300,z=DRK.z-150+R()*300;if(!ok(x,z,4))continue;P('D_Bones',x,z,R()*6.28,1.6+R()*.8);i++}
   for(const[u,v,s,ry]of[[-95,-40,3.6,.4],[40,120,4.2,2.2],[110,40,3.4,-1.2],[-40,-140,3.8,1],[130,-120,3.2,2.8]]){const x=DRK.x+u,z=DRK.z+v;P('D_Skull',x,z,ry,s);addCol(x,z,1.6)}
   /* drakennesten (zuid) met eieren */
-  const egg=mat(0x8a3a24,{e:0xff5a1a,ei:.35,flat:false});
-  for(const[u,v]of[[-30,112],[22,132],[60,104],[-60,140]]){const x=DRK.x+u,z=DRK.z+v,y=drkH(x,z);for(let k=0;k<9;k++){const a=k/9*6.28;P(k%2?'Rock_6':'Rock_7',x+Math.cos(a)*3.2,z+Math.sin(a)*3.2,a,.9)}
-    for(let k=0;k<3;k++){const e=mesh(new THREE.SphereGeometry(.55,14,10),egg,x+Math.cos(k*2.1)*.9,y+.55,z+Math.sin(k*2.1)*.9);e.scale.y=1.3}addCol(x,z,2.2);addLight(x,y+1.5,z,0xff6a20,10,8,true)}
+    for(const[u,v]of[[-30,112],[22,132],[60,104],[-60,140]]){const x=DRK.x+u,z=DRK.z+v,y=drkH(x,z);for(let k=0;k<9;k++){const a=k/9*6.28;P(k%2?'Rock_6':'Rock_7',x+Math.cos(a)*3.2,z+Math.sin(a)*3.2,a,.9)}
+    P('D_Bones',x,z,R()*6,1.2);addCol(x,z,2.2);addLight(x,y+1.5,z,0xff6a20,10,8,true)}
   /* schrijnen van de drakenpriesters (oost) */
   for(const[u,v]of[[110,-40],[140,10],[100,40]]){const x=DRK.x+u,z=DRK.z+v,y=drkH(x,z);P('D_Pedestal',x,z,0,2.2);for(let k=0;k<6;k++){const a=k/6*6.28;P('D_Column2',x+Math.cos(a)*6,z+Math.sin(a)*6,a,1.6);addCol(x+Math.cos(a)*6,z+Math.sin(a)*6,.7)}
     addFlame(scene,x,y+2.6,z,2.4,0xff5a10);addLight(x,y+3,z,0xff6a20,30,18);addCol(x,z,1.4)}
   /* Drakenjagerskamp: vuur, tenten, banieren, toortsen, kisten */
   {const cx=DRK_CAMP.x,cz=DRK_CAMP.z,y=drkH(cx,cz);P('D_Woodfire',cx,cz,0,1.6);addFlame(scene,cx,y+.7,cz,2.6,0xff8a30);addLight(cx,y+2,cz,0xffa050,34,18);addCol(cx,cz,1.2);
-    const tc=[0x6a2a1a,0x3a4a6a,0x5a4a2a];for(let k=0;k<3;k++){const a=-1.4+k*1.1,tx=cx+Math.cos(a)*11,tz=cz+Math.sin(a)*11;const t=mesh(new THREE.ConeGeometry(3,3.6,4),mat(tc[k],{tex:'wood',rx:2,ry:1}),tx,drkH(tx,tz)+1.8,tz);t.rotation.y=Math.PI/4+a;addCol(tx,tz,2.6)}
+    const tc=[new THREE.Color(1,.55,.45),new THREE.Color(.6,.7,1),new THREE.Color(1,.85,.6)];for(let k=0;k<3;k++){const a=-1.4+k*1.1,tx=cx+Math.cos(a)*11,tz=cz+Math.sin(a)*11;jobs.push(envPlace('S_Tent',tx,tz,a+Math.PI/2,()=>[.24,.24,.24]).then(o=>tintObj(o,tc[k])));addCol(tx,tz,2.6)}
     for(const[a,d]of[[2.2,9],[3.4,10],[.4,14],[4.4,13]]){P('D_Torch',cx+Math.cos(a)*d,cz+Math.sin(a)*d,a,1.5);addFlame(scene,cx+Math.cos(a)*d,drkH(cx+Math.cos(a)*d,cz+Math.sin(a)*d)+2.1,cz+Math.sin(a)*d,1.1);addLight(cx+Math.cos(a)*d,drkH(cx,cz)+2.4,cz+Math.sin(a)*d,0xffa040,16,12)}
     for(const[a,d]of[[1.6,15],[2.8,15]])P('D_Banner',cx+Math.cos(a)*d,cz+Math.sin(a)*d,a+Math.PI,2);
     for(let k=0;k<4;k++)P(k%2?'Barrel':'Crate',cx-6+k*1.3,cz-12,R()*3,1)}

@@ -59,7 +59,9 @@ function mat(color,o={}){const k=color+'|'+JSON.stringify(o);let m=matCache.get(
 const OUTLINE_M=new THREE.MeshBasicMaterial({color:0x1a120c,side:THREE.BackSide});
 function outline(g,w=.045){return;const add=[];g.traverse(m=>{if(!m.isMesh||m.userData.noOutline||m.material===OUTLINE_M||(m.material.isMeshBasicMaterial)||(m.material.emissiveIntensity||0)>1.5)return;add.push(m)});
   for(const m of add){const o=new THREE.Mesh(m.geometry,OUTLINE_M);m.geometry.computeBoundingSphere();const r=Math.max(.05,m.geometry.boundingSphere.radius);const sx=m.scale.x||1,sy=m.scale.y||1,sz=m.scale.z||1;o.scale.set(1+w/(r*sx),1+w/(r*sy),1+w/(r*sz));o.castShadow=false;o.receiveShadow=false;o.userData.outline=1;m.add(o)}}
-function mesh(geo,m,x=0,y=0,z=0,par=null,cast=true,recv=true){const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=recv;if(par)par.add(o);return o}
+/* PROC: label voor procedurele onderdelen die later door gedownloade modellen vervangen worden (zie 2e_visual.js) */
+let PROC=null;
+function mesh(geo,m,x=0,y=0,z=0,par=null,cast=true,recv=true){const o=new THREE.Mesh(geo,m);if(PROC)o.userData.proc=PROC;o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=recv;if(par)par.add(o);return o}
 
 /* ---------- height field ---------- */
 const WSIZE=640,SEG=200,CELL=WSIZE/SEG,HN=SEG+1;
@@ -72,7 +74,7 @@ function baseH(x,z){
   let h=(fbm(x*.011+3.1,z*.011+7.7)-.5)*16+(fbm(x*.045,z*.045)-.5)*3;
   h+=Math.max(0,1-Math.hypot(x+180,z+240)/95)**1.3*22;
   h+=Math.max(0,1-Math.hypot(x-200,z+190)/90)*14;
-  const e=Math.max(Math.abs(x),Math.abs(z));if(e>235)h+=Math.pow(e-235,1.35)*.45;
+  const e=Math.max(Math.abs(x),Math.abs(z));if(e>235)h+=(e-235)*.26;
   return h}
 const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:219,z:100,r:18},{x:ARENA.x,z:ARENA.z,r:34}];
 for(const f of FLAT)if(f.h==null)f.h=baseH(f.x,f.z);
@@ -194,7 +196,7 @@ function tuftGeo(){const pos=[],col=[];const base=new THREE.Color().setRGB(.42,.
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.computeVertexNormals();const n=g.attributes.normal;for(let i=0;i<n.count;i++)n.setXYZ(i,0,1,0);return g}
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_s=new THREE.Vector3(),_p=new THREE.Vector3(),_e=new THREE.Euler(),_c=new THREE.Color();
 const VEG_IM=[];
-function instance(geo,material,list,fn,cast=true){const im=new THREE.InstancedMesh(geo,material,list.length);VEG_IM.push({im,list});list.forEach((t,i)=>{const o=fn(t,i);_p.set(t[0],groundH(t[0],t[1])+(o.y||0),t[1]);_e.set(o.rx||0,t[3],o.rz||0);_q.setFromEuler(_e);_s.set(o.sx||t[2],o.sy||t[2],o.sz||t[2]);_m.compose(_p,_q,_s);im.setMatrixAt(i,_m);if(o.c!=null)im.setColorAt(i,_c.setHex(o.c).multiplyScalar(o.cm||1))});im.castShadow=cast;im.receiveShadow=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;scene.add(im);return im}
+function instance(geo,material,list,fn,cast=true){const im=new THREE.InstancedMesh(geo,material,list.length);VEG_IM.push({im,list,proc:PROC});if(PROC)im.userData.proc=PROC;list.forEach((t,i)=>{const o=fn(t,i);_p.set(t[0],groundH(t[0],t[1])+(o.y||0),t[1]);_e.set(o.rx||0,t[3],o.rz||0);_q.setFromEuler(_e);_s.set(o.sx||t[2],o.sy||t[2],o.sz||t[2]);_m.compose(_p,_q,_s);im.setMatrixAt(i,_m);if(o.c!=null)im.setColorAt(i,_c.setHex(o.c).multiplyScalar(o.cm||1))});im.castShadow=cast;im.receiveShadow=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;scene.add(im);return im}
 const pineCols=[0x2f5a2e,0x3a6a33,0x27502c,0x456f35];
 instance(new THREE.CylinderGeometry(.16,.3,3,8).translate(0,1.5,0),mat(0x5a3f28,{flat:false}),pineT,()=>({}));
 instance(new THREE.ConeGeometry(2.3,4.2,10).translate(0,4.2,0),mat(0xffffff,{flat:false,r:.9}),pineT,(t,i)=>({c:pineCols[i%4]}));
@@ -274,8 +276,8 @@ function barrel(x,z){const m=mesh(new THREE.CylinderGeometry(.45,.45,1.1,10),mat
 crate(-12,-16);crate(-11,-17,.7);barrel(-18,-8);barrel(-18,-9.2);crate(18,-14);barrel(26,-17);crate(-30,6,1.1);
 
 /* ---------- farm ---------- */
-{const wheat=[];for(let x=-36;x<50;x+=1.1)for(let z=96;z<162;z+=1.1){if(Math.floor((x+200)/9)%2===0&&pathDist(x,z)>3&&RV()<.85)wheat.push([x+RV()*.6,z+RV()*.6,.7+RV()*.5,RV()*6])}
-  instance(new THREE.CylinderGeometry(.02,.07,1,4).translate(0,.5,0),mat(0xffffff),wheat,(t,i)=>({c:[0xd9b84a,0xe6c65a,0xc9a83a][i%3],sx:1,sz:1,sy:t[2]*1.1,rz:(t[2]-.95)*.5}),false);instance(new THREE.ConeGeometry(.09,.32,4).translate(0,1.12,0),mat(0xffffff),wheat,(t,i)=>({c:0xe8c860,sx:1,sz:1,sy:t[2],rz:(t[2]-.95)*.5}),false);
+{PROC='wheat';const wheat=[];for(let x=-36;x<50;x+=1.1)for(let z=96;z<162;z+=1.1){if(Math.floor((x+200)/9)%2===0&&pathDist(x,z)>3&&RV()<.85)wheat.push([x+RV()*.6,z+RV()*.6,.7+RV()*.5,RV()*6])}
+  instance(new THREE.CylinderGeometry(.02,.07,1,4).translate(0,.5,0),mat(0xffffff),wheat,(t,i)=>({c:[0xd9b84a,0xe6c65a,0xc9a83a][i%3],sx:1,sz:1,sy:t[2]*1.1,rz:(t[2]-.95)*.5}),false);instance(new THREE.ConeGeometry(.09,.32,4).translate(0,1.12,0),mat(0xffffff),wheat,(t,i)=>({c:0xe8c860,sx:1,sz:1,sy:t[2],rz:(t[2]-.95)*.5}),false);PROC=null;window.__wheat=wheat;
   const fm=mat(0x7a5a3a,{tex:'wood'});for(let x=-42;x<=56;x+=4){for(const z of[90,166]){if(pathDist(x,z)<3)continue;mesh(new THREE.BoxGeometry(.2,1.2,.2),fm,x,groundH(x,z)+.6,z);mesh(new THREE.BoxGeometry(4,.15,.12),fm,x+2,groundH(x,z)+.9,z)}}
   house(46,108,12,9,6,1,0x9a2a1a,0xb04a2a);
   const mill=new THREE.Group();const mx=-34,mz=118;mill.position.set(mx,groundH(mx,mz),mz);scene.add(mill);mesh(new THREE.CylinderGeometry(2.6,3.4,10,8),mat(0xe0d6c0,{tex:'plaster',rx:3,ry:3}),0,5,0,mill);mesh(new THREE.ConeGeometry(3.4,4,8),mat(0x7a4a2a,{tex:'shingle',rx:3,ry:2}),0,12,0,mill);addCol(mx,mz,3.4);
@@ -284,7 +286,7 @@ crate(-12,-16);crate(-11,-17,.7);barrel(-18,-8);barrel(-18,-9.2);crate(18,-14);b
   for(let i=0;i<6;i++)crate(52+rand(-3,3),118+rand(-2,2),.9);}
 
 /* ---------- bandit camp ---------- */
-{const g=new THREE.Group();g.position.set(CAMP.x,FLAT[1].h,CAMP.z);scene.add(g);
+{PROC='camp';const g=new THREE.Group();g.position.set(CAMP.x,FLAT[1].h,CAMP.z);scene.add(g);
   const lm=mat(0x6a4a2a,{tex:'wood',rx:.3,ry:1});
   for(let a=0;a<Math.PI*2;a+=.13){if(Math.abs(angDiff(a,Math.atan2(32,-60)))<.35)continue;const x=Math.cos(a)*25,z=Math.sin(a)*25,h=3+Math.random()*1.2;mesh(new THREE.CylinderGeometry(.35,.4,h,6),lm,x,h/2,z,g);mesh(new THREE.ConeGeometry(.36,.8,6),lm,x,h+.4,z,g);addCol(CAMP.x+x,CAMP.z+z,.5)}
   const tents=[[-8,-8,0xa08a5a],[9,-6,0x8a5a3a],[-6,10,0x7a6a4a],[11,9,0x9a7a4a],[0,-14,0x6a4a3a]];
@@ -292,18 +294,18 @@ crate(-12,-16);crate(-11,-17,.7);barrel(-18,-8);barrel(-18,-9.2);crate(18,-14);b
   mesh(new THREE.CylinderGeometry(1.4,1.6,.4,10),mat(0x4a4440),0,.2,0,g);for(let i=0;i<5;i++){const l=mesh(new THREE.CylinderGeometry(.15,.15,1.8,5),mat(0x4a3020),0,.5,0,g);l.rotation.set(Math.PI/2,0,i*1.2)}
   addFlame(g,0,.9,0,3,0xff7a20);addFlame(g,.4,.7,.2,2,0xffb030);addFlame(g,-.4,.7,-.2,2,0xffa020);addLight(CAMP.x,FLAT[1].h+2.5,CAMP.z,0xff8a30,60,32);addCol(CAMP.x,CAMP.z,1.6);
   for(let i=0;i<8;i++){const a=i*.8;crate(CAMP.x+Math.cos(a)*18,CAMP.z+Math.sin(a)*18,1+Math.random()*.3)}
-  mesh(new THREE.CylinderGeometry(.08,.08,7,6),lm,4,3.5,3,g);const fl=mesh(new THREE.PlaneGeometry(1.4,2.2),mat(0x1a1a1a,{side:1}),4.72,6,3,g);flags.push(fl)}
+  mesh(new THREE.CylinderGeometry(.08,.08,7,6),lm,4,3.5,3,g);const fl=mesh(new THREE.PlaneGeometry(1.4,2.2),mat(0x1a1a1a,{side:1}),4.72,6,3,g);flags.push(fl);PROC=null}
 
 /* ---------- crypt entrance ---------- */
 const CRYPT_H=FLAT[2].h;
-{const g=new THREE.Group();g.position.set(CRYPT.x,CRYPT_H,CRYPT.z);scene.add(g);const st=mat(0x6a6660,{tex:'brick',rx:1,ry:2});
+{PROC='cryptgate';const g=new THREE.Group();g.position.set(CRYPT.x,CRYPT_H,CRYPT.z);scene.add(g);const st=mat(0x6a6660,{tex:'brick',rx:1,ry:2});
   for(const s of[-1,1]){mesh(new THREE.BoxGeometry(2,8,2),st,s*4,4,0,g);mesh(new THREE.BoxGeometry(2.6,.8,2.6),st,s*4,8.2,0,g);mesh(new THREE.SphereGeometry(.6,8,6),mat(0xd8d2b8),s*4,9.2,0,g);addCol(CRYPT.x+s*4,CRYPT.z,1.4)}
   mesh(new THREE.BoxGeometry(11,1.6,2.4),st,0,8.6,0,g);mesh(new THREE.BoxGeometry(14,10,6),mat(0x5a5650,{tex:'brick',rx:3,ry:3}),0,5,-4,g);addBox(CRYPT.x,CRYPT.z-4,14,6);
   mesh(new THREE.PlaneGeometry(5.8,7.4),new THREE.MeshBasicMaterial({color:0x000000,fog:false}),0,3.7,-.95,g,false,false);
   const portal=mesh(new THREE.PlaneGeometry(5.6,7.2),new THREE.MeshBasicMaterial({color:0x5aff9a,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),0,3.7,-.8,g,false,false);portal.userData.portal=1;window.__cportal=portal;
   for(let i=0;i<3;i++)mesh(new THREE.BoxGeometry(7-i*.6,.3,1),st,0,.15+i*.3,1.8-i*.8,g);
   for(const s of[-1,1]){mesh(new THREE.CylinderGeometry(.12,.12,2.2,6),mat(0x2a2a2a),s*5.6,1.1,2,g);addFlame(g,s*5.6,2.4,2,1.6,0x6aff8a);addLight(CRYPT.x+s*5.6,CRYPT_H+2.6,CRYPT.z+2,0x5aff8a,25,16)}
-  const graves=[];for(let i=0;i<46;i++){const a=RV()*6.28,r=10+RV()*26,x=CRYPT.x+Math.cos(a)*r,z=CRYPT.z+12+Math.sin(a)*r*.8;if(pathDist(x,z)<3)continue;graves.push([x,z,.8+RV()*.4,RV()*.6-.3])}
+  PROC=null;const graves=[];for(let i=0;i<46;i++){const a=RV()*6.28,r=10+RV()*26,x=CRYPT.x+Math.cos(a)*r,z=CRYPT.z+12+Math.sin(a)*r*.8;if(pathDist(x,z)<3)continue;graves.push([x,z,.8+RV()*.4,RV()*.6-.3])}
   instance(new THREE.BoxGeometry(1,1.4,.3).translate(0,.6,0),mat(0x8a867e,{r:1}),graves,t=>({rz:t[3]*.3}));for(const t of graves)addCol(t[0],t[1],.5);
   const fm=mat(0x222222,{m:.7,r:.5});for(let x=-20;x<=20;x+=1.2){if(Math.abs(x)<3.5)continue;const y=groundH(CRYPT.x+x,CRYPT.z+30);mesh(new THREE.BoxGeometry(.08,1.6,.08),fm,CRYPT.x+x,y+.8,CRYPT.z+30,scene,false)}}
 
@@ -337,10 +339,10 @@ const dunPos=(c,r)=>[DUN.x+(c-DC/2+.5)*DUN.c,DUN.z+(r-DR/2+.5)*DUN.c];
 function dunCollide(p,r){for(let it=0;it<2;it++)for(const[ox,oz]of[[r,0],[-r,0],[0,r],[0,-r]]){if(dunCell(p.x+ox,p.z+oz)==='#'){const cx=Math.floor((p.x+ox-DUN.x)/DUN.c+DC/2),cz=Math.floor((p.z+oz-DUN.z)/DUN.c+DR/2);const x0=DUN.x+(cx-DC/2)*DUN.c,z0=DUN.z+(cz-DR/2)*DUN.c;if(ox>0)p.x=Math.min(p.x,x0-r-.001);if(ox<0)p.x=Math.max(p.x,x0+DUN.c+r+.001);if(oz>0)p.z=Math.min(p.z,z0-r-.001);if(oz<0)p.z=Math.max(p.z,z0+DUN.c+r+.001)}}}
 const DSPAWN=[],DUN_ENTRY={},DUN_EXIT={};
 const dungeon=new THREE.Group();scene.add(dungeon);
-{const fl=mesh(new THREE.PlaneGeometry(DC*DUN.c,DR*DUN.c).rotateX(-Math.PI/2),mat(0x8a8478,{tex:'tile',rx:DC*1.5,ry:DR*1.5}),DUN.x,0,DUN.z,dungeon,false,true);void fl;
+{PROC='crypt';const fl=mesh(new THREE.PlaneGeometry(DC*DUN.c,DR*DUN.c).rotateX(-Math.PI/2),mat(0x8a8478,{tex:'tile',rx:DC*1.5,ry:DR*1.5}),DUN.x,0,DUN.z,dungeon,false,true);void fl;
   const walls=[];for(let r=0;r<DR;r++)for(let c=0;c<DC;c++){if(DMAP[r][c]!=='#')continue;let nb=false;for(const[a,b]of[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]){const rr=r+a,cc=c+b;if(rr>=0&&rr<DR&&cc>=0&&cc<DC&&DMAP[rr][cc]!=='#')nb=true}if(nb)walls.push([c,r])}
-  const wim=new THREE.InstancedMesh(new THREE.BoxGeometry(DUN.c,9,DUN.c),mat(0x8a8276,{tex:'brick',rx:2,ry:3}),walls.length);walls.forEach(([c,r],i)=>{const[x,z]=dunPos(c,r);_m.makeTranslation(x,4.5,z);wim.setMatrixAt(i,_m)});wim.castShadow=true;wim.receiveShadow=true;dungeon.add(wim);
-  const caps=new THREE.InstancedMesh(new THREE.BoxGeometry(DUN.c+.4,.6,DUN.c+.4),mat(0x5a544c),walls.length);walls.forEach(([c,r],i)=>{const[x,z]=dunPos(c,r);_m.makeTranslation(x,9.2,z);caps.setMatrixAt(i,_m)});dungeon.add(caps);
+  const wim=new THREE.InstancedMesh(new THREE.BoxGeometry(DUN.c,9,DUN.c),mat(0x8a8276,{tex:'brick',rx:2,ry:3}),walls.length);walls.forEach(([c,r],i)=>{const[x,z]=dunPos(c,r);_m.makeTranslation(x,4.5,z);wim.setMatrixAt(i,_m)});wim.castShadow=true;wim.receiveShadow=true;wim.userData.proc='crypt';dungeon.add(wim);
+  const caps=new THREE.InstancedMesh(new THREE.BoxGeometry(DUN.c+.4,.6,DUN.c+.4),mat(0x5a544c),walls.length);walls.forEach(([c,r],i)=>{const[x,z]=dunPos(c,r);_m.makeTranslation(x,9.2,z);caps.setMatrixAt(i,_m)});caps.userData.proc='crypt';dungeon.add(caps);
   let tor=0;
   for(let r=0;r<DR;r++)for(let c=0;c<DC;c++){const ch=DMAP[r][c];const[x,z]=dunPos(c,r);
     if(ch==='s'||ch==='m'||ch==='B')DSPAWN.push({t:ch==='s'?'knekel':ch==='m'?'kmagier':'boss',x,z});
@@ -351,9 +353,9 @@ const dungeon=new THREE.Group();scene.add(dungeon);
   const[bx,bz]=dunPos(10,2);const th=new THREE.Group();th.position.set(bx,0,bz-3);dungeon.add(th);
   mesh(new THREE.BoxGeometry(8,1,5),mat(0x4a4450,{tex:'brick',rx:2}),0,.5,0,th);mesh(new THREE.BoxGeometry(3.4,1.2,2.4),mat(0x2a2030),0,1.6,-.6,th);mesh(new THREE.BoxGeometry(3.4,5,.6),mat(0x2a2030),0,3.5,-1.6,th);
   for(const s of[-1,1]){mesh(new THREE.ConeGeometry(.5,2,5),mat(0xd8d2b8),s*1.8,6,-1.6,th);addFlame(th,s*3.2,2.6,.8,2.2,0xb06aff);addLight(bx+s*3.2,3,bz-2,0xa060ff,40,22)}
-  const rune=mesh(new THREE.RingGeometry(8,9,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xa05aff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}),bx,.03,bz+6,dungeon,false,false);rune.userData.spin=1;window.__rune=rune;
-  for(let i=0;i<10;i++){const[c,r]=[4+Math.floor(RV()*13),9+Math.floor(RV()*10)];if(DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);const b=mesh(new THREE.BoxGeometry(1.2,.9,2.4),mat(0x5a4a3a,{tex:'wood'}),x+rand(-1.5,1.5),.45,z+rand(-1.5,1.5),dungeon);b.rotation.y=RV()*3}}
-  for(let i=0;i<40;i++){const[c,r]=[4+Math.floor(RV()*13),1+Math.floor(RV()*19)];if(DMAP[r]&&DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);mesh(new THREE.CylinderGeometry(.05,.05,.7,4),mat(0xe8e0c8),x+rand(-2.5,2.5),.05,z+rand(-2.5,2.5),dungeon,false).rotation.set(Math.PI/2,0,RV()*3)}}
+  PROC=null;const rune=mesh(new THREE.RingGeometry(8,9,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xa05aff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}),bx,.03,bz+6,dungeon,false,false);rune.userData.spin=1;window.__rune=rune;
+  PROC='crypt';for(let i=0;i<10;i++){const[c,r]=[4+Math.floor(RV()*13),9+Math.floor(RV()*10)];if(DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);const b=mesh(new THREE.BoxGeometry(1.2,.9,2.4),mat(0x5a4a3a,{tex:'wood'}),x+rand(-1.5,1.5),.45,z+rand(-1.5,1.5),dungeon);b.rotation.y=RV()*3}}
+  for(let i=0;i<40;i++){const[c,r]=[4+Math.floor(RV()*13),1+Math.floor(RV()*19)];if(DMAP[r]&&DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);mesh(new THREE.CylinderGeometry(.05,.05,.7,4),mat(0xe8e0c8),x+rand(-2.5,2.5),.05,z+rand(-2.5,2.5),dungeon,false).rotation.set(Math.PI/2,0,RV()*3)}}PROC=null;
   const ex=mesh(new THREE.PlaneGeometry(4,6),new THREE.MeshBasicMaterial({color:0x8affc0,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),DUN_EXIT.x,3,DUN_EXIT.z+2.2,dungeon,false,false);window.__dportal=ex}
 /* ---------- Asbergen: cave entrance ---------- */
 const CAVE_H=FLAT[4].h;
@@ -404,8 +406,8 @@ function buildDun(def){const M=def.map,R=M.length,C=M[0].length,c=def.c,X=def.x,
     if(ch==='.'&&((r*5+k*3)%11===0)&&tor<30){tor++;const cr=mesh(new THREE.ConeGeometry(.35,1.6,6),mat(def.crystal,{e:def.crystal,ei:1.6}),x+rand(-2,2),.6,z+rand(-2,2),grp,false);cr.rotation.z=rand(-.4,.4);if(tor%3===0)addLight(cr.position.x,1.5,cr.position.z,def.crystal,22,12)}}
   const img=document.createElement('canvas');img.width=C*12;img.height=R*12;{const g=img.getContext('2d');g.fillStyle='#140c0a';g.fillRect(0,0,img.width,img.height);for(let r=0;r<R;r++)for(let k=0;k<C;k++)if(M[r][k]!=='#'){g.fillStyle=M[r][k]==='~'?'#c8501a':'#5a4a44';g.fillRect(k*12,r*12,12,12)}}
   const ex=mesh(new THREE.PlaneGeometry(4,6),new THREE.MeshBasicMaterial({color:0xffb070,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),exit.x,3,exit.z+2.2,grp,false,false);
-  return{X,Z,c,R,C,map:M,cell,pos,collide,spawns,entry,exit,img,lava,portal:ex,name:def.name}}
-const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x4a3a34,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Vuurgrot van Ignaroth'});
+  return{X,Z,c,R,C,map:M,cell,pos,collide,spawns,entry,exit,img,lava,portal:ex,name:def.name,grp,wim}}
+const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x7a5a48,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Vuurgrot van Ignaroth'});
 /* ---------- life-skill stations ---------- */
 const STATIONS=[{k:'vuur',x:-12,z:16,n:'Kookvuur'},{k:'vuur',x:CAMP.x,z:CAMP.z,n:'Kampvuur'},{k:'tafel',x:-19,z:8,n:'Alchemietafel'},{k:'vuur',x:CAVE.x-9,z:CAVE.z+12,n:'Kookvuur'}];
 for(const st of STATIONS){if(st.x===CAMP.x)continue;const y=groundH(st.x,st.z);
