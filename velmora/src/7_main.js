@@ -7,7 +7,7 @@ addEventListener('keydown',ev=>{if(document.activeElement&&(document.activeEleme
   if(k==='enter'){ev.preventDefault();openChat();return}
   if(k==='tab'){ev.preventDefault();cycleTarget();return}
   if(k==='escape'){const open=panels.find(p=>!$('#'+p).hidden);if(open)closePanel(open);else if(ME.cast){ME.cast=null;$('#castbar').hidden=true}else if(ME.target)setTarget(null);else openPanel('pMenu');return}
-  if(k>='1'&&k<='7'){useAbility(+k-1);return}
+  if(k>='1'&&k<='9'){useAbility(+k-1);return}if(k==='0'){useAbility(9);return}if(k==='n')return togglePanel('pTalent');
   if(k==='b'||k==='i')return togglePanel('pBag');if(k==='c')return togglePanel('pChar');if(k==='l')return togglePanel('pQuest');if(k==='m')return togglePanel('pMap');
   if(k==='f')return interact();if(k==='k')return togglePanel('pLife');if(k===' '){ev.preventDefault();jump();return}
   KEYS.add(k)});
@@ -63,12 +63,12 @@ function updPlayer(dt){
   /* ---- physics: velocity + acceleration, fixed 120 Hz steps, slopes, knockback, coyote jump ---- */
   let mvx=0,mvz=0,sp=0;const PHY=ME.phy||(ME.phy={vx:0,vz:0,acc:0,coyote:0,jbuf:0,turn:0,prevRy:ME.ry});
   if(ME.dash){const D=ME.dash;D.t0+=dt;const f=Math.min(1,D.t0/D.t);const p={x:lerp(D.sx,D.x,f),z:lerp(D.sz,D.z,f)};collide(p,.5);ME.pos.x=p.x;ME.pos.z=p.z;sp=12;PHY.vx=PHY.vz=0;if(!D.leap)chargeTrail(ME.pos.x,ME.pos.y,ME.pos.z);
-    if(f>=1){ME.dash=null;if(D.tg&&!D.tg.dead){dealDamage(D.tg,hitDmg(.6),{stun:1.5});dustRing(D.tg.x,D.tg.z,2.5,10);sfx('hit');swingAnim(false)}}}
+    if(f>=1){ME.dash=null;if(D.land)D.land();if(D.tg&&!D.tg.dead){dealDamage(D.tg,hitDmg(.6),{stun:1.5});dustRing(D.tg.x,D.tg.z,2.5,10);sfx('hit');swingAnim(false)}}}
   else{
     const frozen=ME.stun>0||ME.root>0||ME.dead||!!ME.cast&&false;if(ME.stun>0)ME.stun=Math.max(0,ME.stun-dt);if(ME.root>0)ME.root=Math.max(0,ME.root-dt);
     let wx=0,wz=0;if(!frozen&&inp.L>.05){const fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw),rx=Math.cos(cam.yaw),rz=-Math.sin(cam.yaw);wx=fx*inp.y+rx*inp.x;wz=fz*inp.y+rz*inp.x;const L=Math.hypot(wx,wz)||1;wx/=L;wz/=L;
       if(ME.cast&&inp.L>.3){ME.cast=null;$('#castbar').hidden=true;toast('Onderbroken')}}
-    const maxSp=7*(RACES[P.race].spd||1)*(frozen?0:inp.L)*(ME.cast?0:1);
+    const maxSp=7*(RACES[P.race].spd||1)*(1+TM('speed'))*(frozen?0:inp.L)*(ME.cast?0:1);
     /* slope: slower uphill, faster downhill, slide on steep slopes */
     const gh0=groundH(ME.pos.x,ME.pos.z),ahead=groundH(ME.pos.x+wx*1.2,ME.pos.z+wz*1.2),slope=(ahead-gh0)/1.2;
     const slopeK=clamp(1-slope*.45,.55,1.25);
@@ -99,14 +99,14 @@ function updPlayer(dt){
   if(ME.cast){const c=ME.cast;c.t+=dt;setBar($('#castbar'),c.t,c.dur,c.a.n);if(c.t>=c.dur){ME.cast=null;$('#castbar').hidden=true;if(!c.a.need||(c.tg&&!c.tg.dead&&distTo(c.tg)-c.tg.size*.6<=c.a.range+2)){if(c.tg)faceTo(c.tg.x,c.tg.z);execAbility(c.a,c.tg)}else toast('Doelwit verloren')}}
   /* auto attack */
   ME.swing-=dt;const tg=ME.target;
-  if(ME.auto&&isEnemy(tg)&&!ME.dead&&!ME.cast&&!ME.dash&&ME.swing<=0){const C=CLASSES[P.cls];const ak=!!(P.eq.wapen&&P.eq.wapen.wt==='ak');const d=distTo(tg)-tg.size*.6;if(d<=(ak?AK_RANGE:C.range)){ME.swing=ST.spd;faceTo(tg.x,tg.z);ME.combat=6;
+  if(ME.auto&&isEnemy(tg)&&!ME.dead&&!ME.cast&&!ME.dash&&ME.swing<=0){const C=CLASSES[P.cls];const ak=!!(P.eq.wapen&&P.eq.wapen.wt==='ak');const d=distTo(tg)-tg.size*.6;if(d<=(ak?AK_RANGE:C.range)){ME.swing=ST.spd/(1+TM('haste')+tbuff('haste'));faceTo(tg.x,tg.z);ME.combat=6;
     if(ak)akShoot(tg);
-    else if(P.cls==='krijger'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){dealDamage(tg,hitDmg(1));sfx('hit')}},150);P.mp=Math.min(ST.maxmp,P.mp+6)}
+    else if(P.cls==='krijger'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){dealDamage(tg,hitDmg(1));sfx('hit')}},150);P.mp=Math.min(ST.maxmp,P.mp+6+TM('rage'))}
     else if(P.cls==='jager'){swingAnim(true);sfx('bow');proj('arrow',myHand(),tg,48,()=>dealDamage(tg,hitDmg(1)));fxEmit({k:'p',t:'arrow',f:myHand().toArray(),m:tg.id})}
     else{swingAnim(true);proj('arcane',myHand(),tg,24,()=>dealDamage(tg,hitDmg(.85)));fxEmit({k:'p',t:'arcane',f:myHand().toArray(),m:tg.id})}}}
   if(ME.target&&ME.target.kind==='mon'&&ME.target.dead&&!ME.target.loot)setTarget(null);
   /* regen */
-  if(!ME.dead){const oc=ME.combat<=0;if(oc)P.hp=Math.min(ST.maxhp,P.hp+ST.maxhp*.07*dt);const r=ST.res;P.mp=Math.min(ST.maxmp,P.mp+(r==='mana'?ST.maxmp*(oc?.08:.022):r==='energie'?(oc?25:10):(oc?25:9))*dt)}
+  if(!ME.dead){const oc=ME.combat<=0;if(oc)P.hp=Math.min(ST.maxhp,P.hp+ST.maxhp*.07*dt);else if(TM('regen'))P.hp=Math.min(ST.maxhp,P.hp+ST.maxhp*TM('regen')*dt);const r=ST.res;P.mp=Math.min(ST.maxmp,P.mp+(r==='mana'?ST.maxmp*(oc?.08:.022):r==='energie'?(oc?25:10):(oc?25:9))*(1+TM('mregen'))*dt)}
   /* portals */
   updActivity(dt,ME.spd>.5||!!ME.dash);updNodes(dt);
   if(ME.pos.x>1250&&!ME.dead&&D2.cell(ME.pos.x,ME.pos.z)==='~'&&!ME.air){ME.lavaT=(ME.lavaT||0)-dt;if(ME.lavaT<=0){ME.lavaT=.5;const d=Math.round(ST.maxhp*.04);P.hp-=d;ME.combat=6;floatText('me','-'+d+' lava','hurt');if(P.hp<=0){P.hp=0;die()}}}
@@ -215,6 +215,6 @@ function loop(){requestAnimationFrame(loop);FRAME++;lastTick=performance.now();c
   if(!window.__NORENDER){if(GFX.post)composer.render();else renderer.render(scene,camera)}updPlates(W,H);updFloat(dt,W,H)}
 let snapAcc=0;const perf={t:0,n:0};
 function perfWatch(dt){if(S.mode!=='play'||S.noPerf||GFX.auto>=2||GFX.q==='laag')return;perf.t+=dt;perf.n++;if(perf.t>=5){const avg=perf.t/perf.n;perf.t=perf.n=0;if(avg>.042){GFX.q=GFX.q==='hoog'?'middel':'laag';GFX.auto++;applyGfx();$('#bGfx').textContent='Grafiek: '+GFX_N[GFX.q];log('De grafische kwaliteit is verlaagd naar '+GFX_N[GFX.q].toLowerCase()+' voor soepeler spelen (aan te passen in het menu).','sys')}}}
-window.__V={animRig,ambientFx,lvlFx,buildBar,projImpact,projTrail,novaFx,whirlFx,hitFx,healFx,twirlFx,shoutFx,muzzleFx,updParticles,emitP,FXC,AMBIENT,refreshBag,log,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
+window.__V={learnTalent,talentSkills,talentFree,TM,respecTalents,respecCost,bar,useAbility,execAbility:typeof execAbility!=='undefined'?execAbility:null,refreshTalent,openPanel,gainXp,TALENTS,animRig,ambientFx,lvlFx,buildBar,projImpact,projTrail,novaFx,whirlFx,hitFx,healFx,twirlFx,shoutFx,muzzleFx,updParticles,emitP,FXC,AMBIENT,refreshBag,log,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
 loadSave();startNet();netStatus();$('#loadMsg').textContent='Karaktermodellen worden geladen';
 Promise.all([preloadModels(),buildEnv()]).then(()=>{showMenu();$('#loading').hidden=true;loop()});

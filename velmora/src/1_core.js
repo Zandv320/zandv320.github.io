@@ -108,7 +108,7 @@ const SUFFIX=[['van de Beer',0,1],['van de Tijger',1,0],['van de Adelaar',.6,.6]
 const JUNK={ever:['Everslagtand','Ruwe everhuid'],wolf:['Wolfspels','Gebroken hoektand'],spin:['Spinrag','Chitineschild'],rover:['Gestolen zakdoek','Dobbelstenen'],grisk:['Grisks oorring'],knekel:['Vergeeld bot','Roestige gesp'],kmagier:['Stoffig perkament'],boss:['Kroonsplinter'],dienaar:['Botsplinter']};
 const ARM_SLOT={hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
 const xpNeed=l=>40*l+15*l*l;
-const MAXLVL=15;
+const MAXLVL=20;
 /* ===== life skills (inspired by Black Desert) ===== */
 const RANKS=['Beginner','Leerling','Bekwaam','Vakkundig','Ambachtsman','Meester','Goeroe'];
 const LIFE={verzamelen:{n:'Verzamelen',ic:'herb'},vissen:{n:'Vissen',ic:'fish'},bewerken:{n:'Bewerken',ic:'ingot'},koken:{n:'Koken',ic:'food'},alchemie:{n:'Alchemie',ic:'elixir'}};

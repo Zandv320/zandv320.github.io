@@ -115,7 +115,7 @@ kbd{font:700 12px var(--ui);border:1px solid var(--gold3);background:#1d1812;pad
 .slot.active{outline:2px solid #ffe08a}
 .slot .lk{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#ccc;font-weight:700}
 #mbtn{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));display:flex;gap:4px}
-@media (max-width:1180px){body:not(.touch) #mbtn{bottom:max(76px,calc(env(safe-area-inset-bottom) + 70px))}body:not(.touch) #pBag{bottom:136px}}
+@media (max-width:1560px){body:not(.touch) #mbtn{bottom:max(112px,calc(env(safe-area-inset-bottom) + 106px))}body:not(.touch) #pBag{bottom:186px}}
 .mb{width:46px;height:46px;border:1px solid var(--gold2);background:var(--panel2);font-family:var(--head);font-weight:800;color:var(--gold);font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
 .mb small{font-family:var(--ui);font-size:9px;color:var(--muted);margin-top:3px;font-weight:500}
 #castbar{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);width:260px;height:18px;--c1:#ffd34d;--c2:#b07a00}
@@ -329,6 +329,37 @@ body.touch #pBag,body.touch #pChar,body.touch #pQuest,body.touch #pLife,body.tou
 @keyframes drawerUp{from{transform:translate(-50%,40px);opacity:0}}
 body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(400px,62vw)}body.touch #pChar{width:min(420px,66vw)}
 @media (max-height:500px){body.touch #tframe{left:50%;top:max(8px,env(safe-area-inset-top));width:min(260px,36vw)}#joy{width:132px;height:132px}#tJump{left:calc(max(18px,env(safe-area-inset-left)) + 142px)}body.touch #tracker.show{top:calc(max(8px,env(safe-area-inset-top)) + 64px)}body.touch #feed{top:calc(max(8px,env(safe-area-inset-top)) + 90px)}}
+
+/* talenten */
+#pTalent{left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,96vw)}
+#pTalent h3 .tpts{margin-left:auto;font-size:14px;font-family:var(--body,inherit);color:#fff3d6;background:rgba(40,20,6,.55);border-radius:12px;padding:2px 10px;text-shadow:none}
+#pTalent h3 .tpts.has{background:#3d7a1a;box-shadow:0 0 8px #9fe060}
+#tTabs{display:none}
+#tTrees{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ttree{background:rgba(30,16,6,.35);border-radius:10px;padding:8px 6px 10px;position:relative}
+.ttree>header{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#fff3d6;font-weight:700}
+.ttree>header canvas{width:30px;height:30px;border-radius:6px}.ttree>header small{margin-left:auto;font-weight:400;opacity:.85}
+.ttree .tdesc{font-size:12px;color:#f0dcb8;margin:0 0 6px;min-height:2.4em}
+.trow{display:flex;justify-content:center;gap:16px;padding:6px 0;position:relative}
+.trow.lock{opacity:.45;filter:grayscale(.8)}
+.trow .tl{position:absolute;left:2px;top:50%;transform:translateY(-50%);font-size:10px;color:#f0dcb8;opacity:.8}
+.tnode{position:relative;width:52px;height:52px;border-radius:10px;border:3px solid #6b4a26;background:#2a1a0c;padding:0;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.tnode canvas{width:100%;height:100%;border-radius:7px;display:block}
+.tnode.skill{border-radius:50%;border-color:#c99a3a}.tnode.skill canvas{border-radius:50%}
+.tnode.can{border-color:#7adc3a;box-shadow:0 0 8px #7adc3a}
+.tnode.max{border-color:#ffd34d}
+.tnode.zero canvas{filter:grayscale(.85) brightness(.7)}
+.tnode b{position:absolute;right:-6px;bottom:-6px;background:#1b1006;color:#fff;font-size:11px;border-radius:8px;padding:0 4px;border:1px solid #6b4a26;font-weight:700}
+.tnode.max b{color:#ffd34d}.tnode.can b{color:#9ff06a}
+.ttree.on .trow{gap:22px}
+@media (max-height:500px){.trow{padding:4px 0}.ttree .tdesc{min-height:0}.tfoot{display:none}}
+.tfoot{font-size:12.5px;color:#f0dcb8;margin:10px 0 0;text-align:center}
+#tip .tg{color:#9ff06a}#tip .tk{color:#ffd34d;font-size:12px}
+.mb .tdot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#7adc3a;box-shadow:0 0 6px #9fe060;border:2px solid #2a1a0c}
+.mb{position:relative}
+body.touch #pTalent{left:50%;right:auto;top:auto;bottom:max(6px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(760px,calc(100vw - 16px));max-height:min(92%,calc(100% - 16px));animation:drawerUp .22s ease-out}
+@media (max-width:700px),(max-height:500px){#tTabs{display:flex;gap:6px;margin-bottom:8px}#tTabs button{flex:1}#tTrees{grid-template-columns:1fr}.ttree:not(.on){display:none}}
+body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
 </style>
   <script type="module" src="./main.js"></script>
 </head>
@@ -361,6 +392,7 @@ body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(
   <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div id="abar"></div></div>
   <div id="mbtn" class="pe">
     <button class="mb" data-p="pChar"><img src="ui/character.png" alt=""><i>C</i><small>Held</small></button>
+    <button class="mb" data-p="pTalent" id="mbTal"><img src="ui/award.png" alt=""><i>N</i><small>Talenten</small><b class="tdot" hidden></b></button>
     <button class="mb" data-p="pBag"><img src="ui/pouch.png" alt=""><i>B</i><small>Rugzak</small></button>
     <button class="mb" data-p="pQuest"><img src="ui/book_open.png" alt=""><i>L</i><small>Quests</small></button>
     <button class="mb" data-p="pLife"><img src="ui/campfire.png" alt=""><i>K</i><small>Ambacht</small></button>
@@ -370,6 +402,7 @@ body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(
   </div>
   <div id="pBag" class="panel frame" hidden><h3>Rugzak <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Goud</span><span id="goldTxt">0</span></div></div>
   <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Held</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
+  <div id="pTalent" class="panel frame" hidden><h3><span>Talenten</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
   <div id="pQuest" class="panel frame" hidden><h3>Questlog <button class="x" data-close>×</button></h3><div id="qList"></div></div>
   <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Kaart van Velmora</span><button class="x" data-close>×</button></h3><canvas id="bigmap" width="560" height="560"></canvas></div>
   <div id="pLife" class="panel frame" hidden><h3>Ambacht <button class="x" data-close>×</button></h3><div id="lifeBody"></div></div>

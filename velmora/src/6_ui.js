@@ -5,9 +5,10 @@ function log(t,cls='sys',raw=false){if(isTouch){const f=$('#feed');if(f){const e
 let bannerT=0;function banner(t,s='',dur=2.6){const b=$('#banner');b.innerHTML='<b>'+esc(t)+'</b>'+(s?'<small>'+esc(s)+'</small>':'');b.style.opacity=1;bannerT=dur}
 const npcName=id=>(NPCS.find(n=>n.id===id)||{}).n||'';
 function setBar(el,v,max,txt){const f=Math.round(clamp(max?v/max:0,0,1)*400)/400;if(el._f!==f){el._f=f;el.firstElementChild.style.transform='scaleX('+f+')'}const t=txt??(Math.round(v)+' / '+Math.round(max));if(el._t!==t){el._t=t;el.lastElementChild.textContent=t}}
-const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife'];
-function openPanel(id){if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')drawBigMap();if(id==='pLife')refreshLife()}
-function closePanel(id){$('#'+id).hidden=true;if(id==='pDialog')S.shop=false;hideTip()}
+const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife','pTalent'];
+$('#pTalent').addEventListener('click',()=>{if(isTouch)hideTip()});
+function openPanel(id){if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')drawBigMap();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}}
+function closePanel(id){$('#'+id).hidden=true;if(id==='pTalent')document.body.classList.remove('tal');if(id==='pDialog')S.shop=false;hideTip()}
 function togglePanel(id){if($('#'+id).hidden)openPanel(id);else closePanel(id)}
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{const p=b.closest('.panel');if(p)closePanel(p.id)}));
 document.querySelectorAll('#mbtn [data-p]').forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.p)));
@@ -47,17 +48,19 @@ function attackToggle(){if(ME.dead)return;if(ME.auto&&isEnemy(ME.target)){ME.aut
   if(!isEnemy(ME.target))return toast('Geen vijand in de buurt');ME.auto=true;faceTo(ME.target.x,ME.target.z)}
 /* action bar */
 const barEls=[],tbEls=[];
-function buildBar(){const ab=$('#abar');const B=bar();
-  if(ab.children.length!==B.length){ab.innerHTML='';barEls.length=0;B.forEach((a,i)=>{const b=document.createElement('button');b.className='slot';b.innerHTML='<span class="k">'+(i+1)+'</span><span class="n"></span><div class="cd"></div><div class="cdt"></div>';b.prepend(iconCanvas(a.ic,64));b.addEventListener('click',()=>useAbility(i));b.addEventListener('mouseenter',ev=>showAbilTip(a,b));b.addEventListener('mouseleave',hideTip);ab.appendChild(b);barEls.push(b)})}
+function buildBar(){const ab=$('#abar');const B=bar();refreshTalent();
+  if(ab.children.length!==B.length){ab.innerHTML='';barEls.length=0;B.forEach((a,i)=>{const b=document.createElement('button');b.className='slot';b.innerHTML='<span class="k">'+(i<9?i+1:i===9?0:'')+'</span><span class="n"></span><div class="cd"></div><div class="cdt"></div>';b.prepend(iconCanvas(a.ic,64));b.addEventListener('click',()=>useAbility(i));b.addEventListener('mouseenter',ev=>showAbilTip(a,b));b.addEventListener('mouseleave',hideTip);ab.appendChild(b);barEls.push(b)})}
   B.forEach((a,i)=>{const b=barEls[i];if(b.dataset.id!==a.id){b.dataset.id=a.id;b.querySelector('canvas').replaceWith(iconCanvas(a.ic,64))}});
   if(isTouch){const tb=$('#tbtns');
     /* actiewiel: plek t.o.v. rechtsonder [right,bottom,maat]; vaardigheden 0–3 in een boog, de rest in de lade */
     const WHEEL=[[112,6,68],[100,88,68],[26,116,68],[184,80,58]];
     const mk=(cls,r,bt,sz,inner,fn,par=tb)=>{const b=document.createElement('button');b.className='tb '+cls;Object.assign(b.style,{right:r+'px',bottom:bt+'px',width:sz+'px',height:sz+'px'});b.innerHTML=inner;b.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(12);fn(b)});par.appendChild(b);return b};
+    const TWHEEL=[[252,62,54],[318,36,52]];
+    if(tb.children.length&&tbEls.length!==B.length){tb.innerHTML='';tbEls.length=0;const oj=$('#tJump');if(oj)oj.remove()}
     if(!tb.children.length){
       mk('big',0,0,104,'<img src="ui/icon_sword.png" alt=""><span class="lab">Aanval</span>',b=>attackToggle());
       const drawer=document.createElement('div');drawer.id='tdrawer';tb.appendChild(drawer);
-      B.forEach((a,i)=>{const w=WHEEL[i];const inner='<span class="n"></span><div class="cd"></div><div class="cdt"></div>';let b;
+      let tk=0;B.forEach((a,i)=>{const w=i<4?WHEEL[i]:a.talent?TWHEEL[tk++]:null;const inner='<span class="n"></span><div class="cd"></div><div class="cdt"></div>';let b;
         if(w)b=mk('ab',w[0],w[1],w[2],inner,()=>useAbility(i));
         else{b=mk('ab sm',0,0,52,inner,()=>{useAbility(i);drawer.classList.remove('open')},drawer);b.style.position='relative';b.style.right=b.style.bottom='auto'}
         b.prepend(iconCanvas(a.ic,64));b.dataset.id=a.id;tbEls.push(b)});
@@ -68,14 +71,40 @@ function buildBar(){const ab=$('#abar');const B=bar();
     else B.forEach((a,i)=>{const b=tbEls[i];if(b&&b.dataset.id!==a.id){b.dataset.id=a.id;b.querySelector('canvas').replaceWith(iconCanvas(a.ic,64))}});
     const big=tb.querySelector('.big');if(big)big.classList.toggle('on',!!(ME.auto&&isEnemy(ME.target)))}
   updBar()}
-function updBar(){const B=bar();if(isTouch){const big=document.querySelector('#tbtns .big');if(big){const on=!!(ME.auto&&isEnemy(ME.target));if(big._on!==on){big._on=on;big.classList.toggle('on',on)}}}B.forEach((a,i)=>{for(const b of[barEls[i],tbEls[i]]){if(!b)continue;const cd=Math.max(ME.cds[a.id]||0,a.item?0:ME.gcd);const tot=ME.cds[a.id]>0?a.cd:1;const pv=cd>0?Math.round(clamp(cd/tot,0,1)*60)/60:0;if(b._p!==pv){b._p=pv;b.querySelector('.cd').style.setProperty('--p',pv)}const ct=(ME.cds[a.id]||0)>1.5?String(Math.ceil(ME.cds[a.id])):'';if(b._ct!==ct){b._ct=ct;b.querySelector('.cdt').textContent=ct}
-  const lk=P.level<a.lvl,nr=!!(a.cost>P.mp||(a.item&&!countItem(a.item)));if(b._lk!==lk){b._lk=lk;b.classList.toggle('lock',lk)}if(b._nr!==nr){b._nr=nr;b.classList.toggle('nores',nr)}
+
+/* ---------- talentpaneel ---------- */
+let TAL_TAB=0;
+const talD=(d,r)=>d.replace(/\{([\d.]+)\}/g,(m,v)=>String(+(parseFloat(v)*Math.max(1,r)).toFixed(1)));
+function talentDot(){const f=talentFree();const d=document.querySelector('#mbTal .tdot');if(d)d.hidden=!(f>0);const ht=$('#tPts');if(ht){ht.textContent=f+' punt'+(f===1?'':'en')+' vrij';ht.classList.toggle('has',f>0)}}
+function talentTip(n,tr,el,touch){const r=talentRank(n.id),sp=treeSpent(tr),req=TIER_REQ[n.t];
+  let h='<div class="tn">'+esc(n.n)+'</div><div class="ts">Rang '+r+' / '+n.max+(n.skill?' · nieuwe vaardigheid':'')+'</div>';
+  if(n.skill){const a=n.skill;h+='<div class="ts">'+(a.cost?abCost(a)+' '+resName()+' · ':'')+(a.cast?a.cast+' s spreuktijd · ':'Direct · ')+(a.cd?+abCd(a).toFixed(1)+' s afkoeltijd':'')+(a.range?' · '+a.range+' m':'')+'</div><div style="margin-top:4px">'+esc(a.d)+'</div>'}
+  else if(r>0)h+='<div style="margin-top:4px">'+esc(talD(n.d,r))+'</div>';
+  if(!n.skill&&r<n.max)h+='<div style="margin-top:4px"'+(r?' class="tg"':'')+'>'+(r?'Volgende rang: ':'')+esc(talD(n.d,r+1))+'</div>';
+  if(sp<req)h+='<div class="tr">Vereist '+req+' punten in '+esc(tr.n)+' ('+sp+'/'+req+')</div>';
+  else if(r<n.max&&talentFree()<=0)h+='<div class="tr">'+(P.level<2?'Je krijgt je eerste talentpunt op niveau 2':'Geen talentpunten vrij — stijg een niveau')+'</div>';
+  if(touch&&canLearn(n.id))h+='<div class="tb" id="tipB"><button class="btn" id="tLearn">Leren</button></div>';
+  else if(!touch&&canLearn(n.id))h+='<div class="tk">Klik om te leren</div>';
+  tipEl.innerHTML=h;placeTip(el);const lb=tipEl.querySelector('#tLearn');if(lb)lb.onclick=ev=>{ev.stopPropagation();if(learnTalent(n.id)){refreshTalent();const ne=document.querySelector('.tnode[data-id="'+n.id+'"]');if(ne)talentTip(n,tr,ne,true);else hideTip()}}}
+function refreshTalent(){talentDot();if(!P||$('#pTalent').hidden)return;const trees=talentTrees();const box=$('#tTrees'),tabs=$('#tTabs');box.innerHTML='';tabs.innerHTML='';
+  trees.forEach((tr,ti)=>{const sp=treeSpent(tr);const tb=document.createElement('button');tb.className='btn'+(ti===TAL_TAB?' on':' alt');tb.textContent=tr.n+' ('+sp+')';tb.onclick=()=>{TAL_TAB=ti;hideTip();refreshTalent()};tabs.appendChild(tb);
+    const col=document.createElement('div');col.className='ttree'+(ti===TAL_TAB?' on':'');const hd=document.createElement('header');hd.appendChild(iconCanvas(tr.ic,48));hd.insertAdjacentHTML('beforeend','<span>'+esc(tr.n)+'</span><small>'+sp+' punten</small>');col.appendChild(hd);col.insertAdjacentHTML('beforeend','<p class="tdesc">'+esc(tr.d)+'</p>');
+    for(let t=0;t<TIER_REQ.length;t++){const row=document.createElement('div');row.className='trow'+(sp<TIER_REQ[t]?' lock':'');if(TIER_REQ[t])row.insertAdjacentHTML('beforeend','<span class="tl">'+TIER_REQ[t]+'</span>');
+      for(const n of tr.nodes.filter(x=>x.t===t)){const r=talentRank(n.id);const b=document.createElement('button');b.className='tnode'+(n.skill?' skill':'')+(r>=n.max?' max':'')+(!r?' zero':'')+(canLearn(n.id)?' can':'');b.dataset.id=n.id;b.appendChild(iconCanvas(n.ic,64));b.insertAdjacentHTML('beforeend','<b>'+r+'/'+n.max+'</b>');
+        if(isTouch)b.addEventListener('click',ev=>{ev.stopPropagation();talentTip(n,tr,b,true)});
+        else{b.addEventListener('mouseenter',()=>talentTip(n,tr,b,false));b.addEventListener('mouseleave',hideTip);b.addEventListener('click',()=>{if(learnTalent(n.id)){refreshTalent();const ne=document.querySelector('.tnode[data-id="'+n.id+'"]');if(ne)talentTip(n,tr,ne,false)}})}
+        row.appendChild(b)}
+      col.appendChild(row)}
+    box.appendChild(col)});
+  $('#tFoot').innerHTML='1 talentpunt per niveau vanaf niveau 2 (maximaal '+(MAXLVL-1)+'). Ronde talenten geven een nieuwe vaardigheid. Opnieuw verdelen kan bij <b>Broeder Anselm</b> in Zilverbron voor '+respecCost()+' goud.'}
+function updBar(){const B=bar();if(isTouch){const big=document.querySelector('#tbtns .big');if(big){const on=!!(ME.auto&&isEnemy(ME.target));if(big._on!==on){big._on=on;big.classList.toggle('on',on)}}}B.forEach((a,i)=>{for(const b of[barEls[i],tbEls[i]]){if(!b)continue;const cd=Math.max(ME.cds[a.id]||0,a.item?0:ME.gcd);const tot=ME.cds[a.id]>0?(abCd(a)||1):1;const pv=cd>0?Math.round(clamp(cd/tot,0,1)*60)/60:0;if(b._p!==pv){b._p=pv;b.querySelector('.cd').style.setProperty('--p',pv)}const ct=(ME.cds[a.id]||0)>1.5?String(Math.ceil(ME.cds[a.id])):'';if(b._ct!==ct){b._ct=ct;b.querySelector('.cdt').textContent=ct}
+  const lk=P.level<a.lvl,nr=!!(abCost(a)>P.mp||(a.item&&!countItem(a.item)));if(b._lk!==lk){b._lk=lk;b.classList.toggle('lock',lk)}if(b._nr!==nr){b._nr=nr;b.classList.toggle('nores',nr)}
   const n=b.querySelector('.n');const nt=a.item?String(countItem(a.item)):P.level<a.lvl?'N'+a.lvl:'';if(n.textContent!==nt)n.textContent=nt;
   if(a.range&&b.classList){const far=!!(isEnemy(ME.target)&&distTo(ME.target)-ME.target.size*.6>a.range);if(b._far!==far){b._far=far;b.classList.toggle('far',far)}}}})}
 /* tooltips */
 const tipEl=$('#tip');
 function placeTip(anchor){const r=anchor.getBoundingClientRect();tipEl.hidden=false;const tw=tipEl.offsetWidth,th=tipEl.offsetHeight;let x=r.left+r.width/2-tw/2,y=r.top-th-8;if(y<8)y=r.bottom+8;x=clamp(x,8,innerWidth-tw-8);y=clamp(y,8,innerHeight-th-8);tipEl.style.left=x+'px';tipEl.style.top=y+'px'}
-function showAbilTip(a,el){tipEl.innerHTML='<div class="tn">'+esc(a.n)+'</div><div class="ts">'+(a.cost?a.cost+' '+resName()+' · ':'')+(a.cast?a.cast+' s spreuktijd · ':'Direct · ')+(a.cd?a.cd+' s afkoeltijd':'')+(a.range?' · '+a.range+' m':'')+'</div><div style="margin-top:4px">'+esc(a.d)+'</div>'+(P.level<a.lvl?'<div class="tr">Vereist niveau '+a.lvl+'</div>':'');placeTip(el)}
+function showAbilTip(a,el){const ac=a.item?a.cost:abCost(a),at=a.item?a.cast:abCast(a),ad=a.item?a.cd:+abCd(a).toFixed(1);tipEl.innerHTML='<div class="tn">'+esc(a.n)+'</div><div class="ts">'+(ac?ac+' '+resName()+' · ':'')+(at?+at.toFixed(1)+' s spreuktijd · ':'Direct · ')+(ad?ad+' s afkoeltijd':'')+(a.range?' · '+a.range+' m':'')+'</div><div style="margin-top:4px">'+esc(a.d)+'</div>'+(a.talent?'<div class="tk">Geleerd via talenten</div>':'')+(P.level<a.lvl?'<div class="tr">Vereist niveau '+a.lvl+'</div>':'');placeTip(el)}
 function hideTip(){tipEl.hidden=true}
 function itemHtml(it,cmp=true){if(!it)return'';let h='<div class="tn" style="color:'+rarCol(it)+'">'+esc(it.n)+(it.q>1?' x'+it.q:'')+'</div>';
   if(it.kind==='gear'){h+='<div class="ts">'+SLOT_NL[it.s]+(it.s==='wapen'?' · '+it.wt:'')+' · '+RARITY[it.r].n+'</div>';if(it.s==='wapen')h+='<div>'+it.min+' – '+it.max+' schade · snelheid '+it.spd.toFixed(1)+'</div>';if(it.arm)h+='<div>'+it.arm+' pantser</div>';if(it.pow)h+='<div class="tg">+'+it.pow+' kracht</div>';if(it.sta)h+='<div class="tg">+'+it.sta+' uithouding</div>';
@@ -110,10 +139,12 @@ function openNpc(n,keep){if(Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z)>6)return toast
   for(const q of qs){const s=qState(q);if(s==='done'||s==='locked')continue;h+='<button class="dq" data-q="'+q.id+'"><span class="m">'+(s==='ready'?'?':s==='avail'?'!':'…')+'</span>'+esc(q.n)+(s==='active'?' (bezig)':s==='ready'?' (voltooien)':'')+'</button>'}
   if(qs.length&&qs.every(q=>qState(q)==='done'))h+='<p><i>Je hebt alles gedaan wat ik je kon vragen. Dank je, held.</i></p>';
   if(qs.some(q=>qState(q)==='locked')&&!qs.some(q=>['avail','active','ready'].includes(qState(q)))&&!qs.every(q=>qState(q)==='done'))h+='<p><i>Kom terug als je sterker bent geworden.</i></p>';
+  if(n.id==='anselm'&&P.level>=2){const c=respecCost(),sp=talentSpent();h+='<p style="margin-top:10px"><i>Het Licht kan je geest zuiveren, zodat je je talenten opnieuw kunt kiezen.</i></p><div class="row"><button class="btn" id="respecB"'+(sp?'':' disabled')+'>Talenten opnieuw verdelen ('+c+' goud)</button></div>'}
   S.shop=!!n.def.shop;if(S.shop){h+='<b>Te koop</b><div class="shop" id="shopL"></div>';const junk=P.inv.reduce((s,x)=>s+(x&&x.kind==='junk'?x.price*x.q:0),0);h+='<div class="row"><button class="btn" id="sellJ"'+(junk?'':' disabled')+'>Verkoop alle rommel ('+junk+'g)</button></div><p style="font-size:13px;margin-top:8px">Tip: open je rugzak om uitrusting te verkopen. Je hebt <b>'+P.gold+'</b> goud.</p>'}
   b.innerHTML=h;b.querySelectorAll('[data-q]').forEach(x=>x.onclick=()=>showQuest(n,QUESTS.find(q=>q.id===x.dataset.q)));
   if(S.shop){const sl=$('#shopL');for(const[pt,pr]of[['heal',3],['mana',3]]){const it=potion(pt);const bt=document.createElement('button');bt.appendChild(iconCanvas(itemIcon(it),40));bt.insertAdjacentHTML('beforeend','<span>'+it.n+'<br><small>'+pr+' goud</small></span>');bt.onclick=()=>{if(P.gold<pr)return toast('Niet genoeg goud');if(!addItem(potion(pt)))return toast('Je rugzak is vol');P.gold-=pr;sfx('loot');refreshBag();openNpc(n,true);saveGame()};sl.appendChild(bt)}
     $('#sellJ').onclick=()=>{let g=0;P.inv.forEach((x,i)=>{if(x&&x.kind==='junk'){g+=x.price*x.q;P.inv[i]=null}});P.gold+=g;log('Rommel verkocht voor '+g+' goud.','loot');sfx('loot');refreshBag();openNpc(n,true);saveGame()}}
+  const rb=$('#respecB');if(rb)rb.onclick=()=>{if(respecTalents()){openNpc(n,true);refreshTalent()}};
   openPanel('pDialog');S.shop=!!n.def.shop}
 function rewardHtml(q){return'<div class="rew"><span>'+q.xp+' XP</span><span style="color:#8a6a00">'+q.gold+' goud</span>'+(q.item?'<span style="color:'+['#000','#1a8a2a','#1a5ab8','#8a2ac8'][q.item]+'">'+RARITY[q.item].n+' voorwerp</span>':'')+(q.pots?'<span>'+q.pots+' drankjes</span>':'')+'</div>'}
 function showQuest(n,q){const s=qState(q);const b=$('#dBody');const a=P.quests[q.id];
