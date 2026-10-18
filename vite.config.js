@@ -4,7 +4,7 @@ import path from 'node:path';
 
 /* De spelcode staat in velmora/src/*.js als losse delen die samen één module vormen (gedeelde scope).
    Deze plugin plakt ze in volgorde aan elkaar als virtuele module; Vite bundelt daarna three.js mee en minificeert alles. */
-const PARTS=['1_core','1b_talents','2_world','2b_env','2c_arena','3_models','3b_gltf','3d_dress','4_game','4b_life','4c_arena','4d_fx','4e_talents','5_net','6_ui','7_main'];
+const PARTS=['1_core','1b_talents','2_world','2b_env','2c_arena','3_models','3b_gltf','3d_dress','4f_perf','4_game','4b_life','4c_arena','4d_fx','4e_talents','5_net','6_ui','7_main'];
 function velmoraGame(){
   const id='virtual:velmora-game',rid='\0'+id;
   const dir=path.resolve(__dirname,'velmora/src');

@@ -58,7 +58,8 @@ function updActivity(dt,moving){const A=ACT.cur;if(!A)return;
   else if(A.k==='fish'){if(bobber)bobber.position.y=-.62+Math.sin(performance.now()*.004)*.03+(A.phase==='bite'?Math.sin(performance.now()*.03)*.08:0);
     if(A.phase==='wait'){setBar($('#castbar'),A.t,A.wait,'Wachten op beet…');$('#castbar').hidden=false;if(A.t>=A.wait){$('#castbar').hidden=true;fishBite()}}
     else{A.m+=A.dir*dt*(1.1+A.t*.25);if(A.m>1){A.m=1;A.dir=-1}if(A.m<0){A.m=0;A.dir=1}$('#fishMark').style.left=(A.m*100)+'%';if(A.t>3.2){endFish();log('De vis is ontsnapt…','err')}}}}
-function updNodes(dt){for(const n of NODES)if(n.down){n.downT-=dt;if(n.downT<=0){n.down=0;n.g.visible=true}}}
+function updNodes(dt){const cx=camTarget.x,cz=camTarget.z;for(const n of NODES){if(n.down){n.downT-=dt;if(n.downT<=0)n.down=0}
+  /* verzamelpunten ver weg niet tekenen */const vis=!n.down&&Math.abs(n.x-cx)<85&&Math.abs(n.z-cz)<85;if(n.g.visible!==vis)n.g.visible=vis}}
 /* ---- food & elixirs ---- */
 function useConsumable(i){const it=P.inv[i];if(!it)return;const M=MATS[it.n]||{};const slot=M.food?'food':M.elixir?'elixir':null;if(!slot)return;P.buffs=P.buffs||{};const f=M[slot];P.buffs[slot]={n:it.n,until:Date.now()+f.dur*1000};if(--it.q<=0)P.inv[i]=null;
   const fr=P.hp/ST.maxhp;calcStats();P.hp=Math.round(ST.maxhp*fr);log((slot==='food'?'Je eet ':'Je drinkt ')+it.n+': '+f.d+' voor '+Math.round(f.dur/60)+' minuten.','sys');burst(ME.pos.x,ME.pos.y+1,ME.pos.z,slot==='food'?0xffc070:0xff6a4a,20,2.5);sfx('loot');refreshBag();refreshBuffs();saveGame()}

@@ -202,7 +202,7 @@ function buildSpider(o){
   const legs=[];for(let i=0;i<4;i++)for(const s of[-1,1]){const lg=new THREE.Group();lg.position.set(s*.25,.8,.35-i*.22);lg.rotation.y=s*(-.5+i*.35)+(s<0?Math.PI:0);body.add(lg);const up=mesh(CAP(.04,.7),c,.36,.22,0,lg);up.rotation.z=.6-Math.PI/2;const lo=mesh(new THREE.ConeGeometry(.04,.9,8),c,.95,-.08,0,lg);lo.rotation.z=-1.05-Math.PI/2;legs.push(lg)}
   g.traverse(m=>{if(m.isMesh)m.castShadow=true});outline(g,.04);g.scale.setScalar(o.scale||1);
   return{g,body,legs,spider:1,h:1.4*(o.scale||1),ph:Math.random()*6}}
-function buildMonster(type,lvl){const t=MON[type];const sc=(t.size||1)*(1+(lvl-t.lv[0])*.04);if(!window.__NOGLTF){const r=buildGltfMon(type,lvl,sc);if(r)return r}return buildMonsterProc(type,lvl)}
+function buildMonster(type,lvl){const t=MON[type];const sc=(t.size||1)*(1+(lvl-t.lv[0])*.04);if(!window.__NOGLTF){const r=buildGltfMon(type,lvl,sc);if(r)return r}return compactRig(buildMonsterProc(type,lvl))}
 function buildMonsterProc(type,lvl){
   const t=MON[type];const sc=(t.size||1)*(1+(lvl-t.lv[0])*.04);
   if(t.kind==='boar'||t.kind==='wolf')return buildQuad({kind:t.kind,col:t.col,scale:sc});
