@@ -13,7 +13,7 @@ addEventListener('keydown',ev=>{if(document.activeElement&&(document.activeEleme
   KEYS.add(k)});
 addEventListener('keyup',ev=>KEYS.delete(ev.key.toLowerCase()));addEventListener('blur',()=>KEYS.clear());
 function jump(){if(ME.phy&&!ME.dead&&!ME.dash)ME.phy.jbuf=.14}
-function dustFx(x,z,n=5,c=0xb8a890){burst(x,groundH(x,z)+.08,z,c,n,1.6,.45,.22)}
+function dustFx(x,z,n=5,c=0xb8a890){const y=groundH(x,z)+.1;puff(x,y,z,c,Math.max(1,Math.round(n/3)),.5,.6,.7)}
 function landFx(){dustFx(ME.pos.x,ME.pos.z,14);sfx('swing');if(ME.rig&&ME.rig.st)ME.rig.st.land=.22}
 /* pointer: drag to orbit, click to select, pinch/wheel to zoom */
 const ptrs=new Map();let pinch0=0;
@@ -62,8 +62,8 @@ function updPlayer(dt){
   if(ME.atk>=0){ME.atk+=dt*2.6;if(ME.atk>1)ME.atk=-1}
   /* ---- physics: velocity + acceleration, fixed 120 Hz steps, slopes, knockback, coyote jump ---- */
   let mvx=0,mvz=0,sp=0;const PHY=ME.phy||(ME.phy={vx:0,vz:0,acc:0,coyote:0,jbuf:0,turn:0,prevRy:ME.ry});
-  if(ME.dash){const D=ME.dash;D.t0+=dt;const f=Math.min(1,D.t0/D.t);const p={x:lerp(D.sx,D.x,f),z:lerp(D.sz,D.z,f)};collide(p,.5);ME.pos.x=p.x;ME.pos.z=p.z;sp=12;PHY.vx=PHY.vz=0;if(!D.leap)trail(ME.pos.clone().setY(ME.pos.y+1),0xff8a40);
-    if(f>=1){ME.dash=null;if(D.tg&&!D.tg.dead){dealDamage(D.tg,hitDmg(.6),{stun:1.5});burst(D.tg.x,D.tg.y+1,D.tg.z,0xffd080,16,4);sfx('hit');swingAnim(false)}}}
+  if(ME.dash){const D=ME.dash;D.t0+=dt;const f=Math.min(1,D.t0/D.t);const p={x:lerp(D.sx,D.x,f),z:lerp(D.sz,D.z,f)};collide(p,.5);ME.pos.x=p.x;ME.pos.z=p.z;sp=12;PHY.vx=PHY.vz=0;if(!D.leap)chargeTrail(ME.pos.x,ME.pos.y,ME.pos.z);
+    if(f>=1){ME.dash=null;if(D.tg&&!D.tg.dead){dealDamage(D.tg,hitDmg(.6),{stun:1.5});dustRing(D.tg.x,D.tg.z,2.5,10);sfx('hit');swingAnim(false)}}}
   else{
     const frozen=ME.stun>0||ME.root>0||ME.dead||!!ME.cast&&false;if(ME.stun>0)ME.stun=Math.max(0,ME.stun-dt);if(ME.root>0)ME.root=Math.max(0,ME.root-dt);
     let wx=0,wz=0;if(!frozen&&inp.L>.05){const fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw),rx=Math.cos(cam.yaw),rz=-Math.sin(cam.yaw);wx=fx*inp.y+rx*inp.x;wz=fz*inp.y+rz*inp.x;const L=Math.hypot(wx,wz)||1;wx/=L;wz/=L;
@@ -114,7 +114,7 @@ function updPlayer(dt){
   /* visuals */
   const g=ME.rig.g;g.position.copy(ME.pos);if(ME.spin>0){ME.spin-=dt;g.rotation.y+=dt*22}else g.rotation.y=ME.ry;
   animRig(ME.rig,{spd:sp/7,atk:ME.atk,ranged:ME.atkRanged,cast:!!ME.cast,dead:ME.dead,air:ME.air,vy:ME.vy,hurt:ME.hurtT>0,turn:PHY.turn,combat:ME.combat>0||isEnemy(ME.target),combo:ME.combo||0,onStep:side=>{if(ME.pos.x<700||true){const px=ME.pos.x+Math.cos(ME.ry)*side*.16,pz=ME.pos.z-Math.sin(ME.ry)*side*.16;dustFx(px,pz,3);if(sp>3&&S.sound)tone(90+Math.random()*30,.06,.018,'triangle',.6)}}},dt);ME.hurtT=Math.max(0,(ME.hurtT||0)-dt)}
-function swingAnim(r){ME.atk=0;ME.atkRanged=r;ME.ac=((ME.ac||0)+1)%100;if(!r)ME.combo=((ME.combo||0)+1)%3}
+function swingAnim(r){ME.atk=0;ME.atkRanged=r;ME.ac=((ME.ac||0)+1)%100;if(!r){ME.combo=((ME.combo||0)+1)%3;swingFx(ME.pos.x,ME.pos.y,ME.pos.z,ME.ry,ME.combo)}}
 function updMonsters(dt){const auth=isAuth()&&S.mode!=='menu';const pl=auth?players():null;const k=clamp(dt*10,0,1);
   for(const m of[...MONS]){
     if(auth){const near=pl.some(p=>Math.abs(p.x-m.x)<90&&Math.abs(p.z-m.z)<90);if(near||m.tgt||m.dead||m.evade)aiUpdate(m,dt,pl)}
@@ -139,7 +139,7 @@ function updWorld(dt,t){
   scene.fog.color.copy(FOG_DAY).lerp(camTarget.x>1250?FOG_D2:FOG_DUN,dunF);scene.background.copy(scene.fog.color);scene.fog.near=lerp(lerp(70,40,DAY.night),6,dunF);scene.fog.far=lerp(lerp(340,220,DAY.night),58,dunF);hemi.intensity=lerp(DAY.hemiInt,.22,dunF);sun.intensity=lerp(DAY.sunInt,.12,dunF);sun.color.copy(DAY.sunCol);fill.intensity=lerp(.55*(1-DAY.night*.5),0,dunF);skyMat.uniforms.dun.value=dunF;clouds.visible=dunF<.99;clouds.children.forEach(c=>c.children.forEach(m=>{m.material.emissiveIntensity=.35*(1-DAY.night*.8)}));
   {const B=fireflies.userData.base,P2=fireflies.geometry.attributes.position;for(let i=0;i<B.length;i+=1){P2.setY(i,B[i][1]+Math.sin(t*1.3+i)*.35);P2.setX(i,B[i][0]+Math.sin(t*.7+i*2.1)*.6)}P2.needsUpdate=true;const E=embers.userData.base,P3=embers.geometry.attributes.position;for(let i=0;i<E.length;i++){P3.setY(i,.3+((E[i][1]+t*.9+i*.37)%6.5));P3.setX(i,E[i][0]+Math.sin(t*.8+i)*.4)}P3.needsUpdate=true}
   torchLight.intensity=dunF*26;torchLight.position.set(camTarget.x,camTarget.y+3.2,camTarget.z);
-  sun.position.copy(camTarget).add(SUN_OFF);sun.target.position.copy(camTarget);sky.position.copy(camera.position);waterMat.uniforms.time.value=t;
+  sun.position.copy(camTarget).add(SUN_OFF);sun.target.position.copy(camTarget);sky.position.copy(camera.position);waterMat.uniforms.time.value=t;ambientFx(dt,camTarget.x,camTarget.z);
   lodAcc+=dt;if(lodAcc>.3||lodAcc<0){lodAcc=0;updEnvLod(camTarget.x,camTarget.z,GFX.q==='hoog'?110:GFX.q==='middel'?80:50)}
   clouds.children.forEach((c,i)=>{c.position.x+=dt*(1.5+i%3);if(c.position.x>520)c.position.x=-520});
   for(const f of flags)f.rotation.y=Math.sin(t*2+f.position.x)*.25;
@@ -210,11 +210,11 @@ function loop(){requestAnimationFrame(loop);FRAME++;lastTick=performance.now();c
   if(S.mode==='play'){updPlayer(dt);updArena(dt);updCamera(dt);updHud(dt);saveT-=dt;if(saveT<=0){saveT=10;saveGame(true)}}
   else{menuT+=dt;mmT-=dt;if(mmT<=0){mmT=1;netStatus()}const px=6,pz=14,py=groundH(px,pz);const a=.5+Math.sin(menuT*.15)*.35;const wide=innerWidth>760;camTarget.set(px+(wide?-2.2:0),py+(wide?1.3:1.6),pz);
     camera.position.set(px+Math.sin(a)*7.2,py+2.6,pz+Math.cos(a)*7.2);camera.lookAt(camTarget);if(menu.preview){menu.preview.g.rotation.y=a+Math.sin(menuT*.6)*.1;animRig(menu.preview,{spd:0,atk:-1},dt)}}
-  updMonsters(dt);updRemotes(dt);updProj(dt);updFx(dt);updTrail(dt);updWorld(dt,t);
+  updMonsters(dt);updRemotes(dt);updProj(dt);updFx(dt);updParticles(dt);updTrail(dt);updWorld(dt,t);
   if(isAuth()){snapAcc+=dt;if(snapAcc>=.1){snapAcc=0;sendSnap()}}sendPresence(dt);
   if(!window.__NORENDER){if(GFX.post)composer.render();else renderer.render(scene,camera)}updPlates(W,H);updFloat(dt,W,H)}
 let snapAcc=0;const perf={t:0,n:0};
 function perfWatch(dt){if(S.mode!=='play'||S.noPerf||GFX.auto>=2||GFX.q==='laag')return;perf.t+=dt;perf.n++;if(perf.t>=5){const avg=perf.t/perf.n;perf.t=perf.n=0;if(avg>.042){GFX.q=GFX.q==='hoog'?'middel':'laag';GFX.auto++;applyGfx();$('#bGfx').textContent='Grafiek: '+GFX_N[GFX.q];log('De grafische kwaliteit is verlaagd naar '+GFX_N[GFX.q].toLowerCase()+' voor soepeler spelen (aan te passen in het menu).','sys')}}}
-window.__V={animRig,refreshBag,log,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
+window.__V={animRig,ambientFx,lvlFx,buildBar,projImpact,projTrail,novaFx,whirlFx,hitFx,healFx,twirlFx,shoutFx,muzzleFx,updParticles,emitP,FXC,AMBIENT,refreshBag,log,ARENA,ARENA_ST,arenaInteract,hasAK,preloadModels,gltfCache,ENV_IM,ENV_LOD,HOUSES,composer,gtao,smaa,waterMat,buildMonster,buildGltfNpc,MON,DAY,get PH(){return PH},NODES,startGather,startFish,fishHook,ACT,startCraft,RECIPES,D2,enterCave,lifeOf,useConsumable,setPvp,pvpHostile,renderer,scene,camera,buildHumanoid,playerLook,proj,calcStats,makeGear,rebuildMe,get P(){return P},ME,MONS,MONMAP,REMOTES,S,get GROUP(){return GROUP},get room(){return room},useAbility,enterWorld,teleport,inviteToGroup,setTarget,lootMon,interact,openNpc,NPCOBJ,completeQuest,QUESTS,sendChat,cycleTarget,isAuth,cam};
 loadSave();startNet();netStatus();$('#loadMsg').textContent='Karaktermodellen worden geladen';
 Promise.all([preloadModels(),buildEnv()]).then(()=>{showMenu();$('#loading').hidden=true;loop()});

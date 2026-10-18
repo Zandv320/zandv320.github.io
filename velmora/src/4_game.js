@@ -84,10 +84,10 @@ function proj(type,from,tgt,speed,onHit){let m;const arc=type==='arrow';if(type=
 function updProj(dt){for(let i=PROJ.length-1;i>=0;i--){const p=PROJ[i];p.t+=dt;const tp=entPos(p.tgt,p.tv);if(!tp||p.t>4){scene.remove(p.m);PROJ.splice(i,1);continue}
   if(p.arc){const total=p.from.distanceTo(tp);const T=Math.max(.12,total/p.speed);p.f=Math.min(1,p.f+dt/T);const f=p.f;const hgt=Math.min(6,total*.11);p.last.copy(p.m.position);p.m.position.lerpVectors(p.from,tp,f);p.m.position.y+=4*hgt*f*(1-f);
     const dirv=p.m.position.clone().sub(p.last);if(dirv.lengthSq()>1e-6)p.m.lookAt(p.m.position.clone().add(dirv));
-    if(f>=1){scene.remove(p.m);PROJ.splice(i,1);if(p.onHit)p.onHit();continue}continue}
+    projTrail('arrow',p.m.position,dt);if(f>=1){scene.remove(p.m);PROJ.splice(i,1);projImpact('arrow',p.m.position.x,p.m.position.y,p.m.position.z);if(p.onHit)p.onHit();continue}continue}
   const d=tp.clone().sub(p.m.position),L=d.length(),st=p.speed*dt;
-  if(L<=st+.2){scene.remove(p.m);PROJ.splice(i,1);if(p.type!=='arrow')burst(tp.x,tp.y,tp.z,PCOL[p.type],p.type==='meteor'?50:12,p.type==='meteor'?9:3.5,.6,p.type==='meteor'?.5:.22);if(p.onHit)p.onHit();continue}
-  d.multiplyScalar(1/L);p.m.position.addScaledVector(d,st);if(p.type==='arrow')p.m.lookAt(tp);else if(Math.random()<.6)trail(p.m.position,PCOL[p.type])}}
+  if(L<=st+.2){scene.remove(p.m);PROJ.splice(i,1);projImpact(p.type,tp.x,tp.y,tp.z);if(p.onHit)p.onHit();continue}
+  d.multiplyScalar(1/L);p.m.position.addScaledVector(d,st);if(p.type==='arrow')p.m.lookAt(tp);projTrail(p.type,p.m.position,dt)}}
 const trailPts=(()=>{const n=300,g=new THREE.BufferGeometry(),p=new Float32Array(n*3).fill(-9999),life=new Float32Array(n),c=new Float32Array(n*3);g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('color',new THREE.BufferAttribute(c,3));const m=new THREE.Points(g,new THREE.PointsMaterial({size:.35,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));m.frustumCulled=false;scene.add(m);return{n,g,p,life,c,i:0}})();
 const _tc=new THREE.Color();
 function trail(pos,col){const T=trailPts,i=T.i++%T.n;T.p[i*3]=pos.x+rand(-.1,.1);T.p[i*3+1]=pos.y+rand(-.1,.1);T.p[i*3+2]=pos.z+rand(-.1,.1);T.life[i]=.5;_tc.setHex(col);T.c[i*3]=_tc.r;T.c[i*3+1]=_tc.g;T.c[i*3+2]=_tc.b}
@@ -136,28 +136,29 @@ function myHand(){return _f.set(ME.pos.x+Math.sin(ME.ry)*.5,ME.pos.y+1.4,ME.pos.
 function fxEmit(o){netEmit('fx',o)}
 function execAbility(a,tg){
   startCd(a);const id=a.id;
-  if(id==='slag'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){dealDamage(tg,hitDmg(1.5));sfx('hit');burst(tg.x,tg.y+1,tg.z,0xffd080,8,3,.4,.2)}},140);ME.swing=Math.max(ME.swing,.6)}
+  if(id==='slag'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){dealDamage(tg,hitDmg(1.5));sfx('hit');}},140);ME.swing=Math.max(ME.swing,.6)}
   else if(id==='storm'){const dx=tg.x-ME.pos.x,dz=tg.z-ME.pos.z,L=Math.hypot(dx,dz);ME.dash={x:tg.x-dx/L*1.6,z:tg.z-dz/L*1.6,t:Math.min(.45,L/40),t0:0,sx:ME.pos.x,sz:ME.pos.z,tg};sfx('swing')}
-  else if(id==='werv'){ME.spin=.6;sfx('swing');ringFx(ME.pos.x,ME.pos.z,6,0xdde6ff,.45);fxEmit({k:'r',x:ME.pos.x,z:ME.pos.z,r:6,c:0xdde6ff});for(const m of enemiesNear(ME.pos.x,ME.pos.z,6))dealDamage(m,hitDmg(1.1))}
-  else if(id==='kreet'){ME.buff=12;heal(ST.maxhp*.25);ringFx(ME.pos.x,ME.pos.z,5,0xffc040,.7);beamFx(ME.pos.x,ME.pos.z,0xffb030,.8,1);fxEmit({k:'r',x:ME.pos.x,z:ME.pos.z,r:5,c:0xffc040});sfx('quest')}
+  else if(id==='werv'){ME.spin=.6;sfx('swing');whirlFx(ME.pos.x,ME.pos.y,ME.pos.z);fxEmit({k:'r',x:ME.pos.x,z:ME.pos.z,r:6,c:0xdde6ff});for(const m of enemiesNear(ME.pos.x,ME.pos.z,6))dealDamage(m,hitDmg(1.1))}
+  else if(id==='kreet'){ME.buff=12;heal(ST.maxhp*.25);shoutFx(ME.pos.x,ME.pos.y,ME.pos.z);beamFx(ME.pos.x,ME.pos.z,0xffb030,.8,1);fxEmit({k:'r',x:ME.pos.x,z:ME.pos.z,r:5,c:0xffc040});sfx('quest')}
   else if(id==='vuur'){swingAnim(true);sfx('fire');proj('fire',myHand(),tg,26,()=>dealDamage(tg,hitDmg(1.7)));fxEmit({k:'p',t:'fire',f:myHand().toArray(),m:tg.id})}
-  else if(id==='nova'){sfx('frost');ringFx(ME.pos.x,ME.pos.z,9,0x9ae0ff,.6);discFx(ME.pos.x,ME.pos.z,9,0x6ac8ff,.8);fxEmit({k:'r',x:ME.pos.x,z:ME.pos.z,r:9,c:0x9ae0ff});for(const m of enemiesNear(ME.pos.x,ME.pos.z,9))dealDamage(m,hitDmg(.45),{root:4})}
-  else if(id==='flits'){burst(ME.pos.x,ME.pos.y+1,ME.pos.z,0xc08aff,24,4);const p={x:ME.pos.x+Math.sin(ME.ry)*13,z:ME.pos.z+Math.cos(ME.ry)*13};for(let k=0;k<6;k++)collide(p,.5);ME.pos.x=p.x;ME.pos.z=p.z;ME.pos.y=groundH(p.x,p.z);burst(ME.pos.x,ME.pos.y+1,ME.pos.z,0xc08aff,24,4);sfx('frost')}
+  else if(id==='nova'){sfx('frost');novaFx(ME.pos.x,ME.pos.z);fxEmit({k:'r',x:ME.pos.x,z:ME.pos.z,r:9,c:0x9ae0ff});for(const m of enemiesNear(ME.pos.x,ME.pos.z,9))dealDamage(m,hitDmg(.45),{root:4})}
+  else if(id==='flits'){twirlFx(ME.pos.x,ME.pos.y+1,ME.pos.z,0xc08aff);const p={x:ME.pos.x+Math.sin(ME.ry)*13,z:ME.pos.z+Math.cos(ME.ry)*13};for(let k=0;k<6;k++)collide(p,.5);ME.pos.x=p.x;ME.pos.z=p.z;ME.pos.y=groundH(p.x,p.z);twirlFx(ME.pos.x,ME.pos.y+1,ME.pos.z,0xc08aff);fxEmit({k:'tw',x:ME.pos.x,z:ME.pos.z});sfx('frost')}
   else if(id==='meteoor'){const from=new THREE.Vector3(tg.x-6,tg.y+26,tg.z-6);teleFx(tg.x,tg.z,6,.0001);sfx('fire');const tx=tg.x,tz=tg.z;proj('meteor',from,[tx,groundH(tx,tz),tz],34,()=>{sfx('boom');ringFx(tx,tz,6,0xff7a30,.5);for(const m of enemiesNear(tx,tz,6))dealDamage(m,hitDmg(2.6))});fxEmit({k:'p',t:'meteor',f:from.toArray(),x:tx,z:tz})}
   else if(id==='schot'){swingAnim(true);sfx('bow');proj('arrow',myHand(),tg,48,()=>dealDamage(tg,hitDmg(1.5)));fxEmit({k:'p',t:'arrow',f:myHand().toArray(),m:tg.id})}
   else if(id==='multi'){swingAnim(true);sfx('bow');const L=[tg,...MONS.filter(m=>m!==tg&&!m.dead&&Math.hypot(m.x-tg.x,m.z-tg.z)<8).slice(0,4)];for(const m of L){proj('arrow',myHand(),m,46,()=>dealDamage(m,hitDmg(.95)));fxEmit({k:'p',t:'arrow',f:myHand().toArray(),m:m.id})}}
   else if(id==='sprong'){ME.dash={x:ME.pos.x-Math.sin(ME.ry)*11,z:ME.pos.z-Math.cos(ME.ry)*11,t:.5,t0:0,sx:ME.pos.x,sz:ME.pos.z,leap:1};ME.vy=7;ME.air=true;sfx('swing')}
-  else if(id==='regen'){swingAnim(true);sfx('bow');const tx=tg.x,tz=tg.z;discFx(tx,tz,6,0xffd36a,.9);fxEmit({k:'r',x:tx,z:tz,r:6,c:0xffd36a});for(let k=0;k<14;k++){const x=tx+rand(-5,5),z=tz+rand(-5,5);proj('arrow',new THREE.Vector3(x-2,groundH(x,z)+18,z-2),[x,groundH(x,z),z],40+rand(0,10),null)}setTimeout(()=>{for(const m of enemiesNear(tx,tz,6))dealDamage(m,hitDmg(2.3))},450)}
-  else if(id==='drank'){takePotion('heal');heal(ST.maxhp*.45);burst(ME.pos.x,ME.pos.y+1,ME.pos.z,0x60ff70,20,2.5);refreshBag()}
-  else if(id==='mdrank'){takePotion('mana');P.mp=Math.min(ST.maxmp,P.mp+ST.maxmp*.5);burst(ME.pos.x,ME.pos.y+1,ME.pos.z,0x60a0ff,20,2.5);refreshBag()}
-  else if(id==='thuis'){beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);teleport(rand(-3,3),rand(5,8));beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);sfx('frost')}
+  else if(id==='regen'){swingAnim(true);sfx('bow');const tx=tg.x,tz=tg.z;rainFx(tx,tz);fxEmit({k:'r',x:tx,z:tz,r:6,c:0xffd36a});for(let k=0;k<14;k++){const x=tx+rand(-5,5),z=tz+rand(-5,5);proj('arrow',new THREE.Vector3(x-2,groundH(x,z)+18,z-2),[x,groundH(x,z),z],40+rand(0,10),null)}setTimeout(()=>{for(const m of enemiesNear(tx,tz,6))dealDamage(m,hitDmg(2.3))},450)}
+  else if(id==='drank'){takePotion('heal');heal(ST.maxhp*.45);healFx(ME.pos.x,ME.pos.y,ME.pos.z,0x70ff8a);refreshBag()}
+  else if(id==='mdrank'){takePotion('mana');P.mp=Math.min(ST.maxmp,P.mp+ST.maxmp*.5);healFx(ME.pos.x,ME.pos.y,ME.pos.z,0x6aa8ff);refreshBag()}
+  else if(id==='thuis'){beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);twirlFx(ME.pos.x,ME.pos.y+1,ME.pos.z,0x7cf0ff);teleport(rand(-3,3),rand(5,8));beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);sfx('frost')}
   buildBar(true)}
 function heal(n){n=Math.round(n);P.hp=Math.min(ST.maxhp,P.hp+n);floatText('me','+'+n,'heal')}
 function teleport(x,z){ME.pos.set(x,groundH(x,z),z);ME.dash=null;ME.portalCd=2;if(ME.target&&ME.target.kind==='mon'&&Math.hypot(ME.target.x-x,ME.target.z-z)>60)setTarget(null);ME.combat=0;snapCam=true;updZone(true)}
 function dealDamage(m,dmg,o={}){
-  if(m&&m.kind==='pl'){if(!pvpHostile(m))return;const crit=Math.random()*100<ST.crit;if(crit)dmg*=2;dmg=Math.max(1,Math.round(dmg));floatText(m,dmg+(crit?'!':''),crit?'dmg crit':'dmg');ME.combat=6;ME.pvpT=performance.now();netEmit('pdmg',{to:m.id,d:dmg,l:P.level,r:o.root||0,s:o.stun||0});return}
+  if(m&&m.kind==='pl'){if(!pvpHostile(m))return;const crit=Math.random()*100<ST.crit;if(crit)dmg*=2;dmg=Math.max(1,Math.round(dmg));if(Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z)<5)hitFx(m.x,m.y+1.1,m.z,crit);floatText(m,dmg+(crit?'!':''),crit?'dmg crit':'dmg');ME.combat=6;ME.pvpT=performance.now();netEmit('pdmg',{to:m.id,d:dmg,l:P.level,r:o.root||0,s:o.stun||0});return}
   if(!m||m.dead||m.kind!=='mon')return;if(m.evade){floatText(m,'Ontweken','miss');return}
   const crit=Math.random()*100<ST.crit;if(crit)dmg*=2;dmg=Math.max(1,Math.round(dmg));
+  {const hy=m.y+(m.rig.h||1.5)*.55;if(Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z)<5+(m.size||1))hitFx(m.x,hy,m.z,crit);else if(crit)emitP({x:m.x,y:hy+.3,z:m.z,life:.45,size:2,size1:3.2,col:0xffe080,a:1,a1:0,cell:FXC.crit,vrot:2,must:1})}
   floatText(m,dmg+(crit?'!':''),crit?'dmg crit':'dmg');ME.combat=6;m.hurtT=.3;if(!ME.target)setTarget(m);
   if(isAuth())authDamage(m,dmg,myId(),o);else{netEmit('dmg',{m:m.id,d:dmg,r:o.root||0,s:o.stun||0});m.hp=Math.max(1,m.hp-dmg);m.predUntil=performance.now()+450;if(o.root)m.root=o.root;if(o.stun)m.stun=o.stun}}
 function authDamage(m,dmg,from,o={}){if(m.dead||m.evade)return;m.hp-=dmg;m.threat[from]=(m.threat[from]||0)+dmg;m.taps.add(from);if(!m.tgt){m.tgt=from;if(m.t.boss)bossEngage(m)}if(o.root)m.root=Math.max(m.root,o.root);if(o.stun)m.stun=Math.max(m.stun,o.stun);if(m.hp<=0)killMon(m)}
@@ -187,10 +188,10 @@ function lootMon(m){if(!m.loot)return;const L=m.loot;if(L.gold){P.gold+=L.gold;f
   if(left.length){toast('Je rugzak is vol');L.items=left;L.gold=0}else{m.loot=null;if(m.spark){scene.remove(m.spark);m.spark=null}}sfx('loot');refreshBag();saveGame()}
 const rarCol=it=>it.kind==='junk'?'#9d9d9d':RARITY[Math.max(0,it.r)].c;
 function gainXp(n,src){if(P.level>=MAXLVL)return;n=Math.round(n*(RACES[P.race].xp||1));P.xp+=n;floatText(src||'me','+'+n+' XP','xp');
-  while(P.level<MAXLVL&&P.xp>=xpNeed(P.level)){P.xp-=xpNeed(P.level);P.level++;calcStats();P.hp=ST.maxhp;P.mp=ST.maxmp;beamFx(ME.pos.x,ME.pos.z,0xffd34d,1.6,1.5);burst(ME.pos.x,ME.pos.y+1,ME.pos.z,0xffe080,60,6,1.2,.35);sfx('lvl');banner('Niveau '+P.level+'!','Je bent sterker geworden');log('Je hebt niveau '+P.level+' bereikt!','sys');
+  while(P.level<MAXLVL&&P.xp>=xpNeed(P.level)){P.xp-=xpNeed(P.level);P.level++;calcStats();P.hp=ST.maxhp;P.mp=ST.maxmp;beamFx(ME.pos.x,ME.pos.z,0xffd34d,1.6,1.5);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z);sfx('lvl');banner('Niveau '+P.level+'!','Je bent sterker geworden');log('Je hebt niveau '+P.level+' bereikt!','sys');
     const nw=ABIL[P.cls].find(a=>a.lvl===P.level);if(nw)log('Nieuwe vaardigheid geleerd: '+nw.n,'sys');netEmit('fx',{k:'lvl',x:ME.pos.x,z:ME.pos.z});buildBar(true);refreshNpcMarks()}
   if(P.level>=MAXLVL)P.xp=0;saveGame()}
-function takeHit(dmg,src){if(ME.dead||S.mode!=='play')return;ME.hurtT=.35;if(src&&src.x!=null){const dx=ME.pos.x-src.x,dz=ME.pos.z-src.z,L=Math.hypot(dx,dz)||1;ME.kb={x:dx/L*2.2,z:dz/L*2.2}}if(src&&src.kind==='pl'){ME.lastPvp={by:src.id,t:performance.now()};if(!ME.target)setTarget(src)}const lvl=src&&src.lvl||P.level;const red=ST.arm/(ST.arm+40+lvl*12);dmg=Math.max(1,Math.round(dmg*(1-red)*rand(.9,1.1)));P.hp-=dmg;ME.combat=6;floatText('me','-'+dmg,'hurt');sfx('hurt');
+function takeHit(dmg,src){if(ME.dead||S.mode!=='play')return;ME.hurtT=.35;if(src&&src.x!=null){const dx=ME.pos.x-src.x,dz=ME.pos.z-src.z,L=Math.hypot(dx,dz)||1;ME.kb={x:dx/L*2.2,z:dz/L*2.2}}if(src&&src.kind==='pl'){ME.lastPvp={by:src.id,t:performance.now()};if(!ME.target)setTarget(src)}const lvl=src&&src.lvl||P.level;const red=ST.arm/(ST.arm+40+lvl*12);dmg=Math.max(1,Math.round(dmg*(1-red)*rand(.9,1.1)));P.hp-=dmg;ME.combat=6;floatText('me','-'+dmg,'hurt');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xff8070,7,4,.32,.35);emitP({x:ME.pos.x,y:ME.pos.y+1.1,z:ME.pos.z,life:.16,size:1.6,size1:2,col:0xff6a50,a:.8,a1:0,cell:FXC.arc,must:1});sfx('hurt');
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
 function die(){if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('Je bent verslagen door '+esc(r?r.n:'een andere speler')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('Je bent gesneuveld.','err');saveGame()}

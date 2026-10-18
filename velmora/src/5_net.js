@@ -122,9 +122,10 @@ async function startNet(){
   room.on('bossmsg',m=>{const d=m.data||{};if(typeof d.t==='string'&&S.mode==='play'&&ME.pos.x>700&&((d.b==='ignaroth')===(ME.pos.x>1250)))bossSay(d.t.slice(0,90),d.b)});
   room.on('fx',m=>{if(S.mode!=='play')return;const d=m.data||{};const r=REMOTES.get(m.peer);
     if(d.k==='p'&&Array.isArray(d.f)){const from=new THREE.Vector3(+d.f[0],+d.f[1],+d.f[2]);let tg=null;if(d.m)tg=MONMAP.get(d.m);else if(d.p)tg=d.p===myId()?'me':REMOTES.get(d.p);else if(d.x!=null)tg=[+d.x,groundH(+d.x,+d.z),+d.z];if(tg&&PCOL[d.t])proj(d.t,from,tg,d.t==='arrow'?46:d.t==='meteor'?34:d.t==='kogel'?95:22,null)}
-    else if(d.k==='r')ringFx(+d.x,+d.z,clamp(+d.r,1,12),+d.c||0xffffff,.5);
+    else if(d.k==='r'){const x=+d.x,z=+d.z,c=+d.c;if(c===0xdde6ff)whirlFx(x,groundH(x,z),z);else if(c===0x9ae0ff)novaFx(x,z);else if(c===0xffc040)shoutFx(x,groundH(x,z),z);else if(c===0xffd36a)rainFx(x,z);else ringFx(x,z,clamp(+d.r,1,12),c||0xffffff,.5)}
+    else if(d.k==='tw'){twirlFx(+d.x,groundH(+d.x,+d.z)+1,+d.z,0xc08aff)}
     else if(d.k==='tele')teleFx(+d.x,+d.z,clamp(+d.r,1,12),clamp(+d.d,.2,4));
-    else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);if(r)log(esc(r.n)+' heeft een niveau bereikt!','sys',true)}});
+    else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);lvlFx(+d.x,groundH(+d.x,+d.z),+d.z);if(r)log(esc(r.n)+' heeft een niveau bereikt!','sys',true)}});
   room.on('arena',m=>{if(S.mode!=='play')return;arenaNet(m.peer,m.data||{})});
   /* groups */
   room.on('ginv',m=>{const d=m.data||{};if(d.to!==myId()||S.mode!=='play')return;if(GROUP){netEmit('gdec',{to:m.peer,n:P.name,why:'zit al in een groep'});return}showInvite(m.peer,String(d.n||'Iemand').slice(0,14))});

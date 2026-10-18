@@ -40,5 +40,5 @@ function updArena(dt){if(!P||S.mode!=='play')return;
 function arenaNet(peer,d){if(!d)return;if(d.k==='open'){ARENA_ST.holder=peer;arenaSetOpen(false);log(esc(String(d.n||'Iemand').slice(0,14))+' heeft de AK-47 uit de arenakist gepakt!','err',true);if(ARENA_ST.inside)sfx('hit')}
   else if(d.k==='drop'){if(ARENA_ST.holder===peer||!ARENA_ST.holder)arenaSetOpen(true)}}
 /* schieten met de AK (aangeroepen vanuit de auto-aanval) */
-function akShoot(tg){swingAnim(true);sfx('bow');const from=myHand();from.y+=.1;proj('kogel',from,tg,95,()=>dealDamage(tg,hitDmg(1)));fxEmit({k:'p',t:'kogel',f:from.toArray(),m:tg.kind==='mon'?tg.id:undefined,p:tg.kind==='pl'?tg.id:undefined});
+function akShoot(tg){swingAnim(true);sfx('bow');const from=myHand();from.y+=.1;muzzleFx(from,Math.sin(ME.ry),Math.cos(ME.ry));proj('kogel',from,tg,95,()=>dealDamage(tg,hitDmg(1)));fxEmit({k:'p',t:'kogel',f:from.toArray(),m:tg.kind==='mon'?tg.id:undefined,p:tg.kind==='pl'?tg.id:undefined});
   burst(from.x,from.y,from.z,0xffe080,3,1.5,.12,.1)}

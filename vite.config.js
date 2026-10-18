@@ -4,7 +4,7 @@ import path from 'node:path';
 
 /* De spelcode staat in velmora/src/*.js als losse delen die samen één module vormen (gedeelde scope).
    Deze plugin plakt ze in volgorde aan elkaar als virtuele module; Vite bundelt daarna three.js mee en minificeert alles. */
-const PARTS=['1_core','2_world','2b_env','2c_arena','3_models','3b_gltf','3d_dress','4_game','4b_life','4c_arena','5_net','6_ui','7_main'];
+const PARTS=['1_core','2_world','2b_env','2c_arena','3_models','3b_gltf','3d_dress','4_game','4b_life','4c_arena','4d_fx','5_net','6_ui','7_main'];
 function velmoraGame(){
   const id='virtual:velmora-game',rid='\0'+id;
   const dir=path.resolve(__dirname,'velmora/src');
@@ -14,7 +14,7 @@ function velmoraGame(){
     load(i){if(i!==rid)return;const files=PARTS.map(p=>path.join(dir,p+'.js'));for(const f of files)this.addWatchFile(f);
       return files.map(f=>fs.readFileSync(f,'utf8')).join('\n')},
     /* de glTF-modellen worden als statische bestanden naast de pagina gezet */
-    closeBundle(){for(const d of ['models','ui']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}}
+    closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}}
   }}
 
 export default defineConfig({
