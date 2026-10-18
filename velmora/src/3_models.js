@@ -340,6 +340,7 @@ function playerLook(p){/* p: {race,cls,hair,eq}; every equipped slot changes the
   const best=Math.max(-1,...['borst','hoofd','handen','benen','voeten','wapen'].map(k=>eq[k]?eq[k].r|0:-1));
   const o={cls,eqHead:!!hd,eqChest:!!ch,rar:Math.max(0,best),gear:{hoofd:gearDesc(hd,cls),borst:gearDesc(ch,cls),handen:gearDesc(gl,cls),benen:gearDesc(lg,cls),voeten:gearDesc(ft,cls)},wvis:eq.wapen&&eq.wapen.vis?gearDesc(eq.wapen,cls):null,race:p.race,skin:R.skin,hair:R.hair[p.hair||0],chest:gearCol(ch,cls)??C.chest,pants:gearCol(lg,cls)??C.pants,cape:C.cape,wt:eq.wapen?eq.wapen.wt:'none',awt:C.wt,wr:eq.wapen?eq.wapen.r:0,
     boots:gearCol(ft,cls)??0x3a2818,bootsBig:!!ft,gloves:gearCol(gl,cls),glovesBig:!!gl&&cls==='krijger',legPlate:!!lg&&cls==='krijger',chestMetal:!!ch&&cls==='krijger',trim:best>=2?RCOL[best]:0};
+  Object.assign(o,outfitLook(p,cls));
   if(ch&&ch.r>=2){const cc=new THREE.Color(C.cape).lerp(new THREE.Color(RCOL[ch.r]),.35);o.cape=cc.getHex()}
   if(cls==='krijger'){o.warrior=true;o.chest=gearCol(ch,cls)??0xb8864f;o.pants=gearCol(lg,cls)??0x5a5652;o.cape=ch&&ch.r>=2?o.cape:0x262a4c;o.gloves=gearCol(gl,cls)??0x6b4322;if(!o.hair||o.hair===R.hair[0])o.hair=R.hair[p.hair||0]}
   if(cls==='magier'){o.robe=gearCol(ch,cls)??0x3a2a6a;if(ch)o.pads=gearCol(ch,cls);if(hd)o.hat=gearCol(hd,cls)}

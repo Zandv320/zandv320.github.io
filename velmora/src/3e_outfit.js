@@ -1,0 +1,78 @@
+/* ===================== outfits and weapon models on player characters =====================
+   KayKit Adventurers 2.0, KayKit Skeletons 1.1 and KayKit Fantasy Weapons Bits (CC0). All KayKit characters share the
+   same Rig_Medium skeleton (identical bone names and rest pose), so body parts of one character can be bound to the
+   bones of another: a Mage can wear the Knight's breastplate, a Warrior the Barbarian's bear hat, and so on.
+   Every armour slot picks an outfit set; every weapon picks a model. Both follow from the item itself (its name, rarity
+   and crafting tier), so every player sees the same thing without extra network data. */
+const P2=(m,...n)=>n.map(x=>[m,x]);
+const OUTFITS={
+  knight:{hoofd:P2('O_Knight','Knight_Helmet'),borst:P2('O_Knight','Knight_Body','Knight_Cape'),handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
+  barbarian:{hoofd:P2('O_Barbarian','Barbarian_BearHat'),borst:P2('O_Barbarian','Barbarian_Body'),handen:P2('O_Barbarian','Barbarian_ArmLeft','Barbarian_ArmRight'),benen:P2('O_Barbarian','Barbarian_LegLeft','Barbarian_LegRight')},
+  mage:{hoofd:P2('O_Mage','Mage_Hat'),borst:P2('O_Mage','Mage_Body','Mage_Cape'),handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
+  rogue:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),borst:P2('O_Rogue','Rogue_Body','Rogue_Cape'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')},
+  hooded:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Head','RogueHooded_Mask'),head:1,borst:P2('O_Rogue_Hooded','RogueHooded_Body','RogueHooded_Cape'),handen:P2('O_Rogue_Hooded','RogueHooded_ArmLeft','RogueHooded_ArmRight'),benen:P2('O_Rogue_Hooded','RogueHooded_LegLeft','RogueHooded_LegRight')},
+  ranger:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),borst:P2('O_Ranger','Ranger_Body','Ranger_Cape','Ranger_Quiver'),handen:P2('O_Ranger','Ranger_ArmLeft','Ranger_ArmRight'),benen:P2('O_Ranger','Ranger_LegLeft','Ranger_LegRight')},
+  bone:{hoofd:P2('O_Skeleton_Warrior','Skeleton_Warrior_Helmet'),borst:[...P2('O_Knight','Knight_Body'),...P2('O_Skeleton_Warrior','Skeleton_Warrior_Cloak')],handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
+  bonemage:{hoofd:P2('O_Skeleton_Mage','Skeleton_Mage_Hat'),borst:[...P2('O_Mage','Mage_Body'),...P2('O_Skeleton_Minion','Skeleton_Minion_Cloak')],handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
+  bonerogue:{hoofd:P2('O_Skeleton_Rogue','Skeleton_Rogue_Hood'),borst:[...P2('O_Rogue','Rogue_Body'),...P2('O_Skeleton_Warrior','Skeleton_Warrior_Cloak')],handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')}};
+/* per class: which sets an armour piece can have, from plain to fancy */
+const OUTFIT_CLS={krijger:['barbarian','knight','bone'],magier:['mage','hooded','bonemage'],jager:['rogue','ranger','hooded','bonerogue']};
+/* weapon models per weapon type and class, roughly from plain to fancy */
+const WMODELS={
+  krijger:{zwaard:['XA_sword_1handed','XW_sword_B','XA_axe_1handed','XW_sword_E','XW_sword_C','XW_sword_D','XS_Skeleton_Blade'],bijl:['XA_axe_2handed','XW_axe_A','XW_hammer_C','XW_axe_B','XW_hammer_A','XA_sword_2handed','XW_hammer_B','XW_axe_C','XW_halberd','XS_Skeleton_Axe','XA_sword_2handed_color'],staf:['XA_sword_2handed'],boog:['XA_axe_2handed']},
+  magier:{staf:['XA_staff','XW_staff_B','XS_Skeleton_Staff','XW_staff_A'],zwaard:['XA_wand','XW_wand_A'],bijl:['XA_staff'],boog:['XA_staff']},
+  jager:{boog:['XA_bow_withString','XW_bow_A_withString','XA_crossbow_2handed','XW_bow_B_withString','XS_Skeleton_Crossbow'],zwaard:['XA_dagger','XW_dagger_A','XW_dagger_B'],staf:['XA_dagger'],bijl:['XA_dagger']}};
+const SHIELD_M=['XA_shield_round','XA_shield_square','XA_shield_round_barbarian','XA_shield_badge','XW_shield_A','XA_shield_round_color','XA_shield_square_color','XA_shield_badge_color','XW_shield_B','XA_shield_spikes_color','XW_shield_C','XS_Skeleton_Shield_Large_A','XS_Skeleton_Shield_Large_B'];
+const WMODEL_ALL=new Set([...Object.values(WMODELS).flatMap(o=>Object.values(o).flat()),...SHIELD_M,'XA_spellbook_open','XW_sword_A']);
+/* crafted gear gets a fixed look per tier; loot picks from the class list by name and rarity */
+const TIER_LOOK={Iron:'knight',Silversteel:'knight',Emberforged:'bone',Tanned:'rogue',Hardened:'ranger',Drakeskin:'hooded',Linen:'mage',Silken:'mage',Emberweave:'bonemage'};
+function pickFrom(list,it,bias=0){const h=strHash(String(it.n||it.id||''));const r=Math.max(0,it.r|0);const span=Math.min(list.length,2+r*2+bias);return list[Math.min(list.length-1,(h%span)+Math.max(0,r-2))]}
+function outfitFor(it,cls){if(!it)return null;if(it.vis&&it.vis.o&&OUTFITS[it.vis.o])return it.vis.o;const L=OUTFIT_CLS[cls]||OUTFIT_CLS.krijger;
+  const pre=String(it.n||'').replace(/^Masterwork /,'').split(' ')[0];if(TIER_LOOK[pre]){const o=TIER_LOOK[pre];return L.includes(o)||cls===it.cls?o:L[0]}
+  if((it.r|0)>=4)return L[Math.min(L.length-1,1+(strHash(String(it.n))%2))];return pickFrom(L,it)}
+function weaponFor(it,cls,wt){if(!it||!wt||wt==='none'||wt==='ak')return null;if(it.vis&&it.vis.w&&WMODEL_ALL.has(it.vis.w))return it.vis.w;const L=(WMODELS[cls]||WMODELS.krijger)[wt];if(!L)return null;
+  if(/^(Versleten|Worn)/.test(it.n||''))return cls==='krijger'&&wt==='zwaard'?'XW_sword_A':L[0];const pre=String(it.n||'').replace(/^Masterwork /,'').split(' ')[0];const ti={Iron:0,Tanned:0,Linen:0,Silversteel:1,Hardened:1,Silken:1,Emberforged:2,Drakeskin:2,Emberweave:2}[pre];
+  if(ti!=null)return L[Math.min(L.length-1,ti*2+((it.r|0)>=3?1:0))];return pickFrom(L,it,1)}
+function shieldFor(it){return it?pickFrom(SHIELD_M,it,2):null}
+/* ---- binding parts of another KayKit character to this character's bones ---- */
+const _outfitSrc=new Map();
+function outfitSrc(name){let p=_outfitSrc.get(name);if(!p){p=loadGltf('outfit/'+name);_outfitSrc.set(name,p)}return p}
+function partClone(m,src,name,rar,skCache){const s=src.scene.getObjectByName(name);if(!s||!s.isMesh)return null;
+  const mat=s.material.clone();if(rar>=3){mat.emissive=new THREE.Color(RCOL[rar]);mat.emissiveIntensity=.04+(rar-3)*.04}
+  if(s.isSkinnedMesh){/* liefst het eigen skelet van het personage hergebruiken (zelfde rustpose): botindices omnummeren */
+    const own=skCache.own||(skCache.own=(()=>{let k=null;m.traverse(x=>{if(!k&&x.isSkinnedMesh&&!x.userData.outfit)k=x.skeleton});return k})());
+    if(own){const geo=remapSkin(s,own);if(geo){const o=new THREE.SkinnedMesh(geo,mat);o.name=s.name;o.bind(own,s.bindMatrix.clone());o.castShadow=true;o.frustumCulled=false;o.userData.outfit=1;const host=[...m.children].find(c=>c.children&&c.children.some(x=>x.isSkinnedMesh))||m;host.add(o);return o}}
+    let sk=skCache.get(s.skeleton);if(!sk){const bones=s.skeleton.bones.map(b=>m.getObjectByName(b.name));if(bones.some(b=>!b))return null;sk=new THREE.Skeleton(bones,s.skeleton.boneInverses.map(x=>x.clone()));skCache.set(s.skeleton,sk)}
+    const o=new THREE.SkinnedMesh(s.geometry,mat);o.name=s.name;o.bind(sk,s.bindMatrix.clone());o.castShadow=true;o.frustumCulled=false;o.userData.outfit=1;
+    const host=[...m.children].find(c=>c.children&&c.children.some(x=>x.isSkinnedMesh))||m;host.add(o);return o}
+  const bone=m.getObjectByName(s.parent.name);if(!bone)return null;const o=new THREE.Mesh(s.geometry,mat);o.name=s.name;o.position.copy(s.position);o.quaternion.copy(s.quaternion);o.scale.copy(s.scale);o.castShadow=true;o.userData.outfit=1;bone.add(o);return o}
+const _remap=new Map();
+function remapSkin(s,own){const key=s.geometry.uuid+'|'+own.bones.map(b=>b.name).join(',');if(_remap.has(key))return _remap.get(key);let res=null;
+  const idx=new Map(own.bones.map((b,i)=>[b.name,i]));const map=s.skeleton.bones.map(b=>idx.has(b.name)?idx.get(b.name):-1);
+  const ok=map.every((t,i)=>t>=0&&s.skeleton.boneInverses[i].equals(own.boneInverses[t])||t>=0&&s.skeleton.boneInverses[i].elements.every((v,j)=>Math.abs(v-own.boneInverses[t].elements[j])<1e-3));
+  if(ok){const g=s.geometry.clone();const si=g.attributes.skinIndex;const arr=new Uint16Array(si.count*4);for(let i=0;i<si.count;i++)for(let k=0;k<4;k++)arr[i*4+k]=map[si.getComponent(i,k)];g.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(arr,4));res=g}
+  _remap.set(key,res);return res}
+/* which own meshes a slot replaces (matched on the end of the mesh name) */
+const SLOT_HIDE={borst:/_Body$|_Cape$/,handen:/Arm(Left|Right)$/,benen:/Leg(Left|Right)$/};
+async function applyOutfit(r,m,o){const G=o.gear||{};const sets=o.outfits||{};const tasks=[];const skCache=new Map();
+  for(const slot of['hoofd','borst','handen','benen']){const key=sets[slot];const O=key&&OUTFITS[key];if(!O)continue;const rar=G[slot]?G[slot].r|0:0;
+    tasks.push((async()=>{let n=0;for(const[mn,pn]of O[slot]){const src=await outfitSrc(mn);if(!src||!r.m)continue;if(partClone(m,src,pn,rar,skCache))n++}
+      if(!n)return;
+      /* eigen onderdelen verbergen */
+      m.traverse(x=>{if(!x.isMesh||x.userData.outfit)return;if(slot==='hoofd'){if(!x.isSkinnedMesh&&/Helmet|Hat|Hood/i.test(x.name))x.visible=false;if(O.head&&/_Head$/.test(x.name))x.visible=false}else if(SLOT_HIDE[slot].test(x.name))x.visible=false})})())}
+  await Promise.all(tasks)}
+/* weapon and off-hand models into the hand slots */
+const _wSrc=new Map();
+function wModel(name){let p=_wSrc.get(name);if(!p){p=new Promise(res=>gltfLoader().load(MODEL_BASE+'wpn/'+name+'.glb',g=>res(g),undefined,()=>res(null)));_wSrc.set(name,p)}return p}
+async function attachWeaponModel(r,m,name,slotName,rar){if(!name)return null;const g=await wModel(name);if(!g||!r.m)return null;const slot=m.getObjectByName(slotName);if(!slot)return null;
+  const w=g.scene.clone(true);w.traverse(x=>{if(x.isMesh){x.castShadow=true;const mt=new THREE.MeshToonMaterial({color:x.material.color.clone(),vertexColors:!!x.geometry.attributes.color,gradientMap:RAMP});if(rar>=2){mt.emissive=new THREE.Color(RCOL[rar]);mt.emissiveIntensity=.04+(rar-2)*.07}x.material=mt}});
+  w.userData.wmodel=name;slot.add(w);return w}
+async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
+  /* de oude wapenprops uit het basismodel uit */for(const sn of['handslotr','handslotl']){const s=m.getObjectByName(sn);if(s)for(const c of s.children)if(!c.userData.wmodel&&c!==r.tool)c.visible=false}
+  const main=o.wt==='boog'?'handslotl':'handslotr',off=o.wt==='boog'?'handslotr':'handslotl';
+  const w=await attachWeaponModel(r,m,o.wm,main,o.wr|0);if(w){r.weapon=w}
+  if(o.sm)await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(o.om)await attachWeaponModel(r,m,o.om,off,0)}
+/* the part of a look that describes outfits and weapon models (small, goes over the network) */
+function outfitLook(p,cls){const eq=p.eq||{};const out={};for(const s of['hoofd','borst','handen','benen']){const k=outfitFor(eq[s],cls);if(k)out[s]=k}
+  const w=eq.wapen,wt=w?w.wt:null;const res={outfits:out,wm:weaponFor(w,cls,wt),sm:null,om:null};
+  if(cls==='krijger'&&wt==='zwaard')res.sm=shieldFor(w);if(cls==='magier'&&wt==='zwaard')res.om='XA_spellbook_open';return res}

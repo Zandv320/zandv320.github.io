@@ -55,8 +55,9 @@ function buildGltfRig(spec){
     /* wapen: mesh uit het model (KayKit) of het eigen spelwapen in de handslot */
     const slotR=m.getObjectByName('handslotr'),slotL=m.getObjectByName('handslotl');
     if(spec.weaponMesh){const w=m.getObjectByName(spec.weaponMesh);if(w){w.visible=true;const rc=RCOL[spec.wr|0];if(rc){w.material=w.material.clone();w.material.emissive=new THREE.Color(rc);w.material.emissiveIntensity=.12+(spec.wr|0)*.08}r.weapon=w}}
-    else if(spec.wt&&spec.wt!=='none'&&slotR){const w=weaponMesh(spec.wt,spec.wr||0);w.rotation.set(0,0,0);w.scale.setScalar(1/s);(spec.wt==='boog'&&slotL?slotL:slotR).add(w);r.weapon=w}
+    else if(spec.wt&&spec.wt!=='none'&&slotR&&!spec.noProcW){const w=weaponMesh(spec.wt,spec.wr||0);w.rotation.set(0,0,0);w.scale.setScalar(1/s);(spec.wt==='boog'&&slotL?slotL:slotR).add(w);r.weapon=w}
     if(spec.o&&spec.o.gear)dressGltf(r,m,spec.o);
+    if(spec.wmodel)attachWeaponModel(r,m,spec.wmodel,'handslotr',spec.wr|0).then(w=>{if(w)r.weapon=w});if(spec.smodel)attachWeaponModel(r,m,spec.smodel,'handslotl',0);
     if(spec.eye){m.traverse(x=>{if(x.isMesh&&x.material.isMeshBasicMaterial){x.material=x.material.clone();x.material.color.set(spec.eye)}})}
     r.mixer=new THREE.AnimationMixer(m);r.clips=src.clips;r.ready=true;
     r.g.traverse(x=>{if(x.isMesh)x.castShadow=true});if(spec.onReady)spec.onReady(r)});
@@ -64,7 +65,7 @@ function buildGltfRig(spec){
 /* spelers */
 function buildGltfChar(o){
   const R=RACES[o.race]||RACES.mens;const s0=o.scale||1;
-  return buildGltfRig({model:playerModel(o),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:weaponProp(o),wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
+  return buildGltfRig({model:playerModel(o),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:o.wm?null:weaponProp(o),noProcW:!!o.wm,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
 /* NPC's en wachters */
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
   bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'}};
@@ -86,10 +87,10 @@ const MON_GLTF={
   spin:{m:'Spider',h:.8,cm:CM_SPIDER,tint:{Material:0x2a1e34,'Material.001':0xb02a2a},spider:1},
   rover:{m:'Rogue_Hooded',h:1.78,props:['Knife'],cm:{...CM_KAY,atk:{def:ATK_1H}},skin:0xc89070,hair:0x2a1a10},
   grisk:{m:'Barbarian',h:1.78,props:['Barbarian_Hat','2H_Axe'],cm:{...CM_KAY,cidle:'2H_Melee_Idle',atk:{def:ATK_2H}},skin:0xc89070,hair:0x6a2b1b},
-  knekel:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'zwaard',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x6ad8ff},
-  kmagier:{m:'Skeleton_Mage',h:1.78,props:['Skeleton_Mage_Hat'],wt:'staf',cm:{...CM_SKEL,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},eye:0xc06aff},
-  boss:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'bijl',wr:3,cm:{...CM_SKEL,cidle:'2H_Melee_Idle',atk:{def:ATK_2H}},eye:0x7aff5a},
-  dienaar:{m:'Skeleton_Minion',h:1.78,props:[],wt:'zwaard',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x6ad8ff},
+  knekel:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'zwaard',wm:'XS_Skeleton_Blade',sm:'XS_Skeleton_Shield_Small_A',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x6ad8ff},
+  kmagier:{m:'Skeleton_Mage',h:1.78,props:['Skeleton_Mage_Hat'],wt:'staf',wm:'XS_Skeleton_Staff',cm:{...CM_SKEL,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},eye:0xc06aff},
+  boss:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'bijl',wr:3,wm:'XS_Skeleton_Axe',cm:{...CM_SKEL,cidle:'2H_Melee_Idle',atk:{def:ATK_2H}},eye:0x7aff5a},
+  dienaar:{m:'Skeleton_Minion',h:1.78,props:[],wt:'zwaard',wm:'XS_Skeleton_Blade',sm:'XS_Skeleton_Shield_Small_B',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x6ad8ff},
   vuurimp:{drk:1,m:'Demon',h:1.35,props:['Trident'],cm:{...CM_MON,atk:{def:['Weapon']}},tint:{Atlas:0xffb890}},
   vonk:{drk:1,m:'Demon',h:.95,props:[],cm:CM_MON,tint:{Atlas:0xffe070}},
   lavagolem:{drk:1,m:'Orc',h:2.4,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0xd08a6a}},
@@ -102,7 +103,7 @@ const MON_GLTF={
   lavadrake:{drk:1,m:'Trex',h:4.4,cm:CM_TREX,tint:{Green:0x3a2420,Black:0x120c0a,LightGreen:0x7a4428,Red:0xff5a10,LightYellow:0xffa040},glow:{Red:0xff5a14}},
   vyraxion:{drk:1,m:'Dragon',h:7.2,cm:{...CM_DRAGON,hit:null},tint:{Main:0x8e1c12,Wings:0x3a0c08,Belly:0xe8a840,Claws:0x161210},glow:{Eyes:0xffc030}}};
 function buildGltfMon(type,lvl,sc){const d=MON_GLTF[type];if(!d)return null;
-  return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,cm:d.cm,quad:d.quad,spider:d.spider,...(d.drk?{tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair}:{}),o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}
+  return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,noProcW:!!d.wm,wmodel:d.wm,smodel:d.sm,cm:d.cm,quad:d.quad,spider:d.spider,...(d.drk?{tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair}:{}),o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}
 /* ---- animatie-statemachine ---- */
 function gAct(r,name,once){if(!name)return null;let a=r.acts[name];if(a)return a;const c=r.clips[name]||(TOOL_CLIPS&&TOOL_CLIPS[name]);if(!c)return null;a=r.mixer.clipAction(c);if(once){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true}r.acts[name]=a;return a}
 function gLoop(r,name,fade=.18){if(r.cur===name)return r.acts[name];const a=gAct(r,name,false);if(!a)return null;const prev=r.cur&&r.acts[r.cur];a.enabled=true;a.setEffectiveWeight(1);a.paused=false;if(prev&&prev!==a){a.reset();prev.crossFadeTo(a,fade,false);a.play()}else{a.reset().fadeIn(fade).play()}r.cur=name;return a}
