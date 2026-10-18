@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="Velmora: een fantasy-MMORPG in je browser. Maak een held, doe quests, verzamel buit en versla samen de Knekelkoning.">
+<meta name="description" content="Velmora: a fantasy MMORPG in your browser. Create a hero, do quests, collect loot and defeat the Bone King together.">
 <meta name="theme-color" content="#0d0b09">
-<title>Velmora · Kronieken van het Schemerrijk</title>
+<title>Velmora · Chronicles of the Twilight Realm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@400;500;700;800&display=swap">
@@ -156,7 +156,12 @@ kbd{font:700 12px var(--ui);border:1px solid var(--gold3);background:#1d1812;pad
 #tip .tn{font-weight:800;font-size:15px}#tip .ts{color:var(--muted)}#tip .tg{color:#5bea6b}#tip .tr{color:#ff6b6b}#tip .tv{color:#ffd34d}
 #tip .tb{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}#tip .tb .btn{padding:6px 10px;min-height:36px;font-size:13px;flex:1}
 .cmp{margin-top:6px;padding-top:6px;border-top:1px solid #3a2f1f;font-size:12px}
-#pLife{left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,95vw)}
+#pLife{left:50%;top:50%;transform:translate(-50%,-50%);width:min(860px,96vw);max-height:min(88vh,760px);display:flex;flex-direction:column}#pLife[hidden]{display:none}#lifeBody{display:flex;flex-direction:column;min-height:0;flex:1}
+.lwrap{display:grid;grid-template-columns:230px 1fr;gap:10px;min-height:0;flex:1;margin-top:8px}.lside{overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding-right:4px}.lmain{overflow-y:auto;padding-right:6px;min-height:0}
+.lgrp{font:700 12px Cinzel,serif;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin:6px 0 2px}.lside .lsk{background:#1a150f;border:1px solid #3a2f22;color:inherit;text-align:left;padding:4px 6px;cursor:pointer;border-radius:4px}.lside .lsk.sel{border-color:var(--gold);background:#2a2216;box-shadow:0 0 8px rgba(255,200,90,.25) inset}.lside .lsk b{display:block;font-size:13px}.lside .lsk small{font-size:11px}
+.lmain h4{margin:0;font:700 18px Cinzel,serif;color:var(--gold)}.lhint.warn{color:#ffb070}.ltier{display:block;width:100%;text-align:left;margin:10px 0 2px;padding:6px 8px;background:#211a12;border:1px solid #4a3b28;color:var(--gold);font:700 13px Cinzel,serif;cursor:pointer;border-radius:4px}.ltier:before{content:'▸ '}.ltier.open:before{content:'▾ '}.ltier small{color:var(--muted);font:12px system-ui}
+.rc.lock{opacity:.55}.rc canvas{width:44px!important;height:44px!important;border-radius:4px}.ins.gi{color:var(--muted)}
+@media (max-width:640px){.lwrap{grid-template-columns:1fr}.lside{flex-direction:row;overflow-x:auto;overflow-y:hidden}.lside .lgrp{display:none}.lside .lsk{min-width:132px}}
 .lhint{font-size:13px;color:var(--muted);margin:6px 0}.lskills{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.lsk{display:flex;gap:8px;align-items:center;font-size:13px}.lsk canvas{width:34px;height:34px;border:1px solid var(--gold3)}.lsk>div{flex:1}.lsk small{color:var(--gold)}
 .ltabs{display:flex;gap:6px;margin:8px 0}.ltabs .opt{flex:1;min-height:36px}.rc{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2c241a}.rc canvas{width:38px;height:38px;border:1px solid var(--gold3);flex:none}.rci{flex:1;font-size:13px}.rci small{color:var(--gold)}.ins{font-size:12px}.ins .ok,.ins.ok{color:#7dff8a}.ins .no{color:#ff8a8a}.rcb{display:flex;flex-direction:column;gap:4px}.rcb .btn{min-height:30px;padding:3px 10px;font-size:12px}
 #fishBar{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);width:300px;height:26px;background:#120f0c;border:2px solid var(--gold2);pointer-events:none}#fishZone{position:absolute;top:0;bottom:0;background:linear-gradient(#5bea6b,#22862f)}#fishMark{position:absolute;top:-4px;bottom:-4px;width:4px;margin-left:-2px;background:#fff;box-shadow:0 0 6px #fff}#fishBar span{position:absolute;left:0;right:0;top:30px;text-align:center;font-weight:800;text-shadow:0 1px 2px #000}
@@ -366,13 +371,13 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="loading">Velmora wordt geladen…<small id="loadMsg">De wereld wordt opgebouwd</small></div>
+<div id="loading">Loading Velmora…<small id="loadMsg">Building the world</small></div>
 <div id="plates"></div>
 
 <div id="hud" hidden>
   <div id="pframe" class="uf frame">
     <div class="port"><canvas id="pPort" width="64" height="64"></canvas><span class="lvl" id="pLvl">1</span></div>
-    <div class="ufb"><div class="ufn"><span id="pName">Held</span><span class="tag" id="pPvp" style="color:#ff6b6b;border-color:#a33" hidden>PvP</span><small id="pCls"></small></div>
+    <div class="ufb"><div class="ufn"><span id="pName">Hero</span><span class="tag" id="pPvp" style="color:#ff6b6b;border-color:#a33" hidden>PvP</span><small id="pCls"></small></div>
       <div class="bar hpb" id="pHp"><i></i><span></span></div>
       <div class="bar mpb" id="pMp"><i></i><span></span></div><div id="buffs"></div></div>
   </div>
@@ -380,49 +385,49 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
     <div class="port"><canvas id="tPort" width="64" height="64"></canvas><span class="lvl" id="tLvl">1</span></div>
     <div class="ufb"><div class="ufn"><span id="tName"></span><span class="tag" id="tTag" hidden>Elite</span></div>
       <div class="bar enemyb" id="tHp"><i></i><span></span></div>
-      <button class="btn alt tbtn" id="tInv" hidden>Uitnodigen in groep</button></div>
+      <button class="btn alt tbtn" id="tInv" hidden>Invite to group</button></div>
   </div>
   <div id="party" class="pe"></div>
-  <div id="mini" class="pe"><div id="zone">Zilverbron</div><div id="mmw"><canvas id="mmc" width="200" height="200"></canvas><img id="mmring" src="ui/minimap_ring_brown_detail.png" alt=""></div><div id="online">Offline</div></div>
+  <div id="mini" class="pe"><div id="zone">Silverbrook</div><div id="mmw"><canvas id="mmc" width="200" height="200"></canvas><img id="mmring" src="ui/minimap_ring_brown_detail.png" alt=""></div><div id="online">Offline</div></div>
   <div id="tracker"></div>
-  <div id="chat" class="pe"><div id="log"></div><input id="chatIn" class="txt" maxlength="120" placeholder="Bericht… (/g voor groep)" autocomplete="off"></div>
+  <div id="chat" class="pe"><div id="log"></div><input id="chatIn" class="txt" maxlength="120" placeholder="Message… (/g for group)" autocomplete="off"></div>
   <div id="castbar" class="bar" hidden><i></i><span></span></div>
   <div id="toast"></div>
   <div id="feed"></div>
   <div id="banner"></div>
   <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div id="abar"></div></div>
   <div id="mbtn" class="pe">
-    <button class="mb" data-p="pChar"><img src="ui/character.png" alt=""><i>C</i><small>Held</small></button>
-    <button class="mb" data-p="pTalent" id="mbTal"><img src="ui/award.png" alt=""><i>N</i><small>Talenten</small><b class="tdot" hidden></b></button>
-    <button class="mb" data-p="pBag"><img src="ui/pouch.png" alt=""><i>B</i><small>Rugzak</small></button>
+    <button class="mb" data-p="pChar"><img src="ui/character.png" alt=""><i>C</i><small>Hero</small></button>
+    <button class="mb" data-p="pTalent" id="mbTal"><img src="ui/award.png" alt=""><i>N</i><small>Talents</small><b class="tdot" hidden></b></button>
+    <button class="mb" data-p="pBag"><img src="ui/pouch.png" alt=""><i>B</i><small>Bag</small></button>
     <button class="mb" data-p="pQuest"><img src="ui/book_open.png" alt=""><i>L</i><small>Quests</small></button>
-    <button class="mb" data-p="pLife"><img src="ui/campfire.png" alt=""><i>K</i><small>Ambacht</small></button>
-    <button class="mb" data-p="pMap"><img src="ui/flag_triangle.png" alt=""><i>M</i><small>Kaart</small></button>
+    <button class="mb" data-p="pLife"><img src="ui/campfire.png" alt=""><i>K</i><small>Crafting</small></button>
+    <button class="mb" data-p="pMap"><img src="ui/flag_triangle.png" alt=""><i>M</i><small>Map</small></button>
     <button class="mb" id="bChat"><img src="ui/icon_talk.png" alt=""><i>↵</i><small>Chat</small></button>
     <button class="mb" data-p="pMenu"><img src="ui/icon_menu.png" alt=""><i>Esc</i><small>Menu</small></button>
   </div>
-  <div id="pBag" class="panel frame" hidden><h3>Rugzak <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Goud</span><span id="goldTxt">0</span></div></div>
-  <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Held</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
-  <div id="pTalent" class="panel frame" hidden><h3><span>Talenten</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
-  <div id="pQuest" class="panel frame" hidden><h3>Questlog <button class="x" data-close>×</button></h3><div id="qList"></div></div>
-  <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Kaart van Velmora</span><button class="btn alt" id="mapAll">Overzicht</button><button class="x" data-close>×</button></h3><canvas id="bigmap" width="560" height="560"></canvas></div>
-  <div id="pLife" class="panel frame" hidden><h3>Ambacht <button class="x" data-close>×</button></h3><div id="lifeBody"></div></div>
-  <div id="fishBar" hidden><div id="fishZone"></div><div id="fishMark"></div><span>Sla toe in het groene vak!</span></div>
+  <div id="pBag" class="panel frame" hidden><h3>Bag <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Gold</span><span id="goldTxt">0</span></div></div>
+  <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
+  <div id="pTalent" class="panel frame" hidden><h3><span>Talents</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
+  <div id="pQuest" class="panel frame" hidden><h3>Quest log <button class="x" data-close>×</button></h3><div id="qList"></div></div>
+  <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Map of Velmora</span><button class="btn alt" id="mapAll">Overview</button><button class="x" data-close>×</button></h3><canvas id="bigmap" width="560" height="560"></canvas></div>
+  <div id="pLife" class="panel frame" hidden><h3>Crafting <button class="x" data-close>×</button></h3><div id="lifeBody"></div></div>
+  <div id="fishBar" hidden><div id="fishZone"></div><div id="fishMark"></div><span>Strike in the green zone!</span></div>
   <div id="pDialog" class="panel" hidden><h3><span id="dName"></span><button class="x" data-close>×</button></h3><div id="dBody"></div></div>
   <div id="pMenu" class="panel frame" hidden><h3>Menu <button class="x" data-close>×</button></h3>
-    <button class="btn alt" data-close>Verder spelen</button>
-    <button class="btn alt" id="bSave">Opslaan</button>
-    <div class="row touchonly"><button class="btn alt" data-open="pMap">Kaart</button><button class="btn alt" data-open="pLife">Ambacht</button></div>
-    <button class="btn" id="bPvp">PvP: uit</button>
-    <p class="mhelp" style="margin:0">Met PvP aan kun je buiten Zilverbron vechten tegen andere spelers die PvP ook aan hebben. Winnen levert eer en goud op.</p>
-    <button class="btn alt" id="bSound">Geluid: aan</button>
-    <button class="btn alt" id="bGfx">Grafiek: Hoog</button>
-    <button class="btn" id="bQuit">Opslaan en naar startscherm</button>
-    <p class="mhelp keyh"><kbd>WASD</kbd> lopen · <kbd>muis slepen</kbd> camera · <kbd>scroll</kbd> zoom · <kbd>klik</kbd> doelwit · <kbd>Tab</kbd> dichtstbijzijnde vijand · <kbd>1</kbd>–<kbd>7</kbd> vaardigheden · <kbd>F</kbd> praten/buit/deur · <kbd>Spatie</kbd> springen · <kbd>Enter</kbd> chat · <kbd>B</kbd> <kbd>C</kbd> <kbd>L</kbd> <kbd>M</kbd> vensters</p>
+    <button class="btn alt" data-close>Resume</button>
+    <button class="btn alt" id="bSave">Save</button>
+    <div class="row touchonly"><button class="btn alt" data-open="pMap">Map</button><button class="btn alt" data-open="pLife">Crafting</button></div>
+    <button class="btn" id="bPvp">PvP: off</button>
+    <p class="mhelp" style="margin:0">With PvP on you can fight other players outside Silverbrook who also have PvP on. Winning earns honour and gold.</p>
+    <button class="btn alt" id="bSound">Sound: on</button>
+    <button class="btn alt" id="bGfx">Graphics: High</button>
+    <button class="btn" id="bQuit">Save and return to title screen</button>
+    <p class="mhelp keyh"><kbd>WASD</kbd> move · <kbd>drag mouse</kbd> camera · <kbd>scroll</kbd> zoom · <kbd>click</kbd> target · <kbd>Tab</kbd> nearest enemy · <kbd>1</kbd>–<kbd>7</kbd> abilities · <kbd>F</kbd> talk/loot/door · <kbd>Space</kbd> jump · <kbd>Enter</kbd> chat · <kbd>B</kbd> <kbd>C</kbd> <kbd>L</kbd> <kbd>M</kbd> windows</p>
   </div>
 </div>
 <div id="tip" class="frame" hidden></div>
-<div id="death" hidden><h2>Je bent gesneuveld</h2><p style="margin:0;color:#ccc">Je geest keert terug naar het dichtstbijzijnde heiligdom.</p><button class="btn" id="bRes">Herrijzen</button></div>
+<div id="death" hidden><h2>You have died</h2><p style="margin:0;color:#ccc">Your spirit returns to the nearest shrine.</p><button class="btn" id="bRes">Resurrect</button></div>
 
 <div id="touch" hidden>
   <div id="joy"><i></i></div>
@@ -430,25 +435,25 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
 </div>
 
 <div id="menu" hidden>
-  <div class="top"><a class="back" href="../">← Alle spellen</a><div class="net" id="net"><i></i><span>Verbinden met Velmora…</span></div></div>
-  <div class="logo"><h1>Velmora</h1><p>Kronieken van het Schemerrijk</p></div>
+  <div class="top"><a class="back" href="../">← All games</a><div class="net" id="net"><i></i><span>Connecting to Velmora…</span></div></div>
+  <div class="logo"><h1>Velmora</h1><p>Chronicles of the Twilight Realm</p></div>
   <div>
     <section id="sel" class="mpanel frame">
-      <h2>Kies je held</h2>
+      <h2>Choose your hero</h2>
       <div class="clist" id="charList"></div>
-      <div class="row"><button class="btn" id="bPlay">Betreed Velmora</button></div>
-      <div class="row"><button class="btn alt" id="bNew">Nieuw karakter</button><button class="btn alt" id="bDel">Verwijderen</button></div>
+      <div class="row"><button class="btn" id="bPlay">Enter Velmora</button></div>
+      <div class="row"><button class="btn alt" id="bNew">New character</button><button class="btn alt" id="bDel">Delete</button></div>
     </section>
     <section id="create" class="mpanel frame" hidden>
-      <h2>Nieuw karakter</h2>
-      <label class="l" for="nameIn">Naam</label>
-      <input id="nameIn" class="txt" maxlength="14" placeholder="Bijvoorbeeld Elandra" autocomplete="off">
-      <label class="l">Ras</label><div class="opts" id="raceOpts"></div>
-      <label class="l">Klasse</label><div class="opts three" id="clsOpts"></div>
+      <h2>New character</h2>
+      <label class="l" for="nameIn">Name</label>
+      <input id="nameIn" class="txt" maxlength="14" placeholder="For example Elandra" autocomplete="off">
+      <label class="l">Race</label><div class="opts" id="raceOpts"></div>
+      <label class="l">Class</label><div class="opts three" id="clsOpts"></div>
       <div class="sw" id="hairOpts" hidden></div>
       <p class="desc" id="cDesc"></p>
-      <div class="row"><button class="btn alt" id="bBack">Terug</button><button class="btn" id="bCreate">Creëren</button></div>
+      <div class="row"><button class="btn alt" id="bBack">Back</button><button class="btn" id="bCreate">Create</button></div>
     </section>
   </div>
-  <p class="mhelp keyh"><kbd>WASD</kbd> lopen · <kbd>muis slepen</kbd> camera · <kbd>klik</kbd> doelwit · <kbd>1</kbd>–<kbd>7</kbd> vaardigheden · <kbd>F</kbd> praten en buit · <kbd>Enter</kbd> chat. Je voortgang wordt in deze browser bewaard.</p>
+  <p class="mhelp keyh"><kbd>WASD</kbd> move · <kbd>drag mouse</kbd> camera · <kbd>click</kbd> target · <kbd>1</kbd>–<kbd>7</kbd> abilities · <kbd>F</kbd> talk and loot · <kbd>Enter</kbd> chat. Your progress is saved in this browser.</p>
 </div>

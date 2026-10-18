@@ -7,7 +7,7 @@ const MODEL_BASE=new URL('models/',location.href).href;
 const gltfCache=new Map();let _gl=null;function gltfLoader(){if(!_gl){_gl=new GLTFLoader();_gl.setMeshoptDecoder(MeshoptDecoder)}return _gl}
 function loadGltf(name){
   let e=gltfCache.get(name);if(e)return e.p;e={p:null,data:null};
-  e.p=new Promise(res=>{gltfLoader().load(MODEL_BASE+name+'.glb',g=>{prepGltf(g);e.data=g;res(g)},undefined,err=>{console.warn('model laden mislukt',name,err);res(null)})});
+  e.p=new Promise(res=>{gltfLoader().load(MODEL_BASE+name+'.glb',g=>{prepGltf(g);e.data=g;res(g)},undefined,err=>{console.warn('model failed to load',name,err);res(null)})});
   gltfCache.set(name,e);return e.p}
 function prepGltf(g){/* toon-materialen + hoogte van het lichaam (zonder props) */
   const props=[];const matMap=new Map();
@@ -67,7 +67,7 @@ function buildGltfChar(o){
   return buildGltfRig({model:playerModel(o),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:weaponProp(o),wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
 /* NPC's en wachters */
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
-  bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'}};
+  bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'}};
 function buildGltfNpc(id,look){const d=NPC_GLTF[id]||NPC_GLTF.guard;const h=look.dwarf?1.5:1.78;
   return buildGltfRig({model:d.m,h,props:d.props,weaponMesh:d.w,wt:look.wt,o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:look.dwarf?'dwerg':'mens',...look})})}
 /* monsters */
@@ -104,8 +104,26 @@ const MON_GLTF={
 function buildGltfMon(type,lvl,sc){const d=MON_GLTF[type];if(!d)return null;
   return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,cm:d.cm,quad:d.quad,spider:d.spider,...(d.drk?{tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair}:{}),o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}
 /* ---- animatie-statemachine ---- */
-function gAct(r,name,once){if(!name)return null;let a=r.acts[name];if(a)return a;const c=r.clips[name];if(!c)return null;a=r.mixer.clipAction(c);if(once){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true}r.acts[name]=a;return a}
+function gAct(r,name,once){if(!name)return null;let a=r.acts[name];if(a)return a;const c=r.clips[name]||(TOOL_CLIPS&&TOOL_CLIPS[name]);if(!c)return null;a=r.mixer.clipAction(c);if(once){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true}r.acts[name]=a;return a}
 function gLoop(r,name,fade=.18){if(r.cur===name)return r.acts[name];const a=gAct(r,name,false);if(!a)return null;const prev=r.cur&&r.acts[r.cur];a.enabled=true;a.setEffectiveWeight(1);a.paused=false;if(prev&&prev!==a){a.reset();prev.crossFadeTo(a,fade,false);a.play()}else{a.reset().fadeIn(fade).play()}r.cur=name;return a}
+/* ---- ambachtsanimaties: KayKit Character Animations (Rig_Medium, CC0). Zelfde botnamen als de KayKit-avonturiers, dus alleen
+   de rotaties (en de heup-hoogte) worden overgenomen. Wordt pas geladen bij de eerste ambachtsactie. ---- */
+let TOOL_CLIPS=null,_toolClipsP=null;
+function needToolClips(){if(!_toolClipsP)_toolClipsP=new Promise(res=>{gltfLoader().load(MODEL_BASE+'anim_tools.glb',g=>{const C={};for(const c of g.animations){c.tracks=c.tracks.filter(t=>/\.quaternion$/.test(t.name)||/^hips\.position$/.test(t.name));C[c.name.replace(/^.*\|/,'')]=c}TOOL_CLIPS=C;res(C)},undefined,()=>res(null))});return _toolClipsP}
+/* activiteit → [clip, gereedschapsmodel, schaal in modeleenheden, rotatie] */
+const ACT_ANIM={mine:['Pickaxing','KT_pickaxe',1],chop:['Chopping','KT_axe',1],herb:['PickUp',null],skin:['Working_B','KT_knife',1],saw:['Sawing','KT_saw',1],
+  forge:['Hammering','KT_hammer',1],tan:['Working_A','KT_knife',1],sew:['Working_C','KT_scissors',.9],cook:['Working_B',null],brew:['Working_C',null],grind:['Working_A',null],
+  fishcast:['Fishing_Cast','Q_FishingRod_Lvl1',.3],fishidle:['Fishing_Idle','Q_FishingRod_Lvl1',.3],fishbite:['Fishing_Struggling','Q_FishingRod_Lvl1',.3],fishcatch:['Fishing_Catch','Q_FishingRod_Lvl1',.3]};
+const _toolSrc=new Map();
+function toolClone(name){let p=_toolSrc.get(name);if(!p){p=loadEnv(name);_toolSrc.set(name,p)}return p.then(g=>{if(!g)return null;const m=g.scene.clone(true);m.traverse(o=>{if(o.isMesh){if(!o.geometry.attributes.normal)o.geometry.computeVertexNormals();o.material=new THREE.MeshToonMaterial({color:o.material.color.clone(),vertexColors:!!o.geometry.attributes.color,gradientMap:RAMP});o.castShadow=true}});return m})}
+/* gereedschap in de rechterhand; wapens in beide handen tijdelijk verbergen */
+function setTool(r,key){const want=key&&ACT_ANIM[key]?ACT_ANIM[key][1]:null;if(r.toolKey===key)return;r.toolKey=key;const sameTool=r.toolName===want&&r.tool;r.toolName=want;const m=r.m;if(!m)return;if(sameTool)return;
+  const sr=m.getObjectByName('handslotr'),sl=m.getObjectByName('handslotl');
+  if(r.tool){r.tool.parent&&r.tool.parent.remove(r.tool);r.tool=null}
+  if(r.hidW){for(const o of r.hidW)o.visible=true;r.hidW=null}
+  if(!want&&!key)return;
+  r.hidW=[];for(const s of[sr,sl])if(s)for(const c of s.children)if(c.visible){c.visible=false;r.hidW.push(c)}
+  if(want&&sr){const sc=ACT_ANIM[key][2]||1;toolClone(want).then(t=>{if(!t||r.toolName!==want)return;t.scale.setScalar(sc);r.tool=t;sr.add(t)})}}
 function animGltf(r,a,dt){
   if(r.fallback){animRig(r.fallback,a,dt);return}
   if(!r.ready)return;const S=r.st,cm=r.cm;const mv=clamp(a.spd||0,0,1.6);S.amt=ease(S.amt||0,Math.min(mv,1),clamp(dt*8,0,1));const am=S.amt;
@@ -122,8 +140,12 @@ function animGltf(r,a,dt){
   /* --- geraakt --- */
   if(a.hurt&&!S.hurtOn){S.hurtOn=true;const h=gAct(r,cm.hit,true);if(h&&a.atk<0){h.reset();h.setEffectiveWeight(.8);h.play()}}else if(!a.hurt)S.hurtOn=false;
   /* --- basislus --- */
-  let name;if(a.air&&cm.jumpI)name=(a.vy||0)>1&&cm.jumpS?cm.jumpS:cm.jumpI;else if(a.cast&&cm.cast)name=cm.cast;else if(am>.62)name=cm.run;else if(am>.05)name=cm.walk;else name=a.combat&&cm.cidle?cm.cidle:cm.idle;
-  if(S.prevAir&&!a.air){const l=gAct(r,cm.land,true);if(l){l.reset();l.setEffectiveWeight(.9);l.play()}S.land=.22}S.prevAir=!!a.air;S.land=Math.max(0,(S.land||0)-dt);
+  if(r.o.cls!=='mon'&&(a.act||r.toolName!==undefined)){if((a.act||null)!==(r.actKey||null)){r.actKey=a.act||null;setTool(r,a.act||null)}}
+  let name;if(a.act&&ACT_ANIM[a.act]&&TOOL_CLIPS&&!a.air&&am<.3)name=ACT_ANIM[a.act][0];else if(a.air&&cm.jumpI)name=(a.vy||0)>1&&cm.jumpS?cm.jumpS:cm.jumpI;else if(a.cast&&cm.cast)name=cm.cast;else if(am>.62)name=cm.run;else if(am>.05)name=cm.walk;else name=a.combat&&cm.cidle?cm.cidle:cm.idle;
+  /* landen: korte landingsclip die daarna weer wegfadet (anders blijft de laatste pose hangen over de looplus) */
+  if(S.prevAir&&!a.air){const l=gAct(r,cm.land,true);if(l){l.stop();l.reset();l.setEffectiveWeight(am>.3?.45:.9);l.play();S.landAct=l}S.land=am>.3?.12:.22}S.prevAir=!!a.air;
+  if(S.land>0){S.land-=dt;if(S.land<=0&&S.landAct){S.landAct.fadeOut(.12);S.landAct=null}}
+  if(a.air&&S.landAct){S.landAct.stop();S.landAct=null}
   const act=gLoop(r,name);
   if(act){if(name===cm.run)act.timeScale=clamp(mv/1.05,.7,1.6);else if(name===cm.walk)act.timeScale=clamp(am/.5,.6,1.5);else act.timeScale=1;
     if(!(a.atk>=0))act.setEffectiveWeight(ease(act.getEffectiveWeight(),1,clamp(dt*10,0,1)));

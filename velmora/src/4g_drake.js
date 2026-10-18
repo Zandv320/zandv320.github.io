@@ -5,28 +5,28 @@
    NIEUW LEGENDARISCH ITEM: voeg een regel toe aan LEGENDS[klasse]; s=slot, wt=wapentype, c=kleur, mods=bonussen, leg=tekst. */
 const LEGENDS={
   krijger:[
-    {s:'wapen',wt:'bijl',n:'Asvorst, Slachter der Draken',c:0x7a1a10,mods:{critdmg:.25,'slag.dmg':.2,wdmg:.05},leg:'Legendarisch: kritieke treffers doen 25% extra schade, Heldhaftige Slag +20% en +5% wapenschade.'},
-    {s:'borst',n:'Schubbenharnas van Vyraxion',c:0x8e1c12,mods:{dr:.06,hpp:.08},leg:'Legendarisch: je krijgt 6% minder schade en hebt 8% meer levenspunten.'},
-    {s:'hoofd',n:'Hoornhelm van de Asvorst',c:0x5a1a10,mods:{crit:5,rage:3},leg:'Legendarisch: +5% kritieke kans en je aanvallen geven 3 extra energie.'},
-    {s:'handen',n:'Klauwen van het Drakenbroed',c:0x6a2a14,mods:{haste:.08,'werv.dmg':.2},leg:'Legendarisch: +8% aanvalssnelheid en Wervelwind doet 20% meer schade.'}],
+    {s:'wapen',wt:'bijl',n:'Ash Queen\'s Bane, Slayer of Dragons',c:0x7a1a10,mods:{critdmg:.25,'slag.dmg':.2,wdmg:.05},leg:'Legendary: critical hits deal 25% extra damage, Heroic Strike +20% and +5% weapon damage.'},
+    {s:'borst',n:'Scale Harness of Vyraxion',c:0x8e1c12,mods:{dr:.06,hpp:.08},leg:'Legendary: you take 6% less damage and have 8% more health.'},
+    {s:'hoofd',n:'Horned Helm of the Ash Queen',c:0x5a1a10,mods:{crit:5,rage:3},leg:'Legendary: +5% critical chance and your attacks grant 3 extra energy.'},
+    {s:'handen',n:'Claws of the Dragon Brood',c:0x6a2a14,mods:{haste:.08,'werv.dmg':.2},leg:'Legendary: +8% attack speed and Whirlwind deals 20% more damage.'}],
   magier:[
-    {s:'wapen',wt:'staf',n:'Vyraxions Vlammenhart',c:0xc0441e,mods:{'vuur.dmg':.25,'meteoor.dmg':.2,crit:4},leg:'Legendarisch: Vuurschicht +25%, Meteoor +20% schade en +4% kritieke kans.'},
-    {s:'borst',n:'Gewaad van Gloeiende Schubben',c:0x8e2a12,mods:{mpp:.15,mregen:.25,hpp:.05},leg:'Legendarisch: 15% meer mana, 25% snellere manaregeneratie en 5% meer levens.'},
-    {s:'hoofd',n:'Kroon van Smeulende As',c:0x3a1a14,mods:{cdall:.1,critdmg:.15},leg:'Legendarisch: alle afkoeltijden 10% korter en kritieke treffers +15% schade.'},
-    {s:'handen',n:'Vonkengrepen',c:0xd85a1a,mods:{costall:.1,'vuur.cast':.25},leg:'Legendarisch: vaardigheden kosten 10% minder en Vuurschicht is 0,25 s sneller.'}],
+    {s:'wapen',wt:'staf',n:'Vyraxion\'s Flameheart',c:0xc0441e,mods:{'vuur.dmg':.25,'meteoor.dmg':.2,crit:4},leg:'Legendary: Firebolt +25%, Meteor +20% damage and +4% critical chance.'},
+    {s:'borst',n:'Robe of Glowing Scales',c:0x8e2a12,mods:{mpp:.15,mregen:.25,hpp:.05},leg:'Legendary: 15% more mana, 25% faster mana regeneration and 5% more health.'},
+    {s:'hoofd',n:'Crown of Smouldering Ash',c:0x3a1a14,mods:{cdall:.1,critdmg:.15},leg:'Legendary: all cooldowns 10% shorter and critical hits +15% damage.'},
+    {s:'handen',n:'Sparkgrips',c:0xd85a1a,mods:{costall:.1,'vuur.cast':.25},leg:'Legendary: abilities cost 10% less and Firebolt is 0.25 s faster.'}],
   jager:[
-    {s:'wapen',wt:'boog',n:'Drakenpees, Boog der Asvorst',c:0x6a1a10,mods:{'schot.dmg':.25,haste:.08,crit:3},leg:'Legendarisch: Gericht Schot +25% schade, +8% aanvalssnelheid en +3% kritieke kans.'},
-    {s:'borst',n:'Jas van Drakenhuid',c:0x7a3018,mods:{dodge:.06,speed:.06,hpp:.05},leg:'Legendarisch: 6% kans om aanvallen te ontwijken, 6% sneller lopen en 5% meer levens.'},
-    {s:'hoofd',n:'Kap van het Drakenoog',c:0x4a1a10,mods:{crit:6,exec:.15},leg:'Legendarisch: +6% kritieke kans en 15% meer schade tegen vijanden onder 35% levens.'},
-    {s:'handen',n:'Handschoenen van de Valkenier',c:0x8a4a1a,mods:{'multi.dmg':.25,'regen.dmg':.2},leg:'Legendarisch: Meervoudig Schot +25% en Pijlregen +20% schade.'}]};
+    {s:'wapen',wt:'boog',n:'Dragonstring, Bow of the Ash Queen',c:0x6a1a10,mods:{'schot.dmg':.25,haste:.08,crit:3},leg:'Legendary: Aimed Shot +25% damage, +8% attack speed and +3% critical chance.'},
+    {s:'borst',n:'Coat of Dragonhide',c:0x7a3018,mods:{dodge:.06,speed:.06,hpp:.05},leg:'Legendary: 6% chance to dodge attacks, 6% faster movement and 5% more health.'},
+    {s:'hoofd',n:'Hood of the Dragon\'s Eye',c:0x4a1a10,mods:{crit:6,exec:.15},leg:'Legendary: +6% critical chance and 15% more damage against enemies below 35% health.'},
+    {s:'handen',n:'Gloves of the Falconer',c:0x8a4a1a,mods:{'multi.dmg':.25,'regen.dmg':.2},leg:'Legendary: Multi-Shot +25% and Arrow Rain +20% damage.'}]};
 function makeLegendary(cls,slot){const L=LEGENDS[cls]||LEGENDS.krijger;const d=slot?(L.find(x=>x.s===slot)||L[0]):(Math.random()<.4?L[0]:pick(L.slice(1)));
   const it=makeGear(d.s,24,4,cls);it.n=d.n;it.mods={...d.mods};it.leg=d.leg;it.vis={c:d.c};if(d.s==='wapen'){it.wt=d.wt;it.spd=CLASSES[cls].spd}
   it.pow=Math.round((it.pow||0)*1.2+8);it.sta=Math.round((it.sta||0)*1.2+8);it.req=19;it.price=Math.round(it.price*2);return it}
 
 /* ---------- reizen ---------- */
-function enterDrake(){teleport(DRK_ENTRY.x,DRK_ENTRY.z);ME.ry=Math.PI/2;cam.yaw=-Math.PI/2;log('Hete wind en de geur van zwavel: je betreedt het Drakenrijk…','sys');if(P.level<13)log('Pas op: het Drakenrijk is bedoeld voor helden van niveau 13 of hoger.','err')}
+function enterDrake(){teleport(DRK_ENTRY.x,DRK_ENTRY.z);ME.ry=Math.PI/2;cam.yaw=-Math.PI/2;log('Hot wind and the smell of sulphur: you enter the Dragon Realm…','sys');if(P.level<13)log('Beware: the Dragon Realm is meant for heroes of level 13 or higher.','err')}
 function leaveDrake(){teleport(DRK_GATE.x-9,DRK_GATE.z);ME.ry=-Math.PI/2;cam.yaw=Math.PI/2}
-function enterVolcano(){teleport(D3.entry.x,D3.entry.z);ME.ry=Math.PI;cam.yaw=0;log('De hitte is verstikkend. Diep in de vulkaan sluimert Vyraxion de Asvorst…','sys');if(P.level<18)log('Pas op: het Hart van de Vulkaan is bedoeld voor helden van niveau 18 of hoger.','err')}
+function enterVolcano(){teleport(D3.entry.x,D3.entry.z);ME.ry=Math.PI;cam.yaw=0;log('The heat is suffocating. Deep in the volcano, Vyraxion the Ash Queen slumbers…','sys');if(P.level<18)log('Beware: the Heart of the Volcano is meant for heroes of level 18 or higher.','err')}
 function leaveVolcano(){teleport(VOLC_DOOR.x-7,VOLC_DOOR.z);ME.ry=-Math.PI/2;cam.yaw=Math.PI/2}
 /* automatisch door een poort lopen (aangeroepen vanuit de lus) */
 function drakePortals(){const x=ME.pos.x,z=ME.pos.z;
@@ -67,7 +67,7 @@ function breathFx(x,y,z,ry,len,dur=1.1){const o=new THREE.Object3D();scene.add(o
        Na de vlucht landt ze met een schokgolf.
    Fase 3 (onder 33%): lava-plassen onder je voeten, snellere adem; onder 15% razernij met vuurpulsen door de hele hal.
    Zwaar maar solo te doen op niveau 20 met goede uitrusting en drankjes. */
-const VYR_LINES={hi:'Wie durft mijn schat te naderen? Jullie as zal mijn nest verwarmen!',fly:'Brand, nietige wezens! Brand onder mijn vleugels!',sum:'Mijn broed, verslind ze!',land:'Jullie zijn nog niet verkoold?!',lava:'De berg zelf staat aan mijn zijde!',enr:'GENOEG! HET HELE RIJK ZAL BRANDEN!',bolt:'fire',add:'broedling',tele:'Brand!'};
+const VYR_LINES={hi:'Who dares approach my hoard? Your ashes will warm my nest!',fly:'Burn, puny creatures! Burn beneath my wings!',sum:'My brood, devour them!',land:'You\'re still not charred?!',lava:'The mountain itself stands at my side!',enr:'ENOUGH! THE WHOLE REALM WILL BURN!',bolt:'fire',add:'broedling',tele:'Burn!'};
 function dSay(k,m){const t=VYR_LINES[k];netEmit('bossmsg',{t,b:'vyraxion'});bossSay(t,'vyraxion')}
 function dFx(o){fxEmit(o)}
 function inCone(px,pz,m,len,half){const dx=px-m.x,dz=pz-m.z,d=Math.hypot(dx,dz);if(d>len||d<.01)return d<2.5;const a=Math.atan2(dx,dz);return Math.abs(angDiff(a,m.ry))<half}

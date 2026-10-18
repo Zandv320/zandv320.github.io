@@ -20,12 +20,14 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
   const place=(n,x,z,ry,s,y=0,par=scene)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],par,y);
   /* ---------- bergketens ---------- */
   const MT=['Mountain_Group_1','Mountain_Group_2','MountainLarge_Single','Mountain_Single'],MS={Mountain_Group_1:30,Mountain_Group_2:34,MountainLarge_Single:44,Mountain_Single:42};
+  const MFP={Mountain_Group_1:2.45,Mountain_Group_2:1.87,MountainLarge_Single:.56,Mountain_Single:.96};/* halve breedte van elk model */
   const ring=(cx,cz,e0,e1,step,skip,tint,sc=1)=>{for(let row=0;row<2;row++){const e=row?e1:e0;for(let side=0;side<4;side++)for(let t=-e;t<e;t+=step*(row?1.3:1)){const tt=t+R()*step*.5;const lx=side===0?e:side===1?-e:tt,lz=side===2?e:side===3?-e:tt;
-      const x=cx+lx+(R()-.5)*12,z=cz+lz+(R()-.5)*12;if(skip&&skip(x,z))continue;const n=MT[Math.floor(R()*MT.length)];const s=MS[n]*(.75+R()*.6)*(row?1.35:1)*sc;
+      let x=cx+lx+(R()-.5)*12,z=cz+lz+(R()-.5)*12;const n=MT[Math.floor(R()*MT.length)];const s=MS[n]*(.75+R()*.6)*(row?1.35:1)*sc;
+      /* de pas vrijhouden: een berg die over de doorgang zou vallen schuift opzij, zodat hij de pas flankeert */if(skip){const r=MFP[n]*s,q=skip(x,z,r);if(q===false)continue;if(q){x=q[0];z=q[1]}}
       /* voet van de berg op de laagste grond eromheen, zodat de rand nergens zweeft */let gy=1e9;for(const rr of[.8,1.6,2.3])for(let a=0;a<6.28;a+=.7)gy=Math.min(gy,groundH(x+Math.cos(a)*s*rr,z+Math.sin(a)*s*rr));
       jobs.push(envPlace(n,x,z,R()*6.28,()=>[s,s,s],scene,gy-groundH(x,z)-6).then(o=>{noShadow(o);if(tint)tintObj(o,tint)}))}}};
-  ring(0,0,272,308,46,(x,z)=>x>200&&Math.abs(z-100)<34);/* opening voor de Drakenpas */
-  ring(DRK.x,DRK.z,192,222,46,(x,z)=>x<DRK.x-150&&Math.abs(z-DRK.z)<30,new THREE.Color(.42,.36,.33),.5);
+  ring(0,0,272,308,46,(x,z,r)=>x-r<DRK_GATE.x+26&&Math.abs(z-DRK_GATE.z)<r+18?[x,DRK_GATE.z+Math.sign(z-DRK_GATE.z||1)*(r+18)]:null);/* opening voor de Drakenpas */
+  ring(DRK.x,DRK.z,192,222,46,(x,z,r)=>x+r>DRK_ENTRY.x-26&&Math.abs(z-DRK_ENTRY.z)<r+18?[x,DRK_ENTRY.z+Math.sign(z-DRK_ENTRY.z||1)*(r+18)]:null,new THREE.Color(.42,.36,.33),.5);
   /* ---------- wolken ---------- */
   {const CL=['CL_Cloud_1','CL_Cloud_2','CL_Cloud_3'];const src=await Promise.all(CL.map(loadEnv));if(src.every(Boolean)){
     const cm=new THREE.MeshToonMaterial({color:0xffffff,fog:false,emissive:0x8899aa,emissiveIntensity:.35,gradientMap:RAMP});

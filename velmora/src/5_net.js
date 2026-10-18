@@ -90,14 +90,14 @@ async function startNet(){
   if(!room){try{if(typeof Peer==='undefined')await loadScript('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js')}catch(e){netStatus();return}room=makePeerRoom()}
   netStatus();room.onConnection(()=>netStatus());
   if(room.kind==='mqtt'&&room.connected()){setTimeout(()=>{if(!room.isHost())netEmit('msreq',{})},2500)}
-  room.onConnection(v=>{netStatus();if(v){if(!room.isHost())netEmit('msreq',{});if(S.mode==='play')log('Verbonden met Velmora.','sys')}});
+  room.onConnection(v=>{netStatus();if(v){if(!room.isHost())netEmit('msreq',{});if(S.mode==='play')log('Connected to Velmora.','sys')}});
   room.onHost(v=>{if(v)fullSnap=true});
   room.onPeers(ch=>{
     const seen=new Set();
     for(const p of ch.peers){if(p.isMe)continue;seen.add(p.peer);const pr=p.presence||{};let r=REMOTES.get(p.peer);
       if(!pr.in){if(r){removeRemote(r)}continue}
-      if(!r){r={kind:'pl',size:1,id:p.peer,x:pr.x,y:pr.y,z:pr.z,ry:pr.ry||0,inW:true,rig:null,lookKey:'',atk:-1,lastAc:pr.ac,joinedT:performance.now()};REMOTES.set(p.peer,r);if(S.mode==='play')log(esc(pr.n||'Iemand')+' betreedt Velmora.','sys',true)}
-      Object.assign(r,{n:String(pr.n||'Held').slice(0,14),lvl:pr.l|0,race:RACES[pr.ra]?pr.ra:'mens',cls:CLASSES[pr.c]?pr.c:'krijger',hp:pr.hp|0,mhp:pr.mh|0,dead:!!pr.dd,tx:+pr.x||0,ty:+pr.y||0,tz:+pr.z||0,try:+pr.ry||0,mv:+pr.mv||0,cs:!!pr.cs,g:pr.g||'',eqv:pr.e||[],pvp:!!pr.pv,honor:pr.ho|0,cb:!!pr.cb,co:pr.co|0});
+      if(!r){r={kind:'pl',size:1,id:p.peer,x:pr.x,y:pr.y,z:pr.z,ry:pr.ry||0,inW:true,rig:null,lookKey:'',atk:-1,lastAc:pr.ac,joinedT:performance.now()};REMOTES.set(p.peer,r);if(S.mode==='play')log(esc(pr.n||'Someone')+' enters Velmora.','sys',true)}
+      Object.assign(r,{n:String(pr.n||'Hero').slice(0,14),lvl:pr.l|0,race:RACES[pr.ra]?pr.ra:'mens',cls:CLASSES[pr.c]?pr.c:'krijger',hp:pr.hp|0,mhp:pr.mh|0,dead:!!pr.dd,tx:+pr.x||0,ty:+pr.y||0,tz:+pr.z||0,try:+pr.ry||0,mv:+pr.mv||0,cs:!!pr.cs,lf:ACT_ANIM[pr.lf]?pr.lf:'',g:pr.g||'',eqv:pr.e||[],pvp:!!pr.pv,honor:pr.ho|0,cb:!!pr.cb,co:pr.co|0});
       if(pr.ac!==r.lastAc){r.lastAc=pr.ac;r.atk=0;r.atkRanged=!!pr.rg}
       let look=null;if(pr.lk&&typeof pr.lk==='object'){look={};for(const[k,v]of Object.entries(pr.lk)){if(k.length<12&&(typeof v==='number'||typeof v==='boolean'||(typeof v==='string'&&v.length<12)))look[k]=v}
         /* uitrusting: alleen de velden die 3d_dress kent, met lengtes begrensd */const sanD=(d)=>{if(!d||typeof d!=='object')return null;const o={c:+d.c||0,r:clamp(d.r|0,0,4)};if(typeof d.p==='string'&&d.p.length<40&&/^[\w.-]+$/.test(d.p))o.p=d.p;if(typeof d.g==='string'&&d.g.length<120&&/^models\/[\w./-]+\.glb$/.test(d.g))o.g=d.g;if(typeof d.s==='number'&&d.s>0&&d.s<10)o.s=d.s;if(Array.isArray(d.ro)&&d.ro.length===3&&d.ro.every(x=>typeof x==='number'))o.ro=d.ro;return o};
@@ -106,8 +106,8 @@ async function startNet(){
       r.wr=look.wr|0;const key=JSON.stringify(look);if(key!==r.lookKey){r.lookKey=key;if(r.rig)scene.remove(r.rig.g);r.rig=buildHumanoid(look);r.rig.g.userData.ent=r;r.rig.g.position.set(r.x,r.y,r.z);scene.add(r.rig.g)}}
     for(const r of[...REMOTES.values()])if(!seen.has(r.id))removeRemote(r,true);
     netStatus();refreshParty()});
-  room.on('chat',m=>{const d=m.data||{};if(typeof d.t!=='string')return;const r=REMOTES.get(m.peer);const who=r?r.n:'Iemand';
-    if(d.g){if(!GROUP||GROUP.leader!==d.g)return;log('<span class="c-grp">[Groep] '+esc(who)+': '+esc(d.t.slice(0,120))+'</span>','grp',true)}else log('<b>'+esc(who)+':</b> '+esc(d.t.slice(0,120)),'say',true);sfx('chat');
+  room.on('chat',m=>{const d=m.data||{};if(typeof d.t!=='string')return;const r=REMOTES.get(m.peer);const who=r?r.n:'Someone';
+    if(d.g){if(!GROUP||GROUP.leader!==d.g)return;log('<span class="c-grp">[Group] '+esc(who)+': '+esc(d.t.slice(0,120))+'</span>','grp',true)}else log('<b>'+esc(who)+':</b> '+esc(d.t.slice(0,120)),'say',true);sfx('chat');
     if(r)r.bubble={t:d.t.slice(0,60),until:performance.now()+5000}});
   room.on('dmg',m=>{if(!isAuth())return;const d=m.data||{};const mon=MONMAP.get(d.m);if(!mon)return;authDamage(mon,clamp(+d.d||0,0,5000),m.peer,{root:clamp(+d.r||0,0,5),stun:clamp(+d.s||0,0,3)})});
   room.on('msreq',()=>{if(room.isHost())fullSnap=true});
@@ -116,9 +116,9 @@ async function startNet(){
   room.on('mhit',m=>{const d=m.data||{};if(d.to!==myId())return;const mon=MONMAP.get(d.m);takeHit(clamp(+d.d||0,0,2000),mon||{lvl:P?P.level:1})});
   room.on('pdmg',m=>{const d=m.data||{};if(d.to!==myId()||S.mode!=='play'||ME.dead)return;const r=REMOTES.get(m.peer);if(!r||!pvpHostile(r))return;
     takeHit(clamp(+d.d||0,0,3000)*.5,r);if(+d.s>0)ME.stun=Math.max(ME.stun,clamp(+d.s,0,2));if(+d.r>0)ME.root=Math.max(ME.root,clamp(+d.r,0,3))});
-  room.on('pkill',m=>{const d=m.data||{};if(S.mode!=='play')return;const victim=esc(String(d.n||'Iemand').slice(0,14));
-    if(d.by===myId()){P.honor=(P.honor||0)+1;const r=REMOTES.get(m.peer);const g=Math.max(2,(r?r.lvl:1)*2);P.gold+=g;log('⚔ Je hebt '+victim+' verslagen in een gevecht! +1 eer, +'+g+' goud','sys',true);banner('Overwinning!',victim+' is verslagen',2);sfx('lvl');saveGame()}
-    else{const k=REMOTES.get(d.by);log('⚔ '+(k?esc(k.n):'Iemand')+' versloeg '+victim+'.','err',true)}});
+  room.on('pkill',m=>{const d=m.data||{};if(S.mode!=='play')return;const victim=esc(String(d.n||'Someone').slice(0,14));
+    if(d.by===myId()){P.honor=(P.honor||0)+1;const r=REMOTES.get(m.peer);const g=Math.max(2,(r?r.lvl:1)*2);P.gold+=g;log('⚔ You defeated '+victim+' in combat! +1 honour, +'+g+' gold','sys',true);banner('Victory!',victim+' has been defeated',2);sfx('lvl');saveGame()}
+    else{const k=REMOTES.get(d.by);log('⚔ '+(k?esc(k.n):'Someone')+' defeated '+victim+'.','err',true)}});
   room.on('bossmsg',m=>{const d=m.data||{};if(typeof d.t==='string'&&S.mode==='play'&&ME.pos.x>700&&(d.b==='vyraxion'?ME.pos.x>1700:d.b==='ignaroth'?(ME.pos.x>1250&&ME.pos.x<1700):ME.pos.x<1250))bossSay(d.t.slice(0,90),d.b)});
   room.on('fx',m=>{if(S.mode!=='play')return;const d=m.data||{};const r=REMOTES.get(m.peer);
     if(d.k==='p'&&Array.isArray(d.f)){const from=new THREE.Vector3(+d.f[0],+d.f[1],+d.f[2]);let tg=null;if(d.m)tg=MONMAP.get(d.m);else if(d.p)tg=d.p===myId()?'me':REMOTES.get(d.p);else if(d.x!=null)tg=[+d.x,groundH(+d.x,+d.z),+d.z];if(tg&&PCOL[d.t])proj(d.t,from,tg,d.t==='arrow'?46:d.t==='meteor'?34:d.t==='kogel'?95:22,null)}
@@ -128,25 +128,25 @@ async function startNet(){
     else if(d.k==='ci'&&isFinite(+d.x)){chargeImpactFx(+d.x,groundH(+d.x,+d.z),+d.z)}
     else if(drakeFxNet(d)){}
     else if(d.k==='tele')teleFx(+d.x,+d.z,clamp(+d.r,1,12),clamp(+d.d,.2,4));
-    else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);lvlFx(+d.x,groundH(+d.x,+d.z),+d.z);if(r)log(esc(r.n)+' heeft een niveau bereikt!','sys',true)}});
+    else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);lvlFx(+d.x,groundH(+d.x,+d.z),+d.z);if(r)log(esc(r.n)+' has gained a level!','sys',true)}});
   room.on('arena',m=>{if(S.mode!=='play')return;arenaNet(m.peer,m.data||{})});
   /* groups */
-  room.on('ginv',m=>{const d=m.data||{};if(d.to!==myId()||S.mode!=='play')return;if(GROUP){netEmit('gdec',{to:m.peer,n:P.name,why:'zit al in een groep'});return}showInvite(m.peer,String(d.n||'Iemand').slice(0,14))});
-  room.on('gdec',m=>{const d=m.data||{};if(d.to===myId())log(esc(String(d.n||'Iemand'))+' '+(d.why?esc(d.why):'heeft je uitnodiging afgewezen')+'.','grp',true)});
-  room.on('gacc',m=>{const d=m.data||{};if(d.to!==myId())return;if(GROUP&&GROUP.leader!==myId())return;if(!GROUP)GROUP={leader:myId(),members:[myId()]};if(GROUP.members.length>=5||GROUP.members.includes(m.peer))return;GROUP.members.push(m.peer);netEmit('gset',{leader:GROUP.leader,members:GROUP.members});const r=REMOTES.get(m.peer);log((r?esc(r.n):'Iemand')+' doet mee met je groep.','grp',true);refreshParty()});
+  room.on('ginv',m=>{const d=m.data||{};if(d.to!==myId()||S.mode!=='play')return;if(GROUP){netEmit('gdec',{to:m.peer,n:P.name,why:'is already in a group'});return}showInvite(m.peer,String(d.n||'Someone').slice(0,14))});
+  room.on('gdec',m=>{const d=m.data||{};if(d.to===myId())log(esc(String(d.n||'Someone'))+' '+(d.why?esc(d.why):'declined your invitation')+'.','grp',true)});
+  room.on('gacc',m=>{const d=m.data||{};if(d.to!==myId())return;if(GROUP&&GROUP.leader!==myId())return;if(!GROUP)GROUP={leader:myId(),members:[myId()]};if(GROUP.members.length>=5||GROUP.members.includes(m.peer))return;GROUP.members.push(m.peer);netEmit('gset',{leader:GROUP.leader,members:GROUP.members});const r=REMOTES.get(m.peer);log((r?esc(r.n):'Someone')+' joins your group.','grp',true);refreshParty()});
   room.on('gset',m=>{const d=m.data||{};if(!Array.isArray(d.members))return;const me=myId();
-    if(d.members.includes(me)&&d.members.length>=2){const was=!!GROUP;GROUP={leader:d.leader,members:d.members.slice(0,5)};if(!was)log('Je zit nu in een groep.','grp')}
-    else if(GROUP&&(GROUP.leader===m.peer||GROUP.leader===d.leader||GROUP.leader===d.old)){GROUP=null;log('De groep is opgeheven.','grp')}refreshParty()});
-  room.on('gleave',m=>{if(!GROUP||GROUP.leader!==myId())return;GROUP.members=GROUP.members.filter(x=>x!==m.peer);const r=REMOTES.get(m.peer);log((r?esc(r.n):'Iemand')+' heeft de groep verlaten.','grp',true);
+    if(d.members.includes(me)&&d.members.length>=2){const was=!!GROUP;GROUP={leader:d.leader,members:d.members.slice(0,5)};if(!was)log('You are now in a group.','grp')}
+    else if(GROUP&&(GROUP.leader===m.peer||GROUP.leader===d.leader||GROUP.leader===d.old)){GROUP=null;log('The group has been disbanded.','grp')}refreshParty()});
+  room.on('gleave',m=>{if(!GROUP||GROUP.leader!==myId())return;GROUP.members=GROUP.members.filter(x=>x!==m.peer);const r=REMOTES.get(m.peer);log((r?esc(r.n):'Someone')+' has left the group.','grp',true);
     if(GROUP.members.length<2){netEmit('gset',{leader:myId(),old:myId(),members:[]});GROUP=null}else netEmit('gset',{leader:GROUP.leader,members:GROUP.members});refreshParty()});
 }
 function removeRemote(r,left){if(r.rig)scene.remove(r.rig.g);if(r.plate)r.plate.remove();REMOTES.delete(r.id);if(ME.target===r)setTarget(null);
-  if(left&&S.mode==='play')log(esc(r.n||'Iemand')+' heeft Velmora verlaten.','sys',true);
+  if(left&&S.mode==='play')log(esc(r.n||'Someone')+' has left Velmora.','sys',true);
   if(GROUP&&GROUP.members.includes(r.id)){const wasLeader=GROUP.leader===r.id;GROUP.members=GROUP.members.filter(x=>x!==r.id);if(GROUP.members.length<2)GROUP=null;else if(wasLeader){GROUP.leader=[...GROUP.members].sort()[0];if(GROUP.leader===myId())netEmit('gset',{leader:GROUP.leader,members:GROUP.members})}}refreshParty()}
-function inviteToGroup(r){if(!room||!room.connected())return toast('Je bent niet online');if(GROUP&&GROUP.leader!==myId())return toast('Alleen de groepsleider kan uitnodigen');if(GROUP&&GROUP.members.length>=5)return toast('Je groep is vol');if(GROUP&&GROUP.members.includes(r.id))return toast(r.n+' zit al in je groep');netEmit('ginv',{to:r.id,n:P.name});log('Je hebt '+esc(r.n)+' uitgenodigd voor je groep.','grp',true)}
-function leaveGroup(){if(!GROUP)return;const me=myId();if(GROUP.leader===me){const rest=GROUP.members.filter(x=>x!==me);if(rest.length>=2)netEmit('gset',{leader:rest[0],old:me,members:rest});else netEmit('gset',{leader:rest[0]||me,old:me,members:[]})}else netEmit('gleave',{});GROUP=null;log('Je hebt de groep verlaten.','grp');refreshParty()}
+function inviteToGroup(r){if(!room||!room.connected())return toast('You are not online');if(GROUP&&GROUP.leader!==myId())return toast('Only the group leader can invite');if(GROUP&&GROUP.members.length>=5)return toast('Your group is full');if(GROUP&&GROUP.members.includes(r.id))return toast(r.n+' is already in your group');netEmit('ginv',{to:r.id,n:P.name});log('You have '+esc(r.n)+' invited to your group.','grp',true)}
+function leaveGroup(){if(!GROUP)return;const me=myId();if(GROUP.leader===me){const rest=GROUP.members.filter(x=>x!==me);if(rest.length>=2)netEmit('gset',{leader:rest[0],old:me,members:rest});else netEmit('gset',{leader:rest[0]||me,old:me,members:[]})}else netEmit('gleave',{});GROUP=null;log('You have left the group.','grp');refreshParty()}
 let invitePeer=null;
-function showInvite(peer,n){invitePeer=peer;const b=$('#dBody');$('#dName').textContent='Groepsuitnodiging';b.innerHTML='<p><b>'+esc(n)+'</b> nodigt je uit om samen op avontuur te gaan.</p><div class="row"><button class="btn" id="gAcc">Accepteren</button><button class="btn alt" id="gDec">Weigeren</button></div>';openPanel('pDialog');sfx('quest');
+function showInvite(peer,n){invitePeer=peer;const b=$('#dBody');$('#dName').textContent='Group invitation';b.innerHTML='<p><b>'+esc(n)+'</b> invites you to go adventuring together.</p><div class="row"><button class="btn" id="gAcc">Accept</button><button class="btn alt" id="gDec">Decline</button></div>';openPanel('pDialog');sfx('quest');
   $('#gAcc').onclick=()=>{netEmit('gacc',{to:invitePeer});closePanel('pDialog')};$('#gDec').onclick=()=>{netEmit('gdec',{to:invitePeer,n:P.name});closePanel('pDialog')}}
 /* snapshots */
 let fullSnap=true,snapTick=0;
@@ -166,8 +166,8 @@ function applySnap(d){if(!d||!Array.isArray(d.l))return;const now=performance.no
   if(ids)for(const m of[...MONS])if(m.add&&!ids.has(m.id))removeMon(m)}
 let presT=0,lastPres='',presSkip=0;
 function sendPresence(dt){if(!room||!room.connected())return;presT-=dt;if(presT>0)return;presT=.1;
-  let pr;if(S.mode==='play'&&P){const e=P.eq;pr={in:1,n:P.name,ra:P.race,c:P.cls,h:P.hair|0,l:P.level,x:Math.round(ME.pos.x*100)/100,y:Math.round(ME.pos.y*100)/100,z:Math.round(ME.pos.z*100)/100,ry:Math.round(ME.ry*100)/100,hp:Math.round(P.hp),mh:ST.maxhp,mv:Math.round(ME.spd*10)/10,ac:ME.ac||0,rg:ME.atkRanged?1:0,cs:ME.cast?1:0,dd:ME.dead?1:0,cb:(ME.combat>0||isEnemy(ME.target))?1:0,co:ME.combo||0,pv:P.pvp?1:0,ho:P.honor|0,lk:ME.look||null,g:GROUP?GROUP.leader:'',e:[e.wapen?e.wapen.wt:'',e.wapen?e.wapen.r:0,e.borst?e.borst.r:-1,e.hoofd?1:0,e.handen?1:0]}}else pr={in:0};
+  let pr;if(S.mode==='play'&&P){const e=P.eq;pr={in:1,n:P.name,ra:P.race,c:P.cls,h:P.hair|0,l:P.level,x:Math.round(ME.pos.x*100)/100,y:Math.round(ME.pos.y*100)/100,z:Math.round(ME.pos.z*100)/100,ry:Math.round(ME.ry*100)/100,hp:Math.round(P.hp),mh:ST.maxhp,mv:Math.round(ME.spd*10)/10,lf:actAnim()||'',ac:ME.ac||0,rg:ME.atkRanged?1:0,cs:ME.cast?1:0,dd:ME.dead?1:0,cb:(ME.combat>0||isEnemy(ME.target))?1:0,co:ME.combo||0,pv:P.pvp?1:0,ho:P.honor|0,lk:ME.look||null,g:GROUP?GROUP.leader:'',e:[e.wapen?e.wapen.wt:'',e.wapen?e.wapen.r:0,e.borst?e.borst.r:-1,e.hoofd?1:0,e.handen?1:0]}}else pr={in:0};
   const s=JSON.stringify(pr);if(s===lastPres&&++presSkip<10)return;presSkip=0;lastPres=s;room.presence(pr)}
 function netStatus(){const el=$('#net');const on=room&&room.connected();const n=on?room.count():0;const playing=on?[...REMOTES.values()].filter(r=>r.inW).length+(S.mode==='play'?1:0):0;
-  if(el){el.classList.toggle('on',!!on);const nt=on?(n<=1?'Online · jij bent nu de enige in Velmora':'Online · '+n+' spelers in Velmora'):(typeof Peer==='undefined'&&room===null?'Offline · alleen spelen':'Verbinden met Velmora…');const sp=el.querySelector('span');if(sp.textContent!==nt)sp.textContent=nt}
-  const o=$('#online');const ot=on?(playing+' speler'+(playing===1?'':'s')+' in Velmora'):'Offline · alleen spelen';if(o&&o.textContent!==ot)o.textContent=ot}
+  if(el){el.classList.toggle('on',!!on);const nt=on?(n<=1?'Online · you are the only one in Velmora right now':'Online · '+n+' players in Velmora'):(typeof Peer==='undefined'&&room===null?'Offline · playing solo':'Connecting to Velmora…');const sp=el.querySelector('span');if(sp.textContent!==nt)sp.textContent=nt}
+  const o=$('#online');const ot=on?(playing+' player'+(playing===1?'':'s')+' in Velmora'):'Offline · playing solo';if(o&&o.textContent!==ot)o.textContent=ot}

@@ -42,8 +42,8 @@ function drkRaw(x,z){const u=x-DRK.x,v=z-DRK.z;
 const DHM=new Float32Array(DHN*DHN);for(let i=0;i<DHN;i++)for(let j=0;j<DHN;j++)DHM[i*DHN+j]=drkRaw(DRK.x-DSZ/2+j*DCELL,DRK.z-DSZ/2+i*DCELL);
 function drkH(x,z){const fx=clamp((x-DRK.x+DSZ/2)/DCELL,0,DSEG-.001),fz=clamp((z-DRK.z+DSZ/2)/DCELL,0,DSEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i;
   const a=DHM[i*DHN+j],b=DHM[i*DHN+j+1],c=DHM[(i+1)*DHN+j],d=DHM[(i+1)*DHN+j+1];return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
-function drkZone(x,z){const d=Math.hypot(x-VOLC.x,z-VOLC.z);if(d<VOLC.r*.85)return'Vulkaan Drakenrust';if(Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)<34)return'Drakenjagerskamp';
-  const u=x-DRK.x,v=z-DRK.z;if(v>60)return'Drakennesten';if(u>70)return'Schrijnen van de Asvorst';if(v<-70)return'Vuurvelden';return'Asvlakte'}
+function drkZone(x,z){const d=Math.hypot(x-VOLC.x,z-VOLC.z);if(d<VOLC.r*.85)return'Mount Dragonrest';if(Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)<34)return'Dragonhunters\' Camp';
+  const u=x-DRK.x,v=z-DRK.z;if(v>60)return'Dragon Nests';if(u>70)return'Shrines of the Ash Queen';if(v<-70)return'Fire Fields';return'Ash Plains'}
 function drkCollide(p,r){p.x=clamp(p.x,DRK.x-178,DRK.x+170);p.z=clamp(p.z,DRK.z-170,DRK.z+170)}
 /* ---- terrein ---- */
 const drkTerrain=(()=>{const geo=new THREE.PlaneGeometry(DSZ,DSZ,DSEG,DSEG);geo.rotateX(-Math.PI/2);geo.translate(DRK.x,0,DRK.z);
@@ -116,7 +116,7 @@ const D3MAP=[
 '###########...###########',
 '###########.E.###########',
 '#########################'];
-const D3=buildDun({x:1800,z:0,c:6,map:D3MAP,floor:0x7a5242,wall:0x4a2a20,crystal:0xff5a20,spawn:{w:['welp',18,19],p:['drakonier',19,19],L:['lavadrake',19,19],B:'vyraxion'},name:'Hart van de Vulkaan'});
+const D3=buildDun({x:1800,z:0,c:6,map:D3MAP,floor:0x7a5242,wall:0x4a2a20,crystal:0xff5a20,spawn:{w:['welp',18,19],p:['drakonier',19,19],L:['lavadrake',19,19],B:'vyraxion'},name:'Heart of the Volcano'});
 /* de drakenhal: middelpunt en straal (voor de baas) */
 const D3_HALL=(()=>{const[x,z]=D3.pos(12,5);return{x,z,r:30}})();
 /* ---- overzichtskaart van het Drakenrijk ---- */

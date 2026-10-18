@@ -349,6 +349,7 @@ function playerLook(p){/* p: {race,cls,hair,eq}; every equipped slot changes the
 const iconCache=new Map();
 function drawIcon(cv,ic,sz=64){
   const g=cv.getContext('2d');const[k,c1,c2]=ic;const gr=g.createRadialGradient(sz*.35,sz*.3,2,sz/2,sz/2,sz*.75);gr.addColorStop(0,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,sz,sz);
+  if(k&&k.startsWith&&k.startsWith('m:')){/* 3D-miniatuur van een gedownload model */const img=modelIcon(k,cv,ic,sz);if(img){g.drawImage(img,sz*.04,sz*.04,sz*.92,sz*.92);return}if(img===false)return;g.globalAlpha=.35;g.fillStyle='#fff';g.beginPath();g.arc(sz/2,sz/2,sz*.18,0,7);g.fill();g.globalAlpha=1;return}
   g.save();g.scale(sz/64,sz/64);g.lineCap='round';g.lineJoin='round';g.strokeStyle='#fff';g.fillStyle='#fff';g.shadowColor='rgba(0,0,0,.6)';g.shadowBlur=4;g.lineWidth=5;
   const P=(...pts)=>{g.beginPath();g.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)g.lineTo(pts[i],pts[i+1])};
   if(k==='sword'||k==='zwaard'){P(16,48,46,18);g.stroke();P(12,40,24,52);g.stroke();g.lineWidth=3;P(46,18,50,14);g.stroke()}
@@ -397,4 +398,4 @@ function drawIcon(cv,ic,sz=64){
   else{g.font='800 30px serif';g.textAlign='center';g.textBaseline='middle';g.fillText(k[0]||'?',32,34)}
   g.restore();g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=2;g.strokeRect(1,1,sz-2,sz-2)}
 function iconCanvas(ic,sz=64){const c=document.createElement('canvas');c.width=c.height=sz;drawIcon(c,ic,sz);return c}
-const itemIcon=it=>{if(it.kind==='mat'){const M=MATS[it.n]||{};return[M.ic||'junk',M.c1||'#aaa','#1a140e']}if(it.kind==='potion')return['potion',it.pt==='mana'?'#4b8bff':'#ff4b4b',it.pt==='mana'?'#05153d':'#3d0505'];if(it.kind==='junk')return['junk','#9a8a7a','#2a2420'];const rc=['#7a7a7a','#2f8a3a','#2a5aa8','#7a3aa8'][it.r||0];return[it.s==='wapen'?it.wt:it.s,'#d8d8d8',rc]};
+const itemIcon=it=>{if(it.kind==='mat'){const M=MATS[it.n]||{};if(M.m)return['m:'+M.m+(M.t?'|'+M.t:''),M.r>=2?'#4a3a6a':M.r?'#2a4a6a':'#5a4a3a','#140e0a'];return[M.ic||'junk',M.c1||'#aaa','#1a140e']}if(it.kind==='potion')return['potion',it.pt==='mana'?'#4b8bff':'#ff4b4b',it.pt==='mana'?'#05153d':'#3d0505'];if(it.kind==='junk')return['junk','#9a8a7a','#2a2420'];const rc=['#7a7a7a','#2f8a3a','#2a5aa8','#7a3aa8'][it.r||0];return[it.s==='wapen'?it.wt:it.s,'#d8d8d8',rc]};

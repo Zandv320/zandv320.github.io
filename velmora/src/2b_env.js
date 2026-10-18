@@ -5,7 +5,7 @@ const ENV_BASE=new URL('models/env/',location.href).href;
 const envCache=new Map();let _envLoader=null;
 function envLoader(){if(!_envLoader){_envLoader=new GLTFLoader();_envLoader.setMeshoptDecoder(MeshoptDecoder)}return _envLoader}
 function loadEnv(name){let e=envCache.get(name);if(e)return e;
-  e=new Promise(res=>{envLoader().load(ENV_BASE+name+'.glb',g=>res(g),undefined,err=>{console.warn('omgevingsmodel mislukt',name,err);res(null)})});envCache.set(name,e);return e}
+  e=new Promise(res=>{envLoader().load(ENV_BASE+name+'.glb',g=>res(g),undefined,err=>{console.warn('environment model failed',name,err);res(null)})});envCache.set(name,e);return e}
 /* alle primitieven van een model samenvoegen tot één geometrie met vertexkleuren (voor InstancedMesh) */
 function envMerged(g){const parts=[];g.scene.updateMatrixWorld(true);
   g.scene.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.clone();for(const k of['position','normal']){const a=geo.attributes[k];if(!a)continue;const f=new Float32Array(a.count*3);for(let i=0;i<a.count;i++){f[i*3]=a.getX(i);f[i*3+1]=a.getY(i);f[i*3+2]=a.getZ(i)}geo.setAttribute(k,new THREE.BufferAttribute(f,3))}geo.applyMatrix4(o.matrixWorld);const vc=geo.attributes.color;for(const k of Object.keys(geo.attributes))if(k!=='position'&&k!=='normal'&&k!=='color')geo.deleteAttribute(k);

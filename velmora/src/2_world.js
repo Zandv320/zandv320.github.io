@@ -69,6 +69,7 @@ const LAKE={x:-150,z:60,r:46};
 const PATHS=[[[0,60],[40,72],[84,80],[150,88],[228,100],[262,104]],[[0,0],[0,-60],[-12,-120],[-80,-178],[-158,-204]],[[0,0],[62,-32],[128,-88],[176,-140],[200,-168]],[[0,0],[0,70],[8,140]],[[0,0],[-62,22],[-104,44]]];
 function segDist(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-ax-dx*t,pz-az-dz*t)}
 function pathDist(x,z){let m=1e9;for(const p of PATHS)for(let i=0;i<p.length-1;i++){const d=segDist(x,z,p[i][0],p[i][1],p[i+1][0],p[i+1][1]);if(d<m)m=d}return m}
+const CRAFT={x:-78,z:-4,r:15};/* Artisans' Yard: smithy, tannery, loom and sawmill west of town */
 const ARENA={x:92,z:34,r:22};const TOWN={x:0,z:0,r:50},CAMP={x:150,z:-100,r:26},CRYPT={x:-172,z:-222},FARM={x:10,z:125},CAVE={x:206,z:-182};
 function baseH(x,z){
   let h=(fbm(x*.011+3.1,z*.011+7.7)-.5)*16+(fbm(x*.045,z*.045)-.5)*3;
@@ -76,7 +77,7 @@ function baseH(x,z){
   h+=Math.max(0,1-Math.hypot(x-200,z+190)/90)*14;
   const e=Math.max(Math.abs(x),Math.abs(z));if(e>235)h+=(e-235)*.26;
   return h}
-const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:219,z:100,r:18},{x:ARENA.x,z:ARENA.z,r:34}];
+const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:219,z:100,r:18},{x:CRAFT.x,z:CRAFT.z,r:CRAFT.r+5},{x:ARENA.x,z:ARENA.z,r:34}];
 for(const f of FLAT)if(f.h==null)f.h=baseH(f.x,f.z);
 function rawH(x,z){
   let h=baseH(x,z);
@@ -94,16 +95,17 @@ function groundH(x,z){
   return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
 function inForest(x,z){return z<-52&&z>-262&&x<112&&x>-250}
 function zoneAt(x,z){
-  if(x>1700)return'Hart van de Vulkaan';if(x<-1000)return drkZone(x,z);if(x>1250)return'Vuurgrot van Ignaroth';if(x>700)return'Crypte van Kaal-Morath';
-  if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Asbergen';if(x>196&&Math.abs(z-100)<26)return'Drakenpas';
-  if(Math.hypot(x-ARENA.x,z-ARENA.z)<ARENA.r+8)return'Arena van Zilverbron';
-  if(Math.hypot(x,z)<58)return'Zilverbron';
-  if(Math.hypot(x-CRYPT.x,z-CRYPT.z)<70)return'Knekelheuvels';
-  if(Math.hypot(x-LAKE.x,z-LAKE.z)<75)return'Spiegelmeer';
-  if(x>105&&z<-20)return'Roversheide';
-  if(inForest(x,z))return'Schemerwoud';
-  if(z>60)return'Gouden Velden';
-  return'Zilverdal'}
+  if(x>1700)return'Heart of the Volcano';if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
+  if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Ashen Hills';if(x>196&&Math.abs(z-100)<26)return'Dragon Pass';
+  if(Math.hypot(x-ARENA.x,z-ARENA.z)<ARENA.r+8)return'Arena of Silverbrook';
+  if(Math.hypot(x-CRAFT.x,z-CRAFT.z)<CRAFT.r+4)return"Artisans' Yard";
+  if(Math.hypot(x,z)<58)return'Silverbrook';
+  if(Math.hypot(x-CRYPT.x,z-CRYPT.z)<70)return'Bone Hills';
+  if(Math.hypot(x-LAKE.x,z-LAKE.z)<75)return'Mirror Lake';
+  if(x>105&&z<-20)return'Bandit Heath';
+  if(inForest(x,z))return'Twilight Wood';
+  if(z>60)return'Golden Fields';
+  return'Silverdale'}
 
 /* ---------- terrain mesh ---------- */
 const terrain=(()=>{
@@ -182,7 +184,7 @@ function addFlame(par,x,y,z,s=1,color=0xffa030){const f=mesh(new THREE.ConeGeome
 /* ---------- vegetation ---------- */
 const RV=mulberry(777);
 const pineT=[],oakT=[],rockT=[],grassT=[],flowerT=[],deadT=[];
-function okSpot(x,z,pathClear=6){return pathDist(x,z)>pathClear&&Math.hypot(x-ARENA.x,z-ARENA.z)>36&&Math.hypot(x-CAVE.x,z-CAVE.z)>26&&Math.hypot(x,z)>60&&Math.hypot(x-CAMP.x,z-CAMP.z)>32&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>24&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.15&&!(Math.abs(x-FARM.x)<56&&Math.abs(z-FARM.z)<44)}
+function okSpot(x,z,pathClear=6){return pathDist(x,z)>pathClear&&Math.hypot(x-CRAFT.x,z-CRAFT.z)>CRAFT.r+6&&Math.hypot(x-ARENA.x,z-ARENA.z)>36&&Math.hypot(x-CAVE.x,z-CAVE.z)>26&&Math.hypot(x,z)>60&&Math.hypot(x-CAMP.x,z-CAMP.z)>32&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>24&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.15&&!(Math.abs(x-FARM.x)<56&&Math.abs(z-FARM.z)<44)}
 for(let i=0;i<5200;i++){const x=rand(-250,250),z=rand(-262,250);const x2=-250+RV()*500,z2=-262+RV()*512;
   if(inForest(x2,z2)&&okSpot(x2,z2)&&RV()<.62)pineT.push([x2,z2,.8+RV()*.7,RV()*6.28]);
   else if(!inForest(x2,z2)&&okSpot(x2,z2,5)&&RV()<.09&&Math.hypot(x2-CRYPT.x,z2-CRYPT.z)>60)oakT.push([x2,z2,.8+RV()*.6,RV()*6.28]);
@@ -407,15 +409,19 @@ function buildDun(def){const M=def.map,R=M.length,C=M[0].length,c=def.c,X=def.x,
   const img=document.createElement('canvas');img.width=C*12;img.height=R*12;{const g=img.getContext('2d');g.fillStyle='#140c0a';g.fillRect(0,0,img.width,img.height);for(let r=0;r<R;r++)for(let k=0;k<C;k++)if(M[r][k]!=='#'){g.fillStyle=M[r][k]==='~'?'#c8501a':'#5a4a44';g.fillRect(k*12,r*12,12,12)}}
   const ex=mesh(new THREE.PlaneGeometry(4,6),new THREE.MeshBasicMaterial({color:0xffb070,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),exit.x,3,exit.z+2.2,grp,false,false);
   return{X,Z,c,R,C,map:M,cell,pos,collide,spawns,entry,exit,img,lava,portal:ex,name:def.name,grp,wim}}
-const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x7a5a48,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Vuurgrot van Ignaroth'});
+const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x7a5a48,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Ignaroth\'s Fire Cave'});
 /* ---------- life-skill stations ---------- */
-const STATIONS=[{k:'vuur',x:-12,z:16,n:'Kookvuur'},{k:'vuur',x:CAMP.x,z:CAMP.z,n:'Kampvuur'},{k:'tafel',x:-19,z:8,n:'Alchemietafel'},{k:'vuur',x:CAVE.x-9,z:CAVE.z+12,n:'Kookvuur'}];
-for(const st of STATIONS){if(st.x===CAMP.x)continue;const y=groundH(st.x,st.z);
-  if(st.k==='vuur'){const g=new THREE.Group();g.position.set(st.x,y,st.z);scene.add(g);for(let i=0;i<8;i++){const a=i/8*6.28;mesh(new THREE.DodecahedronGeometry(.25,0),mat(0x6a6660),Math.cos(a)*.75,.12,Math.sin(a)*.75,g)}for(let i=0;i<4;i++){const l=mesh(new THREE.CylinderGeometry(.08,.08,1.1,6),mat(0x4a3020),0,.25,0,g);l.rotation.set(Math.PI/2,0,i*.8)}addFlame(g,0,.55,0,2.2,0xff7a20);addFlame(g,.2,.45,.1,1.4,0xffb030);
+/* werkplaatsen; de modellen komen uit 2f_craft.js, de eenvoudige vormen hieronder zijn alleen de reserve zonder modellen */
+const STATIONS=[{k:'fire',x:-12,z:16,n:'Cooking Fire'},{k:'fire',x:CAMP.x,z:CAMP.z,n:'Campfire'},{k:'cauldron',x:-19,z:8,n:'Alchemy Cauldron'},{k:'fire',x:CAVE.x-9,z:CAVE.z+12,n:'Cooking Fire'},
+  {k:'forge',x:CRAFT.x-8,z:CRAFT.z-7,n:'Forge',r:5.5},{k:'tannery',x:CRAFT.x+8,z:CRAFT.z-7,n:'Tannery',r:5.5},{k:'loom',x:CRAFT.x+10,z:CRAFT.z+4,n:"Tailor's Table",r:5},{k:'sawmill',x:CRAFT.x-10,z:CRAFT.z+6,n:'Sawmill',r:6.5},{k:'fire',x:CRAFT.x+1,z:CRAFT.z+8,n:'Cooking Fire'}];
+PROC='station';
+for(const st of STATIONS){if(st.x===CAMP.x||Math.hypot(st.x-CRAFT.x,st.z-CRAFT.z)<CRAFT.r)continue;const y=groundH(st.x,st.z);
+  if(st.k==='fire'){const g=new THREE.Group();g.position.set(st.x,y,st.z);scene.add(g);for(let i=0;i<8;i++){const a=i/8*6.28;mesh(new THREE.DodecahedronGeometry(.25,0),mat(0x6a6660),Math.cos(a)*.75,.12,Math.sin(a)*.75,g)}for(let i=0;i<4;i++){const l=mesh(new THREE.CylinderGeometry(.08,.08,1.1,6),mat(0x4a3020),0,.25,0,g);l.rotation.set(Math.PI/2,0,i*.8)}addFlame(g,0,.55,0,2.2,0xff7a20);addFlame(g,.2,.45,.1,1.4,0xffb030);
     const pot=mesh(new THREE.SphereGeometry(.4,14,10,0,Math.PI*2,Math.PI*.35,Math.PI*.65),mat(0x2a2a2a,{m:.6,r:.5,flat:false}),0,1.25,0,g);void pot;for(const s of[-1,1])mesh(new THREE.CylinderGeometry(.04,.04,1.6,6),mat(0x4a3020),s*.8,.8,0,g);mesh(new THREE.CylinderGeometry(.03,.03,1.7,6).rotateZ(Math.PI/2),mat(0x4a3020),0,1.6,0,g);addLight(st.x,y+1.4,st.z,0xff8a30,26,14);addCol(st.x,st.z,.9)}
   else{const g=new THREE.Group();g.position.set(st.x,y,st.z);g.rotation.y=.6;scene.add(g);mesh(new THREE.BoxGeometry(2,.12,1),mat(0x6a4a2a,{tex:'wood'}),0,.9,0,g);for(const a of[-1,1])for(const b of[-1,1])mesh(new THREE.BoxGeometry(.1,.9,.1),mat(0x4a3020),a*.9,.45,b*.4,g);
     const cols=[0xff4a4a,0x4a8aff,0x7aff6a,0xd88aff];for(let i=0;i<4;i++){mesh(new THREE.SphereGeometry(.12,10,8),mat(cols[i],{e:cols[i],ei:.8,flat:false}),-.6+i*.4,1.08,-.1+(i%2)*.2,g,false);mesh(new THREE.CylinderGeometry(.03,.04,.14,8),mat(0xdddddd,{t:.6}),-.6+i*.4,1.22,-.1+(i%2)*.2,g,false)}
     mesh(new THREE.CylinderGeometry(.2,.15,.3,12),mat(0x7a6a5a,{flat:false}),.7,1.1,.1,g);addCol(st.x,st.z,1.1)}}
+PROC=null;
 /* grass sway */
 const WIND={value:0};
 grassIM.material.onBeforeCompile=sh=>{sh.uniforms.uT=WIND;sh.vertexShader='uniform float uT;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nfloat wph=instanceMatrix[3].x*.35+instanceMatrix[3].z*.27;float wsw=(sin(uT*1.7+wph)+sin(uT*2.9+wph*1.7)*.5)*.09*smoothstep(.05,.45,position.y);transformed.x+=wsw;transformed.z+=wsw*.4;')};
@@ -456,7 +462,7 @@ const pointPool=[];for(let i=0;i<5;i++){const l=new THREE.PointLight(0xffaa50,0,
 const torchLight=new THREE.PointLight(0xffc080,0,26,1.4);scene.add(torchLight);
 /* graphics quality: hoog / middel / laag */
 const GFX={rs:1,q:(()=>{try{return localStorage.getItem('velmora-gfx')}catch(e){return null}})()||(isTouch?'middel':'hoog'),auto:0};
-const GFX_N={hoog:'Hoog',middel:'Middel',laag:'Laag'};
+const GFX_N={hoog:'High',middel:'Medium',laag:'Low'};
 function applyGfx(){const q=GFX.q;const dpr=devicePixelRatio||1;
   /* op telefoons/tablets lager, en GFX.rs (dynamische resolutie) schaalt mee als de framerate zakt */
   renderer.setPixelRatio((isTouch?(q==='hoog'?Math.min(dpr,1.5):q==='middel'?Math.min(dpr,1):Math.min(dpr,1)*.75):(q==='hoog'?Math.min(dpr,1.75):q==='middel'?Math.min(dpr,1.25):Math.min(dpr,1)*.8))*GFX.rs);
