@@ -49,7 +49,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .citem.sel{border-color:var(--gold);background:rgba(232,192,106,.12)}
 .citem b{font-family:var(--head);font-size:16px}.citem small{color:var(--muted);display:block}
 .cicon{width:36px;height:36px;flex:none;border:1px solid var(--gold2)}
-.row{display:flex;gap:8px;flex-wrap:wrap}.row>.btn{flex:1}
+.row{display:flex;gap:8px;flex-wrap:wrap}body:not(.touch) .touchonly{display:none!important}.row>.btn{flex:1}
 .opts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.opts.three{grid-template-columns:repeat(3,1fr)}
 .opt{padding:8px 4px;border:1px solid #3a2f1f;background:rgba(0,0,0,.4);font-weight:700;font-size:14px;min-height:44px}
 .opt.sel{border-color:var(--gold);background:rgba(232,192,106,.16);color:var(--gold)}
@@ -208,6 +208,127 @@ body.touch #pChar{left:50%;transform:translateX(-50%);top:12px;max-height:calc(1
   body.touch #mbtn{top:calc(max(10px,env(safe-area-inset-top)) + 4px);right:calc(max(10px,env(safe-area-inset-right)) + 104px);flex-direction:row}
   #joy{width:116px;height:116px}
 }
+/* ===================== Thema: houten UI (Kenney UI Pack Adventure, CC0) =====================
+   Alle panelen, knoppen, balken en vakjes gebruiken dezelfde houten/perkamenten assets uit ui/.
+   Dit blok staat na de basisstijl en overschrijft alleen het uiterlijk, niet de indeling. */
+:root{--wood:#a3703a;--wood2:#7a4f28;--wood3:#4a2d14;--parch:#fff1d2;--ink2:#3a2410;--rim:#c98f4c}
+.frame{background:none;border:14px solid transparent;border-image:url(ui/panel_brown_dark.png) 24 fill / 14px stretch;box-shadow:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.55))}
+.panel.frame{padding:4px 6px 6px}
+.panel h3{font-family:var(--head);color:#fff3d6;text-shadow:0 2px 0 var(--wood3),0 0 4px var(--wood3);letter-spacing:.04em;border-bottom:2px solid rgba(74,45,20,.45);padding-bottom:6px}
+.x{width:34px;height:34px;border:0;padding:0;background:url(ui/round_grey_detailed_red.png) center/100% 100% no-repeat;color:transparent;position:relative;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+.x::after{content:'';position:absolute;inset:30%;background:url(ui/icon_cross.png) center/contain no-repeat}
+.x:hover{filter:brightness(1.12) drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+/* knoppen */
+.btn{background:none;border:10px solid transparent;border-image:url(ui/button_red.png) 16 fill / 10px stretch;color:#fff6e4;text-shadow:0 2px 0 rgba(90,20,10,.8);padding:2px 8px;min-height:44px;font-family:var(--head);font-weight:800;letter-spacing:.03em;filter:drop-shadow(0 3px 2px rgba(0,0,0,.4))}
+.btn.alt{border-image-source:url(ui/button_brown.png);color:var(--ink2);text-shadow:none}
+.btn:active{transform:translateY(2px);filter:none}
+/* balken */
+.bar{border:0;border-radius:99px;background:#2a180b;box-shadow:0 0 0 2px var(--wood3),0 0 0 4px var(--rim),inset 0 2px 3px rgba(0,0,0,.7);overflow:hidden}
+.bar>i{border-radius:99px;box-shadow:inset 0 3px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.18)}
+.hpb{--c1:#7be36f;--c2:#3fa83a}.enemyb{--c1:#f07a6c;--c2:#c3433a}.mpb{--c1:#7fb2ff;--c2:#3b6ed8}.enb{--c1:#ffd860;--c2:#e09a1a}.fob{--c1:#ffb069;--c2:#dc6a1e}
+#xpbar{--c1:#c39bff;--c2:#8a4fe8}
+/* eenheidsframes */
+.uf{padding:0 4px}
+.port{border:3px solid var(--wood3);box-shadow:0 0 0 2px var(--rim),0 3px 6px rgba(0,0,0,.5);background:var(--parch)}
+.lvl{background:url(ui/round_brown.png) center/100% 100% no-repeat;border:0;color:var(--ink2);width:24px;height:24px;font-size:12px}
+.ufn{color:#fff3d6;text-shadow:0 1px 0 var(--wood3),0 0 3px var(--wood3);font-family:var(--head);font-weight:700}
+.ufn small{color:#f3dcb0;font-family:var(--ui)}
+.tag{border:0;border-radius:8px;background:var(--wood3);color:#ffd77a;padding:0 6px}
+#tframe.hostile{border-image-source:url(ui/panel_brown_dark.png);box-shadow:none;filter:drop-shadow(0 0 0 #e04a3a) drop-shadow(0 0 4px rgba(224,74,58,.75)) drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+.pm.frame{border-width:10px;border-image-width:10px}
+/* minimap */
+#mmw{position:relative;width:176px;height:176px}
+#mmc{position:absolute;left:17px;top:17px;width:calc(100% - 34px);height:calc(100% - 34px);border:0;box-shadow:none;border-radius:50%}
+#mmring{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.55))}
+#zone{color:#fff3d6;text-shadow:0 2px 0 var(--wood3),0 0 4px var(--wood3)}
+/* menuknoppen */
+.mb{width:54px;height:54px;border:0;border-radius:50%;background:url(ui/round_brown_dark.png) center/100% 100% no-repeat;position:relative;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));padding:0}
+.mb img{width:52%;height:52%;object-fit:contain;filter:drop-shadow(0 2px 0 rgba(58,36,16,.6))}
+.mb i{position:absolute;right:-2px;top:-3px;font:800 10px var(--ui);font-style:normal;color:var(--ink2);background:var(--parch);border:2px solid var(--wood3);border-radius:7px;padding:0 4px;line-height:14px}
+.mb small{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;color:#fff3d6;font-size:10px;text-shadow:0 1px 2px #000}
+#mbtn{gap:8px;padding-bottom:12px}
+/* actiebalk (desktop) */
+#abar{gap:6px;padding:6px 10px;border:12px solid transparent;border-image:url(ui/panel_brown_dark.png) 24 fill / 12px stretch;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+.slot{border:0;border-radius:12px;overflow:hidden;box-shadow:0 0 0 3px var(--wood3),0 0 0 5px var(--rim),inset 0 0 0 2px rgba(0,0,0,.35)}
+.slot .k{background:var(--parch);color:var(--ink2);border-radius:0 0 6px 0;left:0;top:0;padding:0 4px;text-shadow:none}
+.slot.active{outline:3px solid #ffe08a;outline-offset:2px}
+/* rugzak- en uitrustingsvakken */
+.cell{border:0;border-radius:10px;background:#2a180b;box-shadow:0 0 0 2px var(--wood3),inset 0 2px 4px rgba(0,0,0,.6);overflow:hidden}
+.cell canvas{border-radius:8px}
+.cell.r1{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r1)}.cell.r2{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r2)}.cell.r3{box-shadow:0 0 0 2px var(--wood3),inset 0 0 0 2px var(--r3),0 0 10px rgba(182,92,255,.55)}.cell.rj{box-shadow:0 0 0 2px var(--wood3)}
+.grid{gap:7px;padding:3px}
+.eqs{color:#f3dcb0}
+.stats{color:#fff3d6;background:rgba(58,36,16,.35);padding:8px 10px;border-radius:8px}
+.gold{background:rgba(58,36,16,.35);padding:6px 10px;border-radius:8px}
+.qrow{border-bottom:2px solid rgba(74,45,20,.45)}.qrow b{color:#ffe08a}.qrow p{color:#fff3d6}
+/* dialoog met NPC's: perkament */
+#pDialog{background:none;border:18px solid transparent;border-image:url(ui/panel_brown.png) 32 fill / 18px stretch;box-shadow:none;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6));color:var(--ink2)}
+#pDialog h3{color:var(--wood3);text-shadow:none;border-bottom-color:rgba(122,79,40,.35)}
+.dq,.shop button{background:rgba(163,112,58,.12);border:2px solid rgba(122,79,40,.45);border-radius:8px}
+.dq:hover,.shop button:hover{background:rgba(163,112,58,.25)}
+.obj{background:rgba(163,112,58,.14);border-left-color:var(--wood);border-radius:0 8px 8px 0}
+/* tooltip */
+#tip{border-width:12px;border-image-width:12px;padding:2px 4px}
+#tip .tn{font-family:var(--head)}
+#tip .ts{color:#f3dcb0}
+/* startmenu */
+.mpanel.frame{padding:6px 8px 8px}
+.mpanel h2{color:#fff3d6;text-shadow:0 2px 0 var(--wood3),0 0 4px var(--wood3)}
+.citem,.opt{border:2px solid rgba(74,45,20,.55);border-radius:8px;background:rgba(58,36,16,.3);color:#fff3d6}
+.citem.sel,.opt.sel{border-color:#ffe08a;background:rgba(255,224,138,.18);color:#fff!important;text-shadow:0 1px 2px var(--wood3)}
+.citem small{color:#f3dcb0}
+.cicon{border:2px solid var(--wood3);border-radius:8px}
+input.txt{background:var(--parch);color:var(--ink2);border:2px solid var(--wood3);border-radius:8px}
+label.l{color:#f3dcb0}.desc{color:#fff3d6}
+.back,.net{border:10px solid transparent;border-image:url(ui/panel_brown_dark.png) 24 fill / 10px stretch;background:none;color:#fff3d6;padding:2px 6px}
+/* meldingen */
+#toast{color:#fff3d6;font-family:var(--head);font-size:18px;text-shadow:0 2px 0 #5a1a0a,0 0 6px #000}
+#banner b{color:#fff3d6;text-shadow:0 3px 0 var(--wood3),0 0 18px rgba(0,0,0,.8)}
+#feed{display:none}
+#death h2{color:#fff3d6;text-shadow:0 4px 0 var(--wood3)}
+/* ---------- touch: actiewiel, joystick, lades ---------- */
+#joy{width:150px;height:150px;border:0;background:url(ui/joystick_circle_pad_a.png) center/100% 100% no-repeat;opacity:.9}
+#joy i{width:66px;height:66px;margin:-33px;background:url(ui/joystick_circle_nub_a.png) center/100% 100% no-repeat;box-shadow:none}
+#tbtns{width:330px;height:280px}
+.tb{border:0;border-radius:50%;overflow:visible;background:url(ui/round_brown_dark.png) center/100% 100% no-repeat;box-shadow:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.55));display:flex;align-items:center;justify-content:center}
+.tb.ab canvas{position:absolute;inset:15%;width:70%;height:70%;border-radius:50%}
+.tb .cd{inset:15%;border-radius:50%}.tb .cdt{font-size:18px}
+.tb .n{right:auto;left:50%;transform:translateX(-50%);bottom:-7px;background:var(--wood3);border:2px solid var(--rim);border-radius:9px;padding:0 6px;color:#fff3d6;font-size:11px;line-height:14px}
+.tb .n:empty{display:none}
+.tb img{width:44%;height:44%;object-fit:contain;filter:drop-shadow(0 2px 0 rgba(58,36,16,.6))}
+.tb .lab{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font:800 10px var(--ui);color:#fff3d6;background:var(--wood3);border:2px solid var(--rim);border-radius:9px;padding:0 6px;line-height:14px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.tb.big{background-image:url(ui/round_grey_detailed_red.png)}.tb.big .lab{background:#7a1a12;border-color:#ffb08a}
+.tb.big.on{filter:drop-shadow(0 0 8px rgba(255,90,60,.9)) drop-shadow(0 3px 3px rgba(0,0,0,.55));animation:tbpulse 1s ease-in-out infinite}
+@keyframes tbpulse{50%{transform:scale(1.04)}}
+.tb.act{background-image:url(ui/round_grey_detailed_green.png)}
+.tb.sm2{background-image:url(ui/round_brown.png)}.tb .arr{font:900 14px var(--ui);color:var(--ink2)}.tb.sm2.on .arr{display:inline-block;transform:rotate(180deg)}
+.tb:active{transform:scale(.94)}
+.tb.lock canvas{filter:grayscale(1) brightness(.4)}.tb.nores canvas{filter:saturate(.3) brightness(.55)}
+#tdrawer{position:absolute;right:58px;bottom:190px;display:none;flex-direction:row-reverse;gap:10px;align-items:center;pointer-events:auto}
+#tdrawer.open{display:flex}
+#tdrawer .tb{position:relative}
+#tJump{left:calc(max(18px,env(safe-area-inset-left)) + 162px);bottom:calc(max(26px,env(safe-area-inset-bottom)) + 18px);width:58px;height:58px;position:absolute}
+body.touch #feed{display:flex;flex-direction:column;align-items:center;gap:4px;position:absolute;left:50%;transform:translateX(-50%);top:calc(max(10px,env(safe-area-inset-top)) + 96px);pointer-events:none;max-width:60vw}
+#feed div{border:9px solid transparent;border-image:url(ui/panel_brown_dark.png) 24 fill / 9px stretch;font:700 12px var(--ui);color:#fff3d6;padding:0 4px;text-shadow:0 1px 1px var(--wood3);transition:opacity .9s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+#feed div.old{opacity:0}
+#feed .c-loot{color:#c8ffb8}#feed .c-err{color:#ffb4a8}#feed .c-xp{color:#e4ccff}
+body.touch #chat:not(.open) #log{display:none}
+body.touch #chat:not(.open){pointer-events:none}
+body.touch #tracker.show{display:block;left:50%;right:auto;transform:translateX(-50%);top:calc(max(10px,env(safe-area-inset-top)) + 66px);width:auto;max-width:44vw;font-size:12px}
+body.touch #tracker>div:not(:first-child){display:none}
+body.touch #tracker b{display:inline;font-size:12px;margin-right:6px}body.touch #tracker span{display:inline}
+body.touch #tracker b::before{content:'';display:inline-block;width:12px;height:16px;margin-right:5px;vertical-align:-3px;background:url(ui/minimap_icon_exclamation_yellow.png) center/contain no-repeat}
+body.touch #tframe{left:50%;transform:translateX(-50%);width:min(280px,40vw)}
+body.touch #mini{width:auto}body.touch #mmw{width:104px;height:104px}body.touch #mmc{left:10px;top:10px;width:calc(100% - 20px);height:calc(100% - 20px)}
+body.touch #zone,body.touch #online{display:none}
+body.touch #mbtn{top:max(10px,env(safe-area-inset-top));right:calc(max(10px,env(safe-area-inset-right)) + 112px);flex-direction:row;flex-wrap:wrap;width:104px;justify-content:flex-end;gap:6px;padding:0}
+body.touch .mb{width:46px;height:46px}body.touch .mb i,body.touch .mb small{display:none}
+body.touch .mb[data-p="pLife"],body.touch .mb[data-p="pMap"]{display:none}
+body.touch .panel.frame{max-height:calc(100% - 16px)}
+body.touch #pBag,body.touch #pChar,body.touch #pQuest,body.touch #pLife,body.touch #pMap,body.touch #pMenu{left:50%;right:auto;top:auto;bottom:max(6px,env(safe-area-inset-bottom));transform:translateX(-50%);max-height:min(92%,calc(100% - 16px));animation:drawerUp .22s ease-out}
+@keyframes drawerUp{from{transform:translate(-50%,40px);opacity:0}}
+body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(400px,62vw)}body.touch #pChar{width:min(420px,66vw)}
+@media (max-height:500px){body.touch #tframe{left:50%;top:max(8px,env(safe-area-inset-top));width:min(260px,36vw)}#joy{width:132px;height:132px}#tJump{left:calc(max(18px,env(safe-area-inset-left)) + 142px)}body.touch #tracker.show{top:calc(max(8px,env(safe-area-inset-top)) + 64px)}body.touch #feed{top:calc(max(8px,env(safe-area-inset-top)) + 90px)}}
 </style>
   <script type="module" src="./main.js"></script>
 </head>
@@ -230,21 +351,22 @@ body.touch #pChar{left:50%;transform:translateX(-50%);top:12px;max-height:calc(1
       <button class="btn alt tbtn" id="tInv" hidden>Uitnodigen in groep</button></div>
   </div>
   <div id="party" class="pe"></div>
-  <div id="mini" class="pe"><div id="zone">Zilverbron</div><canvas id="mmc" width="200" height="200"></canvas><div id="online">Offline</div></div>
+  <div id="mini" class="pe"><div id="zone">Zilverbron</div><div id="mmw"><canvas id="mmc" width="200" height="200"></canvas><img id="mmring" src="ui/minimap_ring_brown_detail.png" alt=""></div><div id="online">Offline</div></div>
   <div id="tracker"></div>
   <div id="chat" class="pe"><div id="log"></div><input id="chatIn" class="txt" maxlength="120" placeholder="Bericht… (/g voor groep)" autocomplete="off"></div>
   <div id="castbar" class="bar" hidden><i></i><span></span></div>
   <div id="toast"></div>
+  <div id="feed"></div>
   <div id="banner"></div>
   <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div id="abar"></div></div>
   <div id="mbtn" class="pe">
-    <button class="mb" data-p="pChar">C<small>Held</small></button>
-    <button class="mb" data-p="pBag">B<small>Rugzak</small></button>
-    <button class="mb" data-p="pQuest">L<small>Quests</small></button>
-    <button class="mb" data-p="pLife">K<small>Ambacht</small></button>
-    <button class="mb" data-p="pMap">M<small>Kaart</small></button>
-    <button class="mb" id="bChat">↵<small>Chat</small></button>
-    <button class="mb" data-p="pMenu">≡<small>Menu</small></button>
+    <button class="mb" data-p="pChar"><img src="ui/character.png" alt=""><i>C</i><small>Held</small></button>
+    <button class="mb" data-p="pBag"><img src="ui/pouch.png" alt=""><i>B</i><small>Rugzak</small></button>
+    <button class="mb" data-p="pQuest"><img src="ui/book_open.png" alt=""><i>L</i><small>Quests</small></button>
+    <button class="mb" data-p="pLife"><img src="ui/campfire.png" alt=""><i>K</i><small>Ambacht</small></button>
+    <button class="mb" data-p="pMap"><img src="ui/flag_triangle.png" alt=""><i>M</i><small>Kaart</small></button>
+    <button class="mb" id="bChat"><img src="ui/icon_talk.png" alt=""><i>↵</i><small>Chat</small></button>
+    <button class="mb" data-p="pMenu"><img src="ui/icon_menu.png" alt=""><i>Esc</i><small>Menu</small></button>
   </div>
   <div id="pBag" class="panel frame" hidden><h3>Rugzak <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Goud</span><span id="goldTxt">0</span></div></div>
   <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Held</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
@@ -256,6 +378,7 @@ body.touch #pChar{left:50%;transform:translateX(-50%);top:12px;max-height:calc(1
   <div id="pMenu" class="panel frame" hidden><h3>Menu <button class="x" data-close>×</button></h3>
     <button class="btn alt" data-close>Verder spelen</button>
     <button class="btn alt" id="bSave">Opslaan</button>
+    <div class="row touchonly"><button class="btn alt" data-open="pMap">Kaart</button><button class="btn alt" data-open="pLife">Ambacht</button></div>
     <button class="btn" id="bPvp">PvP: uit</button>
     <p class="mhelp" style="margin:0">Met PvP aan kun je buiten Zilverbron vechten tegen andere spelers die PvP ook aan hebben. Winnen levert eer en goud op.</p>
     <button class="btn alt" id="bSound">Geluid: aan</button>
@@ -288,7 +411,7 @@ body.touch #pChar{left:50%;transform:translateX(-50%);top:12px;max-height:calc(1
       <input id="nameIn" class="txt" maxlength="14" placeholder="Bijvoorbeeld Elandra" autocomplete="off">
       <label class="l">Ras</label><div class="opts" id="raceOpts"></div>
       <label class="l">Klasse</label><div class="opts three" id="clsOpts"></div>
-      <label class="l">Haarkleur</label><div class="sw" id="hairOpts"></div>
+      <div class="sw" id="hairOpts" hidden></div>
       <p class="desc" id="cDesc"></p>
       <div class="row"><button class="btn alt" id="bBack">Terug</button><button class="btn" id="bCreate">Creëren</button></div>
     </section>

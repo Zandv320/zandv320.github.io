@@ -14,7 +14,7 @@ function velmoraGame(){
     load(i){if(i!==rid)return;const files=PARTS.map(p=>path.join(dir,p+'.js'));for(const f of files)this.addWatchFile(f);
       return files.map(f=>fs.readFileSync(f,'utf8')).join('\n')},
     /* de glTF-modellen worden als statische bestanden naast de pagina gezet */
-    closeBundle(){const src=path.resolve(__dirname,'velmora/models'),dst=path.resolve(__dirname,'dist/velmora/models');if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}
+    closeBundle(){for(const d of ['models','ui']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}}
   }}
 
 export default defineConfig({
