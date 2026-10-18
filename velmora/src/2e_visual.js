@@ -33,11 +33,11 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
   /* ---------- crypte (kerker) ---------- */
   jobs.push((async()=>{const walls=[],tops=[],floors=[];const c=DUN.c,s=c/2.04;
     for(let r=0;r<DR;r++)for(let k=0;k<DC;k++){const[x,z]=dunPos(k,r);
-      for(let a=0;a<2;a++)for(let b=0;b<2;b++)floors.push({x:x-c/4+a*c/2,y:-.36,z:z-c/4+b*c/2,s:1.5,ry:(a+b)%2*Math.PI/2});if(DMAP[r][k]==='#')continue;
+      floors.push({x,y:-.74,z,s:3,ry:((r+k)%2)*Math.PI/2});if(DMAP[r][k]==='#')continue;
       for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){const nc=k+dx,nr=r+dz;if(nr<0||nr>=DR||nc<0||nc>=DC||DMAP[nr][nc]!=='#')continue;const wx=x+dx*c/2,wz=z+dz*c/2,ry=dx>0?Math.PI:dx<0?0:dz>0?Math.PI/2:-Math.PI/2;
         walls.push({x:wx,y:0,z:wz,ry,s});tops.push({x:wx,y:2.04*s,z:wz,ry,s})}}
     const ok=await Promise.all([instModel('MD_ModularStoneWall',walls),instModel('MD_ModularStoneWall_top',tops),instModel('D_Floor_Modular',floors,{cast:false})]);if(!ok.every(Boolean))return;
-    hideProc('crypt');
+    hideProc('crypt');/* de oude vloer blijft als donkere voeg onder de stenen tegels */const cf=window.__cryptFloor;if(cf){cf.material=cf.material.clone();cf.material.map=null;cf.material.color.setHex(0x16130f);cf.position.y=-.8}
     /* wandfakkels op dezelfde plekken als de oude houders */let tor=0;const P=[];
     for(let r=0;r<DR;r++)for(let k=0;k<DC;k++){const ch=DMAP[r][k];const[x,z]=dunPos(k,r);
       if(ch!=='#'&&DMAP[r][k-1]==='#'&&(r+k)%3===0&&tor<40){tor++;P.push(place('MD_Torch_wall',x-c/2+.4,z,0,1.3,2.6))}
@@ -57,8 +57,8 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
       const[x,z]=D.pos(k,r);for(let i=0;i<2;i++)L.push([x+(R()-.5)*3,z+(R()-.5)*3,2.6+R()*1.6,R()*6.28])}
     const ok=await envInstances(['Rock_1','Rock_2','Rock_3','Rock_4','Rock_5','Rock_6','Rock_7'],L,(t,i)=>i,(t,bb)=>{const w=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);const k=D.c*1.25*t[2]/2.6/w;return[k,k*(1.6+t[2]*.3),k]},true,tint);
     if(ok&&D.wim)D.wim.visible=false;
-    /* vloer van tegelmodellen */const F=[];for(let r=0;r<D.R;r++)for(let k=0;k<D.C;k++){const ch=D.map[r][k];if(ch==='~')continue;const[x,z]=D.pos(k,r);for(let a=0;a<2;a++)for(let b=0;b<2;b++)F.push({x:x-D.c/4+a*D.c/2,y:-.36,z:z-D.c/4+b*D.c/2,s:1.5,ry:(a+b)%2*Math.PI/2})}
-    const fl=await instModel('D_Floor_Modular',F,{cast:false,tint:new THREE.Color(tint.r*1.9,tint.g*1.7,tint.b*1.6)});if(fl&&D.grp&&D.grp.children[0])D.grp.children[0].visible=false};
+    /* vloer van tegelmodellen */const F=[];for(let r=0;r<D.R;r++)for(let k=0;k<D.C;k++){const ch=D.map[r][k];if(ch==='~')continue;const[x,z]=D.pos(k,r);F.push({x,y:-.74,z,s:3,ry:((r+k)%2)*Math.PI/2})}
+    const fl=await instModel('D_Floor_Modular',F,{cast:false,tint:new THREE.Color(tint.r*1.9,tint.g*1.7,tint.b*1.6)});if(fl&&D.grp&&D.grp.children[0]){const f0=D.grp.children[0];f0.material=f0.material.clone();f0.material.map=null;f0.material.color.setHex(0x140c08);f0.position.y-=.75}};
   jobs.push(caveWalls(D2,new THREE.Color(.55,.38,.3)));jobs.push(caveWalls(D3,new THREE.Color(.45,.32,.28)));
   /* ---------- crypte-ingang: mausoleum ---------- */
   jobs.push((async()=>{const x0=CRYPT.x,z0=CRYPT.z,y=CRYPT_H;const P=[];
@@ -67,6 +67,16 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
       P.push(place('MD_Column',x0+sx*4.8,z0+1.2,0,1.75));P.push(place('D_Skull',x0+sx*4.8,z0+1.2,0,1.3,8.7).then(o=>tintObj(o,new THREE.Color(.8,.74,.62))))}
     for(const sx of[-1,1])P.push(place('S_WoodenTorch_Fire',x0+sx*5.6,z0+2,0,.8));
     const r=await Promise.all(P);if(r[0])hideProc('cryptgate')})());
+  /* ---------- kerkhof bij de crypte: grafstenen, hekwerk, obelisken (Kenney Graveyard Kit) ---------- */
+  if(window.__graves)jobs.push(envInstances(['K_gravestone-round','K_gravestone-cross','K_gravestone-bevel','K_gravestone-broken','K_gravestone-wide','K_gravestone-decorative','K_gravestone-cross-large'],window.__graves,(t,i)=>i,(t,bb)=>{const k=1.5*t[2]/(bb.max.y-bb.min.y);return[k,k,k]},true,new THREE.Color(0xc8bfb0)).then(ok=>{if(ok)hideProc('graves')}));
+  jobs.push((async()=>{const P=[];for(let x=-20;x<=20;x+=2.2){if(Math.abs(x)<3.5)continue;P.push(place(Math.abs(x)>16&&x>0?'K_iron-fence-damaged':'K_iron-fence',CRYPT.x+x,CRYPT.z+30,0,[2.3,1.8,2]))}
+    for(const sx of[-1,1]){P.push(place('K_pillar-obelisk',CRYPT.x+sx*4.2,CRYPT.z+30,0,2.2));P.push(place('K_lantern-candle',CRYPT.x+sx*4.2,CRYPT.z+29,0,1.6,0))}
+    for(let i=0;i<6;i++){const a=R()*6.28,r=14+R()*18;P.push(place(R()<.5?'K_cross-column':'K_grave',CRYPT.x+Math.cos(a)*r,CRYPT.z+12+Math.sin(a)*r*.8,R()*.6-.3,1.6))}
+    const r=await Promise.all(P);if(r.filter(Boolean).length>10)hideProc('cryptfence')})());
+  /* ---------- arenakist: gouden kist met scharnierend deksel ---------- */
+  jobs.push((async()=>{const g=await loadEnv('D_Chest_Gold');if(!g)return;const o=envClone(g);const sz=o.userData.size;const s=1.65/Math.max(sz[0],sz[2]);o.scale.setScalar(s);arenaChest.g.add(o);
+    const top=o.getObjectByName('Chest_Top');for(const c of arenaChest.g.children)if(c!==o&&c!==arenaChest.glow&&!(c.geometry&&c.geometry.type==='RingGeometry'))c.visible=false;
+    if(top){const bx=top.rotation.x;arenaChest.lid={rotation:{set x(v){top.rotation.x=bx+v},get x(){return top.rotation.x-bx}}}}})());
   /* ---------- roverskamp ---------- */
   jobs.push((async()=>{const cx=CAMP.x,cz=CAMP.z;const P=[];const gap=Math.atan2(32,-60);
     for(let a=0;a<Math.PI*2;a+=.21){if(Math.abs(angDiff(a,gap))<.4)continue;const x=cx+Math.cos(a)*25,z=cz+Math.sin(a)*25;const tower=Math.round(a/.21)%6===0;P.push(place(tower?'WallTowers_FirstAge':'Wall_FirstAge',x,z,-a-Math.PI/2,tower?[2.9,6.5,4]:[3.9,6.2,4]))}

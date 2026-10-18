@@ -42,7 +42,7 @@ function batchStatic(){const t0=performance.now();scene.updateMatrixWorld(true);
   zoneLayers();return PERF.stats}
 /* alle statische bovenwereld-objecten op laag 1, kerkers op laag 2; entiteiten, effecten, lucht en maan blijven op laag 0 */
 function zoneLayers(){const keep=new Set([sky,moon]);const b=new THREE.Box3();
-  for(const c of scene.children){if(keep.has(c)||c.isLight||c.userData.ent||c.userData.batch||c===ME.g||(ME.rig&&c===ME.rig.g))continue;
+  for(const c of scene.children){if(keep.has(c)||c.isLight||c.isPoints||c.userData.fx||c.userData.ent||c.userData.batch||c===ME.g||(ME.rig&&c===ME.rig.g))continue;
     let ent=false;c.traverse(o=>{if(o.userData&&o.userData.ent)ent=true});if(ent)continue;
     let dun;if(c.userData.wx!=null)dun=c.userData.wx>700;else if(c.isInstancedMesh){const mm=new THREE.Matrix4();c.getMatrixAt(0,mm);_p.setFromMatrixPosition(mm);dun=_p.x>700}
     else{b.setFromObject(c);if(b.isEmpty())continue;dun=b.max.x>700}
@@ -52,7 +52,7 @@ function setZoneLayer(inDun){if(PERF.inDun===inDun)return;PERF.inDun=inDun;
   /* de schaduwkaart en GTAO gebruiken dezelfde cameralagen */camera.layers.set(0);camera.layers.enable(inDun?PERF.L_DUN:PERF.L_OVER)}
 /* per frame: zonelaag, en elke 0,4 s de vakken op afstand */
 function updPerf(dt){const c=camTarget;setZoneLayer(c.x>700);PERF.t-=dt;if(PERF.t>0)return;PERF.t=.4;
-  const R=GFX.q==='laag'?170:GFX.q==='middel'?230:320;
+  const R=Math.min((GFX.q==='laag'?170:GFX.q==='middel'?230:320)*(isTouch?.8:1),scene.fog.far+30);
   for(const L of PERF.cells){const d=Math.hypot(L.x-c.x,L.z-c.z)-L.r;L.m.visible=d<R}}
 /* procedurele monsters (o.a. de Vuurgrot-wezens) bestaan uit tientallen losse onderdelen. Per bewegend lichaamsdeel
    (heup, arm, hoofd…) worden de stilstaande onderdelen samengevoegd; de gewrichten zelf blijven, dus animaties werken gewoon.

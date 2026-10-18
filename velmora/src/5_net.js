@@ -123,7 +123,9 @@ async function startNet(){
   room.on('fx',m=>{if(S.mode!=='play')return;const d=m.data||{};const r=REMOTES.get(m.peer);
     if(d.k==='p'&&Array.isArray(d.f)){const from=new THREE.Vector3(+d.f[0],+d.f[1],+d.f[2]);let tg=null;if(d.m)tg=MONMAP.get(d.m);else if(d.p)tg=d.p===myId()?'me':REMOTES.get(d.p);else if(d.x!=null)tg=[+d.x,groundH(+d.x,+d.z),+d.z];if(tg&&PCOL[d.t])proj(d.t,from,tg,d.t==='arrow'?46:d.t==='meteor'?34:d.t==='kogel'?95:22,null)}
     else if(d.k==='r'){const x=+d.x,z=+d.z,c=+d.c;if(c===0xdde6ff)whirlFx(x,groundH(x,z),z);else if(c===0x9ae0ff)novaFx(x,z);else if(c===0xffc040)shoutFx(x,groundH(x,z),z);else if(c===0xffd36a)rainFx(x,z);else ringFx(x,z,clamp(+d.r,1,12),c||0xffffff,.5)}
-    else if(d.k==='tw'){twirlFx(+d.x,groundH(+d.x,+d.z)+1,+d.z,0xc08aff)}
+    else if(d.k==='tw'){const x=+d.x,z=+d.z;twirlFx(x,groundH(x,z)+1,z,0xc08aff);if(isFinite(+d.fx)&&Math.hypot(+d.fx-x,+d.fz-z)<20)blinkFx(+d.fx,groundH(+d.fx,+d.fz),+d.fz,x,groundH(x,z),z)}
+    else if(d.k==='sl'&&isFinite(+d.x)){slamFx(+d.x,+d.y,+d.z,+d.r||0)}
+    else if(d.k==='ci'&&isFinite(+d.x)){chargeImpactFx(+d.x,groundH(+d.x,+d.z),+d.z)}
     else if(drakeFxNet(d)){}
     else if(d.k==='tele')teleFx(+d.x,+d.z,clamp(+d.r,1,12),clamp(+d.d,.2,4));
     else if(d.k==='lvl'){beamFx(+d.x,+d.z,0xffd34d,1.6,1.5);lvlFx(+d.x,groundH(+d.x,+d.z),+d.z);if(r)log(esc(r.n)+' heeft een niveau bereikt!','sys',true)}});

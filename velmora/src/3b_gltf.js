@@ -36,13 +36,18 @@ const ATK_1H=['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Stab','1H_Mele
 const CM_KAY={idle:'Idle',cidle:'Blocking',walk:'Walking_A',run:'Running_A',jumpS:'Jump_Start',jumpI:'Jump_Idle',land:'Jump_Land',cast:'Spellcasting',die:'Death_A',hit:'Hit_A',
   atk:{krijger:['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Chop'],bijl:ATK_2H,magier:['Spellcast_Shoot'],jager:['2H_Ranged_Shoot'],staf:['Spellcast_Shoot'],boog:['2H_Ranged_Shoot'],ak:['2H_Ranged_Shoot'],def:ATK_1H}};
 /* generieke bouwer: model, hoogte, zichtbare props, eigen wapen, kleur-tints, clipkaart */
+/* GLTFLoader geeft elk lichaamsdeel een eigen skelet (met eigen bottentextuur en eigen update per frame).
+   Delen met dezelfde botten en bindhouding krijgen hier één gedeeld skelet: scheelt textures en rekenwerk, vooral op mobiel. */
+function shareSkel(m){const L=[];m.traverse(x=>{if(!x.isSkinnedMesh)return;const sk=x.skeleton;
+  const same=L.find(o=>o.bones.length===sk.bones.length&&o.bones.every((b,i)=>b===sk.bones[i])&&o.boneInverses.every((b,i)=>b.equals(sk.boneInverses[i])));
+  if(same){if(same!==sk){x.bind(same,x.bindMatrix);sk.dispose()}}else L.push(sk)})}
 function buildGltfRig(spec){
   const g=new THREE.Group();const r={g,gltf:true,h:spec.h,ph:Math.random()*6,wt:spec.wt,o:spec.o||{},cm:spec.cm||CM_KAY,st:{land:0,idle:0},cur:null,acts:{},ready:false,quad:spec.quad,spider:spec.spider};
   r.body=g;
   loadGltf(spec.model).then(src=>{
     if(!src){if(spec.fallback){r.fallback=spec.fallback();g.add(r.fallback.g)}return}
     const m=SkeletonUtils.clone(src.scene);const s=spec.h/src.userData.h;m.scale.setScalar(s);m.position.y=-src.userData.y0*s;g.add(m);r.m=m;r.s=s;
-    const on=spec.props||[];m.traverse(x=>{if(x.isMesh&&!x.isSkinnedMesh)x.visible=on.includes(x.name)});
+    const on=spec.props||[];m.traverse(x=>{if(x.isMesh&&!x.isSkinnedMesh)x.visible=on.includes(x.name)});shareSkel(m);
     /* materialen per exemplaar klonen waar nodig (tint / huid+haar) */
     if(spec.skin!=null||spec.hair!=null||spec.tint||spec.glow){const done=new Map();m.traverse(x=>{if(!x.isMesh)return;const sm=x.material;let nm=done.get(sm);
       if(!nm){nm=sm;if(spec.glow&&spec.glow[sm.name]!=null){nm=new THREE.MeshBasicMaterial({color:new THREE.Color(spec.glow[sm.name]).multiplyScalar(1.6)})}else if(spec.tint&&spec.tint[sm.name]!=null&&sm.color){nm=sm.clone();nm.color.set(spec.tint[sm.name])}

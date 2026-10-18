@@ -8,8 +8,9 @@ function loadEnv(name){let e=envCache.get(name);if(e)return e;
   e=new Promise(res=>{envLoader().load(ENV_BASE+name+'.glb',g=>res(g),undefined,err=>{console.warn('omgevingsmodel mislukt',name,err);res(null)})});envCache.set(name,e);return e}
 /* alle primitieven van een model samenvoegen tot één geometrie met vertexkleuren (voor InstancedMesh) */
 function envMerged(g){const parts=[];g.scene.updateMatrixWorld(true);
-  g.scene.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.clone();for(const k of['position','normal']){const a=geo.attributes[k];if(!a)continue;const f=new Float32Array(a.count*3);for(let i=0;i<a.count;i++){f[i*3]=a.getX(i);f[i*3+1]=a.getY(i);f[i*3+2]=a.getZ(i)}geo.setAttribute(k,new THREE.BufferAttribute(f,3))}geo.applyMatrix4(o.matrixWorld);for(const k of Object.keys(geo.attributes))if(k!=='position'&&k!=='normal')geo.deleteAttribute(k);
-    const n=geo.attributes.position.count,col=new Float32Array(n*3);const c=o.material.color||new THREE.Color(1,1,1);for(let i=0;i<n;i++){col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b}geo.setAttribute('color',new THREE.BufferAttribute(col,3));parts.push(geo.index?geo.toNonIndexed():geo)});
+  g.scene.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.clone();for(const k of['position','normal']){const a=geo.attributes[k];if(!a)continue;const f=new Float32Array(a.count*3);for(let i=0;i<a.count;i++){f[i*3]=a.getX(i);f[i*3+1]=a.getY(i);f[i*3+2]=a.getZ(i)}geo.setAttribute(k,new THREE.BufferAttribute(f,3))}geo.applyMatrix4(o.matrixWorld);const vc=geo.attributes.color;for(const k of Object.keys(geo.attributes))if(k!=='position'&&k!=='normal'&&k!=='color')geo.deleteAttribute(k);
+    /* vertexkleuren uit het model (bv. Kenney, ingebakken uit de colormap) behouden en met de materiaalkleur vermenigvuldigen */
+    const n=geo.attributes.position.count,col=new Float32Array(n*3);const c=o.material.color||new THREE.Color(1,1,1);for(let i=0;i<n;i++){col[i*3]=c.r*(vc?vc.getX(i):1);col[i*3+1]=c.g*(vc?vc.getY(i):1);col[i*3+2]=c.b*(vc?vc.getZ(i):1)}geo.setAttribute('color',new THREE.BufferAttribute(col,3));parts.push(geo.index?geo.toNonIndexed():geo)});
   const m=BufferGeometryUtils.mergeGeometries(parts,false);if(!m.attributes.normal)m.computeVertexNormals();m.computeBoundingBox();const b=m.boundingBox;m.translate(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);m.computeBoundingBox();return m}
 const ENV_MAT=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:RAMP});
 const ENV_IM=[],ENV_LOD=[];
@@ -24,15 +25,16 @@ async function envInstances(names,list,groupOf,scaleOf,cast=true,tint=null){
     b.forEach((t,i)=>{const s=scaleOf(t,bb);_p.set(t[0],groundH(t[0],t[1])-.05,t[1]);_e.set(0,t[3],0);_q.setFromEuler(_e);_s.set(s[0],s[1],s[2]);_m.compose(_p,_q,_s);_m.toArray(mats,i*16);pos[i*2]=t[0];pos[i*2+1]=t[1]});
     const mk=(g)=>{const im=new THREE.InstancedMesh(g,ENV_MAT,b.length);im.userData.wx=b[0][0];im.castShadow=cast;im.receiveShadow=true;im.frustumCulled=false;im.count=0;scene.add(im);ENV_IM.push(im);return im};
     const imHi=mk(geo),imLo=lods[vi]?mk(lods[vi]):null;ENV_LOD.push({n:b.length,mats,pos,imHi,imLo})});return true}
-function updEnvLod(cx,cz,R){const R2=R*R;const far=R*8;const F2=far*far;
+/* (px,pz) camerapositie en (fx,fz) kijkrichting: wat ruim achter de camera staat wordt niet getekend */
+function updEnvLod(cx,cz,R,px=cx,pz=cz,fx=0,fz=0){const R2=R*R;const far=Math.min(R*8,scene.fog.far+40);const F2=far*far;const back=fx||fz;
   for(const L of ENV_LOD){const hi=L.imHi.instanceMatrix.array,lo=L.imLo&&L.imLo.instanceMatrix.array;let nh=0,nl=0;
-    for(let i=0;i<L.n;i++){const dx=L.pos[i*2]-cx,dz=L.pos[i*2+1]-cz,d2=dx*dx+dz*dz;
+    for(let i=0;i<L.n;i++){const X=L.pos[i*2],Z=L.pos[i*2+1];if(back&&(X-px)*fx+(Z-pz)*fz<-28)continue;const dx=X-cx,dz=Z-cz,d2=dx*dx+dz*dz;
       if(d2<R2||!lo){hi.set(L.mats.subarray(i*16,i*16+16),nh*16);nh++}else if(d2<F2){lo.set(L.mats.subarray(i*16,i*16+16),nl*16);nl++}}
     L.imHi.count=nh;L.imHi.instanceMatrix.needsUpdate=true;if(L.imLo){L.imLo.count=nl;L.imLo.instanceMatrix.needsUpdate=true}}}
 /* losse objecten (huizen, kramen, kisten): gekloond model met toon-materialen; vensters gloeien 's nachts */
 const envMatCache=new Map();
-function envClone(g){const m=g.scene.clone(true);m.traverse(o=>{if(!o.isMesh)return;const sm=o.material;let tm=envMatCache.get(sm.uuid);
-  if(!tm){const win=/window|glass|licht/i.test(sm.name);tm=new THREE.MeshToonMaterial({color:sm.color.clone(),gradientMap:RAMP,emissive:win?new THREE.Color(0xffb347):new THREE.Color(0),emissiveIntensity:win?.4:0});if(win)NIGHT_MATS.add(tm);envMatCache.set(sm.uuid,tm)}o.material=tm;o.castShadow=true;o.receiveShadow=true});
+function envClone(g){const m=g.scene.clone(true);m.traverse(o=>{if(!o.isMesh)return;if(!o.geometry.attributes.normal)o.geometry.computeVertexNormals();const sm=o.material;let tm=envMatCache.get(sm.uuid);
+  if(!tm){const win=/window|glass|licht/i.test(sm.name);tm=new THREE.MeshToonMaterial({color:sm.color.clone(),vertexColors:!!o.geometry.attributes.color,gradientMap:RAMP,emissive:win?new THREE.Color(0xffb347):new THREE.Color(0),emissiveIntensity:win?.4:0});if(win)NIGHT_MATS.add(tm);envMatCache.set(sm.uuid,tm)}o.material=tm;o.castShadow=true;o.receiveShadow=true});
   m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);const w=new THREE.Group();m.position.set(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);w.add(m);w.userData.size=[b.max.x-b.min.x,b.max.y-b.min.y,b.max.z-b.min.z];return w}
 async function envPlace(name,x,z,ry,fit,par=scene,yOff=0){const g=await loadEnv(name);if(!g)return null;const o=envClone(g);const sz=o.userData.size;
   const s=fit(sz);o.scale.set(s[0],s[1],s[2]);o.position.set(x,groundH(x,z)+yOff,z);o.rotation.y=ry;par.add(o);return o}

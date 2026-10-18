@@ -306,8 +306,8 @@ const CRYPT_H=FLAT[2].h;
   for(let i=0;i<3;i++)mesh(new THREE.BoxGeometry(7-i*.6,.3,1),st,0,.15+i*.3,1.8-i*.8,g);
   for(const s of[-1,1]){mesh(new THREE.CylinderGeometry(.12,.12,2.2,6),mat(0x2a2a2a),s*5.6,1.1,2,g);addFlame(g,s*5.6,2.4,2,1.6,0x6aff8a);addLight(CRYPT.x+s*5.6,CRYPT_H+2.6,CRYPT.z+2,0x5aff8a,25,16)}
   PROC=null;const graves=[];for(let i=0;i<46;i++){const a=RV()*6.28,r=10+RV()*26,x=CRYPT.x+Math.cos(a)*r,z=CRYPT.z+12+Math.sin(a)*r*.8;if(pathDist(x,z)<3)continue;graves.push([x,z,.8+RV()*.4,RV()*.6-.3])}
-  instance(new THREE.BoxGeometry(1,1.4,.3).translate(0,.6,0),mat(0x8a867e,{r:1}),graves,t=>({rz:t[3]*.3}));for(const t of graves)addCol(t[0],t[1],.5);
-  const fm=mat(0x222222,{m:.7,r:.5});for(let x=-20;x<=20;x+=1.2){if(Math.abs(x)<3.5)continue;const y=groundH(CRYPT.x+x,CRYPT.z+30);mesh(new THREE.BoxGeometry(.08,1.6,.08),fm,CRYPT.x+x,y+.8,CRYPT.z+30,scene,false)}}
+  PROC='graves';window.__graves=graves;instance(new THREE.BoxGeometry(1,1.4,.3).translate(0,.6,0),mat(0x8a867e,{r:1}),graves,t=>({rz:t[3]*.3}));PROC='cryptfence';for(const t of graves)addCol(t[0],t[1],.5);
+  const fm=mat(0x222222,{m:.7,r:.5});for(let x=-20;x<=20;x+=1.2){if(Math.abs(x)<3.5)continue;const y=groundH(CRYPT.x+x,CRYPT.z+30);mesh(new THREE.BoxGeometry(.08,1.6,.08),fm,CRYPT.x+x,y+.8,CRYPT.z+30,scene,false)}PROC=null}
 
 /* ---------- dungeon ---------- */
 const DMAP=[
@@ -339,7 +339,7 @@ const dunPos=(c,r)=>[DUN.x+(c-DC/2+.5)*DUN.c,DUN.z+(r-DR/2+.5)*DUN.c];
 function dunCollide(p,r){for(let it=0;it<2;it++)for(const[ox,oz]of[[r,0],[-r,0],[0,r],[0,-r]]){if(dunCell(p.x+ox,p.z+oz)==='#'){const cx=Math.floor((p.x+ox-DUN.x)/DUN.c+DC/2),cz=Math.floor((p.z+oz-DUN.z)/DUN.c+DR/2);const x0=DUN.x+(cx-DC/2)*DUN.c,z0=DUN.z+(cz-DR/2)*DUN.c;if(ox>0)p.x=Math.min(p.x,x0-r-.001);if(ox<0)p.x=Math.max(p.x,x0+DUN.c+r+.001);if(oz>0)p.z=Math.min(p.z,z0-r-.001);if(oz<0)p.z=Math.max(p.z,z0+DUN.c+r+.001)}}}
 const DSPAWN=[],DUN_ENTRY={},DUN_EXIT={};
 const dungeon=new THREE.Group();scene.add(dungeon);
-{PROC='crypt';const fl=mesh(new THREE.PlaneGeometry(DC*DUN.c,DR*DUN.c).rotateX(-Math.PI/2),mat(0x8a8478,{tex:'tile',rx:DC*1.5,ry:DR*1.5}),DUN.x,0,DUN.z,dungeon,false,true);void fl;
+{PROC=null;const fl=window.__cryptFloor=mesh(new THREE.PlaneGeometry(DC*DUN.c,DR*DUN.c).rotateX(-Math.PI/2),mat(0x8a8478,{tex:'tile',rx:DC*1.5,ry:DR*1.5}),DUN.x,0,DUN.z,dungeon,false,true);void fl;PROC='crypt';
   const walls=[];for(let r=0;r<DR;r++)for(let c=0;c<DC;c++){if(DMAP[r][c]!=='#')continue;let nb=false;for(const[a,b]of[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]){const rr=r+a,cc=c+b;if(rr>=0&&rr<DR&&cc>=0&&cc<DC&&DMAP[rr][cc]!=='#')nb=true}if(nb)walls.push([c,r])}
   const wim=new THREE.InstancedMesh(new THREE.BoxGeometry(DUN.c,9,DUN.c),mat(0x8a8276,{tex:'brick',rx:2,ry:3}),walls.length);walls.forEach(([c,r],i)=>{const[x,z]=dunPos(c,r);_m.makeTranslation(x,4.5,z);wim.setMatrixAt(i,_m)});wim.castShadow=true;wim.receiveShadow=true;wim.userData.proc='crypt';dungeon.add(wim);
   const caps=new THREE.InstancedMesh(new THREE.BoxGeometry(DUN.c+.4,.6,DUN.c+.4),mat(0x5a544c),walls.length);walls.forEach(([c,r],i)=>{const[x,z]=dunPos(c,r);_m.makeTranslation(x,9.2,z);caps.setMatrixAt(i,_m)});caps.userData.proc='crypt';dungeon.add(caps);
@@ -455,13 +455,15 @@ function updDayNight(){const p=((Date.now()/1000)%DAY_LEN)/DAY_LEN;DAY.phase=p;l
 const pointPool=[];for(let i=0;i<5;i++){const l=new THREE.PointLight(0xffaa50,0,20,1.6);scene.add(l);pointPool.push(l)}
 const torchLight=new THREE.PointLight(0xffc080,0,26,1.4);scene.add(torchLight);
 /* graphics quality: hoog / middel / laag */
-const GFX={q:(()=>{try{return localStorage.getItem('velmora-gfx')}catch(e){return null}})()||(isTouch?'middel':'hoog'),auto:0};
+const GFX={rs:1,q:(()=>{try{return localStorage.getItem('velmora-gfx')}catch(e){return null}})()||(isTouch?'middel':'hoog'),auto:0};
 const GFX_N={hoog:'Hoog',middel:'Middel',laag:'Laag'};
 function applyGfx(){const q=GFX.q;const dpr=devicePixelRatio||1;
-  renderer.setPixelRatio(q==='hoog'?Math.min(dpr,1.75):q==='middel'?Math.min(dpr,1.25):Math.min(dpr,1)*.8);
+  /* op telefoons/tablets lager, en GFX.rs (dynamische resolutie) schaalt mee als de framerate zakt */
+  renderer.setPixelRatio((isTouch?(q==='hoog'?Math.min(dpr,1.5):q==='middel'?Math.min(dpr,1):Math.min(dpr,1)*.75):(q==='hoog'?Math.min(dpr,1.75):q==='middel'?Math.min(dpr,1.25):Math.min(dpr,1)*.8))*GFX.rs);
   const sh=q!=='laag';renderer.shadowMap.enabled=sh;renderer.shadowMap.type=q==='hoog'?THREE.PCFSoftShadowMap:THREE.PCFShadowMap;sun.castShadow=sh;
-  const ms=q==='hoog'?4096:q==='middel'?2048:1024;if(sun.shadow.mapSize.x!==ms){sun.shadow.mapSize.set(ms,ms);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
-  GFX.post=q!=='laag';bloom.enabled=q==='hoog';gtao.enabled=q==='hoog'&&!isTouch;smaa.enabled=true;const nl=q==='hoog'?5:q==='middel'?3:2;pointPool.forEach((l,i)=>l.visible=i<nl);grassIM.visible=q!=='laag';
+  const ms=isTouch?(q==='hoog'?2048:1024):q==='hoog'?4096:q==='middel'?2048:1024;if(sun.shadow.mapSize.x!==ms){sun.shadow.mapSize.set(ms,ms);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
+  GFX.post=q!=='laag';bloom.enabled=q==='hoog';gtao.enabled=q==='hoog'&&!isTouch;smaa.enabled=!isTouch||q==='hoog';const nl=q==='hoog'?5:q==='middel'?(isTouch?2:3):2;
+  /* mobiel: schaduwkaart om het andere frame bijwerken */renderer.shadowMap.autoUpdate=!isTouch;renderer.shadowMap.needsUpdate=true;pointPool.forEach((l,i)=>l.visible=i<nl);grassIM.visible=q!=='laag';
   scene.traverse(o=>{if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true)}});
   try{localStorage.setItem('velmora-gfx',q)}catch(e){}if(typeof resize==='function')resize()}
 applyGfx();
