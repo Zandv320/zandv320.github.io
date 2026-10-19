@@ -8,14 +8,14 @@ function setBar(el,v,max,txt){const f=Math.round(clamp(max?v/max:0,0,1)*400)/400
 const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife','pTalent'];
 $('#pTalent').addEventListener('click',()=>{if(isTouch)hideTip()});
 function syncPop(){const B=document.body.classList,port=B.contains('portrait');B.toggle('pop',isTouch&&panels.some(p=>(port||p==='pDialog')&&!$('#'+p).hidden));B.toggle('bagdlg',!$('#pDialog').hidden&&!$('#pBag').hidden)}
-function openPanel(id){if(isTouch&&document.body.classList.contains('portrait')&&id!=='pDialog')for(const p of panels)if(p!==id&&p!=='pDialog'&&!$('#'+p).hidden)closePanel(p);if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')drawBigMap();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}syncPop()}
+function openPanel(id){if(isTouch&&document.body.classList.contains('portrait')&&id!=='pDialog')for(const p of panels)if(p!==id&&p!=='pDialog'&&!$('#'+p).hidden)closePanel(p);if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')mapOpen();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}syncPop()}
 function closePanel(id){$('#'+id).hidden=true;if(id==='pTalent')document.body.classList.remove('tal');if(id==='pDialog')S.shop=false;hideTip();syncPop()}
 function togglePanel(id){if($('#'+id).hidden)openPanel(id);else closePanel(id)}
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{const p=b.closest('.panel');if(p)closePanel(p.id)}));
 document.querySelectorAll('#mbtn [data-p]').forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.p)));
 document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>{closePanel('pMenu');openPanel(b.dataset.open)}));
 $('#mmw').addEventListener('click',()=>togglePanel('pMap'));
-const MAPVIEW={all:false};$('#mapAll').addEventListener('click',()=>{MAPVIEW.all=!MAPVIEW.all;$('#mapAll').textContent=MAPVIEW.all?'Area':'Overview';drawBigMap()});
+
 $('#bChat').addEventListener('click',()=>openChat());
 $('#bSave').addEventListener('click',()=>{saveGame(true);toast('');log('Game saved.','sys')});
 /* fullscreen: the Fullscreen API where the browser has it; on iPhone only via 'Add to Home Screen' */
@@ -222,7 +222,7 @@ function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0
   if(ME.pos.x>1250){const D=ME.pos.x>1700?D3:D2;const ox=D.X-D.C/2*D.c,oz=D.Z-D.R/2*D.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D.img,x0,y0,D.C*D.c*sc,D.R*D.c*sc)}
   else if(inDrk(ME.pos.x)){const[x0,y0]=w2m(DRK.x-DSZ/2,DRK.z-DSZ/2,cx,cz,sc,W);mg.drawImage(drkImg,x0,y0,DSZ*sc,DSZ*sc)}
   else if(inD){const ox=DUN.x-DC/2*DUN.c,oz=DUN.z-DR/2*DUN.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(dunImg,x0,y0,DC*DUN.c*sc,DR*DUN.c*sc)}
-  else{const[x0,y0]=w2m(-320,-320,cx,cz,sc,W);mg.drawImage(mapImg,x0,y0,640*sc,640*sc)}
+  else{const[x0,y0]=w2m(-320,-320,cx,cz,sc,W);mg.drawImage(ATLAS.c||mapImg,x0,y0,640*sc,640*sc)}
   const dot=(x,z,c,r=3)=>{const[a,b]=w2m(x,z,cx,cz,sc,W);if(a<-5||b<-5||a>W+5||b>W+5)return;mg.fillStyle=c;mg.beginPath();mg.arc(a,b,r,0,7);mg.fill()};
   for(const m of MONS)if(!m.dead&&Math.abs(m.x-cx)<120)dot(m.x,m.z,m.t.boss?'#ff40ff':'#e03030',m.t.elite?4:2.6);
   for(const n of NPCOBJ){if(n.mark==='!'||n.mark==='?'){const[a,b]=w2m(n.x,n.z,cx,cz,sc,W);mg.fillStyle='#ffd100';mg.font='800 16px Cinzel,serif';mg.textAlign='center';mg.fillText(n.mark,a,b+6)}else dot(n.x,n.z,'#ffd34d',2.5)}
@@ -232,23 +232,4 @@ function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0
   else if(!inD){{const[a,b]=w2m(DRK_GATE.x,DRK_GATE.z,cx,cz,sc,W);mg.fillStyle='#ff5a1a';mg.fillRect(a-3,b-3,6,6)}{const[a,b]=w2m(CAVE.x,CAVE.z,cx,cz,sc,W);mg.fillStyle='#ff7a30';mg.fillRect(a-3,b-3,6,6)}const[a,b]=w2m(CRYPT.x,CRYPT.z,cx,cz,sc,W);mg.fillStyle='#b06aff';mg.fillRect(a-3,b-3,6,6)}
   mg.restore();mg.save();mg.translate(W/2,W/2);mg.rotate(-ME.ry+Math.PI);mg.fillStyle='#fff';mg.strokeStyle='#000';mg.lineWidth=1.5;mg.beginPath();mg.moveTo(0,-8);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.stroke();mg.restore();
   mg.fillStyle='#e8c06a';mg.font='700 14px Cinzel,serif';mg.textAlign='center';mg.fillText('N',W/2,14)}
-function drawBigMap(){const c=$('#bigmap'),g=c.getContext('2d'),W=c.width;const inD=ME.pos.x>700;g.fillStyle='#000';g.fillRect(0,0,W,W);let tf;
-  const ovw=MAPVIEW.all&&ME.pos.x<700;
-  if(ovw){/* overzicht: Velmora links, het Drakenrijk rechts, verbonden door de Drakenpas */const s=W/1180,wy=(W-640*s)/2,rx=(640+160)*s,ry=(W-DSZ*s)/2;g.drawImage(mapImg,0,wy,640*s,640*s);g.drawImage(drkImg,rx,ry,DSZ*s,DSZ*s);
-    tf=(x,z)=>inDrk(x)?[rx+(x-(DRK.x-DSZ/2))*s,ry+(z-(DRK.z-DSZ/2))*s]:[(x+320)*s,wy+(z+320)*s];const[a1,b1]=tf(DRK_GATE.x,DRK_GATE.z),[a2,b2]=tf(DRK_EXIT.x,DRK_EXIT.z);
-    g.strokeStyle='#c8a060';g.lineWidth=3;g.setLineDash([8,6]);g.beginPath();g.moveTo(a1,b1);g.bezierCurveTo(a1+50,b1-30,a2-50,b2+30,a2,b2);g.stroke();g.setLineDash([]);
-    g.font='700 13px Cinzel,serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;for(const[t,x,y]of[['Velmora',320*s,wy-8],['Dragon Realm',rx+DSZ*s/2,ry-8],['Dragon Pass',(a1+a2)/2,(b1+b2)/2-14]]){g.strokeText(t,x,y);g.fillText(t,x,y)}
-    $('#mapTitle').textContent='Velmora — overview'}
-  else if(inDrk(ME.pos.x)){const s=W/DSZ;g.drawImage(drkImg,0,0,W,W);tf=(x,z)=>[(x-(DRK.x-DSZ/2))*s,(z-(DRK.z-DSZ/2))*s];$('#mapTitle').textContent='The Dragon Realm';
-    g.font='700 15px Cinzel,serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;for(const[t,u,v]of[['Dragonhunters\' Camp',-138,48],['Mount Dragonrest',0,-24],['Dragon Nests',10,150],['Shrines',122,-62],['Fire Fields',0,-150],['Ash Plains',-95,-110]]){const[a,b]=tf(DRK.x+u,DRK.z+v);g.strokeText(t,a,b);g.fillText(t,a,b)}
-    for(const[x,z,c]of[[DRK_EXIT.x,DRK_EXIT.z,'#6ac8ff'],[VOLC_DOOR.x,VOLC_DOOR.z,'#ff7a30']]){const[a,b]=tf(x,z);g.fillStyle=c;g.fillRect(a-5,b-5,10,10)}}
-  else if(ME.pos.x>1250){const D=ME.pos.x>1700?D3:D2,s=W/(Math.max(D.C,D.R)*D.c);g.drawImage(D.img,(W-D.C*D.c*s)/2,(W-D.R*D.c*s)/2,D.C*D.c*s,D.R*D.c*s);tf=(x,z)=>[(W-D.C*D.c*s)/2+(x-(D.X-D.C/2*D.c))*s,(W-D.R*D.c*s)/2+(z-(D.Z-D.R/2*D.c))*s];$('#mapTitle').textContent=D.name}
-  else if(inD){const s=W/(Math.max(DC,DR)*DUN.c);g.drawImage(dunImg,(W-DC*DUN.c*s)/2,(W-DR*DUN.c*s)/2,DC*DUN.c*s,DR*DUN.c*s);tf=(x,z)=>[(W-DC*DUN.c*s)/2+(x-(DUN.x-DC/2*DUN.c))*s,(W-DR*DUN.c*s)/2+(z-(DUN.z-DR/2*DUN.c))*s];$('#mapTitle').textContent='Crypt of Kaal-Morath'}
-  else{g.drawImage(mapImg,0,0,W,W);const s=W/640;tf=(x,z)=>[(x+320)*s,(z+320)*s];$('#mapTitle').textContent='Map of Velmora';
-    g.font='700 15px Cinzel,serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;for(const[t,x,z]of[['Ashen Hills',205,-215],['Silverbrook',0,-62],['Twilight Wood',-30,-150],['Bandit Heath',165,-140],['Bone Hills',-170,-255],['Mirror Lake',-150,125],['Golden Fields',10,178],['Silverdale',120,60]]){const[a,b]=tf(x,z);g.strokeText(t,a,b);g.fillText(t,a,b)}
-    {const[a,b]=tf(DRK_GATE.x,DRK_GATE.z);g.fillStyle='#ff5a1a';g.fillRect(a-5,b-5,10,10);g.strokeText('Dragon Pass',a-34,b-10);g.fillStyle='#fff';g.fillText('Dragon Pass',a-34,b-10)}
-    const[a,b]=tf(CRYPT.x,CRYPT.z);g.fillStyle='#b06aff';g.fillRect(a-5,b-5,10,10);const[c2,d2_]=tf(CAVE.x,CAVE.z);g.fillStyle='#ff7a30';g.fillRect(c2-5,d2_-5,10,10)}
-  for(const n of NPCOBJ){const[a,b]=tf(n.x,n.z);if(n.mark==='!'||n.mark==='?'){g.fillStyle='#ffd100';g.font='800 18px Cinzel,serif';g.fillText(n.mark,a,b+6)}}
-  for(const r of REMOTES.values()){const[a,b]=tf(r.x,r.z);g.fillStyle='#5ab0ff';g.beginPath();g.arc(a,b,4,0,7);g.fill()}
-  const[px,pz]=tf(ME.pos.x,ME.pos.z);g.save();g.translate(px,pz);g.rotate(-ME.ry+Math.PI);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=2;g.beginPath();g.moveTo(0,-11);g.lineTo(8,9);g.lineTo(0,4);g.lineTo(-8,9);g.closePath();g.fill();g.stroke();g.restore()}
 let zoneName='';function updZone(force){const z=zoneAt(ME.pos.x,ME.pos.z);if(z!==zoneName||force){const changed=z!==zoneName;zoneName=z;$('#zone').textContent=z;if(changed&&S.mode==='play'){banner(z,z==='Crypt of Kaal-Morath'?'Recommended: level 8+ and a group':z==='Heart of the Volcano'?'Recommended: level 18–20 · Vyraxion the Ash Queen awaits':z==='Ash Plains'||z==='Dragonhunters\' Camp'?'The Dragon Realm · level 13–20':z==='Dragon Pass'?'To the Dragon Realm (level 13+)':z==='Silverbrook'?'A safe haven':z==='Arena of Silverbrook'?'PvP is always active here — whoever opens the chest gets the AK-47':'',2.2)}}}

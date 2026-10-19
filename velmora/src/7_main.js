@@ -164,10 +164,11 @@ function updCamera(dt){
   /* camera nooit onder het wateroppervlak of de grond */{const cx=camera.position.x,cz=camera.position.z;let minY=groundH(cx,cz)+.5;if(Math.hypot(cx-LAKE.x,cz-LAKE.z)<LAKE.r*1.3)minY=Math.max(minY,water.position.y+.7);if(camera.position.y<minY)camera.position.y=minY}
   const gh=groundH(camera.position.x,camera.position.z)+.6;if(camera.position.y<gh)camera.position.y=gh;camera.lookAt(camTarget)}
 let uiT=0,saveT=0,mmT=0,buffT=0;
-function updHud(dt){if(isTouch&&(updHud._k=(updHud._k|0)+1)%10===0)syncPop();
+let mapT=0;function updHud(dt){if(isTouch&&(updHud._k=(updHud._k|0)+1)%10===0)syncPop();
   setBar($('#pHp'),P.hp,ST.maxhp);const mp=$('#pMp');const mc='bar '+RES_COL[ST.res];if(mp.className!==mc)mp.className=mc;setBar(mp,P.mp,ST.maxmp);if($('#pLvl').textContent!=String(P.level))$('#pLvl').textContent=P.level;
   setBar($('#xpbar'),P.xp,xpNeed(P.level),P.level>=MAXLVL?'Maximum level':'Experience '+P.xp+' / '+xpNeed(P.level));
   updTargetFrame();updBar();
+  if(!$('#pMap').hidden){mapT-=dt;if(mapT<=0){mapT=1/30;drawBigMap()}}
   mmT-=dt;if(mmT<=0){mmT=.1;drawMini();netStatus();updZone();if(GROUP)refreshPartyBars()}
   buffT-=dt;if(buffT<=0){buffT=5;const before=JSON.stringify(P.buffs||{});const fr=P.hp/ST.maxhp;calcStats();if(JSON.stringify(P.buffs||{})!==before)P.hp=Math.round(ST.maxhp*fr);refreshBuffs();if(!$('#pLife').hidden){energyTick();const eb=$('#enBar');if(eb)setBar(eb,P.energy,maxEnergy(),'Energy '+Math.floor(P.energy)+' / '+maxEnergy())}}
   if(toastT>0){toastT-=dt;if(toastT<=0)$('#toast').style.opacity=0}if(bannerT>0){bannerT-=dt;if(bannerT<=0)$('#banner').style.opacity=0}}

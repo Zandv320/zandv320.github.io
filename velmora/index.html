@@ -172,7 +172,13 @@ kbd{font:700 12px var(--ui);border:1px solid var(--gold3);background:#1d1812;pad
 .ltabs{display:flex;gap:6px;margin:8px 0}.ltabs .opt{flex:1;min-height:36px}.rc{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2c241a}.rc canvas{width:38px;height:38px;border:1px solid var(--gold3);flex:none}.rci{flex:1;font-size:13px}.rci small{color:var(--gold)}.ins{font-size:12px}.ins .ok,.ins.ok{color:#7dff8a}.ins .no{color:#ff8a8a}.rcb{display:flex;flex-direction:column;gap:4px}.rcb .btn{min-height:30px;padding:3px 10px;font-size:12px}
 #fishBar{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);width:300px;height:26px;background:#120f0c;border:2px solid var(--gold2);pointer-events:none}#fishZone{position:absolute;top:0;bottom:0;background:linear-gradient(#5bea6b,#22862f)}#fishMark{position:absolute;top:-4px;bottom:-4px;width:4px;margin-left:-2px;background:#fff;box-shadow:0 0 6px #fff}#fishBar span{position:absolute;left:0;right:0;top:30px;text-align:center;font-weight:800;text-shadow:0 1px 2px #000}
 #buffs{display:flex;gap:4px;flex-wrap:wrap}.buff{font-size:10px;padding:0 4px;border:1px solid #7a5a26;color:#ffd38a;background:rgba(0,0,0,.4)}.buff.elixir{border-color:#7a2a2a;color:#ff9a8a}
-#pMap{left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw)}
+#pMap{left:50%;top:50%;transform:translate(-50%,-50%);width:min(860px,96vw);display:flex;flex-direction:column}
+#pMap:not([hidden]){display:flex}
+#bigmap{width:100%;height:min(66vh,620px);display:block;border-radius:6px;border:2px solid #6a4a22;box-shadow:inset 0 0 18px rgba(0,0,0,.5);touch-action:none;cursor:grab;background:#2a1f14}
+#bigmap:active{cursor:grabbing}
+#pMap h3{display:flex;align-items:center;gap:8px}.mapbtns{margin-left:auto;display:flex;gap:4px}.mapbtns .btn{font-size:12px;padding:4px 10px;min-height:0;flex:0 0 auto}.mapbtns .btn.on{background:#e8c06a;color:#3a2510!important}
+.maplg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:6px;align-items:center}.maplg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;border:1px solid #fff;vertical-align:-1px}.maplg i.qa{border-radius:50%;border:2px dashed #ffbe1e;background:rgba(255,200,40,.2)}.maplg .hint{margin-left:auto;opacity:.8}
+@media (max-width:560px){#pMap h3{gap:4px;font-size:15px}#pMap h3 .lbl{display:none}.mapbtns{gap:3px}.mapbtns .btn{padding:4px 9px;font-size:14px}#mapTitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}#pMap h3 .x{flex:none}}
 #bigmap{width:100%;aspect-ratio:1;display:block;border:1px solid var(--gold2)}
 #pMenu{left:50%;top:50%;transform:translate(-50%,-50%);width:min(320px,92vw);display:flex;flex-direction:column;gap:8px}
 #pMenu .btn{width:100%}
@@ -253,6 +259,7 @@ body.touch.portrait .tb[data-role=tgt]{left:4px}body.touch.portrait .tb[data-rol
 body.touch.portrait #tJump{left:134px;width:46px;height:46px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 164px)}
 body.touch.portrait #tdrawer{right:64px;bottom:174px;flex-wrap:wrap;max-width:calc(100vw - 100px)}
 body.touch.portrait .panel.frame,body.touch.portrait #pBag,body.touch.portrait #pChar{width:calc(100vw - 16px);max-width:none}
+body.touch.portrait #bigmap{height:min(58vh,calc(100vh - 230px))}body.touch:not(.portrait) #bigmap{height:calc(100vh - 110px)}body.touch .maplg .hint{display:none}
 body.touch.portrait .grid{grid-template-columns:repeat(6,1fr)}
 
 /* fullscreen hint (iPhone: only via the home screen) */
@@ -396,7 +403,7 @@ body.touch #pBag,body.touch #pChar,body.touch #pQuest,body.touch #pLife,body.tou
 body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(400px,62vw)}body.touch #pChar{width:min(420px,66vw)}
 @media (max-height:500px){body.touch #tframe{left:50%;top:max(8px,env(safe-area-inset-top));width:min(260px,36vw)}#joy{width:132px;height:132px}#tJump{left:calc(max(18px,env(safe-area-inset-left)) + 142px)}body.touch #tracker.show{top:calc(max(8px,env(safe-area-inset-top)) + 64px)}body.touch #feed{top:calc(max(8px,env(safe-area-inset-top)) + 90px)}}
 
-#mapAll{margin-left:auto;font-size:12px;padding:4px 12px;min-height:0;flex:0 0 auto}
+
 /* talenten */
 #pTalent{left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,96vw)}
 #pTalent h3 .tpts{margin-left:auto;font-size:14px;font-family:var(--body,inherit);color:#fff3d6;background:rgba(40,20,6,.55);border-radius:12px;padding:2px 10px;text-shadow:none}
@@ -471,7 +478,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
   <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
   <div id="pTalent" class="panel frame" hidden><h3><span>Talents</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
   <div id="pQuest" class="panel frame" hidden><h3>Quest log <button class="x" data-close>×</button></h3><div id="qList"></div></div>
-  <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Map of Velmora</span><button class="btn alt" id="mapAll">Overview</button><button class="x" data-close>×</button></h3><canvas id="bigmap" width="560" height="560"></canvas></div>
+  <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Map of Velmora</span><span class="mapbtns"><button class="btn alt" id="mapFollow" title="Keep me in the middle">◎<span class="lbl"> Follow</span></button><button class="btn alt" id="mapAll" title="Show the whole map">⤢<span class="lbl"> World</span></button><button class="btn alt" id="mapOut" aria-label="Zoom out">−</button><button class="btn alt" id="mapIn" aria-label="Zoom in">+</button></span><button class="x" data-close>×</button></h3><canvas id="bigmap" width="720" height="560"></canvas><div class="maplg"><span><b style="color:#ffd100">!</b> quest</span><span><i style="background:#ffd34d"></i>person</span><span><i style="background:#40e090"></i>group</span><span><i style="background:#4aa0ff"></i>player</span><span><i class="qa"></i>quest area</span><span><i style="background:#d23a2a"></i>monster</span><span class="hint">Drag to move · scroll or pinch to zoom</span></div></div>
   <div id="pLife" class="panel frame" hidden><h3>Crafting <button class="x" data-close>×</button></h3><div id="lifeBody"></div></div>
   <div id="fishBar" hidden><div id="fishZone"></div><div id="fishMark"></div><span>Strike in the green zone!</span></div>
   <div id="pDialog" class="panel" hidden><h3><span id="dName"></span><button class="x" data-close>×</button></h3><div id="dBody"></div></div>
