@@ -114,6 +114,7 @@ function meteorWarnFx(x,z){const y=groundH(x,z);decal(x,z,{cell:FXC.circle,size:
 const AMBIENT={smoke:[],flames:[],t:0};
 function ambientInit(){AMBIENT.init=1;const v=new THREE.Vector3();
   for(const f of flames){let a=f,mob=false;while(a){if(a.userData&&a.userData.ent){mob=true;break}a=a.parent}if(mob||!f.parent)continue;f.updateWorldMatrix(true,false);f.getWorldPosition(v);const s=(f.geometry.parameters&&f.geometry.parameters.radius||.16)/.16;AMBIENT.flames.push({x:v.x,y:v.y,z:v.z,s:Math.min(2.5,s*f.getWorldScale(new THREE.Vector3()).x)})}
+  for(const s of TOWN_SMOKE)AMBIENT.smoke.push(s);
   for(const h of HOUSES){const o=h.model||(h.g.visible?h.g:null);if(!o)continue;o.updateWorldMatrix(true,true);const b=new THREE.Box3().setFromObject(o);if(!isFinite(b.max.y))continue;
     const rot=h.rot?Math.PI/2:0;const ox=h.w*.25,oz=h.d*.15;AMBIENT.smoke.push({x:h.x+Math.cos(rot)*ox+Math.sin(rot)*oz,y:b.max.y-.3,z:h.z-Math.sin(rot)*ox+Math.cos(rot)*oz})}}
 function ambientFx(dt,cx,cz){if(!AMBIENT.init){if(S.mode!=='play')return;ambientInit()}AMBIENT.t+=dt;if(AMBIENT.t<.12)return;const step=AMBIENT.t;AMBIENT.t=0;const q=GFX.q==='laag'?.35:GFX.q==='middel'?.7:1;

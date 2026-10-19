@@ -51,7 +51,7 @@ const monXp=(t,l)=>{const d=l-P.level;if(d<=-9)return 0;const base=(l*10+35)*(t.
 function genSpawns(){const r=mulberry(4242),L=[];let n=0;
   const area=(type,count,cx,cz,rad,ok)=>{for(let i=0,tr=0;i<count&&tr<800;tr++){const a=r()*6.28,d=Math.sqrt(r())*rad,x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d;if(ok&&!ok(x,z))continue;const t=MON[type];L.push({id:'m'+(n++),type,lvl:t.lv[0]+Math.floor(r()*(t.lv[1]-t.lv[0]+1)),x,z});i++}};
   area('ever',9,6,128,34,(x,z)=>pathDist(x,z)>2&&z>96);
-  area('wolf',13,-4,-102,42,(x,z)=>pathDist(x,z)>5&&z<-64);
+  area('wolf',13,-4,-108,42,(x,z)=>pathDist(x,z)>5&&z<-64&&Math.hypot(x,z)>TOWN.wall+14);
   area('spin',11,-100,-196,38,(x,z)=>z<-152&&pathDist(x,z)>4&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>45);
   area('rover',9,CAMP.x,CAMP.z,19,(x,z)=>Math.hypot(x-CAMP.x,z-CAMP.z)>4);
   L.push({id:'m'+(n++),type:'grisk',lvl:8,x:CAMP.x+3,z:CAMP.z+4});
@@ -67,7 +67,7 @@ function removeMon(m){scene.remove(m.rig.g);const i=MONS.indexOf(m);if(i>=0)MONS
 for(const sp of genSpawns())makeMon(sp);
 for(const n of NPCS){const o={race:n.look.dwarf?'dwerg':'mens',...n.look};const rig=window.__NOGLTF?buildHumanoid(o):buildGltfNpc(n.id,n.look);const y=groundH(n.x,n.z);rig.g.position.set(n.x,y,n.z);rig.g.rotation.y=n.ry;scene.add(rig.g);const e={kind:'npc',...n,y,rig,def:n};rig.g.userData.ent=e;NPCOBJ.push(e);addCol(n.x,n.z,.6)}
 /* town guards (ambient) */
-const GUARDS=[];for(const[x,z,a]of[[-4,-52,0],[4,-52,0],[-3,50,Math.PI],[44,-24,1.1],[-50,20,-1.9]]){const gl={race:'mens',skin:0xd9a98a,hair:0x3b2414,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,pads:0x8a9098,shield:1};const rig=window.__NOGLTF?buildHumanoid(gl):buildGltfNpc('guard',gl);rig.g.position.set(x,groundH(x,z),z);rig.g.rotation.y=a+Math.PI;scene.add(rig.g);GUARDS.push(rig);addCol(x,z,.6)}
+const GUARDS=[];for(const[x,z,a]of TOWN_GATES.flatMap((g,i)=>(i%2?[1]:[-1,1]).map(sd=>{const a=g+sd*.112,r=TOWN.wall-5.5;return[Math.cos(a)*r,Math.sin(a)*r,Math.atan2(Math.cos(g),Math.sin(g))-Math.PI]})).filter(([x,z])=>pathDist(x,z)>4.6)){const gl={race:'mens',skin:0xd9a98a,hair:0x3b2414,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,pads:0x8a9098,shield:1};const rig=window.__NOGLTF?buildHumanoid(gl):buildGltfNpc('guard',gl);rig.g.position.set(x,groundH(x,z),z);rig.g.rotation.y=a+Math.PI;scene.add(rig.g);GUARDS.push(rig);addCol(x,z,.6)}
 
 /* ---------- fx ---------- */
 const FX=[],PROJ=[];

@@ -66,23 +66,27 @@ function mesh(geo,m,x=0,y=0,z=0,par=null,cast=true,recv=true){const o=new THREE.
 /* ---------- height field ---------- */
 const WSIZE=640,SEG=200,CELL=WSIZE/SEG,HN=SEG+1;
 const LAKE={x:-150,z:60,r:46};
-const PATHS=[[[0,60],[40,72],[84,80],[150,88],[228,100],[262,104]],[[0,0],[0,-60],[-12,-120],[-80,-178],[-158,-204]],[[0,0],[62,-32],[128,-88],[176,-140],[200,-168]],[[0,0],[0,70],[8,140]],[[0,0],[-62,22],[-104,44]]];
+const PATHS=[[[0,86],[44,84],[84,80],[150,88],[228,100],[262,104]],[[0,0],[0,-60],[-12,-120],[-80,-178],[-158,-204]],[[0,0],[62,-32],[128,-88],[176,-140],[200,-168]],[[0,0],[0,70],[8,140]],[[0,0],[-62,22],[-104,44]],
+  /* arena road (east gate) and the lane to the Artisans' Yard */[[0,0],[62,12],[84,30],[100,38]],[[-84,33],[-96,14],[-100,8]]];
 function segDist(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-ax-dx*t,pz-az-dz*t)}
 function pathDist(x,z){let m=1e9;for(const p of PATHS)for(let i=0;i<p.length-1;i++){const d=segDist(x,z,p[i][0],p[i][1],p[i+1][0],p[i+1][1]);if(d<m)m=d}return m}
-const CRAFT={x:-78,z:-4,r:15};/* Artisans' Yard: smithy, tannery, loom and sawmill west of town */
-const ARENA={x:92,z:34,r:22};const TOWN={x:0,z:0,r:50},CAMP={x:150,z:-100,r:26},CRYPT={x:-172,z:-222},FARM={x:10,z:125},CAVE={x:206,z:-182};
+const CRAFT={x:-108,z:-6,r:15};/* Artisans' Yard: smithy, tannery, loom and sawmill west of town */
+const ARENA={x:124,z:38,r:22};const TOWN={x:0,z:0,r:74,wall:74},CAMP={x:150,z:-100,r:26},CRYPT={x:-172,z:-222},FARM={x:10,z:125},CAVE={x:206,z:-182};
 function baseH(x,z){
   let h=(fbm(x*.011+3.1,z*.011+7.7)-.5)*16+(fbm(x*.045,z*.045)-.5)*3;
   h+=Math.max(0,1-Math.hypot(x+180,z+240)/95)**1.3*22;
   h+=Math.max(0,1-Math.hypot(x-200,z+190)/90)*14;
   const e=Math.max(Math.abs(x),Math.abs(z));if(e>235)h+=(e-235)*.26;
   return h}
-const FLAT=[{x:0,z:0,r:56,h:1.2},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:219,z:100,r:18},{x:CRAFT.x,z:CRAFT.z,r:CRAFT.r+5},{x:ARENA.x,z:ARENA.z,r:34}];
+/* park pond inside Silverbrook (south-west) */
+const POND={x:-38,z:46,r:8.5};function pondDist(x,z){return Math.max(0,Math.hypot((x-POND.x)/1.25,z-POND.z)-POND.r)}
+const FLAT=[{x:0,z:0,r:104,h:1.2,in:80},{x:CAMP.x,z:CAMP.z,r:34},{x:CRYPT.x,z:CRYPT.z+4,r:20},{x:FARM.x,z:FARM.z,r:52},{x:CAVE.x-4,z:CAVE.z+10,r:22},{x:219,z:100,r:18},{x:CRAFT.x,z:CRAFT.z,r:CRAFT.r+5},{x:ARENA.x,z:ARENA.z,r:34}];
 for(const f of FLAT)if(f.h==null)f.h=baseH(f.x,f.z);
 function rawH(x,z){
   let h=baseH(x,z);
   const pd=pathDist(x,z);if(pd<9)h=lerp(h*.55+.3,h,smooth(pd/9));
-  for(const f of FLAT){const d=Math.hypot(x-f.x,z-f.z);if(d<f.r)h=lerp(f.h,h,smooth(clamp((d-f.r*.65)/(f.r*.35),0,1)))}
+  for(const f of FLAT){const d=Math.hypot(x-f.x,z-f.z);if(d<f.r){const i0=f.in??f.r*.65;h=lerp(f.h,h,smooth(clamp((d-i0)/(f.r-i0),0,1)))}}
+  {const pd2=pondDist(x,z);if(pd2<3)h=lerp(h,-.9,smooth(clamp(1-pd2/3,0,1)))}
   const ld=Math.hypot(x-LAKE.x,z-LAKE.z)/LAKE.r;if(ld<1.5)h=lerp(-4.5,h,smooth(clamp((ld-.5)/1,0,1)));
   return h}
 const HM=new Float32Array(HN*HN);
@@ -99,7 +103,7 @@ function zoneAt(x,z){
   if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Ashen Hills';if(x>196&&Math.abs(z-100)<26)return'Dragon Pass';
   if(Math.hypot(x-ARENA.x,z-ARENA.z)<ARENA.r+8)return'Arena of Silverbrook';
   if(Math.hypot(x-CRAFT.x,z-CRAFT.z)<CRAFT.r+4)return"Artisans' Yard";
-  if(Math.hypot(x,z)<58)return'Silverbrook';
+  if(Math.hypot(x,z)<TOWN.wall+4)return'Silverbrook';
   if(Math.hypot(x-CRYPT.x,z-CRYPT.z)<70)return'Bone Hills';
   if(Math.hypot(x-LAKE.x,z-LAKE.z)<75)return'Mirror Lake';
   if(x>105&&z<-20)return'Bandit Heath';
@@ -111,7 +115,7 @@ function zoneAt(x,z){
 const terrain=(()=>{
   const geo=new THREE.PlaneGeometry(WSIZE,WSIZE,SEG,SEG);geo.rotateX(-Math.PI/2);
   const pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color(),t=new THREE.Color();
-  const G1=new THREE.Color(0x5e8f36),G2=new THREE.Color(0x86ad48),F1=new THREE.Color(0x3c5e26),F2=new THREE.Color(0x4f5f2a),DIRT=new THREE.Color(0x8d7351),SAND=new THREE.Color(0xc8b27e),ROCK=new THREE.Color(0x77736a),HEATH=new THREE.Color(0x9c9a52),COB=new THREE.Color(0x8e877a),DEAD=new THREE.Color(0x5d5a40),FIELD=new THREE.Color(0x7a6a3a),ASH=new THREE.Color(0x5a4a42);
+  const PONDB=new THREE.Color(0x24463e),MUD=new THREE.Color(0x6f6a45),G1=new THREE.Color(0x5e8f36),G2=new THREE.Color(0x86ad48),F1=new THREE.Color(0x3c5e26),F2=new THREE.Color(0x4f5f2a),DIRT=new THREE.Color(0x8d7351),SAND=new THREE.Color(0xc8b27e),ROCK=new THREE.Color(0x77736a),HEATH=new THREE.Color(0x9c9a52),COB=new THREE.Color(0x8e877a),DEAD=new THREE.Color(0x5d5a40),FIELD=new THREE.Color(0x7a6a3a),ASH=new THREE.Color(0x5a4a42);
   for(let k=0;k<pos.count;k++){
     const i=Math.floor(k/HN),j=k%HN,x=-WSIZE/2+j*CELL,z=-WSIZE/2+i*CELL,h=HM[k];pos.setY(k,h);
     const n=fbm(x*.05,z*.05),n2=vnoise(x*.3,z*.3);
@@ -122,15 +126,15 @@ const terrain=(()=>{
     if(Math.abs(x-FARM.x+5)<46&&z>92&&z<165&&((Math.floor((x+200)/9))%2===0))c.lerp(FIELD,.65);
     const hx=HM[i*HN+Math.min(j+1,SEG)]-h,hz=HM[Math.min(i+1,SEG)*HN+j]-h,slope=Math.hypot(hx,hz)/CELL;
     if(slope>.55||h>26)c.lerp(ROCK,clamp((slope-.45)*2.5+(h>26?(h-26)/10:0),0,1));
-    const pd=pathDist(x,z);if(pd<4.2)c.lerp(DIRT,smooth(clamp(1-(pd-2)/2.2,0,1))*.9);
+    const pd=pathDist(x,z);if(pd<4.2)c.lerp(Math.hypot(x,z)<TOWN.wall?COB:DIRT,smooth(clamp(1-(pd-2)/2.2,0,1))*.9);
     if(h<.2&&Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.6)c.lerp(SAND,clamp((.2-h)/1.2,0,1));
-    const td=Math.hypot(x,z);if(td<20)c.lerp(COB,smooth(clamp((20-td)/3,0,1)));
+    const td=Math.hypot(x,z);if(td<24)c.lerp(COB,smooth(clamp((24-td)/3,0,1)));if(td<TOWN.wall){const pdd=pondDist(x,z);if(pdd<2.5)c.lerp(MUD,smooth(clamp(1-pdd/2.5,0,1))*.6);if(h<.5)c.lerp(PONDB,clamp((.5-h)/.8,0,1))}
     const jit=.92+hash(i,j)*.16;col[k*3]=c.r*jit;col[k*3+1]=c.g*jit;col[k*3+2]=c.b*jit}
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.computeVertexNormals();
   const tex=TEX.paint.clone();tex.needsUpdate=true;tex.repeat.set(36,36);
   const m=new THREE.Mesh(geo,new THREE.MeshToonMaterial({vertexColors:true,map:tex,bumpMap:tex,bumpScale:.08,gradientMap:RAMP}));m.receiveShadow=true;scene.add(m);return m})();
 /* plaza cobbles */
-{const g=new THREE.CircleGeometry(19,48);g.rotateX(-Math.PI/2);mesh(g,mat(0xc8c0b0,{tex:'cobble',rx:15,ry:15}),0,1.23,0,scene,false,true)}
+{const g=new THREE.CircleGeometry(23,56);g.rotateX(-Math.PI/2);mesh(g,mat(0xc8c0b0,{tex:'cobble',rx:18,ry:18}),0,1.23,0,scene,false,true)}
 /* water: eigen shader met golvende normalen, fresnel-reflectie van de lucht, zonneglans en schuim langs de oever */
 const waterMat=new THREE.ShaderMaterial({transparent:true,fog:true,
   uniforms:THREE.UniformsUtils.merge([THREE.UniformsLib.fog,{time:{value:0},deep:{value:new THREE.Color(0x1d4f6e)},shallow:{value:new THREE.Color(0x3f8fb0)},skyCol:{value:new THREE.Color(0xcfe2f2)},sunDir:{value:new THREE.Vector3(.5,.8,.3)},sunCol:{value:new THREE.Color(1,.9,.7)},night:{value:0},radius:{value:1}}]),
@@ -184,7 +188,7 @@ function addFlame(par,x,y,z,s=1,color=0xffa030){const f=mesh(new THREE.ConeGeome
 /* ---------- vegetation ---------- */
 const RV=mulberry(777);
 const pineT=[],oakT=[],rockT=[],grassT=[],flowerT=[],deadT=[];
-function okSpot(x,z,pathClear=6){return pathDist(x,z)>pathClear&&Math.hypot(x-CRAFT.x,z-CRAFT.z)>CRAFT.r+6&&Math.hypot(x-ARENA.x,z-ARENA.z)>36&&Math.hypot(x-CAVE.x,z-CAVE.z)>26&&Math.hypot(x,z)>60&&Math.hypot(x-CAMP.x,z-CAMP.z)>32&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>24&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.15&&!(Math.abs(x-FARM.x)<56&&Math.abs(z-FARM.z)<44)}
+function okSpot(x,z,pathClear=6){return pathDist(x,z)>pathClear&&Math.hypot(x-CRAFT.x,z-CRAFT.z)>CRAFT.r+6&&Math.hypot(x-ARENA.x,z-ARENA.z)>36&&Math.hypot(x-CAVE.x,z-CAVE.z)>26&&Math.hypot(x,z)>TOWN.wall+12&&Math.hypot(x-CAMP.x,z-CAMP.z)>32&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>24&&Math.hypot(x-LAKE.x,z-LAKE.z)>LAKE.r*1.15&&!(Math.abs(x-FARM.x)<56&&Math.abs(z-FARM.z)<44)}
 for(let i=0;i<5200;i++){const x=rand(-250,250),z=rand(-262,250);const x2=-250+RV()*500,z2=-262+RV()*512;
   if(inForest(x2,z2)&&okSpot(x2,z2)&&RV()<.62)pineT.push([x2,z2,.8+RV()*.7,RV()*6.28]);
   else if(!inForest(x2,z2)&&okSpot(x2,z2,5)&&RV()<.09&&Math.hypot(x2-CRYPT.x,z2-CRYPT.z)>60)oakT.push([x2,z2,.8+RV()*.6,RV()*6.28]);
@@ -241,41 +245,94 @@ function house(x,z,w,d,h,rot,roof=0x8a3b2a,wall=0xe8dcc0,par=scene){
   if(rot)addBox(x,z,d+.6,w+.6);else addBox(x,z,w+.6,d+.6);
   return g}
 function tower(x,z,r,h,roof=0x2a3f6a){const g=new THREE.Group();g.position.set(x,groundH(x,z),z);scene.add(g);mesh(new THREE.CylinderGeometry(r,r*1.1,h,10),mat(0x9a948a,{tex:'brick',rx:3,ry:h/3}),0,h/2,0,g);mesh(new THREE.ConeGeometry(r*1.35,r*2.2,10),mat(roof,{tex:'shingle',rx:4,ry:2}),0,h+r*1.1,0,g);addCol(x,z,r+.2);return g}
-/* town Zilverbron */
-house(-24,-24,10,8,6,0,0x8a3b2a);house(23,-27,9,8,5.5,1,0x3a5a8a);house(-27,-4,14,10,7,1,0x7a4a2a,0xf0e2c4);
-house(-22,32,10,8,5.5,0,0x3a5a8a);house(21,32,9,9,6,0,0x8a3b2a);house(-16,-40,8,8,5,0,0x5a6a3a);house(16,-41,9,7,5,1,0x8a3b2a);house(34,-6,8,7,5,1,0x5a6a3a);house(-38,16,8,8,5,0,0x8a3b2a);
-/* chapel */
-{const g=house(31,13,9,15,8,1,0x3d4a6a,0xe8e4da);g.userData.keep=1;const t=new THREE.Group();t.position.set(0,0,-6);g.add(t);mesh(new THREE.BoxGeometry(4,15,4),mat(0xd8d2c4,{tex:'brick',rx:1.5,ry:5}),0,7.5,0,t);mesh(new THREE.ConeGeometry(3.4,6,4).rotateY(Math.PI/4),mat(0x3d4a6a,{tex:'shingle',rx:3,ry:2}),0,18,0,t);mesh(new THREE.BoxGeometry(.3,2.2,.3),mat(0xffd76a,{m:.8,r:.3,e:0x8a6a10,ei:.4}),0,22,0,t);mesh(new THREE.BoxGeometry(1.3,.3,.3),mat(0xffd76a,{m:.8,r:.3,e:0x8a6a10,ei:.4}),0,22.4,0,t)}
-/* inn sign */
-{const s=mesh(new THREE.BoxGeometry(2.2,1.1,.12),mat(0x6a4422,{tex:'wood'}),-20.6,4.2,-4,scene);s.rotation.y=Math.PI/2;mesh(new THREE.CylinderGeometry(.5,.35,.6,10),mat(0xffd34d,{m:.9,r:.3}),-20.5,4.2,-4,scene)}
-/* fountain */
-{const g=new THREE.Group();g.position.set(0,1.2,0);scene.add(g);mesh(new THREE.CylinderGeometry(4.2,4.5,1,20),mat(0xc8c0b0,{tex:'brick',rx:8,ry:.5,flat:false}),0,.5,0,g);mesh(new THREE.TorusGeometry(4.2,.22,6,32).rotateX(Math.PI/2),mat(0xd8d0c0),0,1,0,g);
+/* fountain (procedural fallback; replaced by the Kenney fountain in buildTown) */
+{PROC='fountain';const g=new THREE.Group();g.position.set(0,1.2,0);scene.add(g);mesh(new THREE.CylinderGeometry(4.2,4.5,1,20),mat(0xc8c0b0,{tex:'brick',rx:8,ry:.5,flat:false}),0,.5,0,g);mesh(new THREE.TorusGeometry(4.2,.22,6,32).rotateX(Math.PI/2),mat(0xd8d0c0),0,1,0,g);
   const w=mesh(new THREE.CylinderGeometry(3.7,3.7,.2,20),new THREE.MeshStandardMaterial({color:0x5fb0d8,roughness:.05,metalness:.2,transparent:true,opacity:.85}),0,.85,0,g,false);
-  mesh(new THREE.CylinderGeometry(.5,.8,3,8),mat(0xd8d0c0),0,2,0,g);mesh(new THREE.CylinderGeometry(1.6,.4,.5,12),mat(0xd8d0c0),0,3.3,0,g);mesh(new THREE.SphereGeometry(.45,10,8),mat(0xe0e8f0,{m:.8,r:.2}),0,3.9,0,g);addCol(0,0,4.6);void w}
-const fountainDrops=(()=>{const n=160,g=new THREE.BufferGeometry(),p=new Float32Array(n*3),v=[];for(let i=0;i<n;i++){v.push({t:Math.random()*1.2,a:Math.random()*6.28,s:rand(1.2,2.2)})}g.setAttribute('position',new THREE.BufferAttribute(p,3));const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xcfefff,size:.18,transparent:true,opacity:.8}));scene.add(pts);return{g,p,v,n}})();
-/* walls with gaps at the roads */
-{const gaps=PATHS.filter(p=>!p[0][0]&&!p[0][1]).map(p=>Math.atan2(p[1][1],p[1][0]));const wm=mat(0xa49c8e,{tex:'brick',rx:2,ry:1.2});
-  for(let a=0;a<Math.PI*2;a+=Math.PI/48){if(gaps.some(g=>Math.abs(angDiff(a,g))<.13))continue;const x=Math.cos(a)*52,z=Math.sin(a)*52,y=groundH(x,z);const s=mesh(new THREE.BoxGeometry(3.6,3.4,1.2),wm,x,y+1.5,z,scene);s.rotation.y=-a+Math.PI/2;
-    if(Math.round(a/(Math.PI/48))%2===0){const c=mesh(new THREE.BoxGeometry(1.2,.8,1.3),wm,x,y+3.6,z,scene);c.rotation.y=-a+Math.PI/2}addCol(x,z,1.8)}
-  for(const g of gaps)for(const s of[-1,1]){const a=g+s*.16;tower(Math.cos(a)*52,Math.sin(a)*52,2.2,7.5,0x8a3b2a);addLight(Math.cos(g)*52,groundH(Math.cos(g)*52,Math.sin(g)*52)+5,Math.sin(g)*52,0xffa040,30,22)}}
-/* lamps */
+  mesh(new THREE.CylinderGeometry(.5,.8,3,8),mat(0xd8d0c0),0,2,0,g);mesh(new THREE.CylinderGeometry(1.6,.4,.5,12),mat(0xd8d0c0),0,3.3,0,g);mesh(new THREE.SphereGeometry(.45,10,8),mat(0xe0e8f0,{m:.8,r:.2}),0,3.9,0,g);addCol(0,0,5.2);void w;PROC=null}
+let FOUNT_Y=4.1;const fountainDrops=(()=>{const n=160,g=new THREE.BufferGeometry(),p=new Float32Array(n*3),v=[];for(let i=0;i<n;i++){v.push({t:Math.random()*1.2,a:Math.random()*6.28,s:rand(1.2,2.2)})}g.setAttribute('position',new THREE.BufferAttribute(p,3));const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xcfefff,size:.18,transparent:true,opacity:.8}));scene.add(pts);return{g,p,v,n}})();
 function lamp(x,z){const y=groundH(x,z);mesh(new THREE.CylinderGeometry(.08,.12,3.6,6),mat(0x2a2a2a,{m:.6,r:.4}),x,y+1.8,z);{const lm=mat(0xffd27a,{e:0xffa030,ei:1.6});NIGHT_MATS.add(lm);mesh(new THREE.BoxGeometry(.3,.4,.3),lm,x,y+3.7,z,scene,false)}mesh(new THREE.ConeGeometry(.3,.3,4).rotateY(Math.PI/4),mat(0x222222,{m:.6,r:.4}),x,y+4.05,z,scene,false);addLight(x,y+3.8,z,0xffb050,22,18)}
-lamp(9,9);lamp(-9,9);lamp(9,-9);lamp(-9,-9);
-/* market stalls */
 function stall(x,z,rot,col){const g=new THREE.Group();g.position.set(x,groundH(x,z),z);g.rotation.y=rot;scene.add(g);STALLS.push({g,x,z,rot,i:STALLS.length});const wd=mat(0x6a4a2a,{tex:'wood'});
   for(const sx of[-1,1])for(const sz of[-1,1])mesh(new THREE.BoxGeometry(.18,2.6,.18),wd,sx*1.6,1.3,sz*1,g);mesh(new THREE.BoxGeometry(3.4,.9,1.6),wd,0,.45,0,g);
   const aw=mesh(new THREE.BoxGeometry(3.8,.12,2.6),mat(col,{tex:'stripe',rx:4}),0,2.7,0,g);aw.rotation.x=-.18;
   for(let i=0;i<5;i++)mesh(new THREE.SphereGeometry(.18,6,5),mat(pick([0xd94a3a,0xe8b23a,0x7ab83a,0xa05ad0])),-1.2+i*.6,1,0,g);addCol(x,z,1.6)}
-stall(-8,-13.5,0,0xc0392b);stall(-15,1,Math.PI/2,0x2e86c1);stall(14,-12,0,0x27ae60);
-/* banners */
 function flagPole(x,z,col){const y=groundH(x,z);mesh(new THREE.CylinderGeometry(.07,.07,6,6),mat(0x5a4a3a),x,y+3,z);const b=mesh(new THREE.PlaneGeometry(1.2,2.4),mat(col,{side:1}),x+.62,y+4.6,z,scene);b.userData.wave=1;flags.push(b);mesh(new THREE.CircleGeometry(.32,12),mat(0xe8e8f0,{side:1,m:.6,r:.3}),x+.62,y+4.8,z+.01,scene,false)}
-const flags=[];flagPole(-6,-50,0x8a1f2a);flagPole(6,-50,0x8a1f2a);flagPole(48,-20,0x8a1f2a);flagPole(-4,52,0x8a1f2a);
-/* guard tower near Aldren */
-tower(13,-20,1.8,6,0x8a3b2a);
-/* crates & barrels */
+const flags=[];
 function crate(x,z,s=1){const m=mesh(new THREE.BoxGeometry(s,s,s),mat(0x9a7444,{tex:'wood',rx:1,ry:1}),x,groundH(x,z)+s/2,z);m.rotation.y=Math.random();CRATES.push({m,x,z,ry:m.rotation.y,s,kind:'crate'});addCol(x,z,s*.6)}
 function barrel(x,z){const m=mesh(new THREE.CylinderGeometry(.45,.45,1.1,10),mat(0x7a5432,{tex:'wood',rx:2}),x,groundH(x,z)+.55,z);CRATES.push({m,x,z,ry:0,s:1.1,kind:'barrel'});addCol(x,z,.5)}
-crate(-12,-16);crate(-11,-17,.7);barrel(-18,-8);barrel(-18,-9.2);crate(18,-14);barrel(26,-17);crate(-30,6,1.1);
+/* ===================== Silverbrook: the walled town (upgrade) =====================
+   Layout only: colliders, simple fallback boxes and lists of what goes where. buildTown() (2b_env.js) puts the
+   downloaded CC0 models on these spots: KayKit Medieval Hexagon Pack (buildings, walls, towers, props) and the
+   Kenney Fantasy Town Kit (fountain, lanterns, market stalls, hedges, trees, banners, benches, carts). */
+const TOWN_B=[],TOWN_P=[],TOWN_L=[],TOWN_T=[],TOWN_SMOKE=[];
+/* footprints (model units) and chimney tops (for smoke) of the KayKit buildings */
+const TFP={castle:[1.98,2.26],church:[1.02,1.16],tavern:[1.17,1.33],market:[1.8,1.32],home_A:[.8,.86],home_B:[.88,1.1],well:[.65,.76],barracks:[1.44,1.57],watermill:[1.05,1.24],tower_A:[1,1.15],tower_B:[1.2,1.38],tower_base:[.92,1.11]};
+const TCH={home_A:[-.049,.93,-.301],home_B:[.091,1.28,-.371],tavern:[-.14,.913,-.35]};
+const tkey=(T,m)=>Object.keys(T).find(k=>m.startsWith(k));
+/* q = quarter turns; the door side of a KayKit building is +z, so q=0 faces south, 1 east, 2 north, 3 west */
+function tbuild(m,x,z,q,s,col=.84){const fp=TFP[tkey(TFP,m)]||[1,1];const w=fp[0]*s,d=fp[1]*s;const sw=q%2?d:w,sd=q%2?w:d;const ck=tkey(TCH,m);
+  const b={m:'H_'+m,x,z,q,s,w:sw,d:sd,ch:ck?TCH[ck]:null};TOWN_B.push(b);if(col)addBox(x,z,sw*col,sd*col);
+  PROC='town';b.proc=mesh(new THREE.BoxGeometry(sw*.86,s*.8,sd*.86),mat(0xd8cbb0,{tex:'plaster',rx:2,ry:2}),x,groundH(x,z)+s*.4,z);PROC=null;return b}
+/* landmarks */
+tbuild('castle_blue',30,-46,3,7.5);            /* the keep / town hall, north-east */
+tbuild('church_blue',40,28,3,12);              /* the church of the Light, east of the square (Brother Anselm) */
+tbuild('tavern_red',-34,-17,0,11);             /* The Silver Tankard on Market Street */
+tbuild('barracks_blue',50,-6,3,8);             /* the watch barracks by the east gate */
+/* Market Street (the west road) */
+tbuild('market_red',-34,24,2,7);tbuild('market_blue',-56,4,0,7);
+/* houses */
+tbuild('home_B_red',-16,-32,1,10);tbuild('home_A_yellow',-16,-48,1,10);tbuild('home_B_green',-34,-40,0,10);tbuild('home_A_blue',-50,-30,0,10);tbuild('home_A_red',-28,-56,1,10);tbuild('home_B_yellow',-52,-14,0,10);
+tbuild('home_A_green',14,-36,3,10);tbuild('home_B_blue',14,-54,3,10);
+tbuild('home_A_yellow',20,36,2,10);tbuild('home_B_red',22,52,3,10);tbuild('home_A_blue',40,46,2,10);
+tbuild('home_A_red',-16,30,1,10);tbuild('home_B_yellow',-16,58,1,10);
+/* park: the mill pond with a watermill, trees and benches */
+tbuild('watermill_yellow',-22,46,3,8,.7);
+tbuild('tower_A_blue',13,-20,0,4.5);tbuild('well_blue',14,18,0,4);
+/* cobbled streets inside the walls (same cobbles as the square) */
+{const cm=mat(0xc8c0b0,{tex:'cobble',rx:1,ry:1});const W=TOWN.wall+3,Y=1.236;
+  for(const p of PATHS)for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1];const at=t=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],inn=t=>{const q=at(t),r=Math.hypot(q[0],q[1]);return r>21.5&&r<W};
+    let t0=-1,t1=-1;for(let k=0;k<=400;k++){const t=k/400;if(inn(t)){if(t0<0)t0=t;t1=t}}if(t0<0)continue;
+    const[ax,az]=at(t0),[bx,bz]=at(t1);const L=Math.hypot(bx-ax,bz-az);if(L<1)continue;
+    const g=new THREE.PlaneGeometry(7,L+.1);g.rotateX(-Math.PI/2);const uv=g.attributes.uv;for(let k=0;k<uv.count;k++)uv.setXY(k,uv.getX(k)*7/2.6,uv.getY(k)*L/2.6);
+    const m=mesh(g,cm,(ax+bx)/2,Y,(az+bz)/2,scene,false,true);m.rotation.y=Math.atan2(bx-ax,bz-az);
+    if(t1<1&&Math.hypot(bx,bz)<W-1){const c=new THREE.CircleGeometry(3.5,16);c.rotateX(-Math.PI/2);mesh(c,cm,bx,Y+.002,bz,scene,false,true)}}}
+/* pond water (same shader as Mirror Lake, own radius) */
+{const g=new THREE.CircleGeometry(1,48);g.rotateX(-Math.PI/2);g.scale(POND.r*1.25+1.2,1,POND.r+1.2);const pm=new THREE.ShaderMaterial({transparent:true,fog:true,uniforms:{...waterMat.uniforms,radius:{value:POND.r*1.25+2.6}},vertexShader:waterMat.vertexShader,fragmentShader:waterMat.fragmentShader});
+  const m=new THREE.Mesh(g,pm);m.position.set(POND.x,.62,POND.z);m.receiveShadow=false;scene.add(m)}
+/* gates: where a road crosses the wall */
+const TOWN_GATES=[];{const W=TOWN.wall;for(const p of PATHS)for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1];const ra=Math.hypot(a[0],a[1]),rb=Math.hypot(b[0],b[1]);if((ra-W)*(rb-W)>0)continue;
+  let lo=0,hi=1;for(let k=0;k<30;k++){const t=(lo+hi)/2;const r=Math.hypot(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t);if((r<W)===(ra<W))lo=t;else hi=t}
+  const ang=Math.atan2(a[1]+(b[1]-a[1])*lo,a[0]+(b[0]-a[0])*lo);if(!TOWN_GATES.some(g=>Math.abs(angDiff(g,ang))<.05))TOWN_GATES.push(ang)}}
+/* the wall: segments, wall towers and gate towers (colliders + procedural fallback) */
+const TOWN_WALL={seg:[],tow:[],gate:[]};{const W=TOWN.wall,N=64;const gap=a=>TOWN_GATES.some(g=>Math.abs(angDiff(a,g))<.118);PROC='twall';const wm=mat(0xa49c8e,{tex:'brick',rx:2,ry:1.2});
+  for(let i=0;i<N;i++){const a=(i+.5)/N*Math.PI*2;if(gap(a))continue;const x=Math.cos(a)*W,z=Math.sin(a)*W,y=groundH(x,z);TOWN_WALL.seg.push({x,y,z,ry:-a-Math.PI/2});
+    const s=mesh(new THREE.BoxGeometry(7.3,4.6,2.4),wm,x,y+2.3,z,scene);s.rotation.y=-a-Math.PI/2;
+    for(let k=-1;k<=1;k++)addCol(x-Math.sin(a)*k*2.45,z+Math.cos(a)*k*2.45,1.9);
+    if(i%8===4&&!gap(a+.1)&&!gap(a-.1))TOWN_WALL.tow.push({x:Math.cos(a)*(W+.4),y,z:Math.sin(a)*(W+.4),ry:-a+Math.PI/2})}
+  for(const t of TOWN_WALL.tow)addCol(t.x,t.z,2.6);
+  for(const g of TOWN_GATES)for(const sd of[-1,1]){const a=g+sd*.105,x=Math.cos(a)*W,z=Math.sin(a)*W;TOWN_WALL.gate.push({x,z,ry:-g+Math.PI/2,sd,g});addCol(x,z,3.1);
+    mesh(new THREE.CylinderGeometry(2.6,2.9,10,10),wm,x,groundH(x,z)+5,z,scene);addLight(Math.cos(g)*(W-3)+Math.cos(g+Math.PI/2)*sd*4,groundH(x,z)+5,Math.sin(g)*(W-3)+Math.sin(g+Math.PI/2)*sd*4,0xffa040,30,22)}
+  PROC=null}
+/* streets: lanterns along the roads inside the walls and around the square */
+const clearOf=(x,z,r)=>!BOXES.some(b=>x>b.x0-r&&x<b.x1+r&&z>b.z0-r&&z<b.z1+r)&&Math.hypot(x,z)<TOWN.wall-5;
+{let k=0;for(let i=0;i<10;i++){const a=i/10*Math.PI*2+.31,x=Math.cos(a)*21.5,z=Math.sin(a)*21.5;if(pathDist(x,z)<4.5)continue;TOWN_L.push({x,z,light:k++%2===0})}
+  for(const p of PATHS)for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/L,dz=(b[1]-a[1])/L;
+    for(let t=8;t<L;t+=15){const cx=a[0]+dx*t,cz=a[1]+dz*t;const r=Math.hypot(cx,cz);if(r<27||r>TOWN.wall-6)continue;const sd=(Math.round(t/15)%2)?1:-1;const x=cx-dz*5.4*sd,z=cz+dx*5.4*sd;
+      if(clearOf(x,z,1.2)&&pathDist(x,z)>4.4&&!TOWN_L.some(l=>Math.hypot(l.x-x,l.z-z)<9))TOWN_L.push({x,z,light:k++%2===0})}}
+  for(const l of TOWN_L){addCol(l.x,l.z,.35);if(l.light)addLight(l.x,groundH(l.x,l.z)+3.7,l.z,0xffb050,22,18)}}
+/* greenery: park trees around the pond, trees along the inside of the wall, hedges and benches */
+{const R=mulberry(1717);const tryT=(x,z,m,s)=>{if(!clearOf(x,z,2.5)||pathDist(x,z)<6||pondDist(x,z)<1.5||Math.hypot(x,z)<26||TOWN_T.some(t=>Math.hypot(t.x-x,t.z-z)<5.5)||TOWN_L.some(l=>Math.hypot(l.x-x,l.z-z)<3))return;TOWN_T.push({x,z,m,s,ry:R()*6.28});addCol(x,z,.6,true)};
+  for(let i=0;i<14;i++){const a=i/14*Math.PI*2+R()*.2;tryT(POND.x+Math.cos(a)*(POND.r*1.25+5+R()*3),POND.z+Math.sin(a)*(POND.r+5+R()*3),R()<.5?'T_tree-high-round':'H_tree_single_B',.9+R()*.4)}
+  for(let i=0;i<90;i++){const a=i/90*Math.PI*2,r=TOWN.wall-8-R()*5;tryT(Math.cos(a)*r,Math.sin(a)*r,['T_tree','T_tree-high-round','H_tree_single_A','H_tree_single_B'][Math.floor(R()*4)],.8+R()*.5)}}
+/* props: stalls on the square and Market Street, barrels, crates, carts, benches, banners */
+{const R=mulberry(1818);const P=(m,x,z,ry,s,c=0)=>{TOWN_P.push({m,x,z,ry,s});if(c)addCol(x,z,c)};
+  P('T_stall-red',-8,-13.5,0,3.6,1.5);P('T_stall-green',-15,1,Math.PI/2,3.6,1.5);P('T_stall-red',14,-12,0,3.6,1.5);
+  /* Market Street: stalls on both sides of the west road */
+  {const d=[-.942,.334],n=[.334,.942];let i=0;for(const t of[30,38,46,54])for(const sd of[-1,1]){const x=d[0]*t+n[0]*7.2*sd,z=d[1]*t+n[1]*7.2*sd;if(!clearOf(x,z,1.5))continue;P(i++%2?'T_stall-green':'T_stall-red',x,z,Math.atan2(-n[0]*sd,-n[1]*sd),3.6,1.5)}}
+  for(const[x,z]of[[-27,-6],[-26,-7.4],[-41.5,-9],[-12,-16],[-11,-17],[18,-14],[44,-1],[44,-12.5],[-48,10],[-29,30],[-17,40]])P(R()<.5?'H_barrel':'H_crate_A_big',x,z,R()*6,5.2,.55);
+  P('H_weaponrack',44,-9,Math.PI/2,6,.5);P('H_weaponrack',44,-4,Math.PI/2,6,.5);P('H_wheelbarrow',-46,-22,1.2,5,.6);P('T_cart',-12,-26,.4,3.2,1.4);P('T_cart-high',-62,14,2.2,3.2,1.4);
+  P('H_resource_lumber',-14,46,.3,6,1);P('H_sack',-28,-8,0,8,.3);P('H_crate_open',-44,-8,.6,5,.6);
+  for(const[x,z,ry]of[[-38,32,0],[-50,38,1.3],[-48,56,2.2],[-30,59,3.1],[11.5,11.5,-.785],[-11.5,11.5,.785],[11.5,-11.5,.785],[-11.5,-11.5,-.785]])P('T_stall-bench',x,z,ry,3.2,.6);
+}
 
 /* ---------- farm ---------- */
 {PROC='wheat';const wheat=[];for(let x=-36;x<50;x+=1.1)for(let z=96;z<162;z+=1.1){if(Math.floor((x+200)/9)%2===0&&pathDist(x,z)>3&&RV()<.85)wheat.push([x+RV()*.6,z+RV()*.6,.7+RV()*.5,RV()*6])}

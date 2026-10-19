@@ -6,7 +6,7 @@ async function buildCraftEnv(){if(window.__NOGLTF)return;const R=mulberry(7311);
   const put=(n,x,z,ry,s,o={})=>jobs.push(envPlace(n,x,z,ry,sz=>{const k=s/(o.h?sz[1]:Math.max(sz[0],sz[1],sz[2]));return[k,k,k]},o.par||scene,o.y||0).then(m=>{if(m&&o.tint)tintObj(m,new THREE.Color(o.tint));if(m&&o.noSh)noShadow(m);if(m&&o.col)addCol(x,z,o.col);return m}));
   const C=CRAFT,S=k=>STATIONS.find(s=>s.k===k&&Math.hypot(s.x-C.x,s.z-C.z)<C.r);
   /* ---------- het erf: kinderkopjes, hekken en lantaarns ---------- */
-  for(let a=0;a<6.28;a+=.21){const r=C.r+2;if(Math.abs(angDiff(a,Math.atan2(30-C.z,-62-C.x)))<.5)continue;/* opening naar de weg */
+  for(let a=0;a<6.28;a+=.21){const r=C.r+2;if(Math.abs(angDiff(a,Math.atan2(14-C.z,-96-C.x)))<.5)continue;/* opening naar de weg */
     put('Fence',C.x+Math.cos(a)*r,C.z+Math.sin(a)*r,-a+Math.PI/2,3.4,{h:false})}
   for(const[dx,dz]of[[-4,9],[5,9],[-13,-2],[13,-1]]){put('KN_stump_roundDetailed',C.x+dx,C.z+dz,R()*6,.9,{noSh:1});put('KT_lantern',C.x+dx,C.z+dz,R()*6,.75,{y:.55})}
   /* ---------- smidse ---------- */

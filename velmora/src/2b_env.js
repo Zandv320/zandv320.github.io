@@ -58,3 +58,25 @@ async function buildEnv(){
   for(const s of STALLS)jobs.push(envPlace(s.i%2?'MarketStand_2':'MarketStand_1',s.x,s.z,s.rot,sz=>{const k=3.6/Math.max(sz[0],sz[2]);return[k,k,k]}).then(o=>{if(o)s.g.visible=false}));
   for(const c of CRATES)jobs.push(envPlace(c.kind==='barrel'?'Barrel':'Crate',c.x,c.z,c.ry,sz=>{const k=(c.kind==='barrel'?1.1:c.s)/sz[1];return[k,k,k]}).then(o=>{if(o)c.m.visible=false}));
   await Promise.all(jobs)}
+/* ---- Silverbrook: buildings, walls, gates, lanterns, trees and props on the spots laid out in 2_world.js ---- */
+async function buildTown(){if(window.__NOGLTF)return;const jobs=[];const STONE=new THREE.Color(1.08,.96,.8);
+  const put=(n,x,z,ry,s,y=0)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],scene,y);
+  for(const b of TOWN_B)jobs.push(put(b.m,b.x,b.z,b.q*Math.PI/2,b.s).then(o=>{if(!o)return;b.proc.visible=false;b.model=o;
+    if(b.ch){o.updateMatrixWorld(true);const v=new THREE.Vector3(...b.ch);o.children[0].localToWorld(v);TOWN_SMOKE.push({x:v.x,y:v.y+.25,z:v.z})}}));
+  /* wall ring as instanced meshes (one draw call per model) */
+  jobs.push((async()=>{const seg=await instModel('H_wall_straight',TOWN_WALL.seg.map(t=>({...t,sx:3.86,sy:4.4,sz:3.4})));
+    const tw=await instModel('H_tower_base_blue',TOWN_WALL.tow.map(t=>({...t,s:4.8})));
+    const gt=await Promise.all(TOWN_WALL.gate.map(t=>put('H_tower_B_blue',t.x,t.z,t.ry,4.6)));
+    for(const t of TOWN_WALL.gate){const a=t.g+t.sd*.105,R=TOWN.wall-3.2;jobs.push(put('T_banner-red',Math.cos(a)*R,Math.sin(a)*R,t.ry+Math.PI/2,3.4,4.6))}
+    if(seg&&tw&&gt.every(Boolean))hideProc('twall')})());
+  /* fountain on the square */
+  jobs.push(put('T_fountain-round-detail',0,0,0,[5.2,4.2,5.2]).then(o=>{if(!o)return;tintObj(o,STONE);FOUNT_Y=1.2+.48*4.2+.25;hideProc('fountain')}));
+  /* lanterns, trees, props */
+  jobs.push(instModel('T_lantern',TOWN_L.map(l=>({x:l.x,y:groundH(l.x,l.z),z:l.z,ry:0,s:2.5})),{tint:STONE}));
+  {const by={};for(const t of TOWN_T)(by[t.m]=by[t.m]||[]).push(t);for(const m in by){const H=m.startsWith('T_')?3.1:5.2;jobs.push(instModel(m,by[m].map(t=>({x:t.x,y:groundH(t.x,t.z),z:t.z,ry:t.ry,s:H*t.s}))))}}
+  for(const p of TOWN_P)jobs.push(put(p.m,p.x,p.z,p.ry,p.s).then(o=>{if(o&&/hedge|bench|stall/.test(p.m)===false&&p.m.startsWith('T_'))tintObj(o,STONE)}));
+  /* pond: lilies and reeds */
+  {const R=mulberry(99);const L=[],W=[];for(let i=0;i<16;i++){const a=R()*6.28,r=Math.sqrt(R())*.8;L.push({x:POND.x+Math.cos(a)*r*POND.r*1.25,y:.66,z:POND.z+Math.sin(a)*r*POND.r,ry:R()*6,s:4+R()*2})}
+    for(let i=0;i<12;i++){const a=R()*6.28;W.push({x:POND.x+Math.cos(a)*(POND.r*1.25+.6),y:groundH(POND.x+Math.cos(a)*(POND.r*1.25+.6),POND.z+Math.sin(a)*(POND.r+.6)),z:POND.z+Math.sin(a)*(POND.r+.6),ry:R()*6,s:6+R()*3})}
+    jobs.push(instModel('H_waterlily_A',L.slice(0,8),{cast:false}),instModel('H_waterlily_B',L.slice(8),{cast:false}),instModel('H_waterplant_A',W,{cast:false}))}
+  await Promise.all(jobs);for(let i=0;i<4;i++)await Promise.all(jobs.slice())}

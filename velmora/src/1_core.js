@@ -113,7 +113,7 @@ const NPCS=[
   {id:'bram',n:'Merchant Bram',t:'Merchant',x:-8,z:-10,ry:0,look:{skin:0xd99b7a,hair:0xb5541c,chest:0x8a5a2a,pants:0x4a3a2a,wt:'none',beard:1,dwarf:1},hi:'Potions, fresh from the kettle! And I\'ll buy all your old junk.',shop:1},
   {id:'dorrik',n:'Miner Dorrik',t:'Mine Boss',x:198,z:-166,ry:Math.PI*.2,look:{skin:0xd99b7a,hair:0x6b4a2b,chest:0x6a5a4a,pants:0x3a3028,wt:'bijl',beard:1,dwarf:1,helm:1},hi:'Mind the heat, friend. Behind me lies Ignaroth\'s Fire Cave.'},
   {id:'vaelra',n:'Vaelra the Dragonhunter',t:'Dragonhunters\' Camp',x:-1736,z:20,ry:-Math.PI/2,look:{skin:0xd9a98a,hair:0x9a2a1a,chest:0x6a2a1a,pants:0x3a2a20,cape:0x6a1a10,wt:'boog'},hi:'Welcome to the Dragon Realm. Stay out of the lava, and always look up.'},
-  {id:'hilde',n:'Forgemistress Hilde',t:'Master Artisan',x:-83.2,z:-8.4,ry:-2.78,look:{skin:0xe2b48e,hair:0xb04a1c,chest:0x6a4a3a,pants:0x3a3028,wt:'bijl',dwarf:1},hi:'Welcome to the Artisans\' Yard! Ore, hides and cloth go in; armour and weapons come out.'},
+  {id:'hilde',n:'Forgemistress Hilde',t:'Master Artisan',x:-113.2,z:-10.4,ry:-2.78,look:{skin:0xe2b48e,hair:0xb04a1c,chest:0x6a4a3a,pants:0x3a3028,wt:'bijl',dwarf:1},hi:'Welcome to the Artisans\' Yard! Ore, hides and cloth go in; armour and weapons come out.'},
   {id:'thorne',n:'Warden Thorne',t:'Crypt Warden',x:-160,z:-196,ry:Math.PI*.85,look:{skin:0x6f9a4a,hair:0x1d1d1d,chest:0x5a5a5a,pants:0x2a2a2a,cape:0x5a1a1a,wt:'bijl',helm:1,tusks:1},hi:'The crypt behind me is no place for weaklings. Go with a group, or don\'t go at all.'}
 ];
 /* tekstkleuren: licht genoeg voor de bruine panelen (met donkere schaduw), en verzadigd genoeg om ze te herkennen */
