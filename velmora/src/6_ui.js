@@ -7,8 +7,9 @@ const npcName=id=>(NPCS.find(n=>n.id===id)||{}).n||'';
 function setBar(el,v,max,txt){const f=Math.round(clamp(max?v/max:0,0,1)*400)/400;if(el._f!==f){el._f=f;el.firstElementChild.style.transform='scaleX('+f+')'}const t=txt??(Math.round(v)+' / '+Math.round(max));if(el._t!==t){el._t=t;el.lastElementChild.textContent=t}}
 const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife','pTalent'];
 $('#pTalent').addEventListener('click',()=>{if(isTouch)hideTip()});
-function openPanel(id){if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')drawBigMap();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}}
-function closePanel(id){$('#'+id).hidden=true;if(id==='pTalent')document.body.classList.remove('tal');if(id==='pDialog')S.shop=false;hideTip()}
+function syncPop(){document.body.classList.toggle('pop',panels.some(p=>p!=='pDialog'&&!$('#'+p).hidden))}
+function openPanel(id){if(isTouch&&document.body.classList.contains('portrait')&&id!=='pDialog')for(const p of panels)if(p!==id&&p!=='pDialog'&&!$('#'+p).hidden)closePanel(p);if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')drawBigMap();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}syncPop()}
+function closePanel(id){$('#'+id).hidden=true;if(id==='pTalent')document.body.classList.remove('tal');if(id==='pDialog')S.shop=false;hideTip();syncPop()}
 function togglePanel(id){if($('#'+id).hidden)openPanel(id);else closePanel(id)}
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{const p=b.closest('.panel');if(p)closePanel(p.id)}));
 document.querySelectorAll('#mbtn [data-p]').forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.p)));
@@ -53,24 +54,32 @@ function buildBar(){const ab=$('#abar');const B=bar();refreshTalent();
   if(isTouch){const tb=$('#tbtns');
     /* actiewiel: plek t.o.v. rechtsonder [right,bottom,maat]; vaardigheden 0–3 in een boog, de rest in de lade */
     const WHEEL=[[112,6,68],[100,88,68],[26,116,68],[184,80,58]];
-    const mk=(cls,r,bt,sz,inner,fn,par=tb)=>{const b=document.createElement('button');b.className='tb '+cls;Object.assign(b.style,{right:r+'px',bottom:bt+'px',width:sz+'px',height:sz+'px'});b.innerHTML=inner;b.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(12);fn(b)});par.appendChild(b);return b};
+    const mk=(cls,r,bt,sz,inner,fn,par=tb,role)=>{const b=document.createElement('button');b.className='tb '+cls;if(role)b.dataset.role=role;Object.assign(b.style,{right:r+'px',bottom:bt+'px',width:sz+'px',height:sz+'px'});b.innerHTML=inner;b.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(12);fn(b)});par.appendChild(b);return b};
     const TWHEEL=[[252,62,54],[318,36,52]];
     if(tb.children.length&&tbEls.length!==B.length){tb.innerHTML='';tbEls.length=0;const oj=$('#tJump');if(oj)oj.remove()}
     if(!tb.children.length){
-      mk('big',0,0,104,'<img src="ui/icon_sword.png" alt=""><span class="lab">Attack</span>',b=>attackToggle());
+      mk('big',0,0,104,'<img src="ui/icon_sword.png" alt=""><span class="lab">Attack</span>',b=>attackToggle(),tb,'big');
       const drawer=document.createElement('div');drawer.id='tdrawer';tb.appendChild(drawer);
       let tk=0;B.forEach((a,i)=>{const w=i<4?WHEEL[i]:a.talent?TWHEEL[tk++]:null;const inner='<span class="n"></span><div class="cd"></div><div class="cdt"></div>';let b;
-        if(w)b=mk('ab',w[0],w[1],w[2],inner,()=>useAbility(i));
+        if(w)b=mk('ab',w[0],w[1],w[2],inner,()=>useAbility(i),tb,i<4?'a'+i:'t'+(tk-1));
         else{b=mk('ab sm',0,0,52,inner,()=>{useAbility(i);drawer.classList.remove('open')},drawer);b.style.position='relative';b.style.right=b.style.bottom='auto'}
         b.prepend(iconCanvas(a.ic,64));b.dataset.id=a.id;tbEls.push(b)});
-      mk('ic',196,-4,54,'<img src="ui/icon_target.png" alt=""><span class="lab">Target</span>',()=>cycleTarget());
-      mk('ic act',258,-4,54,'<img src="ui/icon_hand.png" alt=""><span class="lab">Action</span>',()=>interact());
-      mk('ic sm2',10,196,40,'<span class="arr">▲</span>',b=>{drawer.classList.toggle('open');b.classList.toggle('on',drawer.classList.contains('open'))});
-      const jp=document.createElement('button');jp.className='tb ic';jp.id='tJump';jp.innerHTML='<img src="ui/icon_jump.png" alt=""><span class="lab">Jump</span>';jp.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(10);jump()});$('#touch').appendChild(jp)}
+      mk('ic',196,-4,54,'<img src="ui/icon_target.png" alt=""><span class="lab">Target</span>',()=>cycleTarget(),tb,'tgt');
+      mk('ic act',258,-4,54,'<img src="ui/icon_hand.png" alt=""><span class="lab">Action</span>',()=>interact(),tb,'act');
+      mk('ic sm2',10,196,40,'<span class="arr">▲</span>',b=>{drawer.classList.toggle('open');b.classList.toggle('on',drawer.classList.contains('open'))},tb,'dr');
+      const jp=document.createElement('button');jp.className='tb ic';jp.id='tJump';jp.innerHTML='<img src="ui/icon_jump.png" alt=""><span class="lab">Jump</span>';jp.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(10);jump()});$('#touch').appendChild(jp);layoutTB()}
     else B.forEach((a,i)=>{const b=tbEls[i];if(b&&b.dataset.id!==a.id){b.dataset.id=a.id;b.querySelector('canvas').replaceWith(iconCanvas(a.ic,64))}});
     const big=tb.querySelector('.big');if(big)big.classList.toggle('on',!!(ME.auto&&isEnemy(ME.target)))}
   updBar()}
 
+/* touch buttons: landscape keeps the wheel; portrait (phone held upright) gets a compact cluster, measured from the
+   bottom-right corner [right,bottom,size]; target and action sit above the joystick on the left */
+const TB_PORT={big:[0,0,88],a0:[96,0,58],a1:[92,74,56],a2:[16,104,56],a3:[162,40,50],t0:[160,100,46],t1:[100,140,46],dr:[20,172,38]};
+function layoutTB(){const tb=$('#tbtns');if(!tb)return;const port=document.body.classList.contains('portrait');
+  for(const b of tb.querySelectorAll(':scope>.tb')){const r=b.dataset.role;if(!r)continue;if(!b._land)b._land=[b.style.right,b.style.bottom,b.style.width,b.style.left];
+    if(port&&TB_PORT[r]){const[x,y,z]=TB_PORT[r];Object.assign(b.style,{right:x+'px',bottom:y+'px',width:z+'px',height:z+'px',left:''})}
+    else if(port&&(r==='tgt'||r==='act')){Object.assign(b.style,{right:'auto',left:'',bottom:'',width:'',height:''})}
+    else{const[x,y,z,l]=b._land;Object.assign(b.style,{right:x,bottom:y,width:z,height:z,left:l})}}}
 /* ---------- talentpaneel ---------- */
 let TAL_TAB=0;
 const talD=(d,r)=>d.replace(/\{([\d.]+)\}/g,(m,v)=>String(+(parseFloat(v)*Math.max(1,r)).toFixed(1)));
@@ -123,7 +132,7 @@ function cellEl(it,onClick){const c=document.createElement('button');c.className
 function refreshBag(){if(!P)return;const g=$('#bagGrid');g.innerHTML='';P.inv.forEach((it,i)=>g.appendChild(cellEl(it,c=>{if(it&&it.kind==='gear'&&!isTouch&&!S.shop&&event&&event.shiftKey)return equip(i);showItem(it,c,{bag:i})})));$('#goldTxt').textContent=P.gold+' g';if(!$('#pChar').hidden)refreshChar()}
 function refreshChar(){if(!P)return;$('#cTitle').textContent=P.name+' · level '+P.level+' '+RACES[P.race].n+' '+CLASSES[P.cls].n;const g=$('#eqGrid');g.innerHTML='';
   for(const s of SLOTS){const w=document.createElement('div');w.className='eqs';const it=P.eq[s];const c=cellEl(it,c=>showItem(it,c,{eq:s}));if(!it){c.appendChild(iconCanvas([s==='wapen'?CLASSES[P.cls].wt:s,'#3a3a3a','#141414'],48));c.style.opacity=.5}w.appendChild(c);w.insertAdjacentHTML('beforeend','<span>'+SLOT_NL[s]+'</span>');g.appendChild(w)}
-  const rows=[['Health',ST.maxhp],[CLASSES[P.cls].res[0].toUpperCase()+CLASSES[P.cls].res.slice(1),ST.maxmp],['Power',ST.pow],['Stamina',ST.sta],['Armour',ST.arm],['Weapon damage',ST.wmin+' – '+ST.wmax],['Critical chance',ST.crit.toFixed(1)+'%'],['Experience',P.level>=MAXLVL?'max':P.xp+' / '+xpNeed(P.level)],['Gold',P.gold],['Monsters defeated',P.kills],['Honour (PvP)',P.honor||0]];
+  const rows=[['Health',ST.maxhp],[{energie:'Energy',mana:'Mana',focus:'Focus'}[CLASSES[P.cls].res],ST.maxmp],['Power',ST.pow],['Stamina',ST.sta],['Armour',ST.arm],['Weapon damage',ST.wmin+' – '+ST.wmax],['Critical chance',ST.crit.toFixed(1)+'%'],['Experience',P.level>=MAXLVL?'max':P.xp+' / '+xpNeed(P.level)],['Gold',P.gold],['Monsters defeated',P.kills],['Honour (PvP)',P.honor||0]];
   $('#statList').innerHTML=rows.map(r=>'<span>'+r[0]+'</span><span>'+r[1]+'</span>').join('')}
 /* quests */
 function qState(q){if(P.done.includes(q.id))return'done';const a=P.quests[q.id];if(a)return a.n>=q.obj.n?'ready':'active';if(P.level>=q.lvl-1&&(!q.req||P.done.includes(q.req)))return'avail';return'locked'}

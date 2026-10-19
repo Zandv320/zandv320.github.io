@@ -223,6 +223,33 @@ body.touch #pChar{left:50%;transform:translateX(-50%);top:12px;max-height:calc(1
 .frame,.frame *{text-shadow:0 1px 1px rgba(20,10,2,.95),0 0 3px rgba(20,10,2,.75)}
 .frame [style*="color:#"],.frame .ok,.frame .no,.frame small{font-weight:600}
 #tip,#tip *{text-shadow:0 1px 1px #000}
+/* ---------- phone held upright (portrait) ---------- */
+body.touch.portrait #pframe{width:min(260px,calc(100vw - 128px))}
+body.touch.portrait .port{width:40px;height:40px}
+body.touch.portrait #mini{width:100px}body.touch.portrait #mmc{width:92px;height:92px}
+body.touch.portrait #mbtn{top:calc(max(10px,env(safe-area-inset-top)) + 90px);left:max(10px,env(safe-area-inset-left));right:auto;bottom:auto;width:auto;flex-direction:row;flex-wrap:nowrap;gap:4px;padding:0}
+body.touch.portrait .mb{width:min(38px,calc((100vw - 150px) / 6));height:min(38px,calc((100vw - 150px) / 6))}
+body.touch.portrait #tframe{left:max(10px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 132px);width:min(250px,calc(100vw - 130px))}
+body.touch.portrait #chat{top:calc(max(10px,env(safe-area-inset-top)) + 132px);width:calc(100vw - 20px)}
+body.touch.portrait #party{top:calc(max(10px,env(safe-area-inset-top)) + 200px);width:44vw}
+body.touch.portrait #tframe:not([hidden])~#party{top:calc(max(10px,env(safe-area-inset-top)) + 200px)}
+body.touch.portrait #tracker.show{top:calc(max(10px,env(safe-area-inset-top)) + 200px);width:48vw}
+body.touch.portrait #feed{top:calc(max(10px,env(safe-area-inset-top)) + 136px);max-width:calc(100vw - 140px)}
+body.touch.portrait #banner{top:30%}
+body.touch.portrait #castbar{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 250px);width:min(260px,70vw)}
+body.touch.portrait #bottom{bottom:max(2px,env(safe-area-inset-bottom))}
+body.touch.portrait #xpbar{width:calc(100vw - 24px)}
+body.touch.portrait #tbtns{left:10px;right:10px;width:auto;height:240px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 12px)}
+body.touch.portrait #joy{width:116px;height:116px;left:14px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 16px)}
+body.touch.portrait #joy i{width:52px;height:52px;margin:-26px}
+body.touch.portrait .tb[data-role=tgt],body.touch.portrait .tb[data-role=act]{width:46px;height:46px;bottom:150px}
+body.touch.portrait .tb[data-role=tgt]{left:4px}body.touch.portrait .tb[data-role=act]{left:64px}
+body.touch.portrait #tJump{left:134px;width:46px;height:46px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 164px)}
+body.touch.portrait #tdrawer{right:64px;bottom:174px;flex-wrap:wrap;max-width:calc(100vw - 100px)}
+body.touch.portrait .panel.frame,body.touch.portrait #pBag,body.touch.portrait #pChar{width:calc(100vw - 16px);max-width:none}
+body.touch.portrait.pop #touch{display:none}
+body.touch.portrait .grid{grid-template-columns:repeat(6,1fr)}
+
 .frame input,.frame .btn.alt{text-shadow:none}
 #pDialog,#pDialog *{text-shadow:none}
 #tip.frame{border-image:none;border:2px solid #c8963e;border-radius:8px;background:rgba(20,14,9,.97);padding:8px 11px;box-shadow:0 6px 20px rgba(0,0,0,.7)}

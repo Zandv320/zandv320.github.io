@@ -164,7 +164,7 @@ function updCamera(dt){
   /* camera nooit onder het wateroppervlak of de grond */{const cx=camera.position.x,cz=camera.position.z;let minY=groundH(cx,cz)+.5;if(Math.hypot(cx-LAKE.x,cz-LAKE.z)<LAKE.r*1.3)minY=Math.max(minY,water.position.y+.7);if(camera.position.y<minY)camera.position.y=minY}
   const gh=groundH(camera.position.x,camera.position.z)+.6;if(camera.position.y<gh)camera.position.y=gh;camera.lookAt(camTarget)}
 let uiT=0,saveT=0,mmT=0,buffT=0;
-function updHud(dt){
+function updHud(dt){if(isTouch&&(updHud._k=(updHud._k|0)+1)%10===0)syncPop();
   setBar($('#pHp'),P.hp,ST.maxhp);const mp=$('#pMp');const mc='bar '+RES_COL[ST.res];if(mp.className!==mc)mp.className=mc;setBar(mp,P.mp,ST.maxmp);if($('#pLvl').textContent!=String(P.level))$('#pLvl').textContent=P.level;
   setBar($('#xpbar'),P.xp,xpNeed(P.level),P.level>=MAXLVL?'Maximum level':'Experience '+P.xp+' / '+xpNeed(P.level));
   updTargetFrame();updBar();
@@ -210,7 +210,7 @@ function toMenu(){saveGame(true);if(GROUP)leaveGroup();S.mode='menu';lastPres=''
 
 /* ===================== main loop ===================== */
 const clock=new THREE.Clock();let menuT=0;
-function resize(){renderer.setSize(innerWidth,innerHeight,false);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);gtao.setSize(innerWidth,innerHeight);smaa.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
+function resize(){renderer.setSize(innerWidth,innerHeight,false);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);gtao.setSize(innerWidth,innerHeight);smaa.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.fov=camera.aspect<1?Math.min(80,2*Math.atan(Math.tan(31*Math.PI/180)/camera.aspect)*180/Math.PI):58;camera.updateProjectionMatrix();document.body.classList.toggle('portrait',innerHeight>innerWidth);if(typeof layoutTB==='function')layoutTB()}
 addEventListener('resize',resize);resize();
 flames.forEach((f,i)=>f.userData.fi=i);
 let lastTick=performance.now();

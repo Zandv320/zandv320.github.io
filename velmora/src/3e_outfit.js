@@ -9,9 +9,9 @@ const OUTFITS={
   knight:{hoofd:P2('O_Knight','Knight_Helmet'),borst:P2('O_Knight','Knight_Body','Knight_Cape'),handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
   barbarian:{hoofd:P2('O_Barbarian','Barbarian_BearHat'),borst:P2('O_Barbarian','Barbarian_Body'),handen:P2('O_Barbarian','Barbarian_ArmLeft','Barbarian_ArmRight'),benen:P2('O_Barbarian','Barbarian_LegLeft','Barbarian_LegRight')},
   mage:{hoofd:P2('O_Mage','Mage_Hat'),borst:P2('O_Mage','Mage_Body','Mage_Cape'),handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
-  rogue:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),borst:P2('O_Rogue','Rogue_Body','Rogue_Cape'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')},
+  rogue:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),mask:1,borst:P2('O_Rogue','Rogue_Body','Rogue_Cape'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')},
   hooded:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Head','RogueHooded_Mask'),head:1,borst:P2('O_Rogue_Hooded','RogueHooded_Body','RogueHooded_Cape'),handen:P2('O_Rogue_Hooded','RogueHooded_ArmLeft','RogueHooded_ArmRight'),benen:P2('O_Rogue_Hooded','RogueHooded_LegLeft','RogueHooded_LegRight')},
-  ranger:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),borst:P2('O_Ranger','Ranger_Body','Ranger_Cape','Ranger_Quiver'),handen:P2('O_Ranger','Ranger_ArmLeft','Ranger_ArmRight'),benen:P2('O_Ranger','Ranger_LegLeft','Ranger_LegRight')},
+  ranger:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),mask:1,borst:P2('O_Ranger','Ranger_Body','Ranger_Cape','Ranger_Quiver'),handen:P2('O_Ranger','Ranger_ArmLeft','Ranger_ArmRight'),benen:P2('O_Ranger','Ranger_LegLeft','Ranger_LegRight')},
   bone:{hoofd:P2('O_Skeleton_Warrior','Skeleton_Warrior_Helmet'),borst:[...P2('O_Knight','Knight_Body'),...P2('O_Skeleton_Warrior','Skeleton_Warrior_Cloak')],handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
   bonemage:{hoofd:P2('O_Skeleton_Mage','Skeleton_Mage_Hat'),borst:[...P2('O_Mage','Mage_Body'),...P2('O_Skeleton_Minion','Skeleton_Minion_Cloak')],handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
   bonerogue:{hoofd:P2('O_Skeleton_Rogue','Skeleton_Rogue_Hood'),borst:[...P2('O_Rogue','Rogue_Body'),...P2('O_Skeleton_Warrior','Skeleton_Warrior_Cloak')],handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')}};
@@ -52,6 +52,17 @@ function remapSkin(s,own){const key=s.geometry.uuid+'|'+own.bones.map(b=>b.name)
   const ok=map.every((t,i)=>t>=0&&s.skeleton.boneInverses[i].equals(own.boneInverses[t])||t>=0&&s.skeleton.boneInverses[i].elements.every((v,j)=>Math.abs(v-own.boneInverses[t].elements[j])<1e-3));
   if(ok){const g=s.geometry.clone();const si=g.attributes.skinIndex;const arr=new Uint16Array(si.count*4);for(let i=0;i<si.count;i++)for(let k=0;k<4;k++)arr[i*4+k]=map[si.getComponent(i,k)];g.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(arr,4));res=g}
   _remap.set(key,res);return res}
+/* hair under a helmet: the KayKit atlas keeps hair in cell (1,0); those vertices are pulled in towards the middle of the
+   skull so that no hair sticks out through a helmet or hat that was made for another head */
+const _tuck=new Map();
+function tuckHair(x){const g0=x.userData.hairGeo0||x.geometry;x.userData.hairGeo0=g0;let g=_tuck.get(g0.uuid);
+  if(!g){g=g0.clone();const P=g.attributes.position,U=g.attributes.uv;if(P&&U){
+      g.computeBoundingBox();const b=g.boundingBox,c=new THREE.Vector3();b.getCenter(c);const hy=b.max.y-b.min.y;c.y=b.min.y+hy*.42;
+      const eyeY=b.min.y+hy*.55;const v=new THREE.Vector3();
+      for(let i=0;i<P.count;i++){const u=U.getX(i),w=U.getY(i);if(!(u>=.125&&u<.25&&w<.125))continue;v.fromBufferAttribute(P,i);if(v.y<eyeY)continue;
+        const t=Math.min(1,(v.y-eyeY)/(hy*.25));const k=1-.2*t;v.sub(c).multiplyScalar(k).add(c);P.setXYZ(i,v.x,v.y,v.z)}
+      P.needsUpdate=true}_tuck.set(g0.uuid,g)}
+  x.geometry=g}
 /* which own meshes a slot replaces (matched on the end of the mesh name) */
 const SLOT_HIDE={borst:/_Body$|_Cape$|_Cloak$/,handen:/Arm(Left|Right)$/,benen:/Leg(Left|Right)$/};
 async function applyOutfit(r,m,o){const G=o.gear||{};const sets=o.outfits||{};const tasks=[];const skCache=new Map();
@@ -59,7 +70,7 @@ async function applyOutfit(r,m,o){const G=o.gear||{};const sets=o.outfits||{};co
     tasks.push((async()=>{let n=0;for(const[mn,pn]of O[slot]){const src=await outfitSrc(mn);if(!src||!r.m)continue;if(partClone(m,src,pn,rar,skCache))n++}
       if(!n)return;
       /* eigen onderdelen verbergen */
-      m.traverse(x=>{if(!x.isMesh||x.userData.outfit)return;if(slot==='hoofd'){if(!x.isSkinnedMesh&&/Helmet|Hat|Hood/i.test(x.name))x.visible=false;if(O.head&&/_Head$|_Skull$|_Jaw$|_Eyes$/.test(x.name))x.visible=false}else if(SLOT_HIDE[slot].test(x.name))x.visible=false})})())}
+      m.traverse(x=>{if(!x.isMesh||x.userData.outfit)return;if(slot==='hoofd'){if(!x.isSkinnedMesh&&/Helmet|Hat|Hood/i.test(x.name))x.visible=false;if(O.head&&/_Head$|_Skull$|_Jaw$|_Eyes$/.test(x.name))x.visible=false;else if(!O.mask&&x.isSkinnedMesh&&/_Head$/.test(x.name))tuckHair(x)}else if(SLOT_HIDE[slot].test(x.name))x.visible=false})})())}
   await Promise.all(tasks)}
 /* weapon and off-hand models into the hand slots */
 const _wSrc=new Map();
