@@ -37,8 +37,8 @@ function shieldFor(it){return it?pickFrom(SHIELD_M,it,2):null}
 /* ---- binding parts of another KayKit character to this character's bones ---- */
 const _outfitSrc=new Map();
 function outfitSrc(name){let p=_outfitSrc.get(name);if(!p){p=loadGltf('outfit/'+name);_outfitSrc.set(name,p)}return p}
-function partClone(m,src,name,rar,skCache){const s=src.scene.getObjectByName(name);if(!s||!s.isMesh)return null;
-  const mat=s.material.clone();if(rar>=3){mat.emissive=new THREE.Color(RCOL[rar]);mat.emissiveIntensity=.04+(rar-3)*.04}
+function partClone(m,src,name,rar,skCache,tint){const s=src.scene.getObjectByName(name);if(!s||!s.isMesh)return null;
+  const mat=s.material.clone();if(tint&&mat.map)mat.map=tintedMap(mat.map,tint[0],null,true);if(rar>=3){mat.emissive=new THREE.Color(RCOL[rar]);mat.emissiveIntensity=.04+(rar-3)*.04}
   if(s.isSkinnedMesh){/* liefst het eigen skelet van het personage hergebruiken (zelfde rustpose): botindices omnummeren */
     const own=skCache.own||(skCache.own=(()=>{let k=null;m.traverse(x=>{if(!k&&x.isSkinnedMesh&&!x.userData.outfit)k=x.skeleton});return k})());
     if(own){const geo=remapSkin(s,own);if(geo){const o=new THREE.SkinnedMesh(geo,mat);o.name=s.name;o.bind(own,s.bindMatrix.clone());o.castShadow=true;o.frustumCulled=false;o.userData.outfit=1;const host=[...m.children].find(c=>c.children&&c.children.some(x=>x.isSkinnedMesh))||m;host.add(o);return o}}
@@ -63,11 +63,18 @@ function tuckHair(x){const g0=x.userData.hairGeo0||x.geometry;x.userData.hairGeo
         const t=Math.min(1,(v.y-eyeY)/(hy*.25));const k=1-.2*t;v.sub(c).multiplyScalar(k).add(c);P.setXYZ(i,v.x,v.y,v.z)}
       P.needsUpdate=true}_tuck.set(g0.uuid,g)}
   x.geometry=g}
+/* ---- orcs: a human KayKit body with green skin, plus tusks and a gold earring cut from the Quaternius Orc (CC0) ----
+   Positions are in the space of the KayKit 'head' bone (same for every KayKit character). */
+const ORC_BITS=[['ORC_Tusks',[0,.13,.43],1.95,-.18,0],['ORC_Earring',[.53,.32,.0],1.6,0,.3]];
+const _orcSrc=new Map();function orcPart(n){let p=_orcSrc.get(n);if(!p){p=new Promise(res=>gltfLoader().load(MODEL_BASE+'orc/'+n+'.glb',g=>res(g),undefined,()=>res(null)));_orcSrc.set(n,p)}return p}
+async function attachOrcBits(r,m,o){const head=m.getObjectByName('head');if(!head||head.userData.orcBits)return;head.userData.orcBits=1;const mask=o&&o.outfits&&OUTFITS[o.outfits.hoofd]&&OUTFITS[o.outfits.hoofd].mask;
+  for(const[n,p,s,rx,ry]of ORC_BITS){if(mask&&n==='ORC_Tusks')continue;const g=await orcPart(n);if(!g||!r.m)continue;const b=g.scene.clone(true);
+    b.traverse(x=>{if(x.isMesh){x.material=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:RAMP});x.castShadow=true;x.userData.orc=1}});b.position.set(...p);b.scale.setScalar(s);b.rotation.set(rx,ry,0);head.add(b)}}
 /* which own meshes a slot replaces (matched on the end of the mesh name) */
 const SLOT_HIDE={borst:/_Body$|_Cape$|_Cloak$/,handen:/Arm(Left|Right)$/,benen:/Leg(Left|Right)$/};
 async function applyOutfit(r,m,o){const G=o.gear||{};const sets=o.outfits||{};const tasks=[];const skCache=new Map();
   for(const slot of['hoofd','borst','handen','benen']){const key=sets[slot];const O=key&&OUTFITS[key];if(!O)continue;const rar=G[slot]?G[slot].r|0:0;
-    tasks.push((async()=>{let n=0;for(const[mn,pn]of O[slot]){const src=await outfitSrc(mn);if(!src||!r.m)continue;if(partClone(m,src,pn,rar,skCache))n++}
+    tasks.push((async()=>{let n=0;for(const[mn,pn]of O[slot]){const src=await outfitSrc(mn);if(!src||!r.m)continue;if(partClone(m,src,pn,rar,skCache,RACES[o.race]&&RACES[o.race].orc?[o.skin,o.hair]:null))n++}
       if(!n)return;
       /* eigen onderdelen verbergen */
       m.traverse(x=>{if(!x.isMesh||x.userData.outfit)return;if(slot==='hoofd'){if(!x.isSkinnedMesh&&/Helmet|Hat|Hood/i.test(x.name))x.visible=false;if(O.head&&/_Head$|_Skull$|_Jaw$|_Eyes$/.test(x.name))x.visible=false;else if(!O.mask&&x.isSkinnedMesh&&/_Head$/.test(x.name))tuckHair(x)}else if(SLOT_HIDE[slot].test(x.name))x.visible=false})})())}

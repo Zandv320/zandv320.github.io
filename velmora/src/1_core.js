@@ -29,6 +29,7 @@ let uidN=Date.now()%100000;const uid=()=>(uidN++).toString(36)+Math.random().toS
 const RACES={
   mens:{n:'Human',skin:0xe2b48e,desc:'Versatile humans from the coastal kingdoms. Quick learners: +10% experience.',xp:1.1,h:1,w:1,hair:[0x3b2414,0xc79a4b,0x1b1b1b,0x8a3b1c]},
   dwerg:{n:'Dwarf',skin:0xd99b7a,desc:'Hardy mountain dwarves from Karak Duun. Sturdily built: +12% health.',hp:1.12,h:.8,w:1.18,hair:[0xb5541c,0x6b4a2b,0xd9d0c0,0x262626]},
+  orc:{n:'Orc',skin:0x6f9a4a,desc:'Tusked warriors from the badlands beyond Ashen Hills. Thick-skinned and hard-hitting: +10% health and +3% damage. The colour you pick is your skin.',hp:1.1,dmg:1.03,h:1.06,w:1.1,orc:1,hair:[0x7aa84c,0x9aa646,0x6c9078,0xa8784e]},
   undead:{n:'Undead',skin:0xe8e0cc,desc:'Restless dead who broke free from the crypt of Kaal-Morath. Undying: +6% health and +5% damage. The colour you pick is the glow of your eyes.',hp:1.06,dmg:1.05,h:1,w:1,undead:1,hair:[0x6ad8ff,0x7aff5a,0xc06aff,0xff6a3a]}
 };
 const CLASSES={

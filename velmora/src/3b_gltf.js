@@ -24,12 +24,13 @@ function prepGltf(g){/* toon-materialen + hoogte van het lichaam (zonder props) 
 function preloadModels(){return Promise.all(Object.values(GLTF_MODELS).map(loadGltf))}
 /* ---- (uit) huid- en haarkleur: de KayKit-atlas heeft een huidvak (0,0) en een haarvak (1,0) van 128px ---- */
 const tintCache=new Map();
-function tintedMap(src,skin,hair){
-  const key=src.uuid+'|'+skin+'|'+hair;let t=tintCache.get(key);if(t)return t;
+function tintedMap(src,skin,hair,srgb,eye){
+  const key=src.uuid+'|'+skin+'|'+hair+'|'+(srgb?1:0)+'|'+eye;let t=tintCache.get(key);if(t)return t;
   const img=src.image;const W=img.width||1024,H=img.height||1024;const cv=document.createElement('canvas');cv.width=W;cv.height=H;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);
-  const cell=W/8;const paint=(ix,col)=>{if(col==null)return;const c=new THREE.Color(col);const d=cx.getImageData(ix*cell,0,cell,cell);const p=d.data;let sum=0;for(let i=0;i<p.length;i+=4)sum+=p[i]*.3+p[i+1]*.59+p[i+2]*.11;const avg=sum/(p.length/4)||1;
-    for(let i=0;i<p.length;i+=4){const l=(p[i]*.3+p[i+1]*.59+p[i+2]*.11)/avg;p[i]=Math.min(255,c.r*255*l);p[i+1]=Math.min(255,c.g*255*l);p[i+2]=Math.min(255,c.b*255*l)}cx.putImageData(d,ix*cell,0)};
-  paint(0,skin);paint(1,hair);
+  /* recolour an atlas cell, keeping its own light and shade (each pixel keeps its brightness relative to the cell) */
+  const cell=W/8;const paint=(ix,col,iy=0)=>{if(col==null)return;const c=new THREE.Color(col);if(srgb)c.convertLinearToSRGB();const d=cx.getImageData(ix*cell,iy*cell,cell,cell);const p=d.data;let sum=0;for(let i=0;i<p.length;i+=4)sum+=p[i]*.3+p[i+1]*.59+p[i+2]*.11;const avg=sum/(p.length/4)||1;
+    for(let i=0;i<p.length;i+=4){const l=(p[i]*.3+p[i+1]*.59+p[i+2]*.11)/avg;p[i]=Math.min(255,c.r*255*l);p[i+1]=Math.min(255,c.g*255*l);p[i+2]=Math.min(255,c.b*255*l)}cx.putImageData(d,ix*cell,iy*cell)};
+  paint(0,skin);paint(1,hair);if(srgb){paint(0,skin,1);paint(1,hair,1)}if(eye!=null){paint(2,eye);paint(2,eye,1)}
   t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.flipY=src.flipY;t.minFilter=THREE.LinearMipmapLinearFilter;t.anisotropy=4;tintCache.set(key,t);return t}
 /* KayKit mensachtigen: standaard clipkaart */
 const ATK_1H=['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Stab','1H_Melee_Attack_Chop'],ATK_2H=['2H_Melee_Attack_Chop','2H_Melee_Attack_Slice','2H_Melee_Attack_Spin'];
@@ -51,12 +52,12 @@ function buildGltfRig(spec){
     /* materialen per exemplaar klonen waar nodig (tint / huid+haar) */
     if(spec.skin!=null||spec.hair!=null||spec.tint||spec.glow){const done=new Map();m.traverse(x=>{if(!x.isMesh)return;const sm=x.material;let nm=done.get(sm);
       if(!nm){nm=sm;if(spec.glow&&spec.glow[sm.name]!=null){nm=new THREE.MeshBasicMaterial({color:new THREE.Color(spec.glow[sm.name]).multiplyScalar(1.6)})}else if(spec.tint&&spec.tint[sm.name]!=null&&sm.color){nm=sm.clone();nm.color.set(spec.tint[sm.name])}
-        else if((spec.skin!=null||spec.hair!=null)&&sm.map&&x.isSkinnedMesh){nm=sm.clone();nm.map=tintedMap(sm.map,spec.skin,spec.hair)}done.set(sm,nm)}x.material=nm})}
+        else if((spec.skin!=null||spec.hair!=null)&&sm.map&&x.isSkinnedMesh){nm=sm.clone();nm.map=tintedMap(sm.map,spec.skin,spec.hair,spec.orc,spec.orc?0xffc81e:undefined)}done.set(sm,nm)}x.material=nm})}
     /* wapen: mesh uit het model (KayKit) of het eigen spelwapen in de handslot */
     const slotR=m.getObjectByName('handslotr'),slotL=m.getObjectByName('handslotl');
     if(spec.weaponMesh){const w=m.getObjectByName(spec.weaponMesh);if(w){w.visible=true;const rc=RCOL[spec.wr|0];if(rc){w.material=w.material.clone();w.material.emissive=new THREE.Color(rc);w.material.emissiveIntensity=.12+(spec.wr|0)*.08}r.weapon=w}}
     else if(spec.wt&&spec.wt!=='none'&&slotR&&!spec.noProcW){const w=weaponMesh(spec.wt,spec.wr||0);w.rotation.set(0,0,0);w.scale.setScalar(1/s);(spec.wt==='boog'&&slotL?slotL:slotR).add(w);r.weapon=w}
-    if(spec.o&&spec.o.gear)dressGltf(r,m,spec.o);
+    if(spec.o&&spec.o.gear)dressGltf(r,m,spec.o);if(spec.orc)attachOrcBits(r,m,spec.o);
     if(spec.wmodel)attachWeaponModel(r,m,spec.wmodel,'handslotr',spec.wr|0).then(w=>{if(w)r.weapon=w});if(spec.smodel)attachWeaponModel(r,m,spec.smodel,'handslotl',0);
     if(spec.eye){m.traverse(x=>{if(x.isMesh&&x.material.isMeshBasicMaterial){x.material=x.material.clone();x.material.color.set(spec.eye)}})}
     r.mixer=new THREE.AnimationMixer(m);r.clips=src.clips;r.ready=true;
@@ -65,12 +66,12 @@ function buildGltfRig(spec){
 /* spelers */
 function buildGltfChar(o){
   const R=RACES[o.race]||RACES.mens;const s0=o.scale||1;
-  return buildGltfRig({model:playerModel(o),eye:R.undead?o.hair:undefined,h:1.78*R.h*s0,props:playerProps(o),weaponMesh:o.wm?null:weaponProp(o),noProcW:!!o.wm,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
+  return buildGltfRig({model:playerModel(o),eye:R.undead?o.hair:undefined,...(R.orc?{skin:o.skin,hair:o.hair,orc:1}:{}),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:o.wm?null:weaponProp(o),noProcW:!!o.wm,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
 /* NPC's en wachters */
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
   bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'}};
 function buildGltfNpc(id,look){const d=NPC_GLTF[id]||NPC_GLTF.guard;const h=look.dwarf?1.5:1.78;
-  return buildGltfRig({model:d.m,h,props:d.props,weaponMesh:d.w,wt:look.wt,o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:look.dwarf?'dwerg':'mens',...look})})}
+  return buildGltfRig({model:d.m,h,props:d.props,weaponMesh:d.w,wt:look.wt,...(look.tusks?{skin:look.skin,hair:look.hair,orc:1}:{}),o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:look.dwarf?'dwerg':'mens',...look})})}
 /* monsters */
 const CM_ANIMAL={idle:'Idle',cidle:'Idle',walk:'Walk',run:'Gallop',die:'Death',hit:'Idle_HitReact_Left',jumpS:'Gallop_Jump',jumpI:'Gallop_Jump',land:'Jump_ToIdle',atk:{def:['Attack']}};
 const CM_SPIDER={idle:'Spider_Idle',cidle:'Spider_Idle',walk:'Spider_Walk',run:'Spider_Walk',die:'Spider_Death',hit:'Spider_Jump',atk:{def:['Spider_Attack']}};
