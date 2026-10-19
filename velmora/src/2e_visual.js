@@ -90,17 +90,16 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
   /* ---------- graanvelden ---------- */
   if(window.__wheat)jobs.push(envInstances(['N_Wheat','C_Wheat_4'],window.__wheat,(t,i)=>i%5===0?1:0,(t,bb)=>{const k=1.25*t[2]/(bb.max.y-bb.min.y);return[k*1.4,k,k*1.4]},false).then(ok=>{if(ok)hideProc('wheat')}));
   /* ---------- arena ---------- */
-  jobs.push((async()=>{const ax=ARENA.x,az=ARENA.z,y=ARENA_H;const it={tier:[],wall:[],par:[]};const SEG=56;
-    for(let i=0;i<SEG;i++){const a=i/SEG*Math.PI*2;const gate=Math.abs(Math.cos(a))>.965;const ry=-a-Math.PI/2;
-      for(let t=0;t<3;t++){if(gate&&t<2)continue;const r=ARENA.r+1+t*1.6,h=1.3+t*1.3,w=2*Math.PI*r/SEG+.1;it.tier.push({x:ax+Math.cos(a)*r,y:y,z:az+Math.sin(a)*r,ry,sx:w/1.54,sy:h/1.55,sz:1.7/.56})}
-      if(!gate){const rb=ARENA.r+.3,wb=2*Math.PI*rb/SEG+.06;it.par.push({x:ax+Math.cos(a)*rb,y,z:az+Math.sin(a)*rb,ry,sx:wb/1.54,sy:1.1/1.55,sz:.5/.56})}}
-    const WS=40;for(let i=0;i<WS;i++){const a=(i+.5)/WS*Math.PI*2;if(Math.abs(Math.cos(a))>.955)continue;const rw=ARENA.r+6.2,w=2*Math.PI*rw/WS+.15;it.wall.push({x:ax+Math.cos(a)*rw,y,z:az+Math.sin(a)*rw,ry:-a-Math.PI/2,sx:w/1.52,sy:8/2.35,sz:1.3/.42})}
-    const SAND=new THREE.Color(.7,.6,.47),SAND2=new THREE.Color(.58,.49,.38);const ok=await Promise.all([instModel('MM_Wall',it.tier,{tint:SAND2}),instModel('MM_TallWallBricks',it.wall,{tint:SAND}),instModel('MM_WallBricks',it.par,{tint:SAND2})]);if(!ok.every(Boolean))return;
-    const P=[];for(const s of[-1,1]){const x=ax+s*(ARENA.r+4.5);P.push(place('MM_TallWallEntrance',x,az,s>0?Math.PI/2:-Math.PI/2,[6.6/1.52,9.4/2.35,3/.42]).then(o=>tintObj(o,SAND)));
-      for(const dz of[-2.9,2.9])P.push(place('D_Arch_Door',x+s*1.3,az+dz*.9,s*(dz>0?-1.1:1.1)+Math.PI/2,1.7));
-      for(const dz of[-4.5,4.5])P.push(place('D_Banner',ax+s*(ARENA.r+7.6),az+dz,s>0?Math.PI/2:-Math.PI/2,2.6))}
-    for(let i=0;i<16;i++){const a=i/16*Math.PI*2;if(Math.abs(Math.cos(a))>.965)continue;const r=ARENA.r+6.2;P.push(place('MD_Column',ax+Math.cos(a)*r,az+Math.sin(a)*r,0,.75,8).then(o=>tintObj(o,SAND)))}
-    for(let i=0;i<8;i++){const a=i/8*Math.PI*2+Math.PI/8;const r=ARENA.r+.3;P.push(place('S_WoodenTorch_Fire',ax+Math.cos(a)*r,az+Math.sin(a)*r,0,.75,.2))}
-    {const lz=az-(ARENA.r+3);P.push(place('D_Pedestal',ax,lz,0,2.2,4));for(const sx of[-3,3])P.push(place('MD_Column',ax+sx,lz,0,.9,4.2));P.push(place('D_Banner',ax,lz+1.8,0,2,4))}
+  /* arena: a downloaded low-poly colosseum (CreativeTrio, CC0, via Poly Pizza), sunk so its pit floor is at ground level,
+     with two gate tunnels cut through the stands along x and lined with dungeon stone (Quaternius Modular Dungeon) */
+  jobs.push((async()=>{const ax=ARENA.x,az=ARENA.z,y=ARENA_H,S=ARENA_S;const SAND=new THREE.Color(1.08,.98,.84),STONE=new THREE.Color(1.75,1.55,1.3);
+    const col=await place('A_Colosseum',ax,az,0,S,-.2*S);if(!col)return;tintObj(col,SAND);
+    const P=[];const L=ARENA_RX*.72,GW=ARENA_GW;
+    for(const s of[-1,1]){const xm=ax+s*(ARENA_RX*.98+L/2);
+      for(const sz of[-1,1])P.push(place('MM_Wall',xm,az+sz*(GW+.3),0,[L/1.54,4.6/1.55,1.6],0).then(o=>tintObj(o,SAND)));
+      P.push(place('D_Floor_Modular',xm,az,0,[L/2,1.6,(GW*2+1.4)/2],4.5).then(o=>tintObj(o,new THREE.Color(.95,.88,.78))));
+      for(const xe of[ARENA_RX*.98,ARENA_RX*.98+L])P.push(place('MM_TallWallEntrance',ax+s*xe,az,Math.PI/2,[(GW*2+1.6)/1.52,7.4/2.35,1.4/.42]).then(o=>tintObj(o,SAND)));
+      for(const dz of[-GW-1.6,GW+1.6])P.push(place('D_Banner',ax+s*(ARENA_RX*.98+L+.9),az+dz,s>0?Math.PI/2:-Math.PI/2,2.6))}
+    for(let i=0;i<10;i++){const a=i/10*Math.PI*2+Math.PI/10;P.push(place('S_WoodenTorch_Fire',ax+Math.cos(a)*ARENA_RX*.97,az+Math.sin(a)*ARENA_RZ*.97,0,.75,.2))}
     await Promise.all(P);hideProc('arena')})());
   await Promise.all(jobs)}

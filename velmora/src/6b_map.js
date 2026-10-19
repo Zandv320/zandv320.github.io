@@ -72,9 +72,11 @@ function* atlasGen(){const t0=performance.now();
     for(const s of STATIONS)if(Math.hypot(s.x-CRAFT.x,s.z-CRAFT.z)<CRAFT.r){bld(s.x,s.z,3.4,3,0,'#8a6a4a',false)}
     const f=STATIONS.find(s=>s.k==='forge');if(f)bld(f.x-3,f.z-6,8,6.5,.47,'#a3402c')}
   /* arena: stands and sand */
-  {const A=ARENA;g.fillStyle='#8f8a7e';g.beginPath();g.arc(A.x,A.z,A.r+7,0,7);g.fill();g.fillStyle='#b8b1a2';g.beginPath();g.arc(A.x,A.z,A.r+4,0,7);g.fill();g.fillStyle='#e2cc98';g.beginPath();g.arc(A.x,A.z,A.r,0,7);g.fill();
-    g.strokeStyle='rgba(60,50,40,.6)';g.lineWidth=.4;for(const r of[A.r,A.r+4,A.r+7]){g.beginPath();g.arc(A.x,A.z,r,0,7);g.stroke()}g.fillStyle='#d8a641';g.fillRect(A.x-1,A.z-.7,2,1.4);
-    g.fillStyle='#e2cc98';for(const s of[-1,1])g.fillRect(A.x+s*(A.r+3.5)-3.5,A.z-2.2,7,4.4)}
+  {const A=ARENA,rx=ARENA_RX,rz=ARENA_RZ;const el=(k,col)=>{g.fillStyle=col;g.beginPath();g.ellipse(A.x,A.z,rx*k,rz*k,0,0,7);g.fill()};
+    g.fillStyle='rgba(30,25,20,.35)';g.beginPath();g.ellipse(A.x+1.2,A.z+1.2,rx*1.66,rz*1.66,0,0,7);g.fill();el(1.66,'#a99c84');el(1.5,'#c9bca2');
+    g.strokeStyle='rgba(90,75,55,.55)';g.lineWidth=.3;for(let k=1.08;k<1.48;k+=.07){g.beginPath();g.ellipse(A.x,A.z,rx*k,rz*k,0,0,7);g.stroke()}
+    el(1.04,'#8f8a7e');el(1,'#e2cc98');g.fillStyle='#e2cc98';for(const s2 of[-1,1])g.fillRect(A.x+s2*rx*1.36-rx*.36,A.z-ARENA_GW,rx*.72,ARENA_GW*2);
+    g.strokeStyle='rgba(60,50,40,.7)';g.lineWidth=.45;g.beginPath();g.ellipse(A.x,A.z,rx*1.66,rz*1.66,0,0,7);g.stroke();g.fillStyle='#d8a641';g.fillRect(A.x-1,A.z-.7,2,1.4)}
   /* bandit camp: palisade and tents */
   {g.strokeStyle='#5a3a20';g.lineWidth=.9;g.setLineDash([.5,.5]);const gap=Math.atan2(32,-60);g.beginPath();g.arc(CAMP.x,CAMP.z,25,gap+.35,gap-.35+Math.PI*2);g.stroke();g.setLineDash([]);
     for(const[x,z,c]of[[-8,-8,'#b09a6a'],[9,-6,'#9a6a4a'],[-6,10,'#8a7a5a'],[11,9,'#aa8a5a'],[0,-14,'#7a5a4a']]){g.fillStyle='rgba(30,20,10,.35)';g.beginPath();g.moveTo(CAMP.x+x+.8,CAMP.z+z-2.5);g.lineTo(CAMP.x+x+3.3,CAMP.z+z+3);g.lineTo(CAMP.x+x-1.7,CAMP.z+z+3);g.fill();g.fillStyle=c;g.beginPath();g.moveTo(CAMP.x+x,CAMP.z+z-3);g.lineTo(CAMP.x+x+2.6,CAMP.z+z+2.4);g.lineTo(CAMP.x+x-2.6,CAMP.z+z+2.4);g.closePath();g.fill();g.strokeStyle='#3a2a1a';g.lineWidth=.3;g.stroke()}
@@ -124,7 +126,7 @@ function mapSource(){const x=ME.pos.x;
   atlasBuild();return{key:'vel',img:ATLAS.c,x0:-320,z0:-320,w:640,h:640,title:'Map of Velmora'}}
 /* labels: region names (always), places (from a little zoom), buildings (zoomed in) */
 const MAP_LABELS={vel:[[0,'Twilight Wood',-30,-150],[0,'Ashen Hills',205,-215],[0,'Bandit Heath',165,-140],[0,'Bone Hills',-170,-250],[0,'Mirror Lake',-150,128],[0,'Golden Fields',10,178],[0,'Silverdale',175,65],[0,'Silverbrook',0,-86],
-    [1,"Artisans' Yard",-108,-28],[1,'Arena',124,6],[1,'Bandit Camp',150,-132],[1,'Crypt of Kaal-Morath',-172,-236],[1,"Ignaroth's Fire Cave",206,-196],[1,'Dragon Pass ➜',228,88],[1,'Farm',46,96],[1,'Mill',-34,108],
+    [1,"Artisans' Yard",-108,-28],[1,'Arena',126,-24],[1,'Bandit Camp',150,-132],[1,'Crypt of Kaal-Morath',-172,-236],[1,"Ignaroth's Fire Cave",206,-196],[1,'Dragon Pass ➜',228,88],[1,'Farm',46,96],[1,'Mill',-34,108],
     [2,'The Keep',30,-58],[2,'Church of the Light',40,14],[2,'Silver Tankard',-34,-30],[2,'Market Street',-40,15],[2,'Barracks',50,-18],[2,'Mill Pond',-38,46],[2,'Town Square',0,-27]],
   drk:[[1,'⬅ To Silverdale',-170,-10],[1,'Volcano door',-50,-12],[0,"Dragonhunters' Camp",-138,48],[0,'Mount Dragonrest',0,-24],[0,'Dragon Nests',10,150],[0,'Shrines',122,-62],[0,'Fire Fields',0,-150],[0,'Ash Plains',-95,-110]]};
 function mapFit(){const S=MAPST.src;return Math.min(MAPST.w/S.w,MAPST.h/S.h)}

@@ -5,7 +5,7 @@
    - De AK-47 is voor elke klasse, schiet 8 kogels per seconde en doet zware schade, maar werkt alleen in de arena. */
 const ARENA_ST={open:true,closedT:0,lid:0,inside:false,prevPvp:null,holder:null};
 const AK_RANGE=32,AK_RESPAWN=120;
-function inArena(x,z){return Math.hypot(x-ARENA.x,z-ARENA.z)<ARENA.r+6}
+function inArena(x,z){return((x-ARENA.x)/(ARENA_RX+1))**2+((z-ARENA.z)/(ARENA_RZ+1))**2<1}
 function hasAK(){return !!(P&&((P.eq.wapen&&P.eq.wapen.wt==='ak')||P.inv.some(i=>i&&i.wt==='ak')))}
 function makeAK(){return{id:uid(),kind:'gear',s:'wapen',r:3,il:15,req:1,cls:'alle',n:'AK-47',wt:'ak',min:48,max:70,spd:.125,pow:0,sta:0,arm:0,price:0,arena:1,vis:{c:0x1d1d1d},desc:'A weapon from another world. Only usable in the arena.'}}
 function removeAK(reason){if(!P)return false;let had=false;if(P.eq.wapen&&P.eq.wapen.wt==='ak'){delete P.eq.wapen;had=true}for(let i=0;i<P.inv.length;i++)if(P.inv[i]&&P.inv[i].wt==='ak'){P.inv[i]=null;had=true}

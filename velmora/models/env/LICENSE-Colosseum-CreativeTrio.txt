@@ -1,0 +1,2 @@
+Colosseum by CreativeTrio, from Poly Pizza (https://poly.pizza/m/83ftBPyiSf)
+License: CC0 1.0 Universal (public domain). Modified for Velmora: texture baked to vertex colours, raised floor removed and two gate tunnels cut through the stands.
