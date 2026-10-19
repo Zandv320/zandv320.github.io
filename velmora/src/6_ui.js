@@ -7,7 +7,7 @@ const npcName=id=>(NPCS.find(n=>n.id===id)||{}).n||'';
 function setBar(el,v,max,txt){const f=Math.round(clamp(max?v/max:0,0,1)*400)/400;if(el._f!==f){el._f=f;el.firstElementChild.style.transform='scaleX('+f+')'}const t=txt??(Math.round(v)+' / '+Math.round(max));if(el._t!==t){el._t=t;el.lastElementChild.textContent=t}}
 const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife','pTalent'];
 $('#pTalent').addEventListener('click',()=>{if(isTouch)hideTip()});
-function syncPop(){document.body.classList.toggle('pop',panels.some(p=>p!=='pDialog'&&!$('#'+p).hidden))}
+function syncPop(){const B=document.body.classList,port=B.contains('portrait');B.toggle('pop',isTouch&&panels.some(p=>(port||p==='pDialog')&&!$('#'+p).hidden));B.toggle('bagdlg',!$('#pDialog').hidden&&!$('#pBag').hidden)}
 function openPanel(id){if(isTouch&&document.body.classList.contains('portrait')&&id!=='pDialog')for(const p of panels)if(p!==id&&p!=='pDialog'&&!$('#'+p).hidden)closePanel(p);if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')drawBigMap();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}syncPop()}
 function closePanel(id){$('#'+id).hidden=true;if(id==='pTalent')document.body.classList.remove('tal');if(id==='pDialog')S.shop=false;hideTip();syncPop()}
 function togglePanel(id){if($('#'+id).hidden)openPanel(id);else closePanel(id)}
@@ -18,6 +18,19 @@ $('#mmw').addEventListener('click',()=>togglePanel('pMap'));
 const MAPVIEW={all:false};$('#mapAll').addEventListener('click',()=>{MAPVIEW.all=!MAPVIEW.all;$('#mapAll').textContent=MAPVIEW.all?'Area':'Overview';drawBigMap()});
 $('#bChat').addEventListener('click',()=>openChat());
 $('#bSave').addEventListener('click',()=>{saveGame(true);toast('');log('Game saved.','sys')});
+/* fullscreen: the Fullscreen API where the browser has it; on iPhone only via 'Add to Home Screen' */
+function fsEl(){return document.fullscreenElement||document.webkitFullscreenElement}
+function fsAble(){const d=document.documentElement;return!!(d.requestFullscreen||d.webkitRequestFullscreen)}
+const isStandalone=()=>matchMedia('(display-mode: fullscreen),(display-mode: standalone)').matches||navigator.standalone;
+function updFs(){const on=!!fsEl()||isStandalone();const b=$('#bFull');if(b)b.textContent='Fullscreen: '+(on?'on':'off');const b2=$('#bFull2');if(b2)b2.hidden=on&&!fsEl()}
+function toggleFullscreen(){if(fsEl()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return}
+  if(fsAble()){const d=document.documentElement;const pr=(d.requestFullscreen||d.webkitRequestFullscreen).call(d,{navigationUI:'hide'});if(pr&&pr.catch)pr.catch(()=>fsHint());return}
+  fsHint()}
+function fsHint(){if($('#fsHint'))return;const d=document.createElement('div');d.id='fsHint';const ios=/iPhone|iPod/.test(navigator.userAgent);
+  d.innerHTML=ios?'Safari on iPhone cannot make a web page fullscreen. Tap <b>Share</b> ⎋ and then <b>Add to Home Screen</b>, then start Velmora from its icon: it opens fullscreen, without browser bars.<button class="btn alt">OK</button>':'This browser does not allow fullscreen. Use your browser menu: <b>Add to Home screen</b>, then start Velmora from its icon.<button class="btn alt">OK</button>';
+  d.querySelector('button').onclick=()=>d.remove();document.body.appendChild(d)}
+document.addEventListener('fullscreenchange',updFs);document.addEventListener('webkitfullscreenchange',updFs);
+$('#bFull').addEventListener('click',toggleFullscreen);$('#bFull2').addEventListener('click',toggleFullscreen);updFs();
 $('#bSound').addEventListener('click',()=>{S.sound=!S.sound;$('#bSound').textContent='Sound: '+(S.sound?'on':'off')});
 const gfxBtn=()=>$('#bGfx').textContent='Graphics: '+GFX_N[GFX.q];gfxBtn();$('#bGfx').addEventListener('click',()=>{GFX.q=GFX.q==='hoog'?'middel':GFX.q==='middel'?'laag':'hoog';GFX.auto=9;applyGfx();gfxBtn()});
 $('#bQuit').addEventListener('click',()=>{toMenu()});

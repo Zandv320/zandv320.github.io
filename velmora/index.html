@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="description" content="Velmora: a fantasy MMORPG in your browser. Create a hero, do quests, collect loot and defeat the Bone King together.">
 <meta name="theme-color" content="#0d0b09">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Velmora">
+<link rel="manifest" href="ui/manifest.webmanifest">
+<link rel="apple-touch-icon" href="ui/icon_app.png">
 <title>Velmora · Chronicles of the Twilight Realm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -247,8 +253,25 @@ body.touch.portrait .tb[data-role=tgt]{left:4px}body.touch.portrait .tb[data-rol
 body.touch.portrait #tJump{left:134px;width:46px;height:46px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 164px)}
 body.touch.portrait #tdrawer{right:64px;bottom:174px;flex-wrap:wrap;max-width:calc(100vw - 100px)}
 body.touch.portrait .panel.frame,body.touch.portrait #pBag,body.touch.portrait #pChar{width:calc(100vw - 16px);max-width:none}
-body.touch.portrait.pop #touch{display:none}
 body.touch.portrait .grid{grid-template-columns:repeat(6,1fr)}
+
+/* fullscreen hint (iPhone: only via the home screen) */
+#fsHint{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:40;width:min(360px,calc(100vw - 24px));padding:12px 14px;font-size:14px;line-height:1.4;color:#fff3d6;background:rgba(20,14,9,.97);border:2px solid #c8963e;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.7)}
+#fsHint b{color:#ffe08a}#fsHint button{margin-top:8px;width:100%}
+#menu .top .back{cursor:pointer}#menu .top{flex-wrap:wrap}
+/* NPC windows on phones: compact, and never under the touch buttons (those hide while a window is open) */
+#pDialog .btn.alt{color:#3b2a14;text-shadow:none}
+body.touch #pDialog{font-size:14px;width:min(440px,calc(100vw - 16px));max-height:calc(100% - 16px);overflow:auto;border-width:14px;padding:4px 8px}
+body.touch #pDialog h3{font-size:17px;margin-bottom:6px}body.touch #pDialog p{margin:0 0 6px;line-height:1.35}
+body.touch .dq{padding:7px 9px;margin:3px 0}body.touch .shop{gap:5px;margin:6px 0}body.touch .shop button{padding:5px;font-size:12px}body.touch .shop canvas{width:30px;height:30px}
+body.touch #pDialog .btn{min-height:40px;padding:6px 10px}
+body.touch.portrait #pDialog{top:auto;bottom:max(6px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-height:min(62vh,calc(100% - 140px));animation:drawerUp .22s ease-out}
+body.touch.portrait.bagdlg #pDialog{top:calc(max(10px,env(safe-area-inset-top)) + 132px);bottom:auto;max-height:calc(50% - 150px);animation:none}
+body.touch.portrait.bagdlg #pBag{max-height:calc(50% - 10px)}
+body.touch:not(.portrait) #pDialog{width:min(440px,60vw);max-height:calc(100% - 12px)}
+body.touch:not(.portrait).bagdlg #pDialog{left:max(8px,env(safe-area-inset-left));transform:translateY(-50%);width:min(420px,calc(50vw - 12px))}
+body.touch:not(.portrait).bagdlg #pBag{left:auto;right:max(8px,env(safe-area-inset-right));transform:none;width:min(400px,calc(50vw - 12px))}
+body.touch.pop #touch{display:none}
 
 .frame input,.frame .btn.alt{text-shadow:none}
 #pDialog,#pDialog *{text-shadow:none}
@@ -460,6 +483,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
     <p class="mhelp" style="margin:0">With PvP on you can fight other players outside Silverbrook who also have PvP on. Winning earns honour and gold.</p>
     <button class="btn alt" id="bSound">Sound: on</button>
     <button class="btn alt" id="bGfx">Graphics: High</button>
+    <button class="btn alt" id="bFull">Fullscreen: off</button>
     <button class="btn" id="bQuit">Save and return to title screen</button>
     <p class="mhelp keyh"><kbd>WASD</kbd> move · <kbd>drag mouse</kbd> camera · <kbd>scroll</kbd> zoom · <kbd>click</kbd> target · <kbd>Tab</kbd> nearest enemy · <kbd>1</kbd>–<kbd>7</kbd> abilities · <kbd>F</kbd> talk/loot/door · <kbd>Space</kbd> jump · <kbd>Enter</kbd> chat · <kbd>B</kbd> <kbd>C</kbd> <kbd>L</kbd> <kbd>M</kbd> windows</p>
   </div>
@@ -473,7 +497,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
 </div>
 
 <div id="menu" hidden>
-  <div class="top"><a class="back" href="../">← All games</a><div class="net" id="net"><i></i><span>Connecting to Velmora…</span></div></div>
+  <div class="top"><a class="back" href="../">← All games</a><button class="back" id="bFull2" type="button">⛶ Fullscreen</button><div class="net" id="net"><i></i><span>Connecting to Velmora…</span></div></div>
   <div class="logo"><h1>Velmora</h1><p>Chronicles of the Twilight Realm</p></div>
   <div>
     <section id="sel" class="mpanel frame">

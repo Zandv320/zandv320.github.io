@@ -1,0 +1,1 @@
+{"name":"Velmora","short_name":"Velmora","start_url":"/velmora/","scope":"/velmora/","display":"fullscreen","orientation":"any","background_color":"#0d0b09","theme_color":"#0d0b09","icons":[{"src":"/velmora/ui/icon_app_192.png","sizes":"192x192","type":"image/png"},{"src":"/velmora/ui/icon_app_512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
