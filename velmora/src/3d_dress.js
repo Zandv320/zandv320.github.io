@@ -52,14 +52,15 @@ function dressedMap(src,mapping,key){const k=src.uuid+'|'+key;let t=dressCache.g
     for(let i=0;i<p.length;i+=4){const l=Math.min(1.35,(p[i]*.3+p[i+1]*.59+p[i+2]*.11)/avg);p[i]=Math.min(255,c.r*255*l);p[i+1]=Math.min(255,c.g*255*l);p[i+2]=Math.min(255,c.b*255*l)}g.putImageData(d,cx*cw,cy*ch)}
   t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.flipY=src.flipY;t.minFilter=THREE.LinearMipmapLinearFilter;t.anisotropy=4;dressCache.set(k,t);return t}
 /* ---- welk model en welke props horen bij deze look ---- */
-function playerModel(o){const cls=o.cls;if(o.outfits)return GLTF_MODELS[cls];for(const slot in GEAR_VIS[cls]||{}){const v=GEAR_VIS[cls][slot];if(v.model&&o.gear&&o.gear[slot])return v.model}return GLTF_MODELS[cls]}
+const UNDEAD_MODEL={krijger:'Skeleton_Warrior',magier:'Skeleton_Mage',jager:'Skeleton_Minion'};
+function playerModel(o){const cls=o.cls;if(RACES[o.race]&&RACES[o.race].undead)return UNDEAD_MODEL[cls]||'Skeleton_Warrior';if(o.outfits)return GLTF_MODELS[cls];for(const slot in GEAR_VIS[cls]||{}){const v=GEAR_VIS[cls][slot];if(v.model&&o.gear&&o.gear[slot])return v.model}return GLTF_MODELS[cls]}
 function playerProps(o){const on=[];const V=GEAR_VIS[o.cls]||{};const G=o.gear||{};
   for(const slot in V){const d=G[slot];if(!d)continue;if(o.outfits&&o.outfits[slot])continue;const v=V[slot];if(d.p)on.push(d.p);else if(v.props)on.push(...v.props);if(v.extra&&!o.om)on.push(...Object.keys(v.extra))}
   const wv=o.wt&&WEAPON_VIS[o.wt];if(wv&&wv.shield&&o.cls==='krijger'&&o.wt&&!o.sm)on.push(SHIELDS[clamp(o.wr|0,0,3)]);
   return on}
 function weaponProp(o){if(o.wvis&&o.wvis.p)return o.wvis.p;const wv=o.wt&&WEAPON_VIS[o.wt];return wv?wv[o.cls]||null:null}
 /* props en atlas kleuren; eigen glb-wapen inladen */
-function dressGltf(r,m,o){const G=o.gear||{};const key=JSON.stringify(G);if(o.outfits)applyOutfit(r,m,o);if(o.wm||o.sm||o.om)applyWeapons(r,m,o);
+function dressGltf(r,m,o){const G=o.gear||{};const key=JSON.stringify(G);if(o.outfits)applyOutfit(r,m,o);if(o.wm||o.sm||o.om)applyWeapons(r,m,o);if(RACES[o.race]&&RACES[o.race].undead)return;/* skeletten: eigen textuur houden */
   m.traverse(x=>{if(!x.isSkinnedMesh||!x.material.map)return;const kind=/Arm/.test(x.name)?'Arm':/Leg/.test(x.name)?'Leg':/Head/.test(x.name)?'Head':/Body/.test(x.name)?'Body':null;if(!kind)return;
     if(kind==='Head'&&!/Hooded/.test(x.name))return;
     const skin=atlasSkin(x.material.map);const nm=x.material.clone();nm.map=dressedMap(x.material.map,dressMapping(kind,G,skin),kind+'|'+key);x.material=nm});

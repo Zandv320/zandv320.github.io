@@ -53,13 +53,13 @@ function remapSkin(s,own){const key=s.geometry.uuid+'|'+own.bones.map(b=>b.name)
   if(ok){const g=s.geometry.clone();const si=g.attributes.skinIndex;const arr=new Uint16Array(si.count*4);for(let i=0;i<si.count;i++)for(let k=0;k<4;k++)arr[i*4+k]=map[si.getComponent(i,k)];g.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(arr,4));res=g}
   _remap.set(key,res);return res}
 /* which own meshes a slot replaces (matched on the end of the mesh name) */
-const SLOT_HIDE={borst:/_Body$|_Cape$/,handen:/Arm(Left|Right)$/,benen:/Leg(Left|Right)$/};
+const SLOT_HIDE={borst:/_Body$|_Cape$|_Cloak$/,handen:/Arm(Left|Right)$/,benen:/Leg(Left|Right)$/};
 async function applyOutfit(r,m,o){const G=o.gear||{};const sets=o.outfits||{};const tasks=[];const skCache=new Map();
   for(const slot of['hoofd','borst','handen','benen']){const key=sets[slot];const O=key&&OUTFITS[key];if(!O)continue;const rar=G[slot]?G[slot].r|0:0;
     tasks.push((async()=>{let n=0;for(const[mn,pn]of O[slot]){const src=await outfitSrc(mn);if(!src||!r.m)continue;if(partClone(m,src,pn,rar,skCache))n++}
       if(!n)return;
       /* eigen onderdelen verbergen */
-      m.traverse(x=>{if(!x.isMesh||x.userData.outfit)return;if(slot==='hoofd'){if(!x.isSkinnedMesh&&/Helmet|Hat|Hood/i.test(x.name))x.visible=false;if(O.head&&/_Head$/.test(x.name))x.visible=false}else if(SLOT_HIDE[slot].test(x.name))x.visible=false})})())}
+      m.traverse(x=>{if(!x.isMesh||x.userData.outfit)return;if(slot==='hoofd'){if(!x.isSkinnedMesh&&/Helmet|Hat|Hood/i.test(x.name))x.visible=false;if(O.head&&/_Head$|_Skull$|_Jaw$|_Eyes$/.test(x.name))x.visible=false}else if(SLOT_HIDE[slot].test(x.name))x.visible=false})})())}
   await Promise.all(tasks)}
 /* weapon and off-hand models into the hand slots */
 const _wSrc=new Map();

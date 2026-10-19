@@ -28,9 +28,8 @@ let uidN=Date.now()%100000;const uid=()=>(uidN++).toString(36)+Math.random().toS
 /* ===================== data ===================== */
 const RACES={
   mens:{n:'Human',skin:0xe2b48e,desc:'Versatile humans from the coastal kingdoms. Quick learners: +10% experience.',xp:1.1,h:1,w:1,hair:[0x3b2414,0xc79a4b,0x1b1b1b,0x8a3b1c]},
-  elf:{n:'Elf',skin:0xf0d2b8,desc:'Slender wood elves from Lirhaven. Sharp minds: +15% mana and power, slightly faster.',mp:1.15,pow:1.05,spd:1.05,h:1.06,w:.92,hair:[0xf2e2a0,0xd8d8e8,0x5a2d7a,0x2c4a2a]},
   dwerg:{n:'Dwarf',skin:0xd99b7a,desc:'Hardy mountain dwarves from Karak Duun. Sturdily built: +12% health.',hp:1.12,h:.8,w:1.18,hair:[0xb5541c,0x6b4a2b,0xd9d0c0,0x262626]},
-  grol:{n:'Grol',skin:0x6f9a4a,desc:'Proud grols of the Ash Plains. Savage strength: +10% damage.',dmg:1.1,h:1.04,w:1.12,hair:[0x1d1d1d,0x6a2b1b,0x3c3c3c,0xb8b8b8]}
+  undead:{n:'Undead',skin:0xe8e0cc,desc:'Restless dead who broke free from the crypt of Kaal-Morath. Undying: +6% health and +5% damage. The colour you pick is the glow of your eyes.',hp:1.06,dmg:1.05,h:1,w:1,undead:1,hair:[0x6ad8ff,0x7aff5a,0xc06aff,0xff6a3a]}
 };
 const CLASSES={
   krijger:{n:'Warrior',desc:'Fights up close with sword and axe. Lots of health and heavy blows. Uses energy.',res:'energie',hp:90,hpL:22,sta:10,staL:2.2,pow:12,powL:3,range:3.2,spd:2.3,cape:0x8c1f1f,chest:0x7a7f88,pants:0x3d3a36,wt:'zwaard',armorK:3,col:'#c79c6e'},
@@ -117,7 +116,8 @@ const NPCS=[
   {id:'hilde',n:'Forgemistress Hilde',t:'Master Artisan',x:-83.2,z:-8.4,ry:-2.78,look:{skin:0xe2b48e,hair:0xb04a1c,chest:0x6a4a3a,pants:0x3a3028,wt:'bijl',dwarf:1},hi:'Welcome to the Artisans\' Yard! Ore, hides and cloth go in; armour and weapons come out.'},
   {id:'thorne',n:'Warden Thorne',t:'Crypt Warden',x:-160,z:-196,ry:Math.PI*.85,look:{skin:0x6f9a4a,hair:0x1d1d1d,chest:0x5a5a5a,pants:0x2a2a2a,cape:0x5a1a1a,wt:'bijl',helm:1,tusks:1},hi:'The crypt behind me is no place for weaklings. Go with a group, or don\'t go at all.'}
 ];
-const RARITY=[{n:'Common',c:'#ffffff'},{n:'Uncommon',c:'#2bd94a'},{n:'Rare',c:'#3b8cff'},{n:'Epic',c:'#b65cff'},{n:'Legendary',c:'#ff8000'}];
+/* tekstkleuren: licht genoeg voor de bruine panelen (met donkere schaduw), en verzadigd genoeg om ze te herkennen */
+const RARITY=[{n:'Common',c:'#ffffff'},{n:'Uncommon',c:'#5dff73'},{n:'Rare',c:'#7cc0ff'},{n:'Epic',c:'#e0a3ff'},{n:'Legendary',c:'#ffab4a'}];
 const SLOTS=['hoofd','borst','handen','benen','voeten','ring','wapen'];
 const SLOT_NL={wapen:'Weapon',hoofd:'Head',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
 const MAT={krijger:['Iron','Steel','Chainmail','Battered'],magier:['Silk','Linen','Runic','Stardust'],jager:['Leather','Wolfhide','Scaled','Falconfeather']};

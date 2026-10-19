@@ -6,7 +6,7 @@ const isAuth=()=>!room||!room.connected()||room.isHost();
 const netEmit=(t,d)=>{if(room&&room.connected())room.emit(t,d).catch(()=>{})};
 const S={mode:'loading',t:0,sound:true};
 const SAVE_KEY='velmora-save-v1';let SAVE={chars:[],last:0};
-function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&Array.isArray(s.chars))SAVE=s}catch(e){}}
+function loadSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(s&&Array.isArray(s.chars))SAVE=s}catch(e){}/* verwijderde rassen (elf, grol) worden mens */for(const c of SAVE.chars)if(!RACES[c.race])c.race='mens'}
 function writeSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}}
 let P=null,ST={};
 const ME={stun:0,root:0,lastPvp:null,g:null,rig:null,pos:new THREE.Vector3(),vy:0,air:false,ry:0,spd:0,atk:-1,atkRanged:false,cast:null,swing:0,gcd:0,cds:{},combat:0,buff:0,dead:false,target:null,auto:false,dash:null,spin:0,portalCd:0,lookKey:'',moved:0};
@@ -65,7 +65,7 @@ function makeMon(sp){const t=MON[sp.type];const m={kind:'mon',id:sp.id,type:sp.t
   m.hp=m.mhp;m.nry=m.ry;m.lodk=MONS.length%3;m.rig=buildMonster(sp.type,sp.lvl);m.rig.g.position.set(m.x,m.y,m.z);m.rig.g.userData.ent=m;scene.add(m.rig.g);m.size=(t.size||1);MONS.push(m);MONMAP.set(m.id,m);return m}
 function removeMon(m){scene.remove(m.rig.g);const i=MONS.indexOf(m);if(i>=0)MONS.splice(i,1);MONMAP.delete(m.id);if(ME.target===m)setTarget(null);if(m.plate)m.plate.remove();if(m.spark){scene.remove(m.spark);m.spark=null}}
 for(const sp of genSpawns())makeMon(sp);
-for(const n of NPCS){const o={race:n.look.dwarf?'dwerg':'mens',...n.look};if(n.look.tusks)o.race='grol';if(n.look.ears)o.race='elf';const rig=window.__NOGLTF?buildHumanoid(o):buildGltfNpc(n.id,n.look);const y=groundH(n.x,n.z);rig.g.position.set(n.x,y,n.z);rig.g.rotation.y=n.ry;scene.add(rig.g);const e={kind:'npc',...n,y,rig,def:n};rig.g.userData.ent=e;NPCOBJ.push(e);addCol(n.x,n.z,.6)}
+for(const n of NPCS){const o={race:n.look.dwarf?'dwerg':'mens',...n.look};const rig=window.__NOGLTF?buildHumanoid(o):buildGltfNpc(n.id,n.look);const y=groundH(n.x,n.z);rig.g.position.set(n.x,y,n.z);rig.g.rotation.y=n.ry;scene.add(rig.g);const e={kind:'npc',...n,y,rig,def:n};rig.g.userData.ent=e;NPCOBJ.push(e);addCol(n.x,n.z,.6)}
 /* town guards (ambient) */
 const GUARDS=[];for(const[x,z,a]of[[-4,-52,0],[4,-52,0],[-3,50,Math.PI],[44,-24,1.1],[-50,20,-1.9]]){const gl={race:'mens',skin:0xd9a98a,hair:0x3b2414,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,pads:0x8a9098,shield:1};const rig=window.__NOGLTF?buildHumanoid(gl):buildGltfNpc('guard',gl);rig.g.position.set(x,groundH(x,z),z);rig.g.rotation.y=a+Math.PI;scene.add(rig.g);GUARDS.push(rig);addCol(x,z,.6)}
 

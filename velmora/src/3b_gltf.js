@@ -65,7 +65,7 @@ function buildGltfRig(spec){
 /* spelers */
 function buildGltfChar(o){
   const R=RACES[o.race]||RACES.mens;const s0=o.scale||1;
-  return buildGltfRig({model:playerModel(o),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:o.wm?null:weaponProp(o),noProcW:!!o.wm,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
+  return buildGltfRig({model:playerModel(o),eye:R.undead?o.hair:undefined,h:1.78*R.h*s0,props:playerProps(o),weaponMesh:o.wm?null:weaponProp(o),noProcW:!!o.wm,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
 /* NPC's en wachters */
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
   bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'}};
