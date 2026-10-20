@@ -2,7 +2,7 @@
 let TMC=null;/* cache van alle mod-sommen */
 function talentTrees(){return P?TALENTS[P.cls]||[]:[]}
 function talentRank(id){return (P&&P.talents&&P.talents[id])|0}
-function talentPoints(){return P?Math.max(0,P.level-1):0}
+function talentPoints(){return P?Math.max(0,P.level-1)+(P.bonusTP|0):0}
 function treeSpent(tr){return tr.nodes.reduce((s,n)=>s+talentRank(n.id),0)}
 function talentSpent(){return talentTrees().reduce((s,t)=>s+treeSpent(t),0)}
 function talentFree(){return talentPoints()-talentSpent()}

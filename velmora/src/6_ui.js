@@ -5,7 +5,7 @@ function log(t,cls='sys',raw=false){if(isTouch){const f=$('#feed');if(f){const e
 let bannerT=0;function banner(t,s='',dur=2.6){const b=$('#banner');b.innerHTML='<b>'+esc(t)+'</b>'+(s?'<small>'+esc(s)+'</small>':'');b.style.opacity=1;bannerT=dur}
 const npcName=id=>(NPCS.find(n=>n.id===id)||{}).n||'';
 function setBar(el,v,max,txt){const f=Math.round(clamp(max?v/max:0,0,1)*400)/400;if(el._f!==f){el._f=f;el.firstElementChild.style.transform='scaleX('+f+')'}const t=txt??(Math.round(v)+' / '+Math.round(max));if(el._t!==t){el._t=t;el.lastElementChild.textContent=t}}
-const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife','pTalent'];
+const panels=['pBag','pChar','pQuest','pMap','pDialog','pMenu','pLife','pTalent','pAdmin'];
 $('#pTalent').addEventListener('click',()=>{if(isTouch)hideTip()});
 function syncPop(){const B=document.body.classList,port=B.contains('portrait');B.toggle('pop',isTouch&&panels.some(p=>(port||p==='pDialog')&&!$('#'+p).hidden));B.toggle('bagdlg',!$('#pDialog').hidden&&!$('#pBag').hidden)}
 function openPanel(id){if(isTouch&&document.body.classList.contains('portrait')&&id!=='pDialog')for(const p of panels)if(p!==id&&p!=='pDialog'&&!$('#'+p).hidden)closePanel(p);if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')mapOpen();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}syncPop()}
@@ -203,6 +203,7 @@ chatIn.addEventListener('keydown',ev=>{ev.stopPropagation();if(ev.key==='Enter')
 chatIn.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==chatIn)$('#chat').classList.remove('open')},150));
 function sendChat(t){t=t.slice(0,120);if(/^\/(g|groep|p) /i.test(t)){const m=t.replace(/^\/\S+ /,'');if(!GROUP)return log('You are not in a group.','err');netEmit('chat',{t:m,g:GROUP.leader});log('<span class="c-grp">[Group] '+esc(P.name)+': '+esc(m)+'</span>','grp',true);return}
   if(/^\/(inv|uitnodigen) /i.test(t)){const nm=t.replace(/^\/\S+ /,'').toLowerCase();const r=[...REMOTES.values()].find(x=>x.n.toLowerCase()===nm);if(!r)return log('Player not found: '+nm,'err');return inviteToGroup(r)}
+  if(/^\/admin\b/i.test(t))return adminCmd(t.replace(/^\/admin\s*/i,''));
   if(/^\/(verlaat|leave)/i.test(t))return leaveGroup();
   if(/^\/pvp/i.test(t))return setPvp(!P.pvp);
   if(/^\/(help|\?)/i.test(t))return log('Commands: /g message (group chat), /inv name (invite), /leave (leave group), /pvp (toggle PvP)','sys');

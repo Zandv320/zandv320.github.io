@@ -2,7 +2,7 @@
 /* ===================== input ===================== */
 const KEYS=new Set();let snapCam=true;
 const cam={yaw:0,pitch:.42,dist:12,tdist:12,drag:0};const camTarget=new THREE.Vector3();
-addEventListener('keydown',ev=>{if(document.activeElement&&(document.activeElement.tagName==='INPUT'))return;const k=ev.key.toLowerCase();
+addEventListener('keydown',ev=>{if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='SELECT'))return;const k=ev.key.toLowerCase();
   if(S.mode!=='play')return;
   if(k==='enter'){ev.preventDefault();openChat();return}
   if(k==='tab'){ev.preventDefault();cycleTarget();return}
@@ -70,7 +70,7 @@ function updPlayer(dt){
     const frozen=ME.stun>0||ME.root>0||ME.dead||!!ME.cast&&false;if(ME.stun>0)ME.stun=Math.max(0,ME.stun-dt);if(ME.root>0)ME.root=Math.max(0,ME.root-dt);
     let wx=0,wz=0;if(!frozen&&inp.L>.05){const fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw),rx=Math.cos(cam.yaw),rz=-Math.sin(cam.yaw);wx=fx*inp.y+rx*inp.x;wz=fz*inp.y+rz*inp.x;const L=Math.hypot(wx,wz)||1;wx/=L;wz/=L;
       if(ME.cast&&inp.L>.3){ME.cast=null;$('#castbar').hidden=true;toast('Interrupted')}}
-    const maxSp=7*(RACES[P.race].spd||1)*(1+TM('speed'))*(ME.mounted?MOUNT_SPD:1)*(frozen?0:inp.L)*(ME.cast?0:1);
+    const maxSp=7*(RACES[P.race].spd||1)*(1+TM('speed'))*(ME.mounted?MOUNT_SPD:1)*(S.admSpd||1)*(frozen?0:inp.L)*(ME.cast?0:1);
     /* slope: slower uphill, faster downhill, slide on steep slopes */
     const gh0=groundH(ME.pos.x,ME.pos.z),ahead=groundH(ME.pos.x+wx*1.2,ME.pos.z+wz*1.2),slope=(ahead-gh0)/1.2;
     const slopeK=clamp(1-slope*.45,.55,1.25);
@@ -116,7 +116,7 @@ function updPlayer(dt){
   if(ME.portalCd<=0&&!ME.dead){if(drakePortals()){}else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-(CAVE.z+.6))<2.6)enterCave();else if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-(D2.exit.z+1.4))<2)leaveCave();else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-(CRYPT.z+.5))<2.3)enterDungeon();else if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-(DUN_EXIT.z+1.4))<2)leaveDungeon()}
   /* visuals */
   const g=ME.rig.g;g.position.copy(ME.pos);if(ME.spin>0){ME.spin-=dt;g.rotation.y+=dt*22}else g.rotation.y=ME.ry;
-  stablePets(dt);if(ME.mounted&&(!canRideHere()||ME.dead))dismount();const riding=riderFrame(ME,ME.rig,ME.mounted,ME.pos.x,ME.pos.y,ME.pos.z,ME.ry,sp/7,ME.air,dt);
+  stablePets(dt);adminFrame();if(ME.mounted&&(!canRideHere()||ME.dead))dismount();const riding=riderFrame(ME,ME.rig,ME.mounted,ME.pos.x,ME.pos.y,ME.pos.z,ME.ry,sp/7,ME.air,dt);
   autoDraw();animRig(ME.rig,{sheath:!!(ME.sheathed||riding),mounted:riding,act:riding?null:actAnim(),spd:sp/7,atk:ME.atk,ranged:ME.atkRanged,cast:!!ME.cast,dead:ME.dead,air:ME.air,vy:ME.vy,hurt:ME.hurtT>0,turn:PHY.turn,combat:ME.combat>0||isEnemy(ME.target),combo:ME.combo||0,onStep:side=>{if(ME.pos.x<700||true){const px=ME.pos.x+Math.cos(ME.ry)*side*.16,pz=ME.pos.z-Math.sin(ME.ry)*side*.16;dustFx(px,pz,3);if(sp>3&&S.sound)tone(90+Math.random()*30,.06,.018,'triangle',.6)}}},dt);ME.hurtT=Math.max(0,(ME.hurtT||0)-dt)}
 function swingAnim(r){ME.atk=0;ME.atkRanged=r;ME.ac=((ME.ac||0)+1)%100;if(!r){ME.combo=((ME.combo||0)+1)%3;swingFx(ME.pos.x,ME.pos.y,ME.pos.z,ME.ry,ME.combo)}}
 function updMonsters(dt){const auth=isAuth()&&S.mode!=='menu';const pl=auth?players():null;const k=clamp(dt*10,0,1);

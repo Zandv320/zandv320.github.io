@@ -146,6 +146,16 @@ kbd{font:700 12px var(--ui);border:1px solid var(--gold3);background:#1d1812;pad
 .stats span:nth-child(even){font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
 #pQuest{left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,94vw)}
 .qrow{padding:8px 0;border-bottom:1px solid #2c241a}.qrow b{color:var(--gold)}.qrow p{margin:4px 0;font-size:14px;color:#ddd3bd}
+#pAdmin{left:50%;top:50%;transform:translate(-50%,-50%);width:min(620px,96vw);max-height:min(86vh,720px);overflow:auto;z-index:40}
+#admTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}#admTabs button{flex:1;min-height:36px;border-radius:8px;border:2px solid rgba(255,214,140,.3);background:rgba(0,0,0,.25);color:#fff3d6;font:700 13px var(--ui);cursor:pointer}#admTabs button.on{background:rgba(255,213,106,.25);border-color:#ffd56a}
+#admBody .arow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,214,140,.15);flex-wrap:wrap}#admBody .arow>label{flex:0 0 140px;font-weight:700;font-size:13px;color:#ffe7a8}
+#admBody .actl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1}#admBody small{opacity:.8;font-size:12px}
+#admBody input,#admBody select{background:#2a1c10;color:#fff3d6;border:1px solid rgba(255,214,140,.4);border-radius:6px;padding:5px 6px;font:600 13px var(--ui);min-height:32px}#admBody input{width:84px}
+#admBody .btn{min-height:32px;padding:4px 10px;font-size:12px}#admBody h4{margin:14px 0 6px;color:#ffe7a8}
+#admBody .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}#admBody .agrid label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:700}
+#admBody .aq{max-height:260px;overflow:auto}#admBody .aq>div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,214,140,.1)}
+#admBody .atp{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px}#admBody .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+body.touch #pAdmin{top:auto;bottom:max(6px,env(safe-area-inset-bottom));transform:translateX(-50%);max-height:min(80vh,calc(100% - 16px))}body.touch #admBody .arow>label{flex-basis:100%}
 #pDialog{left:50%;top:50%;transform:translate(-50%,-50%);width:min(460px,94vw);background:linear-gradient(#efe2c1,#dcc89d);color:#3b2a14;border:2px solid #7a5a26;box-shadow:0 0 0 3px #1c1308,0 18px 50px rgba(0,0,0,.7)}
 #pDialog h3{color:#5a3a10}#pDialog .x{color:#5a3a10;border-color:#a7843f}
 #pDialog p{line-height:1.45;margin:0 0 10px}
@@ -491,6 +501,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
     <button class="mb" data-p="pMenu"><img src="ui/icon_menu.png" alt=""><i>Esc</i><small>Menu</small></button>
   </div>
   <div id="pBag" class="panel frame" hidden><h3>Bag <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Gold</span><span id="goldTxt">0</span></div></div>
+  <div id="pAdmin" class="panel frame" hidden><h3>Admin <button class="x" data-close>×</button></h3><div id="admTabs"></div><div id="admBody"></div></div>
   <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div><h4 id="mountHd" class="mhd">Mounts</h4><div class="mlist" id="mountList"></div></div>
   <div id="pTalent" class="panel frame" hidden><h3><span>Talents</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
   <div id="pQuest" class="panel frame" hidden><h3>Quest log <button class="x" data-close>×</button></h3><div id="qList"></div></div>
