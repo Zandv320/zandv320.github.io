@@ -406,6 +406,8 @@ label.l{color:#f3dcb0}.desc{color:#fff3d6}
 #tdrawer{position:absolute;right:58px;bottom:190px;display:none;flex-direction:row-reverse;gap:10px;align-items:center;pointer-events:auto}
 #tdrawer.open{display:flex}
 #tdrawer .tb{position:relative}
+#tDown{display:none;left:calc(max(18px,env(safe-area-inset-left)) + 162px);bottom:calc(max(26px,env(safe-area-inset-bottom)) + 86px);width:52px;height:52px;position:absolute}body.flymount #tDown{display:block}
+body.touch.portrait #tDown{left:134px;width:46px;height:46px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 222px)}
 #tJump{left:calc(max(18px,env(safe-area-inset-left)) + 162px);bottom:calc(max(26px,env(safe-area-inset-bottom)) + 18px);width:58px;height:58px;position:absolute}
 body.touch #feed{display:flex;flex-direction:column;align-items:center;gap:4px;position:absolute;left:50%;transform:translateX(-50%);top:calc(max(10px,env(safe-area-inset-top)) + 96px);pointer-events:none;max-width:60vw}
 #feed div{border:9px solid transparent;border-image:url(ui/panel_brown_dark.png) 24 fill / 9px stretch;font:700 12px var(--ui);color:#fff3d6;padding:0 4px;text-shadow:0 1px 1px var(--wood3);transition:opacity .9s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}

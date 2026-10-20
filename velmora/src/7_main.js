@@ -9,10 +9,10 @@ addEventListener('keydown',ev=>{if(document.activeElement&&(document.activeEleme
   if(k==='escape'){const open=panels.find(p=>!$('#'+p).hidden);if(open)closePanel(open);else if(ME.cast){ME.cast=null;$('#castbar').hidden=true}else if(ME.target)setTarget(null);else openPanel('pMenu');return}
   if(k>='1'&&k<='9'){useAbility(+k-1);return}if(k==='0'){useAbility(9);return}if(k==='n')return togglePanel('pTalent');
   if(k==='b'||k==='i')return togglePanel('pBag');if(k==='c')return togglePanel('pChar');if(k==='l')return togglePanel('pQuest');if(k==='m')return togglePanel('pMap');if(k==='r')return toggleMount();if(k==='z')return toggleSheath();
-  if(k==='f')return interact();if(k==='k')return togglePanel('pLife');if(k===' '){ev.preventDefault();jump();return}
+  if(k==='f')return interact();if(k==='k')return togglePanel('pLife');if(k===' '){ev.preventDefault();KEYS.add(' ');jump();return}
   KEYS.add(k)});
 addEventListener('keyup',ev=>KEYS.delete(ev.key.toLowerCase()));addEventListener('blur',()=>KEYS.clear());
-function jump(){if(ME.phy&&!ME.dead&&!ME.dash)ME.phy.jbuf=.14}
+function jump(){if(flyMount())return;if(ME.phy&&!ME.dead&&!ME.dash)ME.phy.jbuf=.14}
 function dustFx(x,z,n=5,c=0xb8a890){const y=groundH(x,z)+.1;puff(x,y,z,c,Math.max(1,Math.round(n/3)),.5,.6,.7)}
 function landFx(){dustFx(ME.pos.x,ME.pos.z,14);sfx('swing');if(ME.rig&&ME.rig.st)ME.rig.st.land=.22}
 /* pointer: drag to orbit, click to select, pinch/wheel to zoom */
@@ -70,7 +70,7 @@ function updPlayer(dt){
     const frozen=ME.stun>0||ME.root>0||ME.dead||!!ME.cast&&false;if(ME.stun>0)ME.stun=Math.max(0,ME.stun-dt);if(ME.root>0)ME.root=Math.max(0,ME.root-dt);
     let wx=0,wz=0;if(!frozen&&inp.L>.05){const fx=-Math.sin(cam.yaw),fz=-Math.cos(cam.yaw),rx=Math.cos(cam.yaw),rz=-Math.sin(cam.yaw);wx=fx*inp.y+rx*inp.x;wz=fz*inp.y+rz*inp.x;const L=Math.hypot(wx,wz)||1;wx/=L;wz/=L;
       if(ME.cast&&inp.L>.3){ME.cast=null;$('#castbar').hidden=true;toast('Interrupted')}}
-    const maxSp=7*(RACES[P.race].spd||1)*(1+TM('speed'))*(ME.mounted?MOUNT_SPD:1)*(S.admSpd||1)*(frozen?0:inp.L)*(ME.cast?0:1);
+    const maxSp=7*(RACES[P.race].spd||1)*(1+TM('speed'))*(ME.mounted?MOUNT_SPD:1)*(flyingHigh()?FLY_SPD:1)*(S.admSpd||1)*(frozen?0:inp.L)*(ME.cast?0:1);
     /* slope: slower uphill, faster downhill, slide on steep slopes */
     const gh0=groundH(ME.pos.x,ME.pos.z),ahead=groundH(ME.pos.x+wx*1.2,ME.pos.z+wz*1.2),slope=(ahead-gh0)/1.2;
     const slopeK=clamp(1-slope*.45,.55,1.25);
@@ -83,12 +83,13 @@ function updPlayer(dt){
       if(dl<=rate){PHY.vx=tx;PHY.vz=tz}else{PHY.vx+=dvx/dl*rate;PHY.vz+=dvz/dl*rate}
       if(steep>1.15&&onG&&!ME.dead){PHY.vx-=gx/steep*7*h*(steep-1.15);PHY.vz-=gz/steep*7*h*(steep-1.15)}
       if(ME.kb){PHY.vx+=ME.kb.x;PHY.vz+=ME.kb.z;ME.kb=null}
-      const p={x:ME.pos.x+PHY.vx*h,z:ME.pos.z+PHY.vz*h};collide(p,.55);
+      const p={x:ME.pos.x+PHY.vx*h,z:ME.pos.z+PHY.vz*h};if(flyingHigh())collideAir(p);else collide(p,.55);
       const bx=(p.x-ME.pos.x)/h,bz=(p.z-ME.pos.z)/h;if(Math.hypot(bx-PHY.vx,bz-PHY.vz)>.5){PHY.vx=bx*.9;PHY.vz=bz*.9}
       ME.pos.x=p.x;ME.pos.z=p.z;
       /* vertical */
       const gh=groundH(ME.pos.x,ME.pos.z);
-      if(ME.air||ME.pos.y>gh+.04){ME.vy-=(ME.vy<0?28:21)*h;ME.pos.y+=ME.vy*h;PHY.coyote=Math.max(0,PHY.coyote-h);if(ME.pos.y<=gh){ME.pos.y=gh;if(ME.vy<-9){landFx()}ME.vy=0;ME.air=false}}
+      if(flyStep(h,gh)){PHY.coyote=0}
+      else if(ME.air||ME.pos.y>gh+.04){ME.vy-=(ME.vy<0?28:21)*h;ME.pos.y+=ME.vy*h;PHY.coyote=Math.max(0,PHY.coyote-h);if(ME.pos.y<=gh){ME.pos.y=gh;if(ME.vy<-9){landFx()}ME.vy=0;ME.air=false}}
       else{ME.pos.y=gh;PHY.coyote=.12}
       PHY.jbuf=Math.max(0,PHY.jbuf-h);if(PHY.jbuf>0&&PHY.coyote>0&&!ME.dead&&!frozen){PHY.jbuf=0;PHY.coyote=0;ME.vy=7.9;ME.air=true;ME.pos.y+=.01;dustFx(ME.pos.x,ME.pos.z,6)}}
     if(PHY.accum>h)PHY.accum=0;
@@ -113,7 +114,7 @@ function updPlayer(dt){
   updActivity(dt,ME.spd>.5||!!ME.dash);updNodes(dt);
   if(ME.pos.x>1250&&!ME.dead&&D2.cell(ME.pos.x,ME.pos.z)==='~'&&!ME.air){ME.lavaT=(ME.lavaT||0)-dt;if(ME.lavaT<=0){ME.lavaT=.5;const d=Math.round(ST.maxhp*.04);P.hp-=d;ME.combat=6;floatText('me','-'+d+' lava','hurt');if(P.hp<=0){P.hp=0;die()}}}
   drakeLava(dt);
-  if(ME.portalCd<=0&&!ME.dead){if(drakePortals()){}else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-(CAVE.z+.6))<2.6)enterCave();else if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-(D2.exit.z+1.4))<2)leaveCave();else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-(CRYPT.z+.5))<2.3)enterDungeon();else if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-(DUN_EXIT.z+1.4))<2)leaveDungeon()}
+  if(ME.portalCd<=0&&!ME.dead&&ME.pos.y<groundH(ME.pos.x,ME.pos.z)+2.5){if(drakePortals()){}else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-(CAVE.z+.6))<2.6)enterCave();else if(ME.pos.x>1250&&Math.hypot(ME.pos.x-D2.exit.x,ME.pos.z-(D2.exit.z+1.4))<2)leaveCave();else if(ME.pos.x<700&&Math.hypot(ME.pos.x-CRYPT.x,ME.pos.z-(CRYPT.z+.5))<2.3)enterDungeon();else if(ME.pos.x>700&&Math.hypot(ME.pos.x-DUN_EXIT.x,ME.pos.z-(DUN_EXIT.z+1.4))<2)leaveDungeon()}
   /* visuals */
   const g=ME.rig.g;g.position.copy(ME.pos);if(ME.spin>0){ME.spin-=dt;g.rotation.y+=dt*22}else g.rotation.y=ME.ry;
   stablePets(dt);adminFrame();if(ME.mounted&&(!canRideHere()||ME.dead))dismount();const riding=riderFrame(ME,ME.rig,ME.mounted,ME.pos.x,ME.pos.y,ME.pos.z,ME.ry,sp/7,ME.air,dt);
@@ -158,7 +159,7 @@ function updWorld(dt,t){
   for(const n of NPCOBJ)if(near(n.rig.g))animRig(n.rig,{spd:0,atk:-1,act:(NPC_GLTF[n.id]||{}).act||null},dt);for(const gr of GUARDS)if(near(gr.g))animRig(gr,{spd:0,atk:-1},dt)}}
 function updCamera(dt){
   cam.dist=lerp(cam.dist,cam.tdist,clamp(dt*8,0,1));cam.drag=Math.max(0,cam.drag-dt);
-  const tx=ME.pos.x,ty=ME.pos.y+1.7,tz=ME.pos.z;if(snapCam){camTarget.set(tx,ty,tz);snapCam=false}else camTarget.lerp(_v.set(tx,ty,tz),clamp(dt*14,0,1));
+  const tx=ME.pos.x,ty=ME.pos.y+1.7+(ME.mounted&&MOUNTS[ME.mounted]?(MOUNTS[ME.mounted].fly?1.6:.5):0),tz=ME.pos.z;if(snapCam){camTarget.set(tx,ty,tz);snapCam=false}else camTarget.lerp(_v.set(tx,ty,tz),clamp(dt*14,0,1));
   const inD=camTarget.x>700;let dist=inD?Math.min(cam.dist,camTarget.x>1700?20:14):cam.dist;const cp=Math.cos(cam.pitch);
   {const ox=Math.sin(cam.yaw)*cp,oy=Math.sin(cam.pitch),oz=Math.cos(cam.yaw)*cp;let lim=dist;for(let f=.3;f<=1.001;f+=.1){const d=dist*f;if(camBlocked(camTarget.x+ox*d,camTarget.y+oy*d,camTarget.z+oz*d)){lim=Math.max(2.5,d-1.2);break}}cam.cdist=lerp(cam.cdist||lim,lim,clamp(dt*(lim<(cam.cdist||lim)?12:3),0,1));dist=Math.min(dist,cam.cdist)}
   camera.position.set(camTarget.x+Math.sin(cam.yaw)*cp*dist,camTarget.y+Math.sin(cam.pitch)*dist,camTarget.z+Math.cos(cam.yaw)*cp*dist);

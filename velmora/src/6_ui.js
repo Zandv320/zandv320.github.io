@@ -82,7 +82,8 @@ function buildBar(){const ab=$('#abar');const B=bar();refreshTalent();
       mk('ic mnt',190,150,48,MOUNT_SVG+'<span class="lab">Ride</span>',()=>toggleMount(),tb,'mnt');
       mk('ic shth',250,150,44,SHEATH_SVG+'<span class="lab">Sheathe</span>',()=>toggleSheath(),tb,'shth');
       mk('ic sm2',10,196,40,'<span class="arr">▲</span>',b=>{drawer.classList.toggle('open');b.classList.toggle('on',drawer.classList.contains('open'))},tb,'dr');
-      const jp=document.createElement('button');jp.className='tb ic';jp.id='tJump';jp.innerHTML='<img src="ui/icon_jump.png" alt=""><span class="lab">Jump</span>';jp.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(10);jump()});$('#touch').appendChild(jp);layoutTB()}
+      const jp=document.createElement('button');jp.className='tb ic';jp.id='tJump';jp.innerHTML='<img src="ui/icon_jump.png" alt=""><span class="lab">Jump</span>';jp.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(10);S.upHeld=true;jump()});for(const e of['pointerup','pointercancel','pointerleave'])jp.addEventListener(e,()=>{S.upHeld=false});$('#touch').appendChild(jp);
+      /* descend button, only while sitting on a flying mount */const dn=document.createElement('button');dn.className='tb ic';dn.id='tDown';dn.innerHTML='<img src="ui/icon_jump.png" alt="" style="transform:scaleY(-1)"><span class="lab">Down</span>';dn.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(10);S.dnHeld=true});for(const e of['pointerup','pointercancel','pointerleave'])dn.addEventListener(e,()=>{S.dnHeld=false});$('#touch').appendChild(dn);layoutTB()}
     else B.forEach((a,i)=>{const b=tbEls[i];if(b&&b.dataset.id!==a.id){b.dataset.id=a.id;b.querySelector('canvas').replaceWith(iconCanvas(a.ic,64))}});
     const big=tb.querySelector('.big');if(big)big.classList.toggle('on',!!(ME.auto&&isEnemy(ME.target)))}
   updBar()}
@@ -150,7 +151,7 @@ function refreshChar(){if(!P)return;$('#cTitle').textContent=P.name+' · level '
   const rows=[['Health',ST.maxhp],[{energie:'Energy',mana:'Mana',focus:'Focus'}[CLASSES[P.cls].res],ST.maxmp],['Power',ST.pow],['Stamina',ST.sta],['Armour',ST.arm],['Weapon damage',ST.wmin+' – '+ST.wmax],['Critical chance',ST.crit.toFixed(1)+'%'],['Experience',P.level>=MAXLVL?'max':P.xp+' / '+xpNeed(P.level)],['Gold',P.gold],['Monsters defeated',P.kills],['Honour (PvP)',P.honor||0]];
   $('#statList').innerHTML=rows.map(r=>'<span>'+r[0]+'</span><span>'+r[1]+'</span>').join('');refreshMountList()}
 /* mounts in the hero panel: owned ones can be chosen, the rest show where to get them */
-function mountRow(id,extra){const d=MOUNTS[id];const own=P.mounts.includes(id),sel=P.mountSel===id;const b=document.createElement('button');b.className='mrow'+(own?' own':'')+(sel?' sel':'');
+function mountRow(id,extra){const d=MOUNTS[id];extra=extra||(d.fly&&!P.mounts.includes(id)?d.src+' · flying':null);const own=P.mounts.includes(id),sel=P.mountSel===id;const b=document.createElement('button');b.className='mrow'+(own?' own':'')+(sel?' sel':'');
   b.innerHTML='<span class="mic">'+MOUNT_SVG+'</span><span class="mt"><b>'+esc(d.n)+'</b><small>'+esc(extra||(own?(sel?'Chosen mount':'Click to choose'):d.src))+'</small></span>';return b}
 function pickMount(id){P.mountSel=id;if(ME.mounted&&ME.mounted!==id){ME.mounted=id}sfx('chat');saveGame()}
 function refreshMountList(){const L=$('#mountList');if(!L||!P)return;ensureMounts();L.innerHTML='';
@@ -159,8 +160,8 @@ function refreshMountList(){const L=$('#mountList');if(!L||!P)return;ensureMount
 /* the stable shop (Stablemaster Hob) */
 function stableShop(n){const L=$('#stableL');if(!L)return;ensureMounts();
   for(const id in MOUNTS){const d=MOUNTS[id];if(!d.price&&id!=='horse')continue;const own=P.mounts.includes(id);
-    const b=mountRow(id,own?(P.mountSel===id?'Your chosen mount':'Owned · click to choose'):d.price+' gold'+(P.gold<d.price?' (not enough gold)':''));
-    b.onclick=()=>{if(own){pickMount(id);openNpc(n,true);return}if(P.gold<d.price)return toast('Not enough gold');P.gold-=d.price;learnMount(id,'Bought from Stablemaster Hob · press R to ride');refreshBag();openNpc(n,true)};L.appendChild(b)}}
+    const lvOk=!d.lvl||P.level>=d.lvl;const b=mountRow(id,own?(P.mountSel===id?'Your chosen mount':'Owned · click to choose'):d.price+' gold'+(d.fly?' · flying':'')+(!lvOk?' · requires level '+d.lvl:P.gold<d.price?' (not enough gold)':''));
+    b.onclick=()=>{if(own){pickMount(id);openNpc(n,true);return}if(d.lvl&&P.level<d.lvl)return toast('Requires level '+d.lvl);if(P.gold<d.price)return toast('Not enough gold');P.gold-=d.price;learnMount(id,'Bought from Stablemaster Hob · press R to ride');refreshBag();openNpc(n,true)};L.appendChild(b)}}
 /* quests */
 function qState(q){if(P.done.includes(q.id))return'done';const a=P.quests[q.id];if(a)return a.n>=q.obj.n?'ready':'active';if(P.level>=q.lvl-1&&(!q.req||P.done.includes(q.req)))return'avail';return'locked'}
 function refreshTracker(){if(!P)return;const el=$('#tracker');const act=QUESTS.filter(q=>P.quests[q.id]);el.innerHTML=act.map(q=>{const a=P.quests[q.id];const d=a.n>=q.obj.n;return'<div><b>'+esc(q.n)+'</b><span class="'+(d?'done':'')+'">'+(d?'✓ Return to '+esc(npcName(q.giver)):'- '+esc(q.obj.lbl)+': '+a.n+'/'+q.obj.n)+'</span></div>'}).join('');el.classList.toggle('show',act.length>0)}

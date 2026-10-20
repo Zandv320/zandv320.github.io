@@ -14,6 +14,9 @@ const MOUNTS={
   shadow:    {n:'Shadow Steed', m:'mount/M_Horse_A',    h:2.25,tint:{Main:0x2c2833,Main_Dark:0x16131c,Main_Light:0x4a4258,Hair:0x9a2a2a,Muzzle:0x101014},drop:'boss',chance:.15,src:'Rare drop: Kaal-Morath, the crypt'},
   direwolf:  {n:'Dire Wolf',    m:'Wolf',               h:1.95,tint:{Main:0x3a3a40,Main_Light:0x75757e},drop:'ignaroth',chance:.15,src:"Rare drop: Ignaroth, the Fire Cave"},
   warbull:   {n:'War Bull',     m:'Bull',               h:2.05,tint:{Main:0x5a3a2a,Main_Light:0x8a6a4a,Horns:0xf0e6d0,Muzzle:0x3a2a20,Hooves:0x2a2018},drop:'lavadrake',chance:.05,sy:.3,src:'Rare drop: Lava Drakes, Dragon Realm'},
+  emberdrake:{n:'Ember Drake',  m:'Dragon',fly:1,cm:'drake',h:3.8,fwd:.75,sy:.45,tint:{Main:0xc0441e,Wings:0x6a1a10,Belly:0xf0b860,Claws:0x2a1a14},glow:{Eyes:0xffd040},price:1500,lvl:15,src:'Stablemaster Hob (level 15)'},
+  frostdrake:{n:'Frost Drake',  m:'Dragon',fly:1,cm:'drake',h:3.9,fwd:.75,sy:.45,tint:{Main:0x5aa6d8,Wings:0x24467e,Belly:0xe6f2ff,Claws:0x1a2230},glow:{Eyes:0x9ae8ff},drop:'vyraxion',chance:.2,src:'Rare drop: Vyraxion, the Ash Queen'},
+  shadowdrake:{n:'Shadow Drake',m:'Dragon',fly:1,cm:'drake',h:3.9,fwd:.75,sy:.45,tint:{Main:0x4a4060,Wings:0x2a2236,Belly:0x8a78b0,Claws:0x16121c},glow:{Eyes:0xc06aff},drop:'lavadrake',chance:.04,src:'Rare drop: Lava Drakes, Dragon Realm'},
   emberstag: {n:'Ember Stag',   m:'mount/M_Stag',       h:2.5, tint:{Material:0x7a2a14,'Material.003':0xe0702e,'Material.010':0xffb040},glow:{'Material.010':0xff8a20},drop:'vyraxion',chance:.25,src:'Rare drop: Vyraxion, the Ash Queen'}};
 const MOUNT_SEAT={dy:-.16,fwd:.26};
 function ensureMounts(){if(!P)return;if(!Array.isArray(P.mounts))P.mounts=[];P.mounts=P.mounts.filter(id=>MOUNTS[id]);if(!P.mounts.includes('horse'))P.mounts.unshift('horse');if(!P.mounts.includes(P.mountSel))P.mountSel=P.mounts[0]}
@@ -21,21 +24,41 @@ function learnMount(id,how){ensureMounts();if(!MOUNTS[id]||P.mounts.includes(id)
   banner('New mount: '+MOUNTS[id].n,how||'Press R to ride',2.4);log('You obtained a new mount: '+MOUNTS[id].n+'!','loot',true);sfx('quest');saveGame();if(!$('#pChar').hidden)refreshChar();return true}
 function mountDropFor(type){for(const id in MOUNTS){const d=MOUNTS[id];if(d.drop===type&&!(P.mounts||[]).includes(id)&&Math.random()<d.chance)return id}return null}
 function canRideHere(){return ME.pos.x<700}
+/* ===================== Flying =====================
+   Drakes fly in the open world and the Dragon Realm: Space (or the jump button) climbs, X or Ctrl (or the down button)
+   descends, and letting go hovers. Not in dungeons and not over Silverbrook. In the air you are 50% faster again and fly
+   over walls, trees and the lake; land by descending to the ground. */
+const FLY_SPD=1.5,FLY_MAX=55;
+function flyMount(){return !!(ME.mounted&&MOUNTS[ME.mounted]&&MOUNTS[ME.mounted].fly)}
+function overTown(x,z){return x<700&&x>-1000&&Math.hypot(x,z)<TOWN.wall+6}
+function canFlyHere(x,z){return x<700&&!overTown(x,z)}
+let _flyWarn=0;
+/* called from the physics step instead of gravity while you sit on a flying mount; returns true when it handled the vertical */
+function flyStep(h,gh){if(!flyMount())return false;const up=KEYS.has(' ')||S.upHeld,dn=KEYS.has('x')||KEYS.has('control')||S.dnHeld;
+  const okHere=canFlyHere(ME.pos.x,ME.pos.z);
+  if(!ME.air){if(up&&okHere&&!ME.dead){ME.air=true;ME.vy=6;ME.pos.y=gh+.05;dustFx(ME.pos.x,ME.pos.z,10);sfx('swing')}else{if(up&&!okHere&&performance.now()>_flyWarn){_flyWarn=performance.now()+3000;toast(overTown(ME.pos.x,ME.pos.z)?'You cannot fly over Silverbrook':'You cannot fly here')}ME.pos.y=gh;return true}}
+  let tv=up?9:dn?-11:0;if(!okHere){tv=-12;if(performance.now()>_flyWarn){_flyWarn=performance.now()+3000;toast('You cannot fly over Silverbrook')}}
+  ME.vy+=(tv-ME.vy)*Math.min(1,h*4);ME.pos.y+=ME.vy*h;
+  const top=Math.min(gh+FLY_MAX,ME.pos.x<-1000?95:85);if(ME.pos.y>top){ME.pos.y=top;ME.vy=Math.min(ME.vy,0)}
+  if(ME.pos.y<=gh){ME.pos.y=gh;if(ME.vy<-6)landFx();ME.vy=0;ME.air=false}return true}
+function flyingHigh(){return flyMount()&&ME.air&&ME.pos.y>groundH(ME.pos.x,ME.pos.z)+5}
+/* in the air only the edge of the world stops you */
+function collideAir(p){if(p.x<-1000){drkCollide(p,.5);return}p.x=clamp(p.x,-255,255);p.z=clamp(p.z,-262,255)}
 function toggleMount(){if(!P||S.mode!=='play'||ME.dead)return;if(ME.mounted){dismount();return}ensureMounts();
   if(!canRideHere())return toast("You can't ride here");if(ME.combat>0)return toast("You can't mount while in combat");if(ME.cast||ACT.cur)return toast('You are still busy');
   ME.cast={a:{n:MOUNTS[P.mountSel].n,id:'mount',mount:true},t:0,dur:1.3,tg:null};$('#castbar').hidden=false}
 function doMount(){if(ME.dead||!canRideHere())return;ME.mounted=P.mountSel;sfx('loot');dustFx(ME.pos.x,ME.pos.z,8);updMountBtn()}
-function dismount(){if(!ME.mounted)return;ME.mounted=null;dustFx(ME.pos.x,ME.pos.z,6);updMountBtn()}
-function updMountBtn(){const b=$('#mountBtn');if(b)b.classList.toggle('on',!!ME.mounted);for(const t of document.querySelectorAll('.tb[data-role=mnt]'))t.classList.toggle('on',!!ME.mounted)}
+function dismount(){if(!ME.mounted)return;if(flyMount()&&ME.air&&ME.vy>0)ME.vy=0;ME.mounted=null;dustFx(ME.pos.x,ME.pos.z,6);updMountBtn()}
+function updMountBtn(){document.body.classList.toggle('flymount',flyMount());const b=$('#mountBtn');if(b)b.classList.toggle('on',!!ME.mounted);for(const t of document.querySelectorAll('.tb[data-role=mnt]'))t.classList.toggle('on',!!ME.mounted)}
 /* mount rig for an entity (yourself or another player); places the rider on the animal's back and returns true while riding */
 const _seat=new THREE.Vector3();
 function riderFrame(ent,rig,id,x,y,z,ry,spd,air,dt){let M=ent._mnt;
   if(!id||!MOUNTS[id]){if(M){scene.remove(M.rig.g);ent._mnt=null}return false}
-  if(!M||M.id!==id){if(M)scene.remove(M.rig.g);const d=MOUNTS[id];const r=buildGltfRig({model:d.m,h:d.h,cm:CM_ANIMAL,quad:1,o:{cls:'mon'},tint:d.tint,glow:d.glow});r.g.userData.dyn=1;scene.add(r.g);M=ent._mnt={id,rig:r,bone:null}}
+  if(!M||M.id!==id){if(M)scene.remove(M.rig.g);const d=MOUNTS[id];const r=buildGltfRig({model:d.m,h:d.h,cm:d.cm==='drake'?CM_DRAGON:CM_ANIMAL,quad:1,o:{cls:'mon'},tint:d.tint,glow:d.glow});r.g.userData.dyn=1;scene.add(r.g);M=ent._mnt={id,rig:r,bone:null}}
   const g=M.rig.g;g.position.set(x,y,z);g.rotation.y=ry;animRig(M.rig,{spd,air,atk:-1,dead:false},dt);
   const m=M.rig.m;if(m&&!M.bone){M.bone=m.getObjectByName('Torso2')||m.getObjectByName('Torso')||m.getObjectByName('Body');m.updateMatrixWorld(true)}
   if(M.bone){M.bone.getWorldPosition(_seat)}else _seat.set(x,y+MOUNTS[id].h*.55,z);
-  rig.g.position.set(_seat.x+Math.sin(ry)*MOUNT_SEAT.fwd,_seat.y+MOUNT_SEAT.dy+(MOUNTS[id].sy||0),_seat.z+Math.cos(ry)*MOUNT_SEAT.fwd);rig.g.rotation.y=ry;return true}
+  const fw=MOUNTS[id].fwd??MOUNT_SEAT.fwd;rig.g.position.set(_seat.x+Math.sin(ry)*fw,_seat.y+MOUNT_SEAT.dy+(MOUNTS[id].sy||0),_seat.z+Math.cos(ry)*fw);rig.g.rotation.y=ry;return true}
 function dropRider(ent){if(ent._mnt){scene.remove(ent._mnt.rig.g);ent._mnt=null}}
 /* the stablemaster's animals idling in front of the stable */
 function stablePets(dt){if(window.__NOGLTF||Math.hypot(camTarget.x-STABLE.x,camTarget.z-STABLE.z)>90)return;
