@@ -283,7 +283,7 @@ body.touch.pop #touch{display:none}
 /* ride button and the mounts list */
 .abrow{display:flex;align-items:center;gap:10px}
 .mountbtn{width:46px;height:46px;border-radius:50%;padding:0;border:0;background:url(ui/round_brown.png) center/100% 100% no-repeat;display:flex;align-items:center;justify-content:center;cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
-.mountbtn.on,.tb.on[data-role=mnt]{background-image:url(ui/round_grey_detailed_green.png)}
+.mountbtn.on,.tb.on[data-role=mnt],.tb.on[data-role=shth]{background-image:url(ui/round_grey_detailed_green.png)}
 body.touch .mountbtn{display:none}
 .mhd{margin:12px 0 2px;font:800 14px var(--ui);color:#ffe7a8;letter-spacing:.03em}
 .mlist{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
@@ -293,8 +293,8 @@ body.touch .mountbtn{display:none}
 .mlist .mrow:disabled{cursor:default;opacity:.55}.mlist .mrow:disabled .mic{filter:grayscale(1)}
 .mlist .mrow.sel{border-color:#ffd56a;background:rgba(255,213,106,.18)}.mlist .mrow.sel .mic{background-image:url(ui/round_grey_detailed_green.png)}
 #pDialog .mlist .mrow{color:#3b2a14;background:rgba(163,112,58,.14);border-color:rgba(122,79,40,.45)}#pDialog .mlist .mrow.sel{border-color:#b8860b;background:rgba(255,213,106,.4)}
-body.touch.portrait .tb[data-role=mnt]{width:46px;height:46px;bottom:150px;left:194px}
-.tb.mnt svg{width:62%;height:62%}
+body.touch.portrait .tb[data-role=mnt]{width:46px;height:46px;bottom:150px;left:194px}body.touch.portrait .tb[data-role=shth]{width:46px;height:46px;bottom:150px;left:254px}
+.tb.mnt svg,.tb.shth svg{width:62%;height:62%}
 
 .frame input,.frame .btn.alt{text-shadow:none}
 #pDialog,#pDialog *{text-shadow:none}
@@ -479,7 +479,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
   <div id="toast"></div>
   <div id="feed"></div>
   <div id="banner"></div>
-  <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div class="abrow"><button id="mountBtn" class="mountbtn" title="Ride your mount (R)" aria-label="Ride your mount"></button><div id="abar"></div></div></div>
+  <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div class="abrow"><button id="mountBtn" class="mountbtn" title="Ride your mount (R)" aria-label="Ride your mount"></button><button id="sheathBtn" class="mountbtn" title="Sheathe or draw your weapons (Z)" aria-label="Sheathe or draw your weapons"></button><div id="abar"></div></div></div>
   <div id="mbtn" class="pe">
     <button class="mb" data-p="pChar"><img src="ui/character.png" alt=""><i>C</i><small>Hero</small></button>
     <button class="mb" data-p="pTalent" id="mbTal"><img src="ui/award.png" alt=""><i>N</i><small>Talents</small><b class="tdot" hidden></b></button>

@@ -80,6 +80,7 @@ function buildBar(){const ab=$('#abar');const B=bar();refreshTalent();
       mk('ic',196,-4,54,'<img src="ui/icon_target.png" alt=""><span class="lab">Target</span>',()=>cycleTarget(),tb,'tgt');
       mk('ic act',258,-4,54,'<img src="ui/icon_hand.png" alt=""><span class="lab">Action</span>',()=>interact(),tb,'act');
       mk('ic mnt',190,150,48,MOUNT_SVG+'<span class="lab">Ride</span>',()=>toggleMount(),tb,'mnt');
+      mk('ic shth',250,150,44,SHEATH_SVG+'<span class="lab">Sheathe</span>',()=>toggleSheath(),tb,'shth');
       mk('ic sm2',10,196,40,'<span class="arr">▲</span>',b=>{drawer.classList.toggle('open');b.classList.toggle('on',drawer.classList.contains('open'))},tb,'dr');
       const jp=document.createElement('button');jp.className='tb ic';jp.id='tJump';jp.innerHTML='<img src="ui/icon_jump.png" alt=""><span class="lab">Jump</span>';jp.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();buzz(10);jump()});$('#touch').appendChild(jp);layoutTB()}
     else B.forEach((a,i)=>{const b=tbEls[i];if(b&&b.dataset.id!==a.id){b.dataset.id=a.id;b.querySelector('canvas').replaceWith(iconCanvas(a.ic,64))}});
@@ -92,7 +93,7 @@ const TB_PORT={big:[0,0,88],a0:[96,0,58],a1:[92,74,56],a2:[16,104,56],a3:[162,40
 function layoutTB(){const tb=$('#tbtns');if(!tb)return;const port=document.body.classList.contains('portrait');
   for(const b of tb.querySelectorAll(':scope>.tb')){const r=b.dataset.role;if(!r)continue;if(!b._land)b._land=[b.style.right,b.style.bottom,b.style.width,b.style.left];
     if(port&&TB_PORT[r]){const[x,y,z]=TB_PORT[r];Object.assign(b.style,{right:x+'px',bottom:y+'px',width:z+'px',height:z+'px',left:''})}
-    else if(port&&(r==='tgt'||r==='act'||r==='mnt')){Object.assign(b.style,{right:'auto',left:'',bottom:'',width:'',height:''})}
+    else if(port&&(r==='tgt'||r==='act'||r==='mnt'||r==='shth')){Object.assign(b.style,{right:'auto',left:'',bottom:'',width:'',height:''})}
     else{const[x,y,z,l]=b._land;Object.assign(b.style,{right:x,bottom:y,width:z,height:z,left:l})}}}
 /* ---------- talentpaneel ---------- */
 let TAL_TAB=0;

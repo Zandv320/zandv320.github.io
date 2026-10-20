@@ -86,7 +86,7 @@ async function attachWeaponModel(r,m,name,slotName,rar){if(!name)return null;con
   const w=g.scene.clone(true);w.traverse(x=>{if(x.isMesh){x.castShadow=true;const mt=new THREE.MeshToonMaterial({color:x.material.color.clone(),vertexColors:!!x.geometry.attributes.color,gradientMap:RAMP});if(rar>=2){mt.emissive=new THREE.Color(RCOL[rar]);mt.emissiveIntensity=.04+(rar-2)*.07}x.material=mt}});
   w.userData.wmodel=name;slot.add(w);return w}
 async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
-  /* de oude wapenprops uit het basismodel uit */for(const sn of['handslotr','handslotl']){const s=m.getObjectByName(sn);if(s)for(const c of s.children)if(!c.userData.wmodel&&c!==r.tool)c.visible=false}
+  /* de oude wapenprops uit het basismodel uit */for(const s of[m.getObjectByName('handslotr'),m.getObjectByName('handslotl'),...(r.shH?[r.shH]:[])]){if(s)for(const c of s.children)if(!c.userData.wmodel&&c!==r.tool)c.visible=false}
   const main=o.wt==='boog'?'handslotl':'handslotr',off=o.wt==='boog'?'handslotr':'handslotl';
   const w=await attachWeaponModel(r,m,o.wm,main,o.wr|0);if(w){r.weapon=w}
   if(o.sm)await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(o.om)await attachWeaponModel(r,m,o.om,off,0)}

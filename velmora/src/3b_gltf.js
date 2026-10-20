@@ -128,7 +128,7 @@ function setTool(r,key){const want=key&&ACT_ANIM[key]?ACT_ANIM[key][1]:null;if(r
   if(want&&sr){const sc=ACT_ANIM[key][2]||1;toolClone(want).then(t=>{if(!t||r.toolName!==want)return;t.scale.setScalar(sc);r.tool=t;sr.add(t)})}}
 function animGltf(r,a,dt){
   if(r.fallback){animRig(r.fallback,a,dt);return}
-  if(!r.ready)return;const S=r.st,cm=r.cm;const mv=clamp(a.spd||0,0,1.6);S.amt=ease(S.amt||0,Math.min(mv,1),clamp(dt*8,0,1));const am=S.amt;
+  if(!r.ready)return;if(a.sheath||r.sheathed)syncSheath(r,!!a.sheath);const S=r.st,cm=r.cm;const mv=clamp(a.spd||0,0,1.6);S.amt=ease(S.amt||0,Math.min(mv,1),clamp(dt*8,0,1));const am=S.amt;
   const cls=r.o.cls,wt=(a.wt||r.wt)&&(a.wt||r.wt)!=='none'?(a.wt||r.wt):(r.o.awt||'zwaard');
   /* --- doodgaan --- */
   if(a.dead){if(!S.dead){S.dead=true;const d=gAct(r,cm.die,true);if(d){for(const k in r.acts)if(r.acts[k]!==d)r.acts[k].fadeOut(.15);d.reset().fadeIn(.1).play()}r.cur=cm.die;S.atkAct=null}r.mixer.update(dt);return}
