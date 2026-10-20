@@ -156,7 +156,7 @@ const WS_NPC_SPOTS={};{const toP=(x,z,d)=>{const a=Math.atan2(WS.z-z,WS.x-x);ret
   const spot=(id,x,z,face)=>{WS_NPC_SPOTS[id]={x,z,ry:face!=null?face:Math.atan2(WS.x-x,WS.z-z)};WS_RES.push([x,z,2.2])};
   {const[x,z]=toP(WS_CIT.x,WS_CIT.z,WS_CIT.r+5);spot('corwin',x,z)}
   spot('liora',WS.x-WS.R+17,WS.z-7,Math.PI/2);
-  {const c=B('church_blue'),[x,z]=toP(c.x,c.z,c.d/2+5);spot('sabine',x,z);const a=Math.atan2(WS.z-c.z,WS.x-c.x)+Math.PI/2;spot('aurelia',x+Math.cos(a)*5,z+Math.sin(a)*5)}
+  {const c=B('church_blue'),[x,z]=toP(c.x,c.z,c.d/2+5);spot('sabine',x,z);const a=Math.atan2(WS.z-c.z,WS.x-c.x)+Math.PI/2;spot('aurelia',x+Math.cos(a)*5,z+Math.sin(a)*5);const ax=x-Math.cos(a)*6,az=z-Math.sin(a)*6;WS_NPC_SPOTS.altar={x:ax,z:az};WS_RES.push([ax,az,3])}
   spot('tomas',WS.x+10,WS.z+WS.R+12,0);
   spot('elinor',WS.x-22,WS.z-6);
   {const m=B('market_red'),[x,z]=toP(m.x,m.z,m.d/2+3.5);spot('gerrit',x,z)}
@@ -166,7 +166,7 @@ const WS_NPC_SPOTS={};{const toP=(x,z,d)=>{const a=Math.atan2(WS.z-z,WS.x-x);ret
 const WS_NPCS=[
   {id:'corwin',n:'Lord Marshal Corwin',t:'Marshal of WindStorm',look:{skin:0xd9a98a,hair:0x6a5a4a,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,beard:1},hi:'Welcome to WindStorm, traveller. The capital stands, but the woods around us grow darker by the day.'},
   {id:'liora',n:'Ranger-Captain Liora',t:'Rangers of Elvia',look:{skin:0xf0d2b8,hair:0x2a3a1a,chest:0x3a5a2a,pants:0x2a3a20,cape:0x2a4a1a,wt:'boog',ears:1},hi:'Keep your bowstring dry and your eyes on the treetops. Elvia does not forgive the careless.'},
-  {id:'sabine',n:'Archmage Sabine',t:'Circle of the Falls',look:{skin:0xe8c8a8,hair:0xe8e8f0,chest:0x3a3a8a,pants:0x2a2a5a,cape:0x5a3a9a,wt:'staf'},hi:'The waters of Elvia remember everything. Lately, they have been whispering of poison.'},
+  {id:'sabine',n:'Archmage Sabine',t:'Circle of the Falls',look:{skin:0xe8c8a8,hair:0xe8e8f0,chest:0x3a3a8a,pants:0x2a2a5a,cape:0x5a3a9a,wt:'staf'},hi:'The waters of Elvia remember everything. Lately, they have been whispering of poison. My altar beside the cathedral is open to any enchanter.'},
   {id:'aurelia',n:'High Priestess Aurelia',t:'Cathedral of the Light',look:{skin:0xf0d2b8,hair:0xd8b860,chest:0xe8e2d0,pants:0xd0c8b0,cape:0xd9b44a,wt:'staf'},hi:'The Light shines brightest in the darkest woods. How may the cathedral serve you?',priest:1},
   {id:'tomas',n:'Harbourmaster Tomas',t:'Harbour of WindStorm',look:{skin:0xc8906a,hair:0x8a8a8a,chest:0x2a4a6a,pants:0x3a3028,wt:'none',beard:1},hi:'Ships, nets and fish, that is my life. And the best fish in the realm swim in Lake Elvia!'},
   {id:'elinor',n:'Herbalist Elinor',t:'Herbs and Potions',look:{skin:0xf0d2b8,hair:0xb04a1c,chest:0x4a7a3a,pants:0x3a5a2a,wt:'none'},hi:'Roots, petals and a drop of moonlight. My potions are the finest in WindStorm.',shop:1},
@@ -175,8 +175,10 @@ const WS_NPCS=[
   {id:'wren',n:'Stablemistress Wren',t:'Royal Stables',look:{skin:0xe2b48e,hair:0xc79a4b,chest:0x7a5a34,pants:0x3a3028,wt:'none'},hi:'The royal stables have the best mounts in the realm. Fancy a drake?',stable:1},
   {id:'mabel',n:'Innkeeper Mabel',t:'The Gilded Gryphon',look:{skin:0xe2b48e,hair:0x8a3a1a,chest:0x8a3a2a,pants:0x3a2a20,wt:'none'},hi:'Welcome to the Gilded Gryphon! A warm bed, a hot meal, and your hearthstone set to WindStorm if you like.',inn:1}];
 for(const n of WS_NPCS){const s=WS_NPC_SPOTS[n.id];NPCS.push({...n,x:s.x,z:s.z,ry:s.ry})}
+/* enchanting altars: the Artisans' Yard and beside the cathedral in WindStorm */
+const ENCH_ALTARS=[{x:-107.5,z:-19.2},{x:WS_NPC_SPOTS.altar.x,z:WS_NPC_SPOTS.altar.z}];for(const a of ENCH_ALTARS){STATIONS.push({k:'altar',x:a.x,z:a.z,n:'Enchanting Altar',r:5});addCol(a.x,a.z,1.1);addLight(a.x,groundH(a.x,a.z)+2.4,a.z,0xb07aff,22,12)}
 /* the outlaw camp on the shore of Fernwater */
-const ELV_CAMP={x:ELV.x-246,z:ELV.z+222};
+const ELV_CAMP={x:ELV.x-246,z:ELV.z+222};const ENCH_SPIN=[];
 /* houses along every street and in the rings between them */
 {const R=mulberry(6262);const HM2=['home_A_red','home_A_blue','home_A_yellow','home_A_green','home_B_red','home_B_blue','home_B_yellow','home_B_green'];
   const tryHouse=(x,z,ry)=>{const m=HM2[Math.floor(R()*HM2.length)],s=9.5+R()*1.5,fp=TFP[m.startsWith('home_A')?'home_A':'home_B'];if(!wsFree(x,z,Math.max(fp[0],fp[1])*s/2))return false;wsBuild(m,x,z,ry,s,fp);return true};
@@ -250,6 +252,13 @@ async function buildElvia(){if(window.__NOGLTF)return;const R=mulberry(7373);con
   for(const b of ELV_BRIDGES)jobs.push(envPlace('H_bridge_A',b.x,b.z,b.ry,()=>[b.w/1.34,2.6,b.len/1.92],scene,0).then(o=>{if(o)o.position.y=b.y+.12-1.25*2.6}));
   /* waterfalls: mossy boulders at the foot */
   for(const f of ELV_FALLS)for(let k=0;k<4;k++){const a=R()*6.28,d=f.w+1.5+R()*2;jobs.push(put(R()<.5?'Rock_Moss_1':'Rock_Moss_2',f.x+Math.cos(a)*d,f.z+Math.sin(a)*d,R()*6,2+R()*1.5))}
+  /* enchanting altars: pedestal, open book, floating crystals, candles and a rune circle */
+  for(const a of ENCH_ALTARS){const y=groundH(a.x,a.z);jobs.push(put('D_Pedestal',a.x,a.z,0,[.62,.53,.62]).then(o=>tintObj(o,new THREE.Color(.85,.8,1))));jobs.push(put('Q_Book1_Open',a.x,a.z,.3,1,1.2));
+    for(let k=0;k<3;k++){const ang=k/3*Math.PI*2;jobs.push(put('K_lantern-candle',a.x+Math.cos(ang)*1.9,a.z+Math.sin(ang)*1.9,ang,2.2))}
+    const cr=new THREE.Group();cr.position.set(a.x,y+1.75,a.z);cr.userData.dyn=1;scene.add(cr);ENCH_SPIN.push(cr);
+    for(let k=0;k<3;k++)jobs.push(loadEnv('Q_Crystal5').then(g=>{if(!g)return;const o=envClone(g);const sz=o.userData.size;o.scale.setScalar(.34/Math.max(...sz));const ang=k/3*Math.PI*2;o.position.set(Math.cos(ang)*.75,0,Math.sin(ang)*.75);
+      o.traverse(m=>{if(m.isMesh){m.material=m.material.clone();m.material.color.setHex([0xff7a3a,0x7ad8ff,0xc87aff][k]);m.material.emissive=new THREE.Color([0xff4a10,0x3aa8ff,0x8a3aff][k]);m.material.emissiveIntensity=1.2}});cr.add(o)}));
+    const ring=new THREE.Mesh(new THREE.RingGeometry(1.6,2.2,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xa06aff,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false}));ring.position.set(a.x,y+.06,a.z);ring.userData.dyn=1;scene.add(ring);ENCH_SPIN.push(ring)}
   /* the outlaw camp */
   {const cx=ELV_CAMP.x,cz=ELV_CAMP.z;jobs.push(put('D_Woodfire',cx,cz,0,2));{const f=new THREE.Group();f.position.set(cx,elvH(cx,cz)+.3,cz);scene.add(f);addFlame(f,0,.3,0,2.4,0xff8a30)}addLight(cx,elvH(cx,cz)+2,cz,0xffa050,30,18);addCol(cx,cz,1.3);
     for(let k=0;k<4;k++){const a=k*1.6+.4,tx=cx+Math.cos(a)*10,tz=cz+Math.sin(a)*10;jobs.push(put('S_Tent',tx,tz,a+Math.PI/2,.26).then(o=>tintObj(o,new THREE.Color(.55,.7,.45))));addCol(tx,tz,2.6)}
@@ -261,7 +270,7 @@ async function buildElvia(){if(window.__NOGLTF)return;const R=mulberry(7373);con
   await Promise.all(jobs)}
 /* ---- per frame: rivers flow, waterfalls spray ---- */
 let _elvFx=0;
-function updElvia(dt,t){RIVER_MAT.uniforms.time.value=t;if(!inElv(camTarget.x))return;if(P&&Math.hypot(ME.pos.x-WS.x,ME.pos.z-WS.z)<WS.R){P.disc=P.disc||{};P.disc.ws=1}_elvFx-=dt;if(_elvFx>0)return;_elvFx=GFX.q==='laag'?.12:.05;
+function updElvia(dt,t){RIVER_MAT.uniforms.time.value=t;for(const o of ENCH_SPIN)o.rotation.y+=dt*.6;for(const a of ENCH_ALTARS){if(Math.abs(a.x-camTarget.x)+Math.abs(a.z-camTarget.z)<40&&Math.random()<dt*8){const ang=Math.random()*6.28;emitP({x:a.x+Math.cos(ang)*1.9,y:groundH(a.x,a.z)+.2,z:a.z+Math.sin(ang)*1.9,vy:FRN(.6,1.4),life:1.4,size:.25,size1:.04,col:[0xff9a5a,0x9ae0ff,0xd8a0ff][Math.floor(Math.random()*3)],a:1,a1:0,cell:FXC.glint})}}if(!inElv(camTarget.x))return;if(P&&Math.hypot(ME.pos.x-WS.x,ME.pos.z-WS.z)<WS.R){P.disc=P.disc||{};P.disc.ws=1}_elvFx-=dt;if(_elvFx>0)return;_elvFx=GFX.q==='laag'?.12:.05;
   for(const f of ELV_FALLS){if(Math.abs(f.x-camTarget.x)+Math.abs(f.z-camTarget.z)>90)continue;
     emitP({x:f.x+FRN(-f.w,f.w)*.8,y:f.y+.3,z:f.z+FRN(-f.w,f.w)*.8,vx:FRN(-1,1),vy:FRN(1.5,3.5),vz:FRN(-1,1),life:FRN(1.2,2),size:1.4,size1:4,col:0xffffff,a:.35,a1:0,cell:FXC.smoke2,drag:.6,add:false});
     emitP({x:f.x+FRN(-f.w,f.w)*.6,y:f.y+.2,z:f.z+FRN(-f.w,f.w)*.6,vx:FRN(-2,2),vy:FRN(2,5),vz:FRN(-2,2),life:.7,size:.35,size1:.1,col:0xe8f6ff,a:.9,a1:0,grav:9})}

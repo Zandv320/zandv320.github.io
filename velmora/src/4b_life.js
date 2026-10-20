@@ -48,7 +48,7 @@ function lifeXp(k,n){if(!LIFE[k])return;const L=lifeOf(k);L.xp+=Math.round(n);le
 function energyTick(){if(!P)return;const now=Date.now();P.energyT=P.energyT||now;const gain=Math.floor((now-P.energyT)/6000);if(gain>0){P.energy=Math.min(maxEnergy(),(P.energy??100)+gain);P.energyT+=gain*6000}if(P.energy>=maxEnergy())P.energyT=now}
 const maxEnergy=()=>100+Math.floor(Object.values(P.life||{}).reduce((s,l)=>s+l.lv,0)/5);
 function useEnergy(n){energyTick();if((P.energy??100)<n){toast('Not enough energy (it recharges on its own)');return false}P.energy-=n;return true}
-function questEvent(kind,key,q=1){for(const qq of QUESTS){const st=P.quests[qq.id];if(!st||st.n>=qq.obj.n)continue;const o=qq.obj;if((kind==='gather'&&o.gather===key)||(kind==='fish'&&o.fish)||(kind==='craft'&&o.craft===key)||(kind==='skin'&&o.skin)){st.n=Math.min(o.n,st.n+q);log(o.lbl+': '+st.n+'/'+o.n,'sys');if(st.n>=o.n){log('Quest complete: '+qq.n+' — return to '+npcName(qq.giver),'sys');sfx('quest')}refreshTracker();refreshNpcMarks()}}}
+function questEvent(kind,key,q=1){for(const qq of QUESTS){const st=P.quests[qq.id];if(!st||st.n>=qq.obj.n)continue;const o=qq.obj;if((kind==='gather'&&o.gather===key)||(kind==='fish'&&o.fish)||(kind==='craft'&&o.craft===key)||(kind==='skin'&&o.skin)||(kind==='dis'&&o.dis)){st.n=Math.min(o.n,st.n+q);log(o.lbl+': '+st.n+'/'+o.n,'sys');if(st.n>=o.n){log('Quest complete: '+qq.n+' — return to '+npcName(qq.giver),'sys');sfx('quest')}refreshTracker();refreshNpcMarks()}}}
 function giveMat(n,q){const it=matItem(n,q);if(!addItem(it)){toast('Your bag is full');return false}log('You receive: <span style="color:'+rarCol(it)+'">['+esc(n)+']</span>'+(q>1?' x'+q:''),'loot',true);return true}
 /* ---- activities: one at a time; the player plays the matching work animation with a tool in hand ---- */
 const ACT={cur:null,post:null};
@@ -102,7 +102,7 @@ function nearStation(k){return STATIONS.some(s=>s.k===k&&Math.hypot(s.x-ME.pos.x
 function invCount(name,tag){return P.inv.reduce((s,x)=>s+(x&&x.kind==='mat'&&(x.n===name||(tag&&MATS[x.n]&&MATS[x.n].tag===tag))?(x.q||1):0),0)}
 function invTake(name,tag,n){for(let i=0;i<P.inv.length&&n>0;i++){const x=P.inv[i];if(!x||x.kind!=='mat'||!(x.n===name||(tag&&MATS[x.n]&&MATS[x.n].tag===tag)))continue;const k=Math.min(n,x.q||1);x.q=(x.q||1)-k;n-=k;if(x.q<=0)P.inv[i]=null}}
 const TAG_N={wood:'wood',herb:'herbs',fish:'fish',ore:'ore'};
-function canCraft(rc){const L=lifeOf(rc.sk);if(L.lv<rc.lv)return LIFE[rc.sk].n+' '+rankOf(rc.lv)+' required';if(rc.st&&!nearStation(rc.st))return'Go to '+ST_HINT[rc.st];for(const[n,q,tag]of rc.in)if(invCount(n,tag)<q)return'Not enough '+(tag?TAG_N[tag]:n);if(rc.gear&&P.inv.indexOf(null)<0)return'Your bag is full';return''}
+function canCraft(rc){const L=lifeOf(rc.sk);if(L.lv<rc.lv)return LIFE[rc.sk].n+' '+rankOf(rc.lv)+' required';if(rc.st&&!nearStation(rc.st))return'Go to '+ST_HINT[rc.st];if(rc.ench){const w=enchCheck(rc);if(w)return w}for(const[n,q,tag]of rc.in)if(invCount(n,tag)<q)return'Not enough '+(tag?TAG_N[tag]:n);if(rc.gear&&P.inv.indexOf(null)<0)return'Your bag is full';return''}
 function startCraft(rc,times=1){if(ME.mounted)dismount();if(ACT.cur||ME.cast||ME.dead)return;const why=canCraft(rc);if(why)return toast(why);if(!useEnergy(rc.gear?2:1))return;needToolClips();
   if(rc.st){const s=STATIONS.filter(s=>s.k===rc.st).sort((a,b)=>Math.hypot(a.x-ME.pos.x,a.z-ME.pos.z)-Math.hypot(b.x-ME.pos.x,b.z-ME.pos.z))[0];if(s)faceTo(s.x,s.z)}
   ACT.cur={k:'craft',rc,t:0,dur:Math.max(1,rc.t-lifeOf(rc.sk).lv*.015),left:times-1,anim:CRAFT_ANIM[rc.sk]||'grind',fx:.5,lbl:(rc.gear?'Crafting ':'Making ')+rc.out+'…'};$('#castbar').hidden=false}
@@ -112,6 +112,7 @@ function craftGear(rc){const G=rc.gear,o=craftOdds(rc);const roll=Math.random();
   const it=makeGear(G.slot,G.il,r,cls);if(G.wt){it.wt=G.wt;it.spd=CLASSES[cls].spd}const sf=(it.n.match(/\s((?:of|van) .+)$/)||[])[1];
   it.n=(r>=3?'Masterwork ':'')+rc.out+(r>=2&&sf?' '+sf:'');it.crafted=P.name;it.req=Math.max(1,G.il-1);it.price=Math.round(it.price*1.1);return it}
 function finishCraft(rc){const why=canCraft(rc);if(why){toast(why);return false}for(const[n,q,tag]of rc.in)invTake(n,tag,q);const L=lifeOf(rc.sk);
+  if(rc.ench){applyEnchant(rc);return true}
   if(rc.gear){const it=craftGear(rc);addItem(it);log('You craft: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span>','loot',true);floatText('me',it.n,it.r>=3?'gold':'heal');
     if(it.r>=3){banner('Masterwork!',it.n);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z)}questEvent('craft','gear'+(rc.gear.tier+1),1);questEvent('craft',rc.id,1);lifeXp(rc.sk,[60,110,160,220][rc.gear.tier])}
   else{const q=rc.q+(Math.random()<L.lv*.012?1:0);if(rc.potion){addItem(potion(rc.potion,q));log('You make: ['+rc.out+'] x'+q,'loot')}else giveMat(rc.out,q);questEvent('craft',rc.id,1);lifeXp(rc.sk,rc.lv>=20?24:rc.lv>=8?20:15)}
@@ -171,9 +172,10 @@ const SLOT_EN={wapen:'Weapon',hoofd:'Head',borst:'Chest',handen:'Hands',benen:'L
 function recipeRow(rc){const why=canCraft(rc);const lockedLv=lifeOf(rc.sk).lv<rc.lv;
   const ins=rc.in.map(([n,q,tag])=>{const have=invCount(n,tag);return'<span class="'+(have>=q?'ok':'no')+'">'+q+'× '+esc(tag?{wood:'any wood',herb:'any herb',fish:'any fish',ore:'any ore'}[tag]:n)+' ('+have+')</span>'}).join(' ');
   let info='';if(rc.gear){const o=craftOdds(rc);info='<div class="ins gi">'+SLOT_EN[rc.gear.slot]+' · item level '+rc.gear.il+' · <span style="color:'+RARITY[1].c+'">Uncommon</span>, <span style="color:'+RARITY[2].c+'">'+Math.round(o.blue*100)+'% Rare</span>, <span style="color:'+RARITY[3].c+'">'+Math.round(o.epic*100)+'% Masterwork</span></div>'}
+  else if(rc.ench){const E=ENCH[rc.ench],cur=P.eq[E.slot];const ce=cur&&cur.ench&&ENCH[cur.ench];info='<div class="ins ok">'+esc(E.txt)+(E.type?' · <span style="color:#'+new THREE.Color(ENCH_TYPES[E.type].col).getHexString()+'">glowing '+ENCH_TYPES[E.type].n.toLowerCase()+' aura</span>':'')+'</div><div class="ins gi">'+(cur?'Your '+esc(cur.n)+(ce?' · now: '+esc(ce.n):' · not enchanted'):'Nothing equipped in this slot')+'</div>'}
   else{const M=MATS[rc.out];if(M&&(M.food||M.elixir))info='<div class="ins ok">'+(M.food||M.elixir).d+'</div>'}
-  const ic=rc.gear?'g:'+rc.id:'o:'+rc.out;
-  return'<div class="rc'+(lockedLv?' lock':'')+'"><canvas data-ri="'+esc(ic)+'" width="48" height="48"></canvas><div class="rci"><b'+(rc.gear?' style="color:'+RARITY[1].c+'"':'')+'>'+esc(rc.out)+(rc.q>1?' ×'+rc.q:'')+'</b>'+(rc.lv?' <small>'+rankOf(rc.lv)+'</small>':'')+'<div class="ins">'+ins+'</div>'+info+'</div><div class="rcb"><button class="btn" data-c="'+rc.id+'" data-n="1"'+(why?' disabled title="'+esc(why)+'"':'')+'>Make</button>'+(rc.gear?'':'<button class="btn alt" data-c="'+rc.id+'" data-n="10"'+(why?' disabled':'')+'>×10</button>')+'</div></div>'}
+  const ic=rc.gear?'g:'+rc.id:rc.ench?'e:'+rc.ench:'o:'+rc.out;
+  return'<div class="rc'+(lockedLv?' lock':'')+'"><canvas data-ri="'+esc(ic)+'" width="48" height="48"></canvas><div class="rci"><b'+(rc.gear?' style="color:'+RARITY[1].c+'"':'')+'>'+esc(rc.out)+(rc.q>1?' ×'+rc.q:'')+'</b>'+(rc.lv?' <small>'+rankOf(rc.lv)+'</small>':'')+'<div class="ins">'+ins+'</div>'+info+'</div><div class="rcb"><button class="btn" data-c="'+rc.id+'" data-n="1"'+(why?' disabled title="'+esc(why)+'"':'')+'>'+(rc.ench?'Enchant':'Make')+'</button>'+(rc.gear||rc.ench?'':'<button class="btn alt" data-c="'+rc.id+'" data-n="10"'+(why?' disabled':'')+'>×10</button>')+'</div></div>'}
 function refreshLife(){if(!P)return;energyTick();migrateLife();const b=$('#lifeBody');if(!LIFE[lifeTab])lifeTab='smithing';
   let h='<div class="bar enb" id="enBar" style="height:20px"><i style="transform:scaleX('+clamp((P.energy??100)/maxEnergy(),0,1)+')"></i><span>Energy '+Math.floor(P.energy??100)+' / '+maxEnergy()+'</span></div><div class="lwrap"><div class="lside">';
   for(const kind of['gather','craft']){h+='<div class="lgrp">'+(kind==='gather'?'Gathering':'Crafting')+'</div>';for(const k in LIFE){if(LIFE[k].kind!==kind)continue;const L=lifeOf(k);
@@ -185,13 +187,16 @@ function refreshLife(){if(!P)return;energyTick();migrateLife();const b=$('#lifeB
   if(lifeTab==='herbalism')h+='<p class="lhint">Sunleaf in the fields · Moonbloom and Bloodroot in the woods · Flax near the farmlands · Fireblossom (Artisan) in the Dragon Realm.</p>';
   if(lifeTab==='skinning')h+='<p class="lhint">Loot a beast first, then press F on its body. Boars and wolves give Rough Hide (wolves sometimes Thick Hide), spiders Spider Silk, fire bats Thick Hide and drakes Drake Scales.</p>';
   if(lifeTab==='fishing')h+='<p class="lhint">Stand on the shore of Mirror Lake and press F. Strike when the marker is inside the green zone.</p>';
-  const list=RECIPES.filter(r=>r.sk===lifeTab);const proc=list.filter(r=>!r.gear),gear=list.filter(r=>r.gear);
+  if(lifeTab==='enchanting')h+='<p class="lhint">Disenchant gear you do not need: open your bag, click an item and choose Disenchant. Common and uncommon gear gives Arcane Dust, rare gear Glimmering Essence, epic and legendary gear Radiant Shards. One enchantment per item; a new one replaces the old.</p>';
+  const list=RECIPES.filter(r=>r.sk===lifeTab);const proc=list.filter(r=>!r.gear&&!r.ench),gear=list.filter(r=>r.gear),ench=list.filter(r=>r.ench);
   if(proc.length){h+='<div class="lrec">';for(const rc of proc)h+=recipeRow(rc);h+='</div>'}
+  for(const[k,lbl,f]of[['w','Weapon enchantments (with aura)',r=>ENCH[r.ench].slot==='wapen'],['a','Armour enchantments',r=>ENCH[r.ench].slot!=='wapen']]){const G=ench.filter(f);if(!G.length)continue;const key=lifeTab+k;const open=lifeOpen[key]??true;
+    h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+key+'">'+lbl+'</button>';if(open){h+='<div class="lrec">';for(const rc of G.sort((a,b)=>a.lv-b.lv))h+=recipeRow(rc);h+='</div>'}}
   if(gear.length){for(let t=0;t<4;t++){const G=gear.filter(r=>r.gear.tier===t);if(!G.length)continue;const k=lifeTab+t;const open=lifeOpen[k]??(lifeOf(lifeTab).lv>=G[0].lv-2||t===0);
     h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+k+'">'+TIER_N[t]+' <small>from '+rankOf(Math.min(...G.map(r=>r.lv)))+'</small></button>';if(open){h+='<div class="lrec">';for(const rc of G)h+=recipeRow(rc);h+='</div>'}}}
   h+='</div></div>';b.innerHTML=h;
   b.querySelectorAll('canvas[data-ic]').forEach(c=>drawIcon(c,[c.dataset.ic,'#4a5a3a','#1a2410'],40));
-  b.querySelectorAll('canvas[data-ri]').forEach(c=>{const v=c.dataset.ri;if(v.startsWith('g:')){const rc=RECIPES.find(r=>r.id===v.slice(2));const G=rc.gear;drawIcon(c,[G.slot==='wapen'?G.wt:G.slot,'#3a8a3a','#0c240c'],48)}else{const n=v.slice(2);drawIcon(c,itemIcon(n==='Healing Potion'?potion('heal'):n==='Power Potion'?potion('mana'):matItem(n)),48)}});
+  b.querySelectorAll('canvas[data-ri]').forEach(c=>{const v=c.dataset.ri;if(v.startsWith('e:')){drawIcon(c,enchIcon(v.slice(2)),48);return}if(v.startsWith('g:')){const rc=RECIPES.find(r=>r.id===v.slice(2));const G=rc.gear;drawIcon(c,[G.slot==='wapen'?G.wt:G.slot,'#3a8a3a','#0c240c'],48)}else{const n=v.slice(2);drawIcon(c,itemIcon(n==='Healing Potion'?potion('heal'):n==='Power Potion'?potion('mana'):matItem(n)),48)}});
   b.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{lifeTab=x.dataset.t;refreshLife()});
   b.querySelectorAll('[data-tier]').forEach(x=>x.onclick=()=>{lifeOpen[x.dataset.tier]=!x.classList.contains('open');refreshLife()});
   b.querySelectorAll('[data-c]').forEach(x=>x.onclick=()=>{const rc=RECIPES.find(r=>r.id===x.dataset.c);startCraft(rc,+x.dataset.n)})}
