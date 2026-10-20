@@ -146,14 +146,14 @@ const NPCS=[
 ];
 /* tekstkleuren: licht genoeg voor de bruine panelen (met donkere schaduw), en verzadigd genoeg om ze te herkennen */
 const RARITY=[{n:'Common',c:'#ffffff'},{n:'Uncommon',c:'#5dff73'},{n:'Rare',c:'#7cc0ff'},{n:'Epic',c:'#e0a3ff'},{n:'Legendary',c:'#ffab4a'}];
-const SLOTS=['hoofd','borst','handen','benen','voeten','ring','wapen'];
-const SLOT_NL={wapen:'Weapon',hoofd:'Head',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
+const SLOTS=['hoofd','schouders','borst','handen','benen','voeten','ring','wapen'];
+const SLOT_NL={wapen:'Weapon',hoofd:'Head',schouders:'Shoulders',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
 const MAT={krijger:['Iron','Steel','Chainmail','Battered'],magier:['Silk','Linen','Runic','Stardust'],jager:['Leather','Wolfhide','Scaled','Falconfeather']};
-const BASE={hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots'}};
+const BASE={schouders:{krijger:'Pauldrons',magier:'Mantle',jager:'Spaulders'},hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots'}};
 const WEAP={krijger:[['Sword','zwaard'],['Battleaxe','bijl']],magier:[['Staff','staf'],['Wand','staf']],jager:[['Bow','boog'],['Longbow','boog']]};
 const SUFFIX=[['of the Bear',0,1],['of the Tiger',1,0],['of the Eagle',.6,.6],['of the Owl',.8,.3],['of the Wolf',.5,.7],['of the Light',.7,.5]];
 const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter']};
-const ARM_SLOT={hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
+const ARM_SLOT={schouders:.8,hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
 const xpNeed=l=>40*l+15*l*l;
 const MAXLVL=25;
 /* ===== life skills: gathering (mining, woodcutting, herbalism, skinning, fishing) and crafting (smithing, leatherworking,

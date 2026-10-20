@@ -192,6 +192,7 @@ function reward(m){
   if(Math.random()<(t.boss?1:t.elite?1:.3)){const r=rollRarity(t);L.items.push(makeGear(randSlot(),m.lvl,r,P.cls))}
   if(t.dragon){L.items.length=0;L.items.push(makeLegendary(P.cls));L.items.push(makeGear(randSlot(),22,3,P.cls));L.items.push(potion('heal',3))}
   else if(t.boss){L.items.push(makeGear('wapen',11,3,P.cls));L.items.push(makeGear(randSlot(),11,2,P.cls))}
+  {const sp=shoulderDrop(m.type);if(sp){L.items.push(sp);log('✦ '+t.n+' dropped <span style="color:'+rarCol(sp)+'">['+esc(sp.n)+']</span>!','loot',true)}}
   if(Math.random()<.45&&!t.add)L.items.push(junkItem(m.type,m.lvl));
   if((m.type==='ever'||m.type==='wolf')&&Math.random()<.55)L.items.push(matItem('Raw Meat',1));
   if(Math.random()<.12)L.items.push(potion(Math.random()<.6?'heal':'mana'));
