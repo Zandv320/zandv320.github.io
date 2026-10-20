@@ -141,14 +141,21 @@ const PORTAL_U={time:{value:0}};
 const PORTAL_VS='varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}';
 const PORTAL_NOISE='float h1(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n1(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h1(i),h1(i+vec2(1.,0.)),f.x),mix(h1(i+vec2(0.,1.)),h1(i+vec2(1.,1.)),f.x),f.y);}'+
   'float archD(vec2 p){return p.y>.25?length(vec2(p.x,p.y-.25)):abs(p.x);}';
-function portalMat(col,arch=true){return new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
-  uniforms:{time:PORTAL_U.time,col:{value:new THREE.Color(col)},arch:{value:arch?1:0}},vertexShader:PORTAL_VS,
-  fragmentShader:'uniform float time,arch;uniform vec3 col;varying vec2 vU;'+PORTAL_NOISE+`void main(){vec2 p=vU*2.-1.;p.y*=1.25;float d=arch>.5?archD(p):max(abs(p.x),abs(p.y)/1.25);
-    float m=1.-smoothstep(.78,1.,d);if(m<=0.)discard;vec2 c=p-vec2(0.,.1);float r=length(c),a=atan(c.y,c.x);
-    float s=n1(vec2(a*2.2+time*.7+r*3.,r*4.-time*1.6))*.65+n1(vec2(a*5.-time*1.1,r*9.-time*2.4))*.35;
-    float rim=smoothstep(.6,.95,d)*m;float core=pow(max(0.,1.-r*.85),3.);
-    vec3 c3=col*(.35+s*1.1)+col*rim*1.2+vec3(1.)*core*.25*(.7+.3*sin(time*2.));
-    gl_FragColor=vec4(c3*m,1.);}`})}
+/* D_Arch (KayKit Dungeon): the opening is 1.12 wide each side of the centre, straight up to 1.92 and then a half circle */
+const ARCH_HW=1.12,ARCH_SH=1.92;
+function portalMat(col,hw,sh){return new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
+  uniforms:{time:PORTAL_U.time,col:{value:new THREE.Color(col)},hw:{value:hw},sh:{value:sh}},vertexShader:PORTAL_VS,
+  fragmentShader:'uniform float time,hw,sh;uniform vec3 col;varying vec2 vU;'+PORTAL_NOISE+`void main(){float H=sh+hw;float x=(vU.x-.5)*2.*hw,y=vU.y*H;
+    float d=y>sh?length(vec2(x,y-sh)):abs(x);float m=1.-smoothstep(hw*.94,hw,d);if(m<=0.)discard;
+    vec2 p=vec2(x,y-H*.46)/hw;float r=length(p),a=atan(p.y,p.x);
+    float s=n1(vec2(a*2.2+time*.7+r*3.,r*3.-time*1.6))*.65+n1(vec2(a*5.-time*1.1,r*7.-time*2.4))*.35;
+    float rim=smoothstep(hw*.7,hw,d);float core=pow(max(0.,1.-r*.55),3.);float ring=smoothstep(.55,1.,sin(r*8.-time*3.))*(1.-min(r,1.)*.6);
+    vec3 c=mix(col*.1,col*(.45+s*1.05),.5+.5*s)+col*rim*1.5+col*ring*.3+vec3(1.)*core*.25*(.75+.25*sin(time*2.));
+    gl_FragColor=vec4(c,m*(.86+.14*s));}`})}
+/* a portal that exactly fills the opening of a D_Arch of scale s, standing on the ground at (x,y,z) */
+function portalMesh(col,s,x,y,z,ry,par=scene){const hw=ARCH_HW*s*.985,sh=ARCH_SH*s;const g=new THREE.PlaneGeometry(2*hw,sh+hw);g.translate(0,(sh+hw)/2,0);
+  const m=mesh(g,portalMat(col,hw,sh),x,y-.05,z,par,false,false);delete m.userData.proc;m.rotation.y=ry;m.userData.dyn=1;m.userData.portal={col,hw,sh};PORTALS.push(m);return m}
+const PORTALS=[];
 /* the dark mouth of a cave: black, with an ember glow breathing up from below */
 function caveMouthMat(col){return new THREE.ShaderMaterial({transparent:true,depthWrite:true,side:THREE.DoubleSide,
   uniforms:{time:PORTAL_U.time,col:{value:new THREE.Color(col)}},vertexShader:PORTAL_VS,
@@ -387,7 +394,7 @@ const CRYPT_H=FLAT[2].h;
   for(const s of[-1,1]){mesh(new THREE.BoxGeometry(2,8,2),st,s*4,4,0,g);mesh(new THREE.BoxGeometry(2.6,.8,2.6),st,s*4,8.2,0,g);mesh(new THREE.SphereGeometry(.6,8,6),mat(0xd8d2b8),s*4,9.2,0,g);addCol(CRYPT.x+s*4,CRYPT.z,1.4)}
   mesh(new THREE.BoxGeometry(11,1.6,2.4),st,0,8.6,0,g);mesh(new THREE.BoxGeometry(14,10,6),mat(0x5a5650,{tex:'brick',rx:3,ry:3}),0,5,-4,g);addBox(CRYPT.x,CRYPT.z-4,14,6);
   mesh(new THREE.PlaneGeometry(5.8,7.4),new THREE.MeshBasicMaterial({color:0x000000,fog:false}),0,3.7,-.95,g,false,false);
-  const portal=mesh(new THREE.PlaneGeometry(5.6,7.2),portalMat(0x3aff8a),0,3.7,-.8,g,false,false);portal.userData.portal=1;window.__cportal=portal;
+  const portal=portalMesh(0x3aff8a,2.3,CRYPT.x,groundH(CRYPT.x,CRYPT.z-1.4),CRYPT.z-1.4,0);window.__cportal=portal;
   for(let i=0;i<3;i++)mesh(new THREE.BoxGeometry(7-i*.6,.3,1),st,0,.15+i*.3,1.8-i*.8,g);
   for(const s of[-1,1]){mesh(new THREE.CylinderGeometry(.12,.12,2.2,6),mat(0x2a2a2a),s*5.6,1.1,2,g);addFlame(g,s*5.6,2.4,2,1.6,0x6aff8a);addLight(CRYPT.x+s*5.6,CRYPT_H+2.6,CRYPT.z+2,0x5aff8a,25,16)}
   PROC=null;const graves=[];for(let i=0;i<46;i++){const a=RV()*6.28,r=10+RV()*26,x=CRYPT.x+Math.cos(a)*r,z=CRYPT.z+12+Math.sin(a)*r*.8;if(pathDist(x,z)<3)continue;graves.push([x,z,.8+RV()*.4,RV()*.6-.3])}
@@ -441,7 +448,7 @@ const dungeon=new THREE.Group();scene.add(dungeon);
   PROC=null;const rune=mesh(new THREE.RingGeometry(8,9,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xa05aff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}),bx,.03,bz+6,dungeon,false,false);rune.userData.spin=1;window.__rune=rune;
   PROC='crypt';for(let i=0;i<10;i++){const[c,r]=[4+Math.floor(RV()*13),9+Math.floor(RV()*10)];if(DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);const b=mesh(new THREE.BoxGeometry(1.2,.9,2.4),mat(0x5a4a3a,{tex:'wood'}),x+rand(-1.5,1.5),.45,z+rand(-1.5,1.5),dungeon);b.rotation.y=RV()*3}}
   for(let i=0;i<40;i++){const[c,r]=[4+Math.floor(RV()*13),1+Math.floor(RV()*19)];if(DMAP[r]&&DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);mesh(new THREE.CylinderGeometry(.05,.05,.7,4),mat(0xe8e0c8),x+rand(-2.5,2.5),.05,z+rand(-2.5,2.5),dungeon,false).rotation.set(Math.PI/2,0,RV()*3)}}PROC=null;
-  const ex=mesh(new THREE.PlaneGeometry(4,6),portalMat(0x6affb0),DUN_EXIT.x,3,DUN_EXIT.z+2.2,dungeon,false,false);window.__dportal=ex}
+  const ex=portalMesh(0x5affa0,1.75,DUN_EXIT.x,0,DUN_EXIT.z+1.9,0,dungeon);window.__dportal=ex}
 /* ---------- Asbergen: cave entrance ---------- */
 const CAVE_H=FLAT[4].h;
 {const g=new THREE.Group();g.position.set(CAVE.x,CAVE_H,CAVE.z);scene.add(g);const rk=mat(0x4a3a34,{r:1});PROC='cave';
@@ -493,7 +500,7 @@ function buildDun(def){const M=def.map,R=M.length,C=M[0].length,c=def.c,X=def.x,
     if(ch==='~'){const l=mesh(new THREE.PlaneGeometry(c,c).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:new THREE.Color().setRGB(.9,.2,.02)}),x,.04,z,grp,false,false);lava.push(l);if((r*7+k)%3===0)addLight(x,1.2,z,0xff5a20,24,12,true)}
     if(ch==='.'&&((r*5+k*3)%11===0)&&tor<30){tor++;const cr=mesh(new THREE.ConeGeometry(.35,1.6,6),mat(def.crystal,{e:def.crystal,ei:1.6}),x+rand(-2,2),.6,z+rand(-2,2),grp,false);cr.rotation.z=rand(-.4,.4);if(tor%3===0)addLight(cr.position.x,1.5,cr.position.z,def.crystal,22,12)}}
   const img=document.createElement('canvas');img.width=C*12;img.height=R*12;{const g=img.getContext('2d');g.fillStyle='#140c0a';g.fillRect(0,0,img.width,img.height);for(let r=0;r<R;r++)for(let k=0;k<C;k++)if(M[r][k]!=='#'){g.fillStyle=M[r][k]==='~'?'#c8501a':'#5a4a44';g.fillRect(k*12,r*12,12,12)}}
-  const ex=mesh(new THREE.PlaneGeometry(4,6),portalMat(0xffa060),exit.x,3,exit.z+2.2,grp,false,false);
+  const ex=portalMesh(def.portal||0xffa040,1.75,exit.x,0,exit.z+2.3,0,grp);
   return{X,Z,c,R,C,map:M,cell,pos,collide,spawns,entry,exit,img,lava,portal:ex,name:def.name,grp,wim}}
 const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x7a5a48,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Ignaroth\'s Fire Cave'});
 /* ---------- life-skill stations ---------- */

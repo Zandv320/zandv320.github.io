@@ -120,3 +120,9 @@ function ambientInit(){AMBIENT.init=1;const v=new THREE.Vector3();
 function ambientFx(dt,cx,cz){if(!AMBIENT.init){if(S.mode!=='play')return;ambientInit()}AMBIENT.t+=dt;if(AMBIENT.t<.12)return;const step=AMBIENT.t;AMBIENT.t=0;const q=GFX.q==='laag'?.35:GFX.q==='middel'?.7:1;
   for(const s of AMBIENT.smoke){if(Math.abs(s.x-cx)>70||Math.abs(s.z-cz)>70)continue;if(Math.random()<q*step*3)emitP({x:s.x+FRN(-.15,.15),y:s.y,z:s.z+FRN(-.15,.15),vx:FRN(.2,.6),vy:FRN(.9,1.4),vz:FRN(-.2,.2),drag:.3,life:FRN(3.5,5),size:1,size1:4.6,col:0x5e5a56,col1:0x9a968f,a:.62,a1:0,cell:FXC.smoke,vrot:FRN(-.3,.3),fade:.15,add:false,must:1})}
   for(const f of AMBIENT.flames){if(Math.abs(f.x-cx)>45||Math.abs(f.z-cz)>45)continue;if(Math.random()<q*step*14){const s=f.s||1;emitP({x:f.x+FRN(-.06,.06)*s,y:f.y-.1*s,z:f.z+FRN(-.06,.06)*s,vy:FRN(.8,1.6)*s,life:FRN(.3,.5),size:.75*s,size1:.15*s,col:0xffd27a,col1:0xff4a10,a:1,a1:0,cell:FRN(0,1)<.6?FXC.flame:FXC.fire,rot:FRN(-.3,.3),vrot:FRN(-1,1),must:1});if(Math.random()<.15)emitP({x:f.x,y:f.y+.3*s,z:f.z,vx:FRN(-.5,.5),vy:FRN(1,2.4),vz:FRN(-.5,.5),life:FRN(.6,1),size:.12,size1:.04,col:0xffb050,a:1,a1:0,cell:FXC.soft})}}}
+/* portals: sparks drift out of the swirl on both sides (only for portals near the camera) */
+let _ptT=0;const _pfV=new THREE.Vector3();
+function portalFx(dt){_ptT-=dt;if(_ptT>0)return;_ptT=GFX.q==='laag'?.14:.06;
+  for(const m of PORTALS){if(!m.parent||!m.visible)continue;m.getWorldPosition(_pfV);if(Math.abs(_pfV.x-camTarget.x)+Math.abs(_pfV.z-camTarget.z)>50)continue;const u=m.userData.portal;
+    const t=(Math.random()-.5)*1.7*u.hw,h=.2+Math.random()*(u.sh+u.hw*.5),ry=m.rotation.y,nx=Math.sin(ry),nz=Math.cos(ry),sd=Math.random()<.5?1:-1;
+    emitP({x:_pfV.x+Math.cos(ry)*t+nx*sd*.12,y:_pfV.y+h,z:_pfV.z-Math.sin(ry)*t+nz*sd*.12,vx:nx*sd*(.3+Math.random()*.6),vy:.35+Math.random()*.6,vz:nz*sd*(.3+Math.random()*.6),life:1.2,size:.28,size1:.04,col:u.col,a:.95,a1:0,drag:1.1})}}

@@ -58,12 +58,16 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
     await Promise.all(P)})());
   /* ---------- grotwanden van rotsmodellen: Vuurgrot en Hart van de Vulkaan ---------- */
   const caveWalls=async(D,tint)=>{const L=[];for(let r=0;r<D.R;r++)for(let k=0;k<D.C;k++){if(D.map[r][k]!=='#')continue;let nb=false;for(const[a,b]of[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]){const rr=r+a,cc=k+b;if(rr>=0&&rr<D.R&&cc>=0&&cc<D.C&&D.map[rr][cc]!=='#')nb=true}if(!nb)continue;
-      const[x,z]=D.pos(k,r);for(let i=0;i<2;i++)L.push([x+(R()-.5)*3,z+(R()-.5)*3,2.6+R()*1.6,R()*6.28])}
+      const[x,z]=D.pos(k,r);for(let i=0;i<2;i++){let rx=x+(R()-.5)*3,rz=z+(R()-.5)*3;const sc=2.6+R()*1.6;
+        /* keep the exit arch free: rocks right behind it are pushed back so the portal is carved into the rock face */const px=D.exit.x,pz=D.exit.z+2.3,dx=rx-px,dz=rz-pz,dd=Math.hypot(dx,dz);if(dd<7.5){const k2=7.5/Math.max(dd,.01);rx=px+dx*k2;rz=pz+(dd<.01?7.5:dz*k2);if(rz<pz+3.4)rz=pz+3.4}
+        L.push([rx,rz,sc,R()*6.28])}}
     const ok=await envInstances(['Rock_1','Rock_2','Rock_3','Rock_4','Rock_5','Rock_6','Rock_7'],L,(t,i)=>i,(t,bb)=>{const w=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);const k=D.c*1.25*t[2]/2.6/w;return[k,k*(1.6+t[2]*.3),k]},true,tint);
     if(ok&&D.wim)D.wim.visible=false;
     /* vloer van tegelmodellen */const F=[];for(let r=0;r<D.R;r++)for(let k=0;k<D.C;k++){const ch=D.map[r][k];if(ch==='~')continue;const[x,z]=D.pos(k,r);F.push({x,y:-.74,z,s:3,ry:((r+k)%2)*Math.PI/2})}
     const fl=await instModel('D_Floor_Modular',F,{cast:false,tint:new THREE.Color(tint.r*1.9,tint.g*1.7,tint.b*1.6)});if(fl&&D.grp&&D.grp.children[0]){const f0=D.grp.children[0];f0.material=f0.material.clone();f0.material.map=null;f0.material.color.setHex(0x140c08);f0.position.y-=.75}};
   jobs.push(caveWalls(D2,new THREE.Color(.55,.38,.3)));jobs.push(caveWalls(D3,new THREE.Color(.45,.32,.28)));
+  /* the way out of every dungeon: a stone arch against the end wall, the portal fills its opening */
+  for(const[x,z,t]of[[DUN_EXIT.x,DUN_EXIT.z-.4,new THREE.Color(.7,.72,.76)],[D2.exit.x,D2.exit.z,new THREE.Color(.75,.6,.52)],[D3.exit.x,D3.exit.z,new THREE.Color(.7,.55,.48)]])jobs.push(place('D_Arch',x,z+2.3,0,1.75).then(o=>{if(o&&t)tintObj(o,t);return o}));
   /* ---------- Ashen Hills: the mine entrance to Ignaroth's Fire Cave (rock outcrop, stone arch, timber props) ---------- */
   jobs.push((async()=>{const X=CAVE.x,Z=CAVE.z,ASH=new THREE.Color(.62,.52,.47),STN=new THREE.Color(.58,.48,.42);const P=[];
     const at=(n,dx,dz,ry,sc,y=0,fn)=>{P.push(place(n,X+dx,Z+dz,ry,sc,y+CAVE_H-groundH(X+dx,Z+dz)).then(o=>{if(o&&fn)fn(o);return o}))};

@@ -30,8 +30,8 @@ function enterVolcano(){teleport(D3.entry.x,D3.entry.z);ME.ry=Math.PI;cam.yaw=0;
 function leaveVolcano(){teleport(VOLC_DOOR.x-7,VOLC_DOOR.z);ME.ry=-Math.PI/2;cam.yaw=Math.PI/2}
 /* automatisch door een poort lopen (aangeroepen vanuit de lus) */
 function drakePortals(){const x=ME.pos.x,z=ME.pos.z;
-  if(x<700&&x>-1000&&Math.hypot(x-(DRK_GATE.x+1.2),z-DRK_GATE.z)<2.6){enterDrake();return true}
-  if(inDrk(x)){if(Math.hypot(x-(DRK_EXIT.x-1),z-DRK_EXIT.z)<2.6){leaveDrake();return true}if(Math.hypot(x-(VOLC_DOOR.x+1.4),z-VOLC_DOOR.z)<2.4){enterVolcano();return true}}
+  if(x<700&&x>-1000&&Math.hypot(x-DRK_GATE.x,z-DRK_GATE.z)<2.4){enterDrake();return true}
+  if(inDrk(x)){if(Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)<2.4){leaveDrake();return true}if(Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<2.2){enterVolcano();return true}}
   if(x>1700&&Math.hypot(x-D3.exit.x,z-(D3.exit.z+1.4))<2){leaveVolcano();return true}
   return false}
 /* met F (of Actie) */

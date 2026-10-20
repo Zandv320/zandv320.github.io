@@ -80,11 +80,13 @@ const LAVA_MAT=new THREE.MeshBasicMaterial({map:LAVA_TEX,color:new THREE.Color()
   const rimH=VOLC.h*Math.pow(1-VOLC.cr/VOLC.r,1.25)+2;const lake=new THREE.Mesh(new THREE.CircleGeometry(VOLC.cr*.7,40).rotateX(-Math.PI/2),LAVA_MAT);lake.position.set(VOLC.x,rimH-7,VOLC.z);scene.add(lake);addLight(VOLC.x,rimH-3,VOLC.z,0xff7a30,40,40,true);
   for(const pts of DRK_RIVERS)for(let i=1;i<pts.length;i+=5){const[x,z]=pts[i];if(Math.max(Math.abs(x-DRK.x),Math.abs(z-DRK.z))<165)addLight(x,drkH(x,z)+2.2,z,0xff5a18,20,15,true)}}
 /* ---- portalen en poorten (procedureel deel; modellen komen in buildDrakeEnv) ---- */
-function drkPortal(x,y,z,ry,col,w=4.6,h=6.4,par=scene){const pt=mesh(new THREE.PlaneGeometry(w,h),portalMat(col),x,y+h/2,z,par,false,false);pt.rotation.y=ry;pt.userData.dyn=1;return pt}
-const DRK_PORTALS={gate:drkPortal(DRK_GATE.x+1.2,groundH(DRK_GATE.x,DRK_GATE.z),DRK_GATE.z,Math.PI/2,0xff5a1a),exit:drkPortal(DRK_EXIT.x-1,drkH(DRK_EXIT.x,DRK_EXIT.z),DRK_EXIT.z,Math.PI/2,0x6ac8ff),door:drkPortal(VOLC_DOOR.x+1.4,drkH(VOLC_DOOR.x,VOLC_DOOR.z),VOLC_DOOR.z,Math.PI/2,0xff7a20,4.2,5.6)};
-for(const[px,pz,par]of[[DRK_GATE.x,DRK_GATE.z],[DRK_EXIT.x,DRK_EXIT.z],[VOLC_DOOR.x,VOLC_DOOR.z]]){const y=groundH(px,pz);for(const s of[-1,1]){addCol(px,pz+s*3.4,1.2);addFlame(scene,px-1.5,y+3.3,pz+s*4.3,1.6,0xff8a30);addLight(px-1.5,y+3.6,pz+s*4.3,0xff8a40,26,16)}}
+/* the three gates of the Dragon Realm: a D_Arch (opening along z) with the portal filling it exactly, colliders only on the
+   arch posts, and the pillars with fire bowls just outside the arch */
+const DRK_ARCH={gate:{x:DRK_GATE.x,z:DRK_GATE.z,s:2.6,col:0xff5a1a,skull:1},exit:{x:DRK_EXIT.x,z:DRK_EXIT.z,s:2.4,col:0x6ac8ff,skull:0},door:{x:VOLC_DOOR.x,z:VOLC_DOOR.z,s:2.2,col:0xff7a20,skull:1}};
+const DRK_PORTALS={};for(const k in DRK_ARCH){const a=DRK_ARCH[k];const y=groundH(a.x,a.z);DRK_PORTALS[k]=portalMesh(a.col,a.s,a.x,y,a.z,Math.PI/2);
+  for(const sd of[-1,1]){addCol(a.x,a.z+sd*1.58*a.s,.46*a.s);const cz=a.z+sd*(2.05*a.s+1.4);addCol(a.x,cz,1.1);addFlame(scene,a.x,y+6.35,cz,1.6,0xff8a30);addLight(a.x,y+6.8,cz,0xff8a40,26,16)}}
 /* vulkaankern rond de ingang: niet door de berg heen lopen naast de deur */
-for(let a=-1;a<=1;a+=2)for(let k=0;k<4;k++)addCol(VOLC_DOOR.x+1+k*1.4,VOLC_DOOR.z+a*(3.6+k*.6),1.3);
+for(let a=-1;a<=1;a+=2)for(let k=0;k<4;k++)addCol(VOLC_DOOR.x+1.6+k*1.4,VOLC_DOOR.z+a*(2.05*2.2+.9+k*.6),1.3);
 /* ---- kerker: Hart van de Vulkaan ---- */
 const D3MAP=[
 '#########################',
@@ -158,7 +160,7 @@ async function buildDrakeEnv(){if(window.__NOGLTF)return;
     for(const[a,d]of[[1.6,15],[2.8,15]])P('D_Banner',cx+Math.cos(a)*d,cz+Math.sin(a)*d,a+Math.PI,2);
     for(let k=0;k<4;k++)P(k%2?'Barrel':'Crate',cx-6+k*1.3,cz-12,R()*3,1)}
   /* poorten: Drakenpas (Zilverdal), terugpoort en de vulkaandeur */
-  for(const[px,pz,s,skull]of[[DRK_GATE.x,DRK_GATE.z,2.6,1],[DRK_EXIT.x,DRK_EXIT.z,2.4,0],[VOLC_DOOR.x,VOLC_DOOR.z,2.2,1]]){P('D_Arch',px,pz,Math.PI/2,s);for(const sd of[-1,1])P('D_Column',px+.4,pz+sd*4.4,0,1.5);if(skull)P('D_Skull',px+.6,pz,-Math.PI/2,2.4,scene,6.6*s/2.6)}
+  for(const k in DRK_ARCH){const{x:px,z:pz,s,skull}=DRK_ARCH[k];P('D_Arch',px,pz,Math.PI/2,s);for(const sd of[-1,1])jobs.push(envPlace('D_Column',px,pz+sd*(2.05*s+1.4),0,()=>[1.2,1.5,1.2]).then(o=>{if(o)o.traverse(m=>{if(m.isMesh){m.material=m.material.clone();m.material.vertexColors=false;m.material.color.setHex(0x6e5244)}})}));if(skull)P('D_Skull',px+.6,pz,-Math.PI/2,2.4,scene,6.6*s/2.6)}
   /* het Hart van de Vulkaan: zuilen rond de drakenhal, de drakenschat en banieren */
   {const H=D3_HALL;for(let k=0;k<12;k++){const a=k/12*6.28;const x=H.x+Math.cos(a)*44,z=H.z+Math.sin(a)*21;if(D3.cell(x,z)!=='.'||Math.abs(Math.sin(a))>.9&&Math.cos(a)>-.2&&Math.sin(a)>0)continue;P('D_Column',x,z,a,1.5);addCol(x,z,.8);addFlame(scene,x,4.2,z,1.6,0xff7a20)}
     const[tx,tz]=D3.pos(12,1);for(let k=0;k<3;k++)P('D_Chest_Gold',tx-6+k*6,tz+1,Math.PI,1.6);for(let k=0;k<7;k++)P('D_Coin_Pile',tx-9+k*3,tz+3+(k%2)*1.5,R()*6,2.2);
