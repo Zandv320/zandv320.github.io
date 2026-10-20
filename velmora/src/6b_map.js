@@ -55,6 +55,7 @@ function* atlasGen(){const t0=performance.now();
     else if(/tower|well/.test(b.m)){g.fillStyle='#3f6fb8';g.beginPath();g.arc(b.x,b.z,Math.min(b.w,b.d)*.42,0,7);g.fill();g.strokeStyle='#223';g.lineWidth=.3;g.stroke()}
     else bld(b.x,b.z,w*.82,d*.82,b.q*Math.PI/2,cl?ROOF[cl]:grey?'#8a8880':'#a0603a')}
   for(const h of HOUSES)bld(h.x,h.z,h.w+1,h.d+1,h.rot?Math.PI/2:0,'#a3402c');
+  bld(STABLE.x,STABLE.z,4.7*STABLE_S*.9,3.3*STABLE_S*.85,STABLE.ry,'#2f6a78');
   {g.fillStyle='#e0d6c0';g.beginPath();g.arc(-34,118,3.2,0,7);g.fill();g.strokeStyle='#5a4030';g.lineWidth=.4;g.stroke();g.strokeStyle='#6a4a2a';g.lineWidth=.6;for(let i=0;i<4;i++){const a=i*Math.PI/2+.4;g.beginPath();g.moveTo(-34,118);g.lineTo(-34+Math.cos(a)*6,118+Math.sin(a)*6);g.stroke()}}
   /* market stalls and benches */
   for(const p of TOWN_P){if(/stall-(red|green)/.test(p.m)){g.save();g.translate(p.x,p.z);g.rotate(-p.ry);g.fillStyle=p.m.includes('red')?'#d0503c':'#3aa08a';g.fillRect(-1.7,-1.7,3.4,3.4);g.strokeStyle='#fff';g.lineWidth=.3;for(let s=-1.2;s<1.7;s+=.8){g.beginPath();g.moveTo(s,-1.7);g.lineTo(s,1.7);g.stroke()}g.restore()}}
@@ -127,7 +128,7 @@ function mapSource(){const x=ME.pos.x;
 /* labels: region names (always), places (from a little zoom), buildings (zoomed in) */
 const MAP_LABELS={vel:[[0,'Twilight Wood',-30,-150],[0,'Ashen Hills',205,-215],[0,'Bandit Heath',165,-140],[0,'Bone Hills',-170,-250],[0,'Mirror Lake',-150,128],[0,'Golden Fields',10,178],[0,'Silverdale',175,65],[0,'Silverbrook',0,-86],
     [1,"Artisans' Yard",-108,-28],[1,'Arena',126,-24],[1,'Bandit Camp',150,-132],[1,'Crypt of Kaal-Morath',-172,-236],[1,"Ignaroth's Fire Cave",206,-196],[1,'Dragon Pass ➜',228,88],[1,'Farm',46,96],[1,'Mill',-34,108],
-    [2,'The Keep',30,-58],[2,'Church of the Light',40,14],[2,'Silver Tankard',-34,-30],[2,'Market Street',-40,15],[2,'Barracks',50,-18],[2,'Mill Pond',-38,46],[2,'Town Square',0,-27]],
+    [2,'The Keep',30,-58],[2,'Church of the Light',40,14],[2,'Silver Tankard',-34,-30],[2,'Market Street',-40,15],[2,'Barracks',50,-18],[2,'Mill Pond',-38,46],[2,'Town Square',0,-27],[2,'Stables',58,40]],
   drk:[[1,'⬅ To Silverdale',-170,-10],[1,'Volcano door',-50,-12],[0,"Dragonhunters' Camp",-138,48],[0,'Mount Dragonrest',0,-24],[0,'Dragon Nests',10,150],[0,'Shrines',122,-62],[0,'Fire Fields',0,-150],[0,'Ash Plains',-95,-110]]};
 function mapFit(){const S=MAPST.src;return Math.min(MAPST.w/S.w,MAPST.h/S.h)}
 function mapResize(){const c=$('#bigmap');const r=c.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);const w=Math.max(200,Math.round(r.width)),h=Math.max(200,Math.round(r.height));

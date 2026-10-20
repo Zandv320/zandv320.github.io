@@ -287,6 +287,9 @@ tbuild('home_A_red',-16,30,1,10);tbuild('home_B_yellow',-16,58,1,10);
 /* park: the mill pond with a watermill, trees and benches */
 tbuild('watermill_yellow',-22,46,3,8,.7);
 tbuild('tower_A_blue',13,-20,0,4.5);tbuild('well_blue',14,18,0,4);
+/* the stable (Quaternius, 4.7 x 3.3 model units): long side along x, scaled 2.6; a paddock fence, hay bales and the
+   stablemaster's animals in front of it */
+const STABLE_S=2.6;addBox(STABLE.x,STABLE.z,4.7*STABLE_S*.9,3.3*STABLE_S*.85);for(const p of STABLE_PETS)addCol(STABLE.x+p.dx,STABLE.z+p.dz,1);
 /* cobbled streets inside the walls (same cobbles as the square) */
 {const cm=mat(0xc8c0b0,{tex:'cobble',rx:1,ry:1});const W=TOWN.wall+3,Y=1.236;
   for(const p of PATHS)for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1];const at=t=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],inn=t=>{const q=at(t),r=Math.hypot(q[0],q[1]);return r>21.5&&r<W};

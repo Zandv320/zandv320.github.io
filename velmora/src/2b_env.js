@@ -69,6 +69,9 @@ async function buildTown(){if(window.__NOGLTF)return;const jobs=[];const STONE=n
     const gt=await Promise.all(TOWN_WALL.gate.map(t=>put('H_tower_B_blue',t.x,t.z,t.ry,4.6)));
     for(const t of TOWN_WALL.gate){const a=t.g+t.sd*.105,R=TOWN.wall-3.2;jobs.push(put('T_banner-red',Math.cos(a)*R,Math.sin(a)*R,t.ry+Math.PI/2,3.4,4.6))}
     if(seg&&tw&&gt.every(Boolean))hideProc('twall')})());
+  /* the stable and its hay */
+  jobs.push(put('Stable',STABLE.x,STABLE.z,STABLE.ry,STABLE_S));
+  for(const[dx,dz,r]of[[-7.6,-1.5,.4],[-8.3,.4,1.3],[7.8,-4.6,.9]])jobs.push(put('Hay',STABLE.x+dx,STABLE.z+dz,r,9));
   /* fountain on the square */
   jobs.push(put('T_fountain-round-detail',0,0,0,[5.2,4.2,5.2]).then(o=>{if(!o)return;tintObj(o,STONE);FOUNT_Y=1.2+.48*4.2+.25;hideProc('fountain')}));
   /* lanterns, trees, props */

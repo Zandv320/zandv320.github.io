@@ -1,0 +1,3 @@
+Mount models: Horse, White Horse, Donkey, Alpaca, Deer and Stag come from Quaternius' "Ultimate Animated Animals"
+(downloaded via Poly Pizza, https://poly.pizza). License: CC0 1.0 (public domain). Recoloured and optimised for Velmora.
+The sitting animation (anim_mount.glb) is from KayKit Character Animations by Kay Lousberg (CC0).

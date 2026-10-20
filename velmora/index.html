@@ -138,7 +138,7 @@ kbd{font:700 12px var(--ui);border:1px solid var(--gold3);background:#1d1812;pad
 .cell .n{position:absolute;right:2px;bottom:0;font-size:11px;font-weight:800;text-shadow:0 1px 1px #000}
 .cell.r1{border-color:var(--r1)}.cell.r2{border-color:var(--r2)}.cell.r3{border-color:var(--r3);box-shadow:0 0 8px rgba(182,92,255,.5)}.cell.r4{border-color:var(--r4);box-shadow:0 0 10px rgba(255,128,0,.65)}.cell.rj{border-color:#555}
 .gold{color:#ffd34d;font-weight:800;margin-top:8px;display:flex;justify-content:space-between}
-#pChar{left:max(10px,env(safe-area-inset-left));top:90px;width:330px}
+#pChar{left:max(10px,env(safe-area-inset-left));top:90px;width:330px;max-height:calc(100% - 110px);overflow:auto}
 .eq{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .eqs{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--muted)}
 .eqs .cell{width:100%}
@@ -279,6 +279,22 @@ body.touch:not(.portrait) #pDialog{width:min(440px,60vw);max-height:calc(100% - 
 body.touch:not(.portrait).bagdlg #pDialog{left:max(8px,env(safe-area-inset-left));transform:translateY(-50%);width:min(420px,calc(50vw - 12px))}
 body.touch:not(.portrait).bagdlg #pBag{left:auto;right:max(8px,env(safe-area-inset-right));transform:none;width:min(400px,calc(50vw - 12px))}
 body.touch.pop #touch{display:none}
+
+/* ride button and the mounts list */
+.abrow{display:flex;align-items:center;gap:10px}
+.mountbtn{width:46px;height:46px;border-radius:50%;padding:0;border:0;background:url(ui/round_brown.png) center/100% 100% no-repeat;display:flex;align-items:center;justify-content:center;cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.mountbtn.on,.tb.on[data-role=mnt]{background-image:url(ui/round_grey_detailed_green.png)}
+body.touch .mountbtn{display:none}
+.mhd{margin:12px 0 2px;font:800 14px var(--ui);color:#ffe7a8;letter-spacing:.03em}
+.mlist{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.mlist .mrow{display:flex;align-items:center;gap:8px;text-align:left;padding:5px 8px;border-radius:8px;border:2px solid rgba(255,214,140,.25);background:rgba(0,0,0,.18);color:#fff3d6;cursor:pointer;min-height:44px}
+.mlist .mrow .mic{flex:0 0 30px;height:30px;border-radius:50%;background:url(ui/round_brown.png) center/100% 100%;display:flex;align-items:center;justify-content:center}
+.mlist .mrow .mt{display:flex;flex-direction:column;line-height:1.15}.mlist .mrow b{font-size:13px}.mlist .mrow small{font-size:11px;opacity:.85}
+.mlist .mrow:disabled{cursor:default;opacity:.55}.mlist .mrow:disabled .mic{filter:grayscale(1)}
+.mlist .mrow.sel{border-color:#ffd56a;background:rgba(255,213,106,.18)}.mlist .mrow.sel .mic{background-image:url(ui/round_grey_detailed_green.png)}
+#pDialog .mlist .mrow{color:#3b2a14;background:rgba(163,112,58,.14);border-color:rgba(122,79,40,.45)}#pDialog .mlist .mrow.sel{border-color:#b8860b;background:rgba(255,213,106,.4)}
+body.touch.portrait .tb[data-role=mnt]{width:46px;height:46px;bottom:150px;left:194px}
+.tb.mnt svg{width:62%;height:62%}
 
 .frame input,.frame .btn.alt{text-shadow:none}
 #pDialog,#pDialog *{text-shadow:none}
@@ -463,7 +479,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
   <div id="toast"></div>
   <div id="feed"></div>
   <div id="banner"></div>
-  <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div id="abar"></div></div>
+  <div id="bottom" class="pe"><div class="bar" id="xpbar"><i></i><span></span></div><div class="abrow"><button id="mountBtn" class="mountbtn" title="Ride your mount (R)" aria-label="Ride your mount"></button><div id="abar"></div></div></div>
   <div id="mbtn" class="pe">
     <button class="mb" data-p="pChar"><img src="ui/character.png" alt=""><i>C</i><small>Hero</small></button>
     <button class="mb" data-p="pTalent" id="mbTal"><img src="ui/award.png" alt=""><i>N</i><small>Talents</small><b class="tdot" hidden></b></button>
@@ -475,7 +491,7 @@ body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
     <button class="mb" data-p="pMenu"><img src="ui/icon_menu.png" alt=""><i>Esc</i><small>Menu</small></button>
   </div>
   <div id="pBag" class="panel frame" hidden><h3>Bag <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Gold</span><span id="goldTxt">0</span></div></div>
-  <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div></div>
+  <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div><h4 id="mountHd" class="mhd">Mounts</h4><div class="mlist" id="mountList"></div></div>
   <div id="pTalent" class="panel frame" hidden><h3><span>Talents</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
   <div id="pQuest" class="panel frame" hidden><h3>Quest log <button class="x" data-close>×</button></h3><div id="qList"></div></div>
   <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Map of Velmora</span><span class="mapbtns"><button class="btn alt" id="mapFollow" title="Keep me in the middle">◎<span class="lbl"> Follow</span></button><button class="btn alt" id="mapAll" title="Show the whole map">⤢<span class="lbl"> World</span></button><button class="btn alt" id="mapOut" aria-label="Zoom out">−</button><button class="btn alt" id="mapIn" aria-label="Zoom in">+</button></span><button class="x" data-close>×</button></h3><canvas id="bigmap" width="720" height="560"></canvas><div class="maplg"><span><b style="color:#ffd100">!</b> quest</span><span><i style="background:#ffd34d"></i>person</span><span><i style="background:#40e090"></i>group</span><span><i style="background:#4aa0ff"></i>player</span><span><i class="qa"></i>quest area</span><span><i style="background:#d23a2a"></i>monster</span><span class="hint">Drag to move · scroll or pinch to zoom</span></div></div>

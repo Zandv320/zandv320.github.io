@@ -47,7 +47,7 @@ function giveMat(n,q){const it=matItem(n,q);if(!addItem(it)){toast('Your bag is 
 const ACT={cur:null,post:null};
 function actAnim(){const A=ACT.cur;if(A)return A.anim||null;const p=ACT.post;if(p&&p.t>0)return p.anim;return null}
 function nearNode(rad=3.6){let b=null,bd=rad;for(const n of NODES){if(n.down)continue;const d=Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z);if(d<bd){bd=d;b=n}}return b}
-function startGather(n){if(ME.dead||ME.cast||ACT.cur)return;if(Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z)>3.8)return toast('Move closer');if(n.down)return toast('There is nothing left to gather here');
+function startGather(n){if(ME.mounted)dismount();if(ME.dead||ME.cast||ACT.cur)return;if(Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z)>3.8)return toast('Move closer');if(n.down)return toast('There is nothing left to gather here');
   const sk=NODE_SK[n.type],need=NODE_REQ[n.item]||0,L=lifeOf(sk);if(L.lv<need)return toast(LIFE[sk].n+' '+rankOf(need)+' required');if(!useEnergy(1))return;needToolClips();
   const dur=Math.max(1.6,4-L.lv*.035);faceTo(n.x,n.z);ACT.cur={k:'gather',n,sk,t:0,dur,anim:n.type==='hout'?'chop':n.type==='erts'?'mine':'herb',fx:.6,lbl:n.type==='hout'?'Chopping…':n.type==='erts'?'Mining…':'Picking '+n.item+'…'};$('#castbar').hidden=false}
 function finishGather(n,sk){const L=lifeOf(sk);let q=1+(Math.random()<.25+L.lv*.012?1:0);const got=[[n.item,q]];
@@ -57,7 +57,7 @@ function finishGather(n,sk){const L=lifeOf(sk);let q=1+(Math.random()<.25+L.lv*.
   n.down=1;n.downT=50;n.g.visible=false;const col=n.type==='kruid'?0xffe08a:n.type==='erts'?(NODE_COL[n.item]||0xd8c8a0):0xd8b080;burst(n.x,n.y+.6,n.z,col,16,2.8);sfx('loot');refreshBag();saveGame()}
 /* ---- skinning: beasts you looted can be skinned once ---- */
 function skinTarget(rad=5){let b=null,bd=rad;for(const m of MONS){if(!m.dead||m.loot||m.skinned||!SKIN[m.type])continue;const d=Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z);if(d<bd){bd=d;b=m}}return b}
-function startSkin(m){if(ME.dead||ME.cast||ACT.cur)return;const S=SKIN[m.type],L=lifeOf('skinning');if(L.lv<S.lv)return toast('Skinning '+rankOf(S.lv)+' required');if(!useEnergy(1))return;needToolClips();
+function startSkin(m){if(ME.mounted)dismount();if(ME.dead||ME.cast||ACT.cur)return;const S=SKIN[m.type],L=lifeOf('skinning');if(L.lv<S.lv)return toast('Skinning '+rankOf(S.lv)+' required');if(!useEnergy(1))return;needToolClips();
   faceTo(m.x,m.z);ACT.cur={k:'skin',m,t:0,dur:Math.max(1.6,3.4-L.lv*.03),anim:'skin',fx:.5,lbl:'Skinning…'};$('#castbar').hidden=false}
 function finishSkin(m){if(m.skinned||!m.dead)return;m.skinned=true;const S=SKIN[m.type],L=lifeOf('skinning');const q=(S.n||1)+(Math.random()<.2+L.lv*.012?1:0);
   if(giveMat(S.it,q))questEvent('skin',S.it,q);if(S.x&&L.lv>=S.x[1]&&Math.random()<.25+L.lv*.006)giveMat(S.x[0],1);lifeXp('skinning',S.lv>=20?22:S.lv>=10?17:13);
@@ -66,7 +66,7 @@ function finishSkin(m){if(m.skinned||!m.dead)return;m.skinned=true;const S=SKIN[
 /* aan de oever: zelf (bijna) droog staan en een paar meter verderop diep water */
 function atShore(){const d=Math.hypot(ME.pos.x-LAKE.x,ME.pos.z-LAKE.z);if(d>LAKE.r*1.45||d<LAKE.r*.45)return false;const a=Math.atan2(LAKE.x-ME.pos.x,LAKE.z-ME.pos.z);return groundH(ME.pos.x,ME.pos.z)>-1.15&&groundH(ME.pos.x+Math.sin(a)*6,ME.pos.z+Math.cos(a)*6)<-.95}
 let bobber=null,fishLine=null;
-function startFish(){if(ME.dead||ACT.cur||ME.cast)return;if(!atShore())return toast('Stand on the shore of Mirror Lake to fish');if(!useEnergy(1))return;needToolClips();
+function startFish(){if(ME.mounted)dismount();if(ME.dead||ACT.cur||ME.cast)return;if(!atShore())return toast('Stand on the shore of Mirror Lake to fish');if(!useEnergy(1))return;needToolClips();
   const a=Math.atan2(LAKE.x-ME.pos.x,LAKE.z-ME.pos.z);ME.ry=a;const bx=ME.pos.x+Math.sin(a)*7,bz=ME.pos.z+Math.cos(a)*7;
   if(!bobber){bobber=new THREE.Group();scene.add(bobber);loadEnv('Q_Lure_1').then(g=>{if(!g)return;const o=envClone(g);const s=.42/Math.max(...o.userData.size);o.scale.setScalar(s);o.position.y=-.08;bobber.add(o)})}
   if(!fishLine){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));fishLine=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xe8e8e8,transparent:true,opacity:.7}));fishLine.frustumCulled=false;scene.add(fishLine)}
@@ -93,7 +93,7 @@ function invCount(name,tag){return P.inv.reduce((s,x)=>s+(x&&x.kind==='mat'&&(x.
 function invTake(name,tag,n){for(let i=0;i<P.inv.length&&n>0;i++){const x=P.inv[i];if(!x||x.kind!=='mat'||!(x.n===name||(tag&&MATS[x.n]&&MATS[x.n].tag===tag)))continue;const k=Math.min(n,x.q||1);x.q=(x.q||1)-k;n-=k;if(x.q<=0)P.inv[i]=null}}
 const TAG_N={wood:'wood',herb:'herbs',fish:'fish',ore:'ore'};
 function canCraft(rc){const L=lifeOf(rc.sk);if(L.lv<rc.lv)return LIFE[rc.sk].n+' '+rankOf(rc.lv)+' required';if(rc.st&&!nearStation(rc.st))return'Go to '+ST_HINT[rc.st];for(const[n,q,tag]of rc.in)if(invCount(n,tag)<q)return'Not enough '+(tag?TAG_N[tag]:n);if(rc.gear&&P.inv.indexOf(null)<0)return'Your bag is full';return''}
-function startCraft(rc,times=1){if(ACT.cur||ME.cast||ME.dead)return;const why=canCraft(rc);if(why)return toast(why);if(!useEnergy(rc.gear?2:1))return;needToolClips();
+function startCraft(rc,times=1){if(ME.mounted)dismount();if(ACT.cur||ME.cast||ME.dead)return;const why=canCraft(rc);if(why)return toast(why);if(!useEnergy(rc.gear?2:1))return;needToolClips();
   if(rc.st){const s=STATIONS.filter(s=>s.k===rc.st).sort((a,b)=>Math.hypot(a.x-ME.pos.x,a.z-ME.pos.z)-Math.hypot(b.x-ME.pos.x,b.z-ME.pos.z))[0];if(s)faceTo(s.x,s.z)}
   ACT.cur={k:'craft',rc,t:0,dur:Math.max(1,rc.t-lifeOf(rc.sk).lv*.015),left:times-1,anim:CRAFT_ANIM[rc.sk]||'grind',fx:.5,lbl:(rc.gear?'Crafting ':'Making ')+rc.out+'…'};$('#castbar').hidden=false}
 /* gecrafte uitrusting: meestal groen, soms blauw, zelden paars (meesterwerk); hoger ambacht dan het recept vereist = betere kansen */

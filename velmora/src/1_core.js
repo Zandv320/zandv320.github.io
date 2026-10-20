@@ -106,6 +106,8 @@ const QUESTS=[
   {id:'c3',n:'Your First Masterpiece',giver:'hilde',lvl:4,req:'c2',txt:'Now make something worth wearing. Craft any Tier I armour piece or weapon: plate at the forge, leather at the tannery or cloth at the tailor\'s table. With luck it turns out Rare, or even a Masterwork!',obj:{craft:'gear1',n:1,lbl:'Tier I item crafted'},xp:480,gold:15,life:{tailoring:100},done:'Now that is craftsmanship! Keep at it and one day you will forge with Emberstone from the Dragon Realm.'},
   {id:'q8',n:'The Molten Heart',giver:'dorrik',lvl:11,req:'q7',txt:'Deep in the cave lives Ignaroth, a golem of lava as old as the mountains. As long as he lives, the cave keeps melting further. Bring friends and put out his fire.',obj:{kill:['ignaroth'],n:1,lbl:'Ignaroth defeated'},xp:5200,gold:150,item:3,done:'Ignaroth has been extinguished! The Ashen Hills are forever grateful, hero.'}
 ];
+/* the stable in Silverbrook (model: Quaternius, placed in 2_world.js) and Stablemaster Hob in front of it */
+const STABLE={x:56,z:27,ry:0};const STABLE_PETS=[{id:'whitehorse',dx:-8,dz:-8,ry:2.5},{id:'donkey',dx:10,dz:-1,ry:-2.3}];const STABLE_NPC=[56,17.4,Math.PI*.92];
 const NPCS=[
   {id:'aldren',n:'Captain Aldren',t:'Captain of the Watch',x:6,z:-14,ry:Math.PI,look:{skin:0xd9a98a,hair:0x5a4a3a,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,beard:1},hi:'Keep your sword sharp and your eyes open, adventurer.'},
   {id:'mirla',n:'Herbwife Mirla',t:'Alchemist',x:-15,z:4,ry:Math.PI/2,look:{skin:0xf0d2b8,hair:0xd8d8e8,chest:0x4a7a3a,pants:0x3a5a2a,cape:0x2a4a2a,wt:'staf',ears:1},hi:'Herbs, roots and a pinch of magic. What can I do for you?'},
@@ -115,7 +117,8 @@ const NPCS=[
   {id:'dorrik',n:'Miner Dorrik',t:'Mine Boss',x:198,z:-166,ry:Math.PI*.2,look:{skin:0xd99b7a,hair:0x6b4a2b,chest:0x6a5a4a,pants:0x3a3028,wt:'bijl',beard:1,dwarf:1,helm:1},hi:'Mind the heat, friend. Behind me lies Ignaroth\'s Fire Cave.'},
   {id:'vaelra',n:'Vaelra the Dragonhunter',t:'Dragonhunters\' Camp',x:-1736,z:20,ry:-Math.PI/2,look:{skin:0xd9a98a,hair:0x9a2a1a,chest:0x6a2a1a,pants:0x3a2a20,cape:0x6a1a10,wt:'boog'},hi:'Welcome to the Dragon Realm. Stay out of the lava, and always look up.'},
   {id:'hilde',n:'Forgemistress Hilde',t:'Master Artisan',x:-113.2,z:-10.4,ry:-2.78,look:{skin:0xe2b48e,hair:0xb04a1c,chest:0x6a4a3a,pants:0x3a3028,wt:'bijl',dwarf:1},hi:'Welcome to the Artisans\' Yard! Ore, hides and cloth go in; armour and weapons come out.'},
-  {id:'thorne',n:'Warden Thorne',t:'Crypt Warden',x:-160,z:-196,ry:Math.PI*.85,look:{skin:0x6f9a4a,hair:0x1d1d1d,chest:0x5a5a5a,pants:0x2a2a2a,cape:0x5a1a1a,wt:'bijl',helm:1,tusks:1},hi:'The crypt behind me is no place for weaklings. Go with a group, or don\'t go at all.'}
+  {id:'thorne',n:'Warden Thorne',t:'Crypt Warden',x:-160,z:-196,ry:Math.PI*.85,look:{skin:0x6f9a4a,hair:0x1d1d1d,chest:0x5a5a5a,pants:0x2a2a2a,cape:0x5a1a1a,wt:'bijl',helm:1,tusks:1},hi:'The crypt behind me is no place for weaklings. Go with a group, or don\'t go at all.'},
+  {id:'hob',n:'Stablemaster Hob',t:'Stablemaster',x:STABLE_NPC[0],z:STABLE_NPC[1],ry:STABLE_NPC[2],look:{skin:0xd9a98a,hair:0x8a5a2a,chest:0x7a5a34,pants:0x3a3028,wt:'none',beard:1},hi:'Every hero needs a good mount. Mine are fed, shod and ready for the road. Pick one, and press R to ride!',stable:1}
 ];
 /* tekstkleuren: licht genoeg voor de bruine panelen (met donkere schaduw), en verzadigd genoeg om ze te herkennen */
 const RARITY=[{n:'Common',c:'#ffffff'},{n:'Uncommon',c:'#5dff73'},{n:'Rare',c:'#7cc0ff'},{n:'Epic',c:'#e0a3ff'},{n:'Legendary',c:'#ffab4a'}];

@@ -121,7 +121,7 @@ const bar=()=>[...ABIL[P.cls],...talentSkills(),...COMMON_ABIL];
 let toastT=0;function toast(t){const e=$('#toast');e.textContent=t;e.style.opacity=1;toastT=1.6}
 function resName(){return{energie:'energy',mana:'mana',focus:'focus'}[ST.res]}
 function useAbility(i){
-  if(!P||ME.dead||S.mode!=='play')return;if(ACT.cur){if(ACT.cur.k==='fish')endFish();ACT.cur=null;$('#castbar').hidden=true}if(ME.stun>0)return toast('You are stunned');const a=bar()[i];if(!a)return;
+  if(!P||ME.dead||S.mode!=='play')return;if(ME.mounted)dismount();if(ACT.cur){if(ACT.cur.k==='fish')endFish();ACT.cur=null;$('#castbar').hidden=true}if(ME.stun>0)return toast('You are stunned');const a=bar()[i];if(!a)return;
   if(P.level<a.lvl)return toast('You learn '+a.n+' at level '+a.lvl);
   if((ME.cds[a.id]||0)>0)return toast('That ability is not ready yet');
   if(ME.cast)return toast('You are still busy');
@@ -138,7 +138,7 @@ function startCd(a){const cd=abCd(a);if(cd)ME.cds[a.id]=cd;if(!a.item)ME.gcd=1;P
 const _f=new THREE.Vector3();
 function myHand(){return _f.set(ME.pos.x+Math.sin(ME.ry)*.5,ME.pos.y+1.4,ME.pos.z+Math.cos(ME.ry)*.5).clone()}
 function fxEmit(o){netEmit('fx',o)}
-function execAbility(a,tg){
+function execAbility(a,tg){if(a.mount){doMount();return}
   startCd(a);const id=a.id;
   if(id==='slag'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){slamFx(tg.x,tg.y+(tg.rig&&tg.rig.h||1.5)*.55,tg.z,ME.ry);fxEmit({k:'sl',x:tg.x,y:tg.y+(tg.rig&&tg.rig.h||1.5)*.55,z:tg.z,r:ME.ry});dealDamage(tg,hitDmg(1.5,id));if(TM('slag.leech'))heal(ST.maxhp*TM('slag.leech'));sfx('hit');}},140);ME.swing=Math.max(ME.swing,.6)}
   else if(id==='storm'){const dx=tg.x-ME.pos.x,dz=tg.z-ME.pos.z,L=Math.hypot(dx,dz);ME.dash={x:tg.x-dx/L*1.6,z:tg.z-dz/L*1.6,t:Math.min(.45,L/40),t0:0,sx:ME.pos.x,sz:ME.pos.z,tg};sfx('swing')}
@@ -186,6 +186,7 @@ function reward(m){
   if(Math.random()<.45&&!t.add)L.items.push(junkItem(m.type,m.lvl));
   if((m.type==='ever'||m.type==='wolf')&&Math.random()<.55)L.items.push(matItem('Raw Meat',1));
   if(Math.random()<.12)L.items.push(potion(Math.random()<.6?'heal':'mana'));
+  {const mid=mountDropFor(m.type);if(mid)setTimeout(()=>learnMount(mid,'A rare find! Press R to ride'),600)}
   m.loot=L;addSpark(m);refreshTracker();refreshNpcMarks()}
 function rollRarity(t){const r=Math.random();if(t.boss)return r<.5?3:2;if(t.elite)return r<.15?3:r<.7?2:1;return r<.015?3:r<.09?2:r<.35?1:0}
 function addSpark(m){if(m.spark)scene.remove(m.spark);const n=24,g=new THREE.BufferGeometry(),p=new Float32Array(n*3);g.setAttribute('position',new THREE.BufferAttribute(p,3));const s=new THREE.Points(g,new THREE.PointsMaterial({color:0xffd34d,size:.22,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));s.userData.n=n;s.position.set(m.x,m.y,m.z);scene.add(s);m.spark=s}
@@ -200,7 +201,7 @@ function gainXp(n,src){if(P.level>=MAXLVL)return;n=Math.round(n*(RACES[P.race].x
 function takeHit(dmg,src){if(ME.dead||S.mode!=='play')return;ME.hurtT=.35;if(src&&src.x!=null){const dx=ME.pos.x-src.x,dz=ME.pos.z-src.z,L=Math.hypot(dx,dz)||1;ME.kb={x:dx/L*2.2,z:dz/L*2.2}}if(src&&src.kind==='pl'){ME.lastPvp={by:src.id,t:performance.now()};if(!ME.target)setTarget(src)}if(Math.random()<TM('dodge')){floatText('me',P.cls==='krijger'?'Blocked':'Dodged','miss');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xe8f0ff,5,3,.3,.3);return}const lvl=src&&src.lvl||P.level;const red=ST.arm/(ST.arm+40+lvl*12);dmg=Math.max(1,Math.round(dmg*(1-red)*(1-Math.min(.75,TM('dr')+tbuff('dr')))*rand(.9,1.1)));P.hp-=dmg;ME.combat=6;floatText('me','-'+dmg,'hurt');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xff8070,7,4,.32,.35);emitP({x:ME.pos.x,y:ME.pos.y+1.1,z:ME.pos.z,life:.16,size:1.6,size1:2,col:0xff6a50,a:.8,a1:0,cell:FXC.arc,must:1});sfx('hurt');
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
-function die(){if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('You were defeated by '+esc(r?r.n:'another player')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('You have died.','err');saveGame()}
+function die(){if(ME.mounted)dismount();if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('You were defeated by '+esc(r?r.n:'another player')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('You have died.','err');saveGame()}
 function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
 
 /* ---------- monster AI (runs on the lobby host, or locally when offline) ---------- */
