@@ -80,7 +80,7 @@ const LAVA_MAT=new THREE.MeshBasicMaterial({map:LAVA_TEX,color:new THREE.Color()
   const rimH=VOLC.h*Math.pow(1-VOLC.cr/VOLC.r,1.25)+2;const lake=new THREE.Mesh(new THREE.CircleGeometry(VOLC.cr*.7,40).rotateX(-Math.PI/2),LAVA_MAT);lake.position.set(VOLC.x,rimH-7,VOLC.z);scene.add(lake);addLight(VOLC.x,rimH-3,VOLC.z,0xff7a30,40,40,true);
   for(const pts of DRK_RIVERS)for(let i=1;i<pts.length;i+=5){const[x,z]=pts[i];if(Math.max(Math.abs(x-DRK.x),Math.abs(z-DRK.z))<165)addLight(x,drkH(x,z)+2.2,z,0xff5a18,20,15,true)}}
 /* ---- portalen en poorten (procedureel deel; modellen komen in buildDrakeEnv) ---- */
-function drkPortal(x,y,z,ry,col,w=4.6,h=6.4,par=scene){const pt=mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),x,y+h/2,z,par,false,false);pt.rotation.y=ry;pt.userData.dyn=1;return pt}
+function drkPortal(x,y,z,ry,col,w=4.6,h=6.4,par=scene){const pt=mesh(new THREE.PlaneGeometry(w,h),portalMat(col),x,y+h/2,z,par,false,false);pt.rotation.y=ry;pt.userData.dyn=1;return pt}
 const DRK_PORTALS={gate:drkPortal(DRK_GATE.x+1.2,groundH(DRK_GATE.x,DRK_GATE.z),DRK_GATE.z,Math.PI/2,0xff5a1a),exit:drkPortal(DRK_EXIT.x-1,drkH(DRK_EXIT.x,DRK_EXIT.z),DRK_EXIT.z,Math.PI/2,0x6ac8ff),door:drkPortal(VOLC_DOOR.x+1.4,drkH(VOLC_DOOR.x,VOLC_DOOR.z),VOLC_DOOR.z,Math.PI/2,0xff7a20,4.2,5.6)};
 for(const[px,pz,par]of[[DRK_GATE.x,DRK_GATE.z],[DRK_EXIT.x,DRK_EXIT.z],[VOLC_DOOR.x,VOLC_DOOR.z]]){const y=groundH(px,pz);for(const s of[-1,1]){addCol(px,pz+s*3.4,1.2);addFlame(scene,px-1.5,y+3.3,pz+s*4.3,1.6,0xff8a30);addLight(px-1.5,y+3.6,pz+s*4.3,0xff8a40,26,16)}}
 /* vulkaankern rond de ingang: niet door de berg heen lopen naast de deur */

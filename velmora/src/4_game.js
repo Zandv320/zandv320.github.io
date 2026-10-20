@@ -158,7 +158,7 @@ function execAbility(a,tg){if(a.mount){doMount();return}
   else execTalentSkill(a,tg);
   buildBar(true)}
 function heal(n){n=Math.round(n);P.hp=Math.min(ST.maxhp,P.hp+n);floatText('me','+'+n,'heal')}
-function teleport(x,z){ME.pos.set(x,groundH(x,z),z);ME.dash=null;ME.portalCd=2;if(ME.target&&ME.target.kind==='mon'&&Math.hypot(ME.target.x-x,ME.target.z-z)>60)setTarget(null);ME.combat=0;snapCam=true;updZone(true)}
+function teleport(x,z){ME.pos.set(x,groundH(x,z),z);PERF.t=0;ME.dash=null;ME.portalCd=2;if(ME.target&&ME.target.kind==='mon'&&Math.hypot(ME.target.x-x,ME.target.z-z)>60)setTarget(null);ME.combat=0;snapCam=true;updZone(true)}
 function dealDamage(m,dmg,o={}){
   if(m&&m.kind==='pl'){if(!pvpHostile(m))return;const crit=Math.random()*100<ST.crit+tbuff('crit');if(crit)dmg*=2+TM('critdmg');if(m.hp/(m.mhp||1)<.35)dmg*=1+TM('exec');dmg=Math.max(1,Math.round(dmg));if(Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z)<5)hitFx(m.x,m.y+1.1,m.z,crit);floatText(m,dmg+(crit?'!':''),crit?'dmg crit':'dmg');ME.combat=6;ME.pvpT=performance.now();netEmit('pdmg',{to:m.id,d:dmg,l:P.level,r:o.root||0,s:o.stun||0});return}
   if(!m||m.dead||m.kind!=='mon')return;if(m.evade){floatText(m,'Dodged','miss');return}

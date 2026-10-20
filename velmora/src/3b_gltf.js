@@ -83,7 +83,7 @@ const CM_RAPTOR={idle:'Velociraptor_Idle',cidle:'Velociraptor_Idle',walk:'Veloci
 const CM_MON={idle:'Idle',cidle:'Idle',walk:'Walk',run:'Run',die:'Death',hit:'HitReact',jumpS:'Jump',jumpI:'Jump_Idle',land:'Jump_Land',atk:{def:['Punch','Weapon']}};
 const CM_TREX={idle:'TRex_Idle',cidle:'TRex_Idle',walk:'TRex_Walk',run:'TRex_Run',die:'TRex_Death',hit:null,atk:{def:['TRex_Attack']}};
 const MON_GLTF={
-  ever:{m:'Bull',h:1.75,cm:{...CM_ANIMAL,atk:{def:['Attack_Headbutt','Attack_Kick']},land:'Jump_toIdle'},tint:{Main:0x5a3e2a,Main_Light:0x8a6a4a,Horns:0xf0e6d0,Muzzle:0x3a2a20,Hooves:0x2a2018},quad:1},
+  ever:{m:'Bull',h:1.75,cm:{...CM_ANIMAL,atk:{def:['Attack_Headbutt','Attack_Kick']},land:'Jump_toIdle'},tint:{Main:0x8c5e3c,Main_Light:0xb48a64,Horns:0xf0e6d0,Muzzle:0x5a3e2c,Hooves:0x3a2a20},quad:1},
   wolf:{m:'Wolf',h:1.7,cm:CM_ANIMAL,tint:{Main:0x4e5664,Main_Light:0x8a919c},quad:1},
   spin:{m:'Spider',h:.8,cm:CM_SPIDER,tint:{Material:0x2a1e34,'Material.001':0xb02a2a},spider:1},
   rover:{m:'Rogue_Hooded',h:1.78,props:['Knife'],cm:{...CM_KAY,atk:{def:ATK_1H}},skin:0xc89070,hair:0x2a1a10},
@@ -104,7 +104,7 @@ const MON_GLTF={
   lavadrake:{drk:1,m:'Trex',h:4.4,cm:CM_TREX,tint:{Green:0x3a2420,Black:0x120c0a,LightGreen:0x7a4428,Red:0xff5a10,LightYellow:0xffa040},glow:{Red:0xff5a14}},
   vyraxion:{drk:1,m:'Dragon',h:7.2,cm:{...CM_DRAGON,hit:null},tint:{Main:0x8e1c12,Wings:0x3a0c08,Belly:0xe8a840,Claws:0x161210},glow:{Eyes:0xffc030}}};
 function buildGltfMon(type,lvl,sc){const d=MON_GLTF[type];if(!d)return null;
-  return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,noProcW:!!d.wm,wmodel:d.wm,smodel:d.sm,cm:d.cm,quad:d.quad,spider:d.spider,...(d.drk?{tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair}:{}),o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}
+  return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,noProcW:!!d.wm,wmodel:d.wm,smodel:d.sm,cm:d.cm,quad:d.quad,spider:d.spider,tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair,o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}
 /* ---- animatie-statemachine ---- */
 function gAct(r,name,once){if(!name)return null;let a=r.acts[name];if(a)return a;const c=r.clips[name]||(TOOL_CLIPS&&TOOL_CLIPS[name]);if(!c)return null;a=r.mixer.clipAction(c);if(once){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true}r.acts[name]=a;return a}
 function gLoop(r,name,fade=.18){if(r.cur===name)return r.acts[name];const a=gAct(r,name,false);if(!a)return null;const prev=r.cur&&r.acts[r.cur];a.enabled=true;a.setEffectiveWeight(1);a.paused=false;if(prev&&prev!==a){a.reset();prev.crossFadeTo(a,fade,false);a.play()}else{a.reset().fadeIn(fade).play()}r.cur=name;return a}

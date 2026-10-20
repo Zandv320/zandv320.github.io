@@ -234,7 +234,7 @@ const mapImg=(()=>{const c=document.createElement('canvas');c.width=c.height=HN;
 const dunImg=(()=>{const c=document.createElement('canvas');c.width=DC*12;c.height=DR*12;const g=c.getContext('2d');g.fillStyle='#120e14';g.fillRect(0,0,c.width,c.height);for(let r=0;r<DR;r++)for(let k=0;k<DC;k++)if(DMAP[r][k]!=='#'){g.fillStyle='#5a5560';g.fillRect(k*12,r*12,12,12)}return c})();
 const mm=$('#mmc'),mg=mm.getContext('2d');
 function w2m(x,z,cx,cz,sc,W){return[W/2+(x-cx)*sc,W/2+(z-cz)*sc]}
-function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0,W,W);mg.beginPath();mg.arc(W/2,W/2,W/2,0,7);mg.clip();mg.fillStyle='#000';mg.fillRect(0,0,W,W);
+function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0,W,W);mg.beginPath();mg.arc(W/2,W/2,W/2,0,7);mg.clip();mg.fillStyle='#4a6a34';mg.fillRect(0,0,W,W);
   const sc=inD?1.6:1.1;const cx=ME.pos.x,cz=ME.pos.z;
   if(ME.pos.x>1250){const D=ME.pos.x>1700?D3:D2;const ox=D.X-D.C/2*D.c,oz=D.Z-D.R/2*D.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D.img,x0,y0,D.C*D.c*sc,D.R*D.c*sc)}
   else if(inDrk(ME.pos.x)){const[x0,y0]=w2m(DRK.x-DSZ/2,DRK.z-DSZ/2,cx,cz,sc,W);mg.drawImage(drkImg,x0,y0,DSZ*sc,DSZ*sc)}

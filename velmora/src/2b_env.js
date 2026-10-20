@@ -56,7 +56,7 @@ async function buildEnv(){
   HOUSES.forEach((h,i)=>{if(h.g.userData.keep)return;jobs.push(envPlace(HN[i%HN.length],h.x,h.z,h.rot?Math.PI/2:0,sz=>{const fw=h.w+1.2,fd=h.d+1.2;const hh=h.h+Math.max(h.w,h.d)*.42+1.6;return[fw/sz[0],hh/sz[1],fd/sz[2]]},h.par).then(o=>{if(o){h.g.visible=false;h.model=o}}))});
   /* kramen, kisten en tonnen */
   for(const s of STALLS)jobs.push(envPlace(s.i%2?'MarketStand_2':'MarketStand_1',s.x,s.z,s.rot,sz=>{const k=3.6/Math.max(sz[0],sz[2]);return[k,k,k]}).then(o=>{if(o)s.g.visible=false}));
-  for(const c of CRATES)jobs.push(envPlace(c.kind==='barrel'?'Barrel':'Crate',c.x,c.z,c.ry,sz=>{const k=(c.kind==='barrel'?1.1:c.s)/sz[1];return[k,k,k]}).then(o=>{if(o)c.m.visible=false}));
+  for(const c of CRATES)jobs.push(envPlace(c.kind==='barrel'?'Barrel':'Crate',c.x,c.z,c.ry,sz=>{const k=(c.kind==='barrel'?1.1:c.s)/sz[1];return[k,k,k]}).then(o=>{if(o){c.m.visible=false;o.traverse(m=>{if(m.isMesh){m.material=m.material.clone();m.material.color.multiply(new THREE.Color(1.7,1.5,1.3))}})}}));
   await Promise.all(jobs)}
 /* ---- Silverbrook: buildings, walls, gates, lanterns, trees and props on the spots laid out in 2_world.js ---- */
 async function buildTown(){if(window.__NOGLTF)return;const jobs=[];const STONE=new THREE.Color(1.08,.96,.8);

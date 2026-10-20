@@ -42,7 +42,8 @@ async function buildCraftEnv(){if(window.__NOGLTF)return;const R=mulberry(7311);
   await Promise.all(NODES.map(async n=>{const spec=NM[n.type](n.item);if(!spec)return;const[mn,size,tint]=spec;const g=await loadEnv(mn);if(!g)return;
     const keep=[...n.g.children];const add=(name,s,t,x=0,y=0,z=0,ry=0)=>loadEnv(name).then(gg=>{if(!gg)return;const o=envClone(gg);const sz=o.userData.size;const k=s/Math.max(...sz);o.scale.setScalar(k);o.position.set(x,y,z);o.rotation.y=ry;if(t)tintObj(o,new THREE.Color(t));o.traverse(m=>{if(m.isMesh)m.userData.ent=n});n.g.add(o)});
     await add(mn,size,tint);
-    if(n.type==='erts'){const c='#'+new THREE.Color(NODE_COL[n.item]||0xc8783a).getHexString();for(let i=0;i<3;i++)await add('Q_Mineral',.9+R()*.4,c,Math.cos(i*2.1)*.6,.35+R()*.25,Math.sin(i*2.1)*.5,R()*6);
+    if(n.type==='erts'){const OC={'Iron Ore':[0xb8642c,0x5a524c],'Silver Ore':[0xe2ecf6,0x6a6e76],'Emberstone':[0xff6a20,0x4a3a36]}[n.item]||[0xb8642c,0x5a524c];const k0=n.g.children.length;for(let i=0;i<3;i++)await add('Q_Mineral',.9+R()*.4,null,Math.cos(i*2.1)*.6,.35+R()*.25,Math.sin(i*2.1)*.5,R()*6);
+      for(const o of n.g.children.slice(k0))o.traverse(m=>{if(!m.isMesh)return;m.material=m.material.clone();const c=m.material.color;const crystal=c.r>c.g*2;m.material.vertexColors=false;m.material.color.setHex(crystal?OC[0]:OC[1])});
       if(n.item==='Emberstone')n.g.traverse(m=>{if(m.isMesh&&m.material.color&&m.material.color.r>.8&&m.material.color.g<.6){m.material=m.material.clone();m.material.emissive=new THREE.Color(0xff4a10);m.material.emissiveIntensity=.6}})}
     if(n.type==='hout')await add('KN_stump_roundDetailed',.9,n.item==='Ashwood'?'#5a4c48':null,1.9,0,.2,R()*6);
     if(n.type==='kruid'){for(let i=0;i<2;i++)await add(mn,size*(.6+R()*.3),tint,Math.cos(i*3+1)*.35,0,Math.sin(i*3+1)*.35,R()*6);if(n.item==='Fireblossom')addFlame(n.g,0,.9,0,.5,0xff8a30)}

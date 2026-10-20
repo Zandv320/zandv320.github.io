@@ -14,6 +14,8 @@ async function instModel(name,items,{cast=true,tint=null,layer=null}={}){if(!ite
   if(tint){const c=geo.attributes.color.array;for(let i=0;i<c.length;i+=3){c[i]*=tint.r;c[i+1]*=tint.g;c[i+2]*=tint.b}}
   const im=new THREE.InstancedMesh(geo,ENV_MAT,items.length);items.forEach((t,i)=>{_p.set(t.x,t.y,t.z);_e.set(t.rx||0,t.ry||0,0);_q.setFromEuler(_e);_s.set(t.sx||t.s||1,t.sy||t.s||1,t.sz||t.s||1);_m.compose(_p,_q,_s);im.setMatrixAt(i,_m)});
   im.castShadow=cast;im.receiveShadow=true;im.computeBoundingSphere();scene.add(im);return im}
+/* one flat colour for every part (wrought iron etc.) */
+const recolorObj=(o,hex)=>{if(o)o.traverse(x=>{if(x.isMesh){x.material=x.material.clone();x.material.vertexColors=false;x.material.color.setHex(hex);x.material.needsUpdate=true}});return o};
 const tintObj=(o,c)=>{if(o)o.traverse(x=>{if(x.isMesh){x.material=x.material.clone();x.material.color.multiply(c)}});return o};
 const noShadow=o=>{if(o)o.traverse(x=>{if(x.isMesh)x.castShadow=false});return o};
 async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151);const jobs=[];
@@ -62,6 +64,21 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
     /* vloer van tegelmodellen */const F=[];for(let r=0;r<D.R;r++)for(let k=0;k<D.C;k++){const ch=D.map[r][k];if(ch==='~')continue;const[x,z]=D.pos(k,r);F.push({x,y:-.74,z,s:3,ry:((r+k)%2)*Math.PI/2})}
     const fl=await instModel('D_Floor_Modular',F,{cast:false,tint:new THREE.Color(tint.r*1.9,tint.g*1.7,tint.b*1.6)});if(fl&&D.grp&&D.grp.children[0]){const f0=D.grp.children[0];f0.material=f0.material.clone();f0.material.map=null;f0.material.color.setHex(0x140c08);f0.position.y-=.75}};
   jobs.push(caveWalls(D2,new THREE.Color(.55,.38,.3)));jobs.push(caveWalls(D3,new THREE.Color(.45,.32,.28)));
+  /* ---------- Ashen Hills: the mine entrance to Ignaroth's Fire Cave (rock outcrop, stone arch, timber props) ---------- */
+  jobs.push((async()=>{const X=CAVE.x,Z=CAVE.z,ASH=new THREE.Color(.62,.52,.47),STN=new THREE.Color(.58,.48,.42);const P=[];
+    const at=(n,dx,dz,ry,sc,y=0,fn)=>{P.push(place(n,X+dx,Z+dz,ry,sc,y+CAVE_H-groundH(X+dx,Z+dz)).then(o=>{if(o&&fn)fn(o);return o}))};
+    at('Mountain_Single',0,-11,Math.PI,13,-.6,o=>tintObj(o,ASH));at('Mountain_Single',-11,-8,1.2,8.5,-.4,o=>tintObj(o,ASH));at('Mountain_Single',11,-9,2.5,9.5,-.4,o=>tintObj(o,ASH));
+    at('D_Arch',0,-2.3,0,[2.05,2.15,2.4],0,o=>tintObj(o,STN));
+    for(const[dx,dz,ry,sc,n]of[[-5.9,-1.4,.4,5.2,'Rock_7'],[6.1,-1.8,2.2,5.6,'Rock_3'],[-8.2,.6,1.1,4.2,'Rock_5'],[8.3,.2,3.6,4.4,'Rock_1'],[-4.6,1.4,2.8,2.2,'Rock_2'],[5,1.6,.9,2.4,'Rock_4'],[-2.8,-4.4,.3,6,'Rock_6'],[3.2,-4.6,1.7,6.4,'Rock_7']])
+      at(n,dx,dz,ry,sc,0,o=>tintObj(o,ASH));
+    /* timber supports inside the arch */
+    const log=(dx,y,rz,len)=>P.push(place('KN_log_large',X+dx,Z-2.1,0,[len,1.25,1.25],y+CAVE_H-groundH(X+dx,Z-2.1)).then(o=>{if(!o)return;o.rotation.z=rz;tintObj(o,new THREE.Color(.8,.7,.6))}));
+    log(-2.75,3.4,Math.PI/2,6.9);log(2.75,3.4,Math.PI/2,6.9);log(0,6.85,0,6.6);
+    for(const s2 of[-1,1])at('S_WoodenTorch_Fire',s2*6.6,2.4,0,.85);
+    at('Cart',.05,7.4,0,[2.3,2.1,2.3]);at('KT_pickaxe',-6.2,6.6,.6,1.3,.02);at('KT_lantern',-7.6,5,0,.75,1);at('H_resource_lumber',6.6,4.4,1.2,3.2);
+    for(const[dx,dz,y,sc]of[[-6.6,-.4,1.6,2.6],[6.8,-.9,1.9,2.9],[-3.4,-4.2,6.2,2.2],[3.9,-4.3,6.6,2.4],[-8.6,1.6,1.1,1.8]])
+      at('Q_Crystal5',dx,dz,R()*6,sc,y,o=>o.traverse(m=>{if(m.isMesh){m.material=m.material.clone();m.material.color.setHex(0xff8a3a);m.material.emissive=new THREE.Color(0xff4a10);m.material.emissiveIntensity=1.1}}));
+    const r=await Promise.all(P);if(r[0]&&r[3])hideProc('cave')})());
   /* ---------- crypte-ingang: mausoleum ---------- */
   jobs.push((async()=>{const x0=CRYPT.x,z0=CRYPT.z,y=CRYPT_H;const P=[];
     P.push(place('D_Arch',x0,z0-1.4,0,2.3));P.push(place('MD_ModularStoneWall',x0,z0-4.2,-Math.PI/2,2.6));P.push(place('MD_ModularStoneWall_top',x0,z0-4.2,-Math.PI/2,2.6,5.3));
@@ -71,7 +88,7 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
     const r=await Promise.all(P);if(r[0])hideProc('cryptgate')})());
   /* ---------- kerkhof bij de crypte: grafstenen, hekwerk, obelisken (Kenney Graveyard Kit) ---------- */
   if(window.__graves)jobs.push(envInstances(['K_gravestone-round','K_gravestone-cross','K_gravestone-bevel','K_gravestone-broken','K_gravestone-wide','K_gravestone-decorative','K_gravestone-cross-large'],window.__graves,(t,i)=>i,(t,bb)=>{const k=1.5*t[2]/(bb.max.y-bb.min.y);return[k,k,k]},true,new THREE.Color(0xc8bfb0)).then(ok=>{if(ok)hideProc('graves')}));
-  jobs.push((async()=>{const P=[];for(let x=-20;x<=20;x+=2.2){if(Math.abs(x)<3.5)continue;P.push(place(Math.abs(x)>16&&x>0?'K_iron-fence-damaged':'K_iron-fence',CRYPT.x+x,CRYPT.z+30,0,[2.3,1.8,2]))}
+  jobs.push((async()=>{const P=[];for(let x=-20;x<=20;x+=2.2){if(Math.abs(x)<3.5)continue;P.push(place(Math.abs(x)>16&&x>0?'K_iron-fence-damaged':'K_iron-fence',CRYPT.x+x,CRYPT.z+30,0,[2.3,1.8,2]).then(o=>recolorObj(o,0x3e3e46)))}
     for(const sx of[-1,1]){P.push(place('K_pillar-obelisk',CRYPT.x+sx*4.2,CRYPT.z+30,0,2.2));P.push(place('K_lantern-candle',CRYPT.x+sx*4.2,CRYPT.z+29,0,1.6,0))}
     for(let i=0;i<6;i++){const a=R()*6.28,r=14+R()*18;P.push(place(R()<.5?'K_cross-column':'K_grave',CRYPT.x+Math.cos(a)*r,CRYPT.z+12+Math.sin(a)*r*.8,R()*.6-.3,1.6))}
     const r=await Promise.all(P);if(r.filter(Boolean).length>10)hideProc('cryptfence')})());

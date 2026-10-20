@@ -136,38 +136,61 @@ const terrain=(()=>{
 /* plaza cobbles */
 {const g=new THREE.CircleGeometry(23,56);g.rotateX(-Math.PI/2);mesh(g,mat(0xc8c0b0,{tex:'cobble',rx:18,ry:18}),0,1.23,0,scene,false,true)}
 /* water: eigen shader met golvende normalen, fresnel-reflectie van de lucht, zonneglans en schuim langs de oever */
+/* ---------- portals: an arch-shaped swirl of light (gate to the Dragon Realm, crypt and dungeon doors) ---------- */
+const PORTAL_U={time:{value:0}};
+const PORTAL_VS='varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}';
+const PORTAL_NOISE='float h1(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n1(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h1(i),h1(i+vec2(1.,0.)),f.x),mix(h1(i+vec2(0.,1.)),h1(i+vec2(1.,1.)),f.x),f.y);}'+
+  'float archD(vec2 p){return p.y>.25?length(vec2(p.x,p.y-.25)):abs(p.x);}';
+function portalMat(col,arch=true){return new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
+  uniforms:{time:PORTAL_U.time,col:{value:new THREE.Color(col)},arch:{value:arch?1:0}},vertexShader:PORTAL_VS,
+  fragmentShader:'uniform float time,arch;uniform vec3 col;varying vec2 vU;'+PORTAL_NOISE+`void main(){vec2 p=vU*2.-1.;p.y*=1.25;float d=arch>.5?archD(p):max(abs(p.x),abs(p.y)/1.25);
+    float m=1.-smoothstep(.78,1.,d);if(m<=0.)discard;vec2 c=p-vec2(0.,.1);float r=length(c),a=atan(c.y,c.x);
+    float s=n1(vec2(a*2.2+time*.7+r*3.,r*4.-time*1.6))*.65+n1(vec2(a*5.-time*1.1,r*9.-time*2.4))*.35;
+    float rim=smoothstep(.6,.95,d)*m;float core=pow(max(0.,1.-r*.85),3.);
+    vec3 c3=col*(.35+s*1.1)+col*rim*1.2+vec3(1.)*core*.25*(.7+.3*sin(time*2.));
+    gl_FragColor=vec4(c3*m,1.);}`})}
+/* the dark mouth of a cave: black, with an ember glow breathing up from below */
+function caveMouthMat(col){return new THREE.ShaderMaterial({transparent:true,depthWrite:true,side:THREE.DoubleSide,
+  uniforms:{time:PORTAL_U.time,col:{value:new THREE.Color(col)}},vertexShader:PORTAL_VS,
+  fragmentShader:'uniform float time;uniform vec3 col;varying vec2 vU;'+PORTAL_NOISE+`void main(){vec2 p=vU*2.-1.;p.y*=1.25;float d=archD(p);float m=1.-smoothstep(.9,1.,d);if(m<=.01)discard;
+    float g=pow(1.-vU.y,2.2)*(.75+.25*sin(time*3.1)+.12*n1(vec2(vU.x*6.,time*2.)));float depth=smoothstep(1.,.2,d);
+    vec3 c=col*g*.9*depth+col*.05;gl_FragColor=vec4(c,m);}`})}
 const waterMat=new THREE.ShaderMaterial({transparent:true,fog:true,
   uniforms:THREE.UniformsUtils.merge([THREE.UniformsLib.fog,{time:{value:0},deep:{value:new THREE.Color(0x1d4f6e)},shallow:{value:new THREE.Color(0x3f8fb0)},skyCol:{value:new THREE.Color(0xcfe2f2)},sunDir:{value:new THREE.Vector3(.5,.8,.3)},sunCol:{value:new THREE.Color(1,.9,.7)},night:{value:0},radius:{value:1}}]),
   vertexShader:`#include <fog_pars_vertex>
-    uniform float time;varying vec3 vW;varying vec2 vUv2;varying float vH;
+    uniform float time;attribute float dep;varying vec3 vW;varying vec2 vUv2;varying float vH;varying float vDep;
     float wave(vec2 p,vec2 d,float f,float sp){return sin(dot(p,d)*f+time*sp);}
-    void main(){vec3 p=position;vec2 q=p.xz;float h=wave(q,vec2(1.,.3),.55,1.4)*.06+wave(q,vec2(-.4,1.),.9,1.9)*.04+wave(q,vec2(.7,-.8),1.7,2.6)*.02;p.y+=h;vH=h;vW=(modelMatrix*vec4(p,1.)).xyz;vUv2=q;
+    void main(){vec3 p=position;vec2 q=p.xz;float h=wave(q,vec2(1.,.3),.55,1.4)*.06+wave(q,vec2(-.4,1.),.9,1.9)*.04+wave(q,vec2(.7,-.8),1.7,2.6)*.02;p.y+=h;vH=h;vDep=dep;vW=(modelMatrix*vec4(p,1.)).xyz;vUv2=q;
       vec4 mvPosition=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
     }`,
   fragmentShader:`#include <fog_pars_fragment>
-    uniform float time,night,radius;uniform vec3 deep,shallow,skyCol,sunDir,sunCol;varying vec3 vW;varying vec2 vUv2;varying float vH;
+    uniform float time,night,radius;uniform vec3 deep,shallow,skyCol,sunDir,sunCol;varying vec3 vW;varying vec2 vUv2;varying float vH;varying float vDep;
     vec3 nrm(vec2 q){float e=.15;float h0=sin(dot(q,vec2(1.,.3))*.55+time*1.4)*.06+sin(dot(q,vec2(-.4,1.))*.9+time*1.9)*.04+sin(dot(q,vec2(.7,-.8))*1.7+time*2.6)*.02+sin(dot(q,vec2(2.3,1.7))*1.6+time*3.2)*.004;
       float hx=sin(dot(q+vec2(e,0.),vec2(1.,.3))*.55+time*1.4)*.06+sin(dot(q+vec2(e,0.),vec2(-.4,1.))*.9+time*1.9)*.04+sin(dot(q+vec2(e,0.),vec2(.7,-.8))*1.7+time*2.6)*.02+sin(dot(q+vec2(e,0.),vec2(2.3,1.7))*1.6+time*3.2)*.004;
       float hz=sin(dot(q+vec2(0.,e),vec2(1.,.3))*.55+time*1.4)*.06+sin(dot(q+vec2(0.,e),vec2(-.4,1.))*.9+time*1.9)*.04+sin(dot(q+vec2(0.,e),vec2(.7,-.8))*1.7+time*2.6)*.02+sin(dot(q+vec2(0.,e),vec2(2.3,1.7))*1.6+time*3.2)*.004;
       return normalize(vec3(-(hx-h0)/e*1.1,1.,-(hz-h0)/e*1.1));}
     void main(){vec3 n=nrm(vUv2);vec3 v=normalize(cameraPosition-vW);float fres=pow(1.-max(dot(n,v),0.),4.)*.42+.06;
       float d=length(vUv2)/radius;/* 0 midden .. 1 oever */
-      vec3 col=mix(deep,shallow,smoothstep(.45,1.,d));
+      vec3 col=mix(deep,shallow,max(smoothstep(.45,1.,d)*.6,smoothstep(2.2,.3,vDep)));
       vec3 h=normalize(sunDir+v);float spec=pow(max(dot(n,h),0.),320.)*1.2+pow(max(dot(n,h),0.),40.)*.08;
       vec3 c=mix(col,skyCol,fres)+sunCol*spec*(1.-night*.7);
-      /* schuim langs de rand */float foam=smoothstep(.86,1.,d+sin(atan(vUv2.y,vUv2.x)*9.+time*1.3)*.015+vH*.6);c=mix(c,vec3(.92,.96,.98),foam*.8);
+      /* schuim langs de echte oever (diepte per vertex) */float fl=.32+sin(vUv2.x*.9+time*1.3)*.06+sin(vUv2.y*1.1-time*1.7)*.05+vH*.8;float foam=smoothstep(fl,0.,vDep)*.85;c=mix(c,vec3(.92,.96,.98),foam*.75);
       /* lichtkringen */float ca=sin(vUv2.x*2.1+time*.9)*sin(vUv2.y*2.4-time*1.1);c+=vec3(.05,.08,.09)*smoothstep(.6,1.,ca)*(1.-d)*(1.-night);
       c*=1.-night*.55;float a=.72+fres*.25+foam*.2;
       gl_FragColor=vec4(c,a);
       #include <fog_fragment>
     }`});
-const water=(()=>{const g=new THREE.CircleGeometry(LAKE.r*1.25,96);g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,waterMat);m.position.set(LAKE.x,-.7,LAKE.z);waterMat.uniforms.radius.value=LAKE.r*1.25;m.receiveShadow=false;scene.add(m);return m})();
+/* water surface as a grid with the water depth per vertex, so foam and colour follow the real shore */
+function waterGeo(cx,cz,rx,rz,wy,seg=120){const g=new THREE.PlaneGeometry(rx*2,rz*2,seg,seg);g.rotateX(-Math.PI/2);const p=g.attributes.position,dp=new Float32Array(p.count);
+  for(let i=0;i<p.count;i++)dp[i]=wy-groundH(cx+p.getX(i),cz+p.getZ(i));g.setAttribute('dep',new THREE.BufferAttribute(dp,1));
+  /* drop the triangles that lie well under the ground, so there is no hidden water far inland */const ix=g.index.array,keep=[];for(let i=0;i<ix.length;i+=3)if(dp[ix[i]]>-.6||dp[ix[i+1]]>-.6||dp[ix[i+2]]>-.6)keep.push(ix[i],ix[i+1],ix[i+2]);g.setIndex(keep);return g}
+const water=(()=>{const g=waterGeo(LAKE.x,LAKE.z,LAKE.r*1.3,LAKE.r*1.3,-.7);const m=new THREE.Mesh(g,waterMat);m.position.set(LAKE.x,-.7,LAKE.z);waterMat.uniforms.radius.value=LAKE.r*1.25;m.receiveShadow=false;scene.add(m);return m})();
 
 /* ---------- colliders ---------- */
 const CG=new Map(),BOXES=[];
-function addCol(x,z,r,tree){const k=Math.floor(x/10)+','+Math.floor(z/10);let a=CG.get(k);if(!a)CG.set(k,a=[]);a.push({x,z,r,tree})}
-function camBlocked(x,y,z){if(x>700)return false;const cx=Math.floor(x/10),cz=Math.floor(z/10);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){if(!c.tree)continue;const R=c.tree*c.r;if((x-c.x)**2+(z-c.z)**2<R*R&&y<groundH(c.x,c.z)+c.r*17)return true}}for(const b of BOXES)if(x>b.x0-.3&&x<b.x1+.3&&z>b.z0-.3&&z<b.z1+.3&&y<groundH(x,z)+11)return true;return false}
+function addCol(x,z,r,tree,cam){const k=Math.floor(x/10)+','+Math.floor(z/10);let a=CG.get(k);if(!a)CG.set(k,a=[]);a.push(cam?{x,z,r,tree,cam}:{x,z,r,tree})}
+function camBlocked(x,y,z){if(x>700)return false;const cx=Math.floor(x/10),cz=Math.floor(z/10);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){if(c.cam){if((x-c.x)**2+(z-c.z)**2<(c.r+.4)**2&&y<groundH(c.x,c.z)+c.cam)return true;continue}if(!c.tree)continue;const R=c.tree*c.r;if((x-c.x)**2+(z-c.z)**2<R*R&&y<groundH(c.x,c.z)+c.r*17)return true}}if(typeof ARENA_RX!=='undefined'){const u=(x-ARENA.x)/ARENA_RX,v=(z-ARENA.z)/ARENA_RZ,rn=Math.hypot(u,v);if(rn>1.06&&rn<1.75&&y<ARENA_H+3+(rn-1)*16)return true}for(const b of BOXES)if(x>b.x0-.3&&x<b.x1+.3&&z>b.z0-.3&&z<b.z1+.3&&y<groundH(x,z)+11)return true;return false}
 function addBox(x,z,w,d){BOXES.push({x0:x-w/2,x1:x+w/2,z0:z-d/2,z1:z+d/2})}
 function collide(p,r){
   if(p.x>1700){D3.collide(p,r);return}if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
@@ -299,7 +322,7 @@ const STABLE_S=2.6;addBox(STABLE.x,STABLE.z,4.7*STABLE_S*.9,3.3*STABLE_S*.85);fo
     const m=mesh(g,cm,(ax+bx)/2,Y,(az+bz)/2,scene,false,true);m.rotation.y=Math.atan2(bx-ax,bz-az);
     if(t1<1&&Math.hypot(bx,bz)<W-1){const c=new THREE.CircleGeometry(3.5,16);c.rotateX(-Math.PI/2);mesh(c,cm,bx,Y+.002,bz,scene,false,true)}}}
 /* pond water (same shader as Mirror Lake, own radius) */
-{const g=new THREE.CircleGeometry(1,48);g.rotateX(-Math.PI/2);g.scale(POND.r*1.25+1.2,1,POND.r+1.2);const pm=new THREE.ShaderMaterial({transparent:true,fog:true,uniforms:{...waterMat.uniforms,radius:{value:POND.r*1.25+2.6}},vertexShader:waterMat.vertexShader,fragmentShader:waterMat.fragmentShader});
+{const g=waterGeo(POND.x,POND.z,POND.r*1.25+3,POND.r+3,.62,48);const pm=new THREE.ShaderMaterial({transparent:true,fog:true,uniforms:{...waterMat.uniforms,radius:{value:POND.r*1.25+2.6}},vertexShader:waterMat.vertexShader,fragmentShader:waterMat.fragmentShader});
   const m=new THREE.Mesh(g,pm);m.position.set(POND.x,.62,POND.z);m.receiveShadow=false;scene.add(m)}
 /* gates: where a road crosses the wall */
 const TOWN_GATES=[];{const W=TOWN.wall;for(const p of PATHS)for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1];const ra=Math.hypot(a[0],a[1]),rb=Math.hypot(b[0],b[1]);if((ra-W)*(rb-W)>0)continue;
@@ -309,10 +332,10 @@ const TOWN_GATES=[];{const W=TOWN.wall;for(const p of PATHS)for(let i=0;i<p.leng
 const TOWN_WALL={seg:[],tow:[],gate:[]};{const W=TOWN.wall,N=64;const gap=a=>TOWN_GATES.some(g=>Math.abs(angDiff(a,g))<.118);PROC='twall';const wm=mat(0xa49c8e,{tex:'brick',rx:2,ry:1.2});
   for(let i=0;i<N;i++){const a=(i+.5)/N*Math.PI*2;if(gap(a))continue;const x=Math.cos(a)*W,z=Math.sin(a)*W,y=groundH(x,z);TOWN_WALL.seg.push({x,y,z,ry:-a-Math.PI/2});
     const s=mesh(new THREE.BoxGeometry(7.3,4.6,2.4),wm,x,y+2.3,z,scene);s.rotation.y=-a-Math.PI/2;
-    for(let k=-1;k<=1;k++)addCol(x-Math.sin(a)*k*2.45,z+Math.cos(a)*k*2.45,1.9);
+    for(let k=-1;k<=1;k++)addCol(x-Math.sin(a)*k*2.45,z+Math.cos(a)*k*2.45,1.9,false,5.6);
     if(i%8===4&&!gap(a+.1)&&!gap(a-.1))TOWN_WALL.tow.push({x:Math.cos(a)*(W+.4),y,z:Math.sin(a)*(W+.4),ry:-a+Math.PI/2})}
-  for(const t of TOWN_WALL.tow)addCol(t.x,t.z,2.6);
-  for(const g of TOWN_GATES)for(const sd of[-1,1]){const a=g+sd*.105,x=Math.cos(a)*W,z=Math.sin(a)*W;TOWN_WALL.gate.push({x,z,ry:-g+Math.PI/2,sd,g});addCol(x,z,3.1);
+  for(const t of TOWN_WALL.tow)addCol(t.x,t.z,2.6,false,9);
+  for(const g of TOWN_GATES)for(const sd of[-1,1]){const a=g+sd*.105,x=Math.cos(a)*W,z=Math.sin(a)*W;TOWN_WALL.gate.push({x,z,ry:-g+Math.PI/2,sd,g});addCol(x,z,3.1,false,12);
     mesh(new THREE.CylinderGeometry(2.6,2.9,10,10),wm,x,groundH(x,z)+5,z,scene);addLight(Math.cos(g)*(W-3)+Math.cos(g+Math.PI/2)*sd*4,groundH(x,z)+5,Math.sin(g)*(W-3)+Math.sin(g+Math.PI/2)*sd*4,0xffa040,30,22)}
   PROC=null}
 /* streets: lanterns along the roads inside the walls and around the square */
@@ -364,7 +387,7 @@ const CRYPT_H=FLAT[2].h;
   for(const s of[-1,1]){mesh(new THREE.BoxGeometry(2,8,2),st,s*4,4,0,g);mesh(new THREE.BoxGeometry(2.6,.8,2.6),st,s*4,8.2,0,g);mesh(new THREE.SphereGeometry(.6,8,6),mat(0xd8d2b8),s*4,9.2,0,g);addCol(CRYPT.x+s*4,CRYPT.z,1.4)}
   mesh(new THREE.BoxGeometry(11,1.6,2.4),st,0,8.6,0,g);mesh(new THREE.BoxGeometry(14,10,6),mat(0x5a5650,{tex:'brick',rx:3,ry:3}),0,5,-4,g);addBox(CRYPT.x,CRYPT.z-4,14,6);
   mesh(new THREE.PlaneGeometry(5.8,7.4),new THREE.MeshBasicMaterial({color:0x000000,fog:false}),0,3.7,-.95,g,false,false);
-  const portal=mesh(new THREE.PlaneGeometry(5.6,7.2),new THREE.MeshBasicMaterial({color:0x5aff9a,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),0,3.7,-.8,g,false,false);portal.userData.portal=1;window.__cportal=portal;
+  const portal=mesh(new THREE.PlaneGeometry(5.6,7.2),portalMat(0x3aff8a),0,3.7,-.8,g,false,false);portal.userData.portal=1;window.__cportal=portal;
   for(let i=0;i<3;i++)mesh(new THREE.BoxGeometry(7-i*.6,.3,1),st,0,.15+i*.3,1.8-i*.8,g);
   for(const s of[-1,1]){mesh(new THREE.CylinderGeometry(.12,.12,2.2,6),mat(0x2a2a2a),s*5.6,1.1,2,g);addFlame(g,s*5.6,2.4,2,1.6,0x6aff8a);addLight(CRYPT.x+s*5.6,CRYPT_H+2.6,CRYPT.z+2,0x5aff8a,25,16)}
   PROC=null;const graves=[];for(let i=0;i<46;i++){const a=RV()*6.28,r=10+RV()*26,x=CRYPT.x+Math.cos(a)*r,z=CRYPT.z+12+Math.sin(a)*r*.8;if(pathDist(x,z)<3)continue;graves.push([x,z,.8+RV()*.4,RV()*.6-.3])}
@@ -418,17 +441,20 @@ const dungeon=new THREE.Group();scene.add(dungeon);
   PROC=null;const rune=mesh(new THREE.RingGeometry(8,9,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xa05aff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}),bx,.03,bz+6,dungeon,false,false);rune.userData.spin=1;window.__rune=rune;
   PROC='crypt';for(let i=0;i<10;i++){const[c,r]=[4+Math.floor(RV()*13),9+Math.floor(RV()*10)];if(DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);const b=mesh(new THREE.BoxGeometry(1.2,.9,2.4),mat(0x5a4a3a,{tex:'wood'}),x+rand(-1.5,1.5),.45,z+rand(-1.5,1.5),dungeon);b.rotation.y=RV()*3}}
   for(let i=0;i<40;i++){const[c,r]=[4+Math.floor(RV()*13),1+Math.floor(RV()*19)];if(DMAP[r]&&DMAP[r][c]==='.'){const[x,z]=dunPos(c,r);mesh(new THREE.CylinderGeometry(.05,.05,.7,4),mat(0xe8e0c8),x+rand(-2.5,2.5),.05,z+rand(-2.5,2.5),dungeon,false).rotation.set(Math.PI/2,0,RV()*3)}}PROC=null;
-  const ex=mesh(new THREE.PlaneGeometry(4,6),new THREE.MeshBasicMaterial({color:0x8affc0,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),DUN_EXIT.x,3,DUN_EXIT.z+2.2,dungeon,false,false);window.__dportal=ex}
+  const ex=mesh(new THREE.PlaneGeometry(4,6),portalMat(0x6affb0),DUN_EXIT.x,3,DUN_EXIT.z+2.2,dungeon,false,false);window.__dportal=ex}
 /* ---------- Asbergen: cave entrance ---------- */
 const CAVE_H=FLAT[4].h;
-{const g=new THREE.Group();g.position.set(CAVE.x,CAVE_H,CAVE.z);scene.add(g);const rk=mat(0x4a3a34,{r:1});
+{const g=new THREE.Group();g.position.set(CAVE.x,CAVE_H,CAVE.z);scene.add(g);const rk=mat(0x4a3a34,{r:1});PROC='cave';
   for(let i=0;i<13;i++){const a=Math.PI*(.05+i/12*.9);const r=mesh(new THREE.DodecahedronGeometry(1.8+Math.random()*1.1,1),rk,Math.cos(a)*5.6,Math.sin(a)*6.6,-2.4+Math.random()*.6,g);r.scale.set(1,1.1,1)}
-  mesh(new THREE.DodecahedronGeometry(7,1),rk,0,4,-10.5,g).scale.set(1.6,1.25,.8);addBox(CAVE.x,CAVE.z-7,20,9);for(const s of[-1,1])addCol(CAVE.x+s*5.4,CAVE.z,2.4);
-  mesh(new THREE.CircleGeometry(4.4,24),new THREE.MeshBasicMaterial({color:0x000000,fog:false}),0,3.6,-2.6,g,false,false);
-  const pt=mesh(new THREE.CircleGeometry(4.2,24),new THREE.MeshBasicMaterial({color:0xff6a20,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),0,3.6,-2.5,g,false,false);window.__vportal=pt;
-  for(const s of[-1,1]){mesh(new THREE.CylinderGeometry(.12,.12,2.4,8),mat(0x2a2a2a),s*6.6,1.2,2.4,g);addFlame(g,s*6.6,2.6,2.4,1.8,0xff7a20);addLight(CAVE.x+s*6.6,CAVE_H+2.8,CAVE.z+2.4,0xff7a30,30,18)}
-  for(let i=0;i<6;i++){const c=mesh(new THREE.BoxGeometry(.9,.9,.9),mat(0x7a5a3a,{tex:'wood'}),-8+Math.random()*3,.45,5+i*1.1,g);c.rotation.y=Math.random()}
-  const rail=mat(0x5a5a5a,{m:.7,r:.4});for(const s of[-1,1])mesh(new THREE.BoxGeometry(.12,.1,12),rail,s*.7,.05,6,g,false);for(let k=0;k<10;k++)mesh(new THREE.BoxGeometry(2,.08,.25),mat(0x5a3a22),0,.02,1+k*1.2,g,false)}
+  mesh(new THREE.DodecahedronGeometry(7,1),rk,0,4,-10.5,g).scale.set(1.6,1.25,.8);
+  for(const s of[-1,1])mesh(new THREE.CylinderGeometry(.12,.12,2.4,8),mat(0x2a2a2a),s*6.6,1.2,2.4,g);PROC=null;
+  addBox(CAVE.x,CAVE.z-7.5,22,10);for(const s of[-1,1])addCol(CAVE.x+s*5.4,CAVE.z-1,2.4,false,9);
+  /* the cave mouth: dark, with the glow of the fire cave below (models frame it, see 2e_visual.js) */
+  const mo=mesh(new THREE.PlaneGeometry(7.2,9),caveMouthMat(0xff6a20),0,4.5,-2.6,g,false,false);
+  for(const s of[-1,1]){addFlame(g,s*6.6,2.6,2.4,1.8,0xff7a20);addLight(CAVE.x+s*6.6,CAVE_H+2.8,CAVE.z+2.4,0xff7a30,30,18)}
+  addLight(CAVE.x,CAVE_H+1.5,CAVE.z-1.5,0xff6a20,18,10);
+  for(let i=0;i<4;i++)crate(CAVE.x-7.6+(i%2)*1.3,CAVE.z+5+Math.floor(i/2)*1.4,1);barrel(CAVE.x-8.2,CAVE.z+8.6);barrel(CAVE.x+7.8,CAVE.z+6.4);
+  const rail=mat(0x5a5a5a,{m:.7,r:.4});for(const s of[-1,1])mesh(new THREE.BoxGeometry(.12,.1,14),rail,s*.7,.06,5,g,false);for(let k=0;k<12;k++)mesh(new THREE.BoxGeometry(2,.08,.25),mat(0x5a3a22,{tex:'wood'}),0,.02,-1.4+k*1.2,g,false)}
 /* ---------- dungeon 2: Vuurgrot ---------- */
 const D2MAP=[
 '#####################',
@@ -467,7 +493,7 @@ function buildDun(def){const M=def.map,R=M.length,C=M[0].length,c=def.c,X=def.x,
     if(ch==='~'){const l=mesh(new THREE.PlaneGeometry(c,c).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:new THREE.Color().setRGB(.9,.2,.02)}),x,.04,z,grp,false,false);lava.push(l);if((r*7+k)%3===0)addLight(x,1.2,z,0xff5a20,24,12,true)}
     if(ch==='.'&&((r*5+k*3)%11===0)&&tor<30){tor++;const cr=mesh(new THREE.ConeGeometry(.35,1.6,6),mat(def.crystal,{e:def.crystal,ei:1.6}),x+rand(-2,2),.6,z+rand(-2,2),grp,false);cr.rotation.z=rand(-.4,.4);if(tor%3===0)addLight(cr.position.x,1.5,cr.position.z,def.crystal,22,12)}}
   const img=document.createElement('canvas');img.width=C*12;img.height=R*12;{const g=img.getContext('2d');g.fillStyle='#140c0a';g.fillRect(0,0,img.width,img.height);for(let r=0;r<R;r++)for(let k=0;k<C;k++)if(M[r][k]!=='#'){g.fillStyle=M[r][k]==='~'?'#c8501a':'#5a4a44';g.fillRect(k*12,r*12,12,12)}}
-  const ex=mesh(new THREE.PlaneGeometry(4,6),new THREE.MeshBasicMaterial({color:0xffb070,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),exit.x,3,exit.z+2.2,grp,false,false);
+  const ex=mesh(new THREE.PlaneGeometry(4,6),portalMat(0xffa060),exit.x,3,exit.z+2.2,grp,false,false);
   return{X,Z,c,R,C,map:M,cell,pos,collide,spawns,entry,exit,img,lava,portal:ex,name:def.name,grp,wim}}
 const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x7a5a48,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Ignaroth\'s Fire Cave'});
 /* ---------- life-skill stations ---------- */
