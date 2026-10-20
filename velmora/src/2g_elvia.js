@@ -36,10 +36,6 @@ function elvBase(x,z){const u=x-ELV.x,v=z-ELV.z;
   const c=elvCliff(u);h+=26*smooth(clamp((c+5-v)/10,0,1));/* the highland plateau */
   const e=Math.max(Math.abs(u),Math.abs(v));if(e>392)h+=(e-392)*.65;
   return h}
-{const R=mulberry(5511);for(const rv of ELV_RIVERS_L){const pts=rv.p.map(([u,v])=>E(u,v));const S=[];let wy=1e9;
-  for(let i=0;i<pts.length-1;i++){const[ax,az]=pts[i],[bx,bz]=pts[i+1];const L=Math.hypot(bx-ax,bz-az),n=Math.ceil(L/2);for(let s=0;s<n;s++){const f=s/n;const x=lerp(ax,bx,f)+(R()-.5)*.6,z=lerp(az,bz,f)+(R()-.5)*.6;
-    const b=elvBase(x,z);let lk=null;for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*.9)lk=l;wy=Math.min(wy-.015,b-.7);if(lk)wy=Math.max(wy,lk.wl);S.push({x,z,wy:Math.max(wy,-1.2),w:rv.w*(.9+.2*Math.sin(i+f*3))})}}
-  const ri=ELV_RIV.length;ELV_RIV.push({w:rv.w,S});S.forEach((s,k)=>{const key=Math.floor(s.x/16)+','+Math.floor(s.z/16);let a=ELV_RIVG.get(key);if(!a)ELV_RIVG.set(key,a=[]);a.push([ri,k])})}}
 /* nearest river sample within reach: [distance, water level, width] */
 function elvRiver(x,z){let best=1e9,wy=0,w=4;const cx=Math.floor(x/16),cz=Math.floor(z/16);
   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const L=ELV_RIVG.get((cx+a)+','+(cz+b));if(!L)continue;for(const[ri,k]of L){const S=ELV_RIV[ri].S,s=S[k],t=S[k+1]||s;const d=segDist(x,z,s.x,s.z,t.x,t.z);if(d<best){best=d;wy=s.wy;w=s.w}}}
@@ -52,17 +48,29 @@ function elvPathDist(x,z){let m=1e9;for(const p of ELV_PATHS)for(let i=0;i<p.len
 /* the citadel hill inside the city, north-east of the plaza */
 const WS_CIT={x:WS.x+46,z:WS.z-72,r:25};
 /* ---- height field ---- */
-function elvRaw(x,z){const u=x-ELV.x,v=z-ELV.z;let h=elvBase(x,z);
+function elvPre(x,z){const u=x-ELV.x,v=z-ELV.z;let h=elvBase(x,z);
   /* WindStorm: one level, with the citadel hill */const dc=Math.hypot(x-WS.x,z-WS.z);if(dc<WS.R+36)h=lerp(WS.H,h,smooth(clamp((dc-WS.R-6)/30,0,1)));
   {const d=Math.hypot(x-WS_CIT.x,z-WS_CIT.z);if(d<WS_CIT.r+14)h+=5.5*smooth(clamp(1-(d-WS_CIT.r*.55)/(WS_CIT.r*.45+14),0,1))}
   /* gentle roads and the arrival square */const pd=elvPathDist(x,z);if(pd<10&&dc>WS.R+4)h=lerp(h*.6+WS.H*.4,h,smooth(pd/10));
   {const d=Math.hypot(x-ELV_EXIT.x-10,z-ELV_EXIT.z);if(d<22)h=lerp(2,h,smooth(clamp((d-12)/10,0,1)))}
   /* lakes: a rim just above the water, a bowl inside */for(const l of ELV_LAKES){const d=Math.hypot(x-l.x,z-l.z)/l.r;if(d<1.7){if(d>1)h=Math.max(h,lerp(l.wl+.7,h,clamp((d-1)/.7,0,1)));h=lerp(-6,h,smooth(clamp((d-.45)/.6,0,1)))}}
-  /* rivers carve their bed below their water level */const[rd,wy,rw]=elvRiver(x,z);if(rd<rw+7){const bed=wy-1.6*(1-Math.min(1,(rd/rw)**2));if(rd<rw)h=Math.min(h,bed);else h=Math.min(h,lerp(wy+.3,h,smooth((rd-rw)/7)))}
+  return h}
+{const R=mulberry(5511);for(const rv of ELV_RIVERS_L){const pts=rv.p.map(([u,v])=>E(u,v));const S=[];let wy=1e9;
+  for(let i=0;i<pts.length-1;i++){const[ax,az]=pts[i],[bx,bz]=pts[i+1];const L=Math.hypot(bx-ax,bz-az),n=Math.ceil(L/2);for(let s=0;s<n;s++){const f=s/n;const x=lerp(ax,bx,f)+(R()-.5)*.6,z=lerp(az,bz,f)+(R()-.5)*.6;
+    const b=elvPre(x,z);let lk=null;for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*.9)lk=l;wy=Math.min(wy-.015,b-.7);if(lk)wy=Math.max(wy,lk.wl);S.push({x,z,wy,w:rv.w*(.9+.2*Math.sin(i+f*3))})}}
+  const ri=ELV_RIV.length;ELV_RIV.push({w:rv.w,S});S.forEach((s,k)=>{const key=Math.floor(s.x/16)+','+Math.floor(s.z/16);let a=ELV_RIVG.get(key);if(!a)ELV_RIVG.set(key,a=[]);a.push([ri,k])})}}
+function elvRaw(x,z){let h=elvPre(x,z);
+  /* rivers carve their bed below their water level */const[rd,wy,rw]=elvRiver(x,z);if(rd<rw+7){const bed=wy-1.6*(1-Math.min(1,(rd/rw)**2));if(rd<rw)h=Math.min(h,bed);else h=lerp(wy+.35,h,smooth((rd-rw)/7))}/* banks meet the water: never lower, so the river never floats */
   return h}
 const EHM=new Float32Array(EHN*EHN);for(let i=0;i<EHN;i++)for(let j=0;j<EHN;j++)EHM[i*EHN+j]=elvRaw(ELV.x-ESZ/2+j*ECELL,ELV.z-ESZ/2+i*ECELL);
-function elvH(x,z){const fx=clamp((x-ELV.x+ESZ/2)/ECELL,0,ESEG-.001),fz=clamp((z-ELV.z+ESZ/2)/ECELL,0,ESEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i;
+/* bridges where a road crosses a river: the deck is walkable (elvH returns its height) */
+const ELV_BRIDGES=[];
+function elvBridgeH(x,z){for(const b of ELV_BRIDGES){const dx=x-b.x,dz=z-b.z;if(Math.abs(dx)+Math.abs(dz)>b.len)continue;const al=dx*Math.sin(b.ry)+dz*Math.cos(b.ry),ac=dx*Math.cos(b.ry)-dz*Math.sin(b.ry);if(Math.abs(al)<b.len/2&&Math.abs(ac)<b.w/2){const e=Math.abs(al)/(b.len/2);return b.y+.25*(1-e*e)}}return null}
+function elvH(x,z){if(ELV_BRIDGES.length){const bh=elvBridgeH(x,z);if(bh!=null){const t=elvHT(x,z);return Math.max(bh,t)}}return elvHT(x,z)}
+function elvHT(x,z){const fx=clamp((x-ELV.x+ESZ/2)/ECELL,0,ESEG-.001),fz=clamp((z-ELV.z+ESZ/2)/ECELL,0,ESEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i;
   const a=EHM[i*EHN+j],b=EHM[i*EHN+j+1],c=EHM[(i+1)*EHN+j],d=EHM[(i+1)*EHN+j+1];return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
+{for(const p of ELV_ROADS)for(let i=0;i<p.length-1;i++){const[ax,az]=p[i],[bx,bz]=p[i+1];const L=Math.hypot(bx-ax,bz-az);let last=-99;for(let t=0;t<L;t+=1){const x=ax+(bx-ax)*t/L,z=az+(bz-az)*t/L;const[rd,wy,rw]=elvRiver(x,z);
+  if(rd<1.2&&t-last>24&&!ELV_LAKES.some(l=>Math.hypot(x-l.x,z-l.z)<l.r*1.1)){last=t;const ry=Math.atan2(bx-ax,bz-az),len=rw*2+12,ex=Math.sin(ry)*len/2,ez=Math.cos(ry)*len/2;ELV_BRIDGES.push({x,z,ry,len,w:8,y:Math.max(wy+.9,Math.min(elvPre(x+ex,z+ez),elvPre(x-ex,z-ez))+.15)})}}}}
 function elvLake(x,z){for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*.9)return l;return null}
 function elvZone(x,z){if(Math.hypot(x-WS.x,z-WS.z)<WS.R+8)return'WindStorm';for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*1.25)return l.n;
   const u=x-ELV.x,v=z-ELV.z;if(v<elvCliff(u)-4)return'Elvian Highlands';if(u<-250)return'Whispering Glade';if(u>200)return'Thornwood';return'Woods of Elvia'}
@@ -95,8 +103,8 @@ const RIVER_MAT=new THREE.ShaderMaterial({transparent:true,fog:true,depthWrite:f
     uniform float time;varying vec2 vU;varying float vS;
     float h1(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n1(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h1(i),h1(i+vec2(1.,0.)),f.x),mix(h1(i+vec2(0.,1.)),h1(i+vec2(1.,1.)),f.x),f.y);}
     void main(){float sp=mix(.35,2.6,vS);float y=vU.y-time*sp;float a=n1(vec2(vU.x*5.,y*3.)),b=n1(vec2(vU.x*13.,y*7.+3.));
-      vec3 deep=vec3(.12,.36,.46),shal=vec3(.3,.6,.66);float edge=abs(vU.x-.5)*2.;vec3 c=mix(deep,shal,edge*.7+a*.3);
-      float foam=smoothstep(.62,.9,a*.55+b*.45+edge*.3)*.45+vS*(.55+.45*b);c=mix(c,vec3(.93,.97,1.),clamp(foam,0.,1.));
+      vec3 deep=vec3(.1,.32,.44),shal=vec3(.22,.52,.6);float edge=abs(vU.x-.5)*2.;vec3 c=mix(deep,shal,edge*.7+a*.3);
+      float foam=smoothstep(.66,.92,a*.55+b*.45+edge*.3)*.3+vS*(.55+.45*b);c=mix(c,vec3(.93,.97,1.),clamp(foam,0.,1.));
       gl_FragColor=vec4(c,mix(.78,.95,vS)*(1.-smoothstep(.85,1.,edge)*.6));
       #include <fog_fragment>
     }`});
@@ -143,6 +151,32 @@ const faceTo2=(x,z,tx,tz)=>Math.atan2(tx-x,tz-z);
   /* stalls around the plaza */for(let i=0;i<10;i++){const a=i/10*Math.PI*2+.31;if([0,1,2,3].some(k=>Math.abs(angDiff(a,k*Math.PI/2))<.3))continue;put(i%2?'T_stall-red':'T_stall-green',Math.cos(a)*30,Math.sin(a)*30,-a-Math.PI/2,3.8,1.5,3)}
   /* the harbour on Lake Elvia: three long docks from the south gate */for(const du of[-22,0,22])WS_PROPS.push({m:'Q_Dock_Long',x:WS.x+du,z:WS.z+WS.R+30,ry:0,s:.9,dock:1});
   for(let i=0;i<10;i++)WS_PROPS.push({m:R()<.5?'Barrel':'Crate',x:WS.x-30+R()*60,z:WS.z+WS.R+12+R()*6,ry:R()*6,s:R()<.5?1:1.2})}
+/* ---- the people of WindStorm: quest givers, traders and services (spots are reserved before the houses go in) ---- */
+const WS_NPC_SPOTS={};{const toP=(x,z,d)=>{const a=Math.atan2(WS.z-z,WS.x-x);return[x+Math.cos(a)*d,z+Math.sin(a)*d]};const B=m=>WS_B.find(b=>b.m==='H_'+m);
+  const spot=(id,x,z,face)=>{WS_NPC_SPOTS[id]={x,z,ry:face!=null?face:Math.atan2(WS.x-x,WS.z-z)};WS_RES.push([x,z,2.2])};
+  {const[x,z]=toP(WS_CIT.x,WS_CIT.z,WS_CIT.r+5);spot('corwin',x,z)}
+  spot('liora',WS.x-WS.R+17,WS.z-7,Math.PI/2);
+  {const c=B('church_blue'),[x,z]=toP(c.x,c.z,c.d/2+5);spot('sabine',x,z);const a=Math.atan2(WS.z-c.z,WS.x-c.x)+Math.PI/2;spot('aurelia',x+Math.cos(a)*5,z+Math.sin(a)*5)}
+  spot('tomas',WS.x+10,WS.z+WS.R+12,0);
+  spot('elinor',WS.x-22,WS.z-6);
+  {const m=B('market_red'),[x,z]=toP(m.x,m.z,m.d/2+3.5);spot('gerrit',x,z)}
+  {const m=B('blacksmith_red'),[x,z]=toP(m.x,m.z,m.d/2+3.5);spot('brannoc',x,z)}
+  spot('wren',WS.x-86,WS.z-47);
+  {const m=B('tavern_red'),[x,z]=toP(m.x,m.z,m.d/2+4);spot('mabel',x,z)}}
+const WS_NPCS=[
+  {id:'corwin',n:'Lord Marshal Corwin',t:'Marshal of WindStorm',look:{skin:0xd9a98a,hair:0x6a5a4a,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,beard:1},hi:'Welcome to WindStorm, traveller. The capital stands, but the woods around us grow darker by the day.'},
+  {id:'liora',n:'Ranger-Captain Liora',t:'Rangers of Elvia',look:{skin:0xf0d2b8,hair:0x2a3a1a,chest:0x3a5a2a,pants:0x2a3a20,cape:0x2a4a1a,wt:'boog',ears:1},hi:'Keep your bowstring dry and your eyes on the treetops. Elvia does not forgive the careless.'},
+  {id:'sabine',n:'Archmage Sabine',t:'Circle of the Falls',look:{skin:0xe8c8a8,hair:0xe8e8f0,chest:0x3a3a8a,pants:0x2a2a5a,cape:0x5a3a9a,wt:'staf'},hi:'The waters of Elvia remember everything. Lately, they have been whispering of poison.'},
+  {id:'aurelia',n:'High Priestess Aurelia',t:'Cathedral of the Light',look:{skin:0xf0d2b8,hair:0xd8b860,chest:0xe8e2d0,pants:0xd0c8b0,cape:0xd9b44a,wt:'staf'},hi:'The Light shines brightest in the darkest woods. How may the cathedral serve you?',priest:1},
+  {id:'tomas',n:'Harbourmaster Tomas',t:'Harbour of WindStorm',look:{skin:0xc8906a,hair:0x8a8a8a,chest:0x2a4a6a,pants:0x3a3028,wt:'none',beard:1},hi:'Ships, nets and fish, that is my life. And the best fish in the realm swim in Lake Elvia!'},
+  {id:'elinor',n:'Herbalist Elinor',t:'Herbs and Potions',look:{skin:0xf0d2b8,hair:0xb04a1c,chest:0x4a7a3a,pants:0x3a5a2a,wt:'none'},hi:'Roots, petals and a drop of moonlight. My potions are the finest in WindStorm.',shop:1},
+  {id:'gerrit',n:'Merchant Gerrit',t:'General Goods',look:{skin:0xd99b7a,hair:0x4a3020,chest:0x8a5a2a,pants:0x4a3a2a,wt:'none',beard:1},hi:'Potions, provisions, and I buy whatever you dragged out of the woods!',shop:1},
+  {id:'brannoc',n:'Armorer Brannoc',t:'Arms and Armour',look:{skin:0xd99b7a,hair:0x2a1a10,chest:0x5a4a3a,pants:0x3a3028,wt:'bijl',dwarf:1,beard:1},hi:'Finest steel this side of the Dragon Realm. Have a look, but don\'t touch the edges.',gearshop:1},
+  {id:'wren',n:'Stablemistress Wren',t:'Royal Stables',look:{skin:0xe2b48e,hair:0xc79a4b,chest:0x7a5a34,pants:0x3a3028,wt:'none'},hi:'The royal stables have the best mounts in the realm. Fancy a drake?',stable:1},
+  {id:'mabel',n:'Innkeeper Mabel',t:'The Gilded Gryphon',look:{skin:0xe2b48e,hair:0x8a3a1a,chest:0x8a3a2a,pants:0x3a2a20,wt:'none'},hi:'Welcome to the Gilded Gryphon! A warm bed, a hot meal, and your hearthstone set to WindStorm if you like.',inn:1}];
+for(const n of WS_NPCS){const s=WS_NPC_SPOTS[n.id];NPCS.push({...n,x:s.x,z:s.z,ry:s.ry})}
+/* the outlaw camp on the shore of Fernwater */
+const ELV_CAMP={x:ELV.x-246,z:ELV.z+222};
 /* houses along every street and in the rings between them */
 {const R=mulberry(6262);const HM2=['home_A_red','home_A_blue','home_A_yellow','home_A_green','home_B_red','home_B_blue','home_B_yellow','home_B_green'];
   const tryHouse=(x,z,ry)=>{const m=HM2[Math.floor(R()*HM2.length)],s=9.5+R()*1.5,fp=TFP[m.startsWith('home_A')?'home_A':'home_B'];if(!wsFree(x,z,Math.max(fp[0],fp[1])*s/2))return false;wsBuild(m,x,z,ry,s,fp);return true};
@@ -182,7 +216,7 @@ async function buildElvia(){if(window.__NOGLTF)return;const R=mulberry(7373);con
   const put=(n,x,z,ry,s,y=0)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],scene,y);
   /* the forest: thousands of trees, bushes, mossy rocks, logs and flowers (instanced, with LOD) */
   const okF=(x,z,clear=6)=>{if(Math.hypot(x-WS.x,z-WS.z)<WS.R+18)return false;if(elvPathDist(x,z)<clear)return false;for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*1.12)return false;const[rd,,rw]=elvRiver(x,z);if(rd<rw+3)return false;
-    if(Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<24)return false;const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>425)return false;
+    if(Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<24||Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)<24)return false;const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>425)return false;
     const hx=elvH(x+1.5,z)-elvH(x-1.5,z),hz=elvH(x,z+1.5)-elvH(x,z-1.5);return Math.hypot(hx,hz)/3<.7};
   const common=[],pine=[],bush=[],rock=[],logs=[],flow=[],giant=[];
   for(let i=0;i<26000&&common.length+pine.length<3600;i++){const x=ELV.x-430+R()*860,z=ELV.z-430+R()*860;const dens=fbm((x-ELV.x)*.01+3,(z-ELV.z)*.01+8);if(R()>dens*1.55-.2||!okF(x,z))continue;
@@ -212,11 +246,14 @@ async function buildElvia(){if(window.__NOGLTF)return;const R=mulberry(7373);con
   for(const p of WS_PROPS)jobs.push(put(p.m,p.x,p.z,p.ry,p.s,p.dock?ELV_LAKES[2].wl-2.6-groundH(p.x,p.z):0).then(o=>{if(o&&/fountain|well|stage|Bell/.test(p.m))tintObj(o,STONE)}));
   jobs.push(instModel('T_lantern',WS_LAMPS.map(l=>({x:l.x,y:elvH(l.x,l.z),z:l.z,ry:0,s:2.6})),{tint:STONE}));
   {const by={};for(const t of WS_TREES)(by[t.m]=by[t.m]||[]).push(t);for(const m in by){const H=m.startsWith('T_')?3.4:5.6;jobs.push(instModel(m,by[m].map(t=>({x:t.x,y:elvH(t.x,t.z),z:t.z,ry:t.ry,s:H*t.s}))))}}
-  /* bridges where the roads cross the rivers */
-  for(const p of ELV_ROADS)for(let i=0;i<p.length-1;i++){const[ax,az]=p[i],[bx,bz]=p[i+1];const L=Math.hypot(bx-ax,bz-az);let last=-99;for(let t=0;t<L;t+=1.5){const x=ax+(bx-ax)*t/L,z=az+(bz-az)*t/L;const[rd,wy,rw]=elvRiver(x,z);
-    if(rd<rw*.6&&t-last>20){last=t;const ry=Math.atan2(bx-ax,bz-az);jobs.push(put('H_bridge_A',x,z,ry,[7,3.2,(rw*2+8)/1.92],Math.max(wy+.3,0)-groundH(x,z)))}}}
+  /* bridges: the deck sits at the height of the banks, so you walk straight across */
+  for(const b of ELV_BRIDGES)jobs.push(envPlace('H_bridge_A',b.x,b.z,b.ry,()=>[b.w/1.34,2.6,b.len/1.92],scene,0).then(o=>{if(o)o.position.y=b.y+.12-1.25*2.6}));
   /* waterfalls: mossy boulders at the foot */
   for(const f of ELV_FALLS)for(let k=0;k<4;k++){const a=R()*6.28,d=f.w+1.5+R()*2;jobs.push(put(R()<.5?'Rock_Moss_1':'Rock_Moss_2',f.x+Math.cos(a)*d,f.z+Math.sin(a)*d,R()*6,2+R()*1.5))}
+  /* the outlaw camp */
+  {const cx=ELV_CAMP.x,cz=ELV_CAMP.z;jobs.push(put('D_Woodfire',cx,cz,0,2));{const f=new THREE.Group();f.position.set(cx,elvH(cx,cz)+.3,cz);scene.add(f);addFlame(f,0,.3,0,2.4,0xff8a30)}addLight(cx,elvH(cx,cz)+2,cz,0xffa050,30,18);addCol(cx,cz,1.3);
+    for(let k=0;k<4;k++){const a=k*1.6+.4,tx=cx+Math.cos(a)*10,tz=cz+Math.sin(a)*10;jobs.push(put('S_Tent',tx,tz,a+Math.PI/2,.26).then(o=>tintObj(o,new THREE.Color(.55,.7,.45))));addCol(tx,tz,2.6)}
+    for(let k=0;k<5;k++){const a=k*1.25,d=14+R()*3;jobs.push(put(k%2?'Barrel':'Crate',cx+Math.cos(a)*d,cz+Math.sin(a)*d,R()*3,1.1))}jobs.push(put('D_Banner',cx+3,cz-6,0,2.4))}
   /* the gate back to the Dragon Realm */
   jobs.push(put('D_Arch',ELV_EXIT.x,ELV_EXIT.z,Math.PI/2,2.6));for(const sd of[-1,1])jobs.push(envPlace('D_Column',ELV_EXIT.x,ELV_EXIT.z+sd*(2.05*2.6+1.4),0,()=>[1.2,1.5,1.2]).then(o=>recolorObj(o,0x6e5244)));
   /* waystones: an obelisk with a glowing crystal on top */
@@ -237,4 +274,5 @@ function useWaystone(w){P.disc=P.disc||{};if(w.id==='ws')P.disc.ws=1;const to=WA
   if(to.id==='ws'&&!P.disc.ws)return toast('The waystone is silent: you have not been to WindStorm yet');if(ME.combat>0)return toast('You cannot travel while in combat');if(ME.mounted)dismount();
   ME.cast={a:{n:'Travel to '+to.n,id:'waystone',way:to},t:0,dur:3,tg:null};$('#castbar').hidden=false}
 function waystoneArrive(to){beamFx(ME.pos.x,ME.pos.z,0x7ad8ff,1.4);teleport(to.x+2.5,to.z+2.5);beamFx(ME.pos.x,ME.pos.z,0x7ad8ff,1.4);sfx('frost');log('The waystone carries you to '+to.n+'.','sys')}
+function hearthTarget(){return P&&P.home==='ws'?[WS.x+rand(-3,3),WS.z+WS.plaza+4+rand(0,3)]:[rand(-3,3),rand(5,8)]}
 function elvRespawn(){if(!inElv(ME.pos.x))return false;teleport(WS.x+rand(-3,3),WS.z+WS.plaza+6+rand(-2,2));return true}

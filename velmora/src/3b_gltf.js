@@ -69,7 +69,9 @@ function buildGltfChar(o){
   return buildGltfRig({model:playerModel(o),eye:R.undead?o.hair:undefined,...(R.orc?{skin:o.skin,hair:o.hair,orc:1}:{}),h:1.78*R.h*s0,props:playerProps(o),weaponMesh:o.wm?null:weaponProp(o),noProcW:!!o.wm,wt:o.wt,wr:o.wr,o,fallback:()=>buildHumanoidProc(o)})}
 /* NPC's en wachters */
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
-  bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'},hob:{m:'Barbarian',props:[],w:'Mug'}};
+  bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'},
+  corwin:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},liora:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},sabine:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},aurelia:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
+  tomas:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},elinor:{m:'Rogue',props:[],w:null},gerrit:{m:'Barbarian',props:[],w:'Mug'},brannoc:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},wren:{m:'Rogue',props:['Rogue_Cape'],w:null},mabel:{m:'Barbarian',props:[],w:'Mug'},hob:{m:'Barbarian',props:[],w:'Mug'}};
 function buildGltfNpc(id,look){const d=NPC_GLTF[id]||NPC_GLTF.guard;const h=look.dwarf?1.5:1.78;
   return buildGltfRig({model:d.m,h,props:d.props,weaponMesh:d.w,wt:look.wt,...(look.tusks?{skin:look.skin,hair:look.hair,orc:1}:{}),o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:look.dwarf?'dwerg':'mens',...look})})}
 /* monsters */
@@ -94,6 +96,16 @@ const MON_GLTF={
   dienaar:{m:'Skeleton_Minion',h:1.78,props:[],wt:'zwaard',wm:'XS_Skeleton_Blade',sm:'XS_Skeleton_Shield_Small_B',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x6ad8ff},
   vuurimp:{drk:1,m:'Demon',h:1.35,props:['Trident'],cm:{...CM_MON,atk:{def:['Weapon']}},tint:{Atlas:0xffb890}},
   vonk:{drk:1,m:'Demon',h:.95,props:[],cm:CM_MON,tint:{Atlas:0xffe070}},
+  /* the Woods of Elvia */
+  elvwolf:{m:'Wolf',h:1.9,cm:CM_ANIMAL,tint:{Main:0x4a5a3c,Main_Light:0x8a9a72},quad:1},
+  elvspider:{m:'Spider',h:.95,cm:CM_SPIDER,tint:{Material:0x1e3a2c,'Material.001':0x7aff5a},spider:1},
+  elvbandit:{m:'Rogue_Hooded',h:1.78,props:['Knife','Rogue_Cape'],cm:{...CM_KAY,atk:{def:ATK_1H}},skin:0xc89070,hair:0x3a2a14},
+  outlawking:{m:'Barbarian',h:1.82,props:['Barbarian_Hat','2H_Axe'],cm:{...CM_KAY,cidle:'2H_Melee_Idle',atk:{def:ATK_2H}},skin:0xb88060,hair:0x2a1a0a},
+  fenraptor:{m:'Velociraptor',h:1.8,cm:CM_RAPTOR,tint:{Brown:0x46603a,Black:0x182014,LightBrown:0x8aa85a},quad:1},
+  mossbrute:{m:'Orc',h:2.6,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0x8aa86a}},
+  elvwisp:{m:'Demon',h:1.15,props:[],cm:CM_MON,glow:{Atlas:0x7affd0}},
+  elderstag:{m:'mount/M_Stag',h:2.6,cm:{...CM_ANIMAL,atk:{def:['Attack_Headbutt','Attack_Kick']},land:'Jump_toIdle'},tint:{Material:0xd8c8a8,'Material.003':0xf4ecd8},glow:{'Material.010':0xa8ff8a},quad:1},
+  oakheart:{m:'Trex',h:5.2,cm:CM_TREX,tint:{Green:0x3a5a2a,Black:0x14180e,LightGreen:0x7a9a4a,Red:0x5aff4a,LightYellow:0xc8e08a},glow:{Red:0x5aff4a}},
   lavagolem:{drk:1,m:'Orc',h:2.4,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0xd08a6a}},
   ignaroth:{drk:1,m:'Demon',h:5.4,props:['Trident'],cm:{...CM_MON,hit:null},tint:{Atlas:0xd07a60}},
   raptor:{drk:1,m:'Velociraptor',h:1.7,cm:CM_RAPTOR,tint:{Brown:0x6a625a,Black:0x1a1614,LightBrown:0xa8643a},quad:1},

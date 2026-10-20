@@ -60,6 +60,14 @@ function genSpawns(){const r=mulberry(4242),L=[];let n=0;
   const dk=(x,z)=>!drkLava(x,z)&&riverDist(x,z)[0]>4&&Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)>40&&Math.hypot(x-VOLC.x,z-VOLC.z)>VOLC.r*.7;
   area('raptor',12,DRK.x-95,DRK.z-95,36,dk);area('vleer',10,DRK.x+5,DRK.z-128,34,dk);area('welp',12,DRK.x+5,DRK.z+122,38,dk);area('drakonier',9,DRK.x+118,DRK.z,40,dk);
   for(const[u,v]of[[58,-52],[56,54],[-12,-74]]){const x=DRK.x+u,z=DRK.z+v;L.push({id:'m'+(n++),type:'lavadrake',lvl:17+Math.floor(r()*2),x,z})}
+  /* the Woods of Elvia */
+  const ev=(x,z)=>Math.hypot(x-WS.x,z-WS.z)>WS.R+30&&!ELV_LAKES.some(l=>Math.hypot(x-l.x,z-l.z)<l.r*1.15)&&elvRiver(x,z)[0]>8&&elvPathDist(x,z)>6&&Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)>50&&Math.max(Math.abs(x-ELV.x),Math.abs(z-ELV.z))<410;
+  const hi=(x,z)=>(z-ELV.z)<elvCliff(x-ELV.x)-14,lo=(x,z)=>(z-ELV.z)>elvCliff(x-ELV.x)+10;
+  area('elvwolf',16,ELV.x-300,ELV.z-10,95,(x,z)=>ev(x,z)&&lo(x,z));area('elvspider',14,ELV.x+320,ELV.z+130,75,(x,z)=>ev(x,z)&&lo(x,z));
+  area('elvbandit',9,ELV_CAMP.x,ELV_CAMP.z,16,(x,z)=>Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)>4);L.push({id:'m'+(n++),type:'outlawking',lvl:23,x:ELV_CAMP.x+2,z:ELV_CAMP.z-3});
+  area('fenraptor',12,ELV.x+320,ELV.z-40,60,(x,z)=>ev(x,z)&&lo(x,z));area('mossbrute',11,ELV.x+70,ELV.z-310,90,(x,z)=>ev(x,z)&&hi(x,z));
+  area('elvwisp',11,ELV.x-100,ELV.z-100,78,(x,z)=>ev(x,z)&&lo(x,z)&&Math.hypot(x-ELV_LAKES[0].x,z-ELV_LAKES[0].z)>50);
+  area('elderstag',4,ELV.x-140,ELV.z+170,60,(x,z)=>ev(x,z));L.push({id:'m'+(n++),type:'oakheart',lvl:25,x:ELV.x-210,z:ELV.z-320});
   return L}
 function makeMon(sp){const t=MON[sp.type];const m={kind:'mon',id:sp.id,type:sp.type,t,lvl:sp.lvl,sx:sp.x,sz:sp.z,x:sp.x,z:sp.z,y:groundH(sp.x,sp.z),ry:Math.random()*6.28,nx:sp.x,nz:sp.z,nry:0,mhp:monHp(t,sp.lvl),hp:1,tgt:null,threat:{},atkT:1,ac:0,mv:0,slow:0,stun:0,root:0,dead:false,deadT:0,taps:new Set(),wan:{x:sp.x,z:sp.z,t:rand(1,8)},evade:false,atk:-1,loot:null,add:!!t.add,predUntil:0,bt:{stomp:9,bolt:5,sum:0,enr:0},sent:null};
   m.hp=m.mhp;m.nry=m.ry;m.lodk=MONS.length%3;m.rig=buildMonster(sp.type,sp.lvl);m.rig.g.position.set(m.x,m.y,m.z);m.rig.g.userData.ent=m;scene.add(m.rig.g);m.size=(t.size||1);MONS.push(m);MONMAP.set(m.id,m);return m}
@@ -67,7 +75,8 @@ function removeMon(m){scene.remove(m.rig.g);const i=MONS.indexOf(m);if(i>=0)MONS
 for(const sp of genSpawns())makeMon(sp);
 for(const n of NPCS){const o={race:n.look.dwarf?'dwerg':'mens',...n.look};const rig=window.__NOGLTF?buildHumanoid(o):buildGltfNpc(n.id,n.look);const y=groundH(n.x,n.z);rig.g.position.set(n.x,y,n.z);rig.g.rotation.y=n.ry;scene.add(rig.g);const e={kind:'npc',...n,y,rig,def:n};rig.g.userData.ent=e;NPCOBJ.push(e);addCol(n.x,n.z,.6)}
 /* town guards (ambient) */
-const GUARDS=[];for(const[x,z,a]of TOWN_GATES.flatMap((g,i)=>(i%2?[1]:[-1,1]).map(sd=>{const a=g+sd*.112,r=TOWN.wall-5.5;return[Math.cos(a)*r,Math.sin(a)*r,Math.atan2(Math.cos(g),Math.sin(g))-Math.PI]})).filter(([x,z])=>pathDist(x,z)>4.6)){const gl={race:'mens',skin:0xd9a98a,hair:0x3b2414,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,pads:0x8a9098,shield:1};const rig=window.__NOGLTF?buildHumanoid(gl):buildGltfNpc('guard',gl);rig.g.position.set(x,groundH(x,z),z);rig.g.rotation.y=a+Math.PI;scene.add(rig.g);GUARDS.push(rig);addCol(x,z,.6)}
+const WS_GUARD_SPOTS=WS_GATES.flatMap(g=>[-1,1].map(sd=>{const a=g+sd*.075,r=WS.R-7;return[WS.x+Math.cos(a)*r,WS.z+Math.sin(a)*r,Math.atan2(Math.cos(g),Math.sin(g))-Math.PI]}));
+const GUARDS=[];for(const[x,z,a]of[...WS_GUARD_SPOTS,...TOWN_GATES.flatMap((g,i)=>(i%2?[1]:[-1,1]).map(sd=>{const a=g+sd*.112,r=TOWN.wall-5.5;return[Math.cos(a)*r,Math.sin(a)*r,Math.atan2(Math.cos(g),Math.sin(g))-Math.PI]})).filter(([x,z])=>pathDist(x,z)>4.6)]){const gl={race:'mens',skin:0xd9a98a,hair:0x3b2414,chest:0x3f5a9a,pants:0x2a2a30,cape:0x2a4a9a,wt:'zwaard',helm:1,pads:0x8a9098,shield:1};const rig=window.__NOGLTF?buildHumanoid(gl):buildGltfNpc('guard',gl);rig.g.position.set(x,groundH(x,z),z);rig.g.rotation.y=a+Math.PI;scene.add(rig.g);GUARDS.push(rig);addCol(x,z,.6)}
 
 /* ---------- fx ---------- */
 const FX=[],PROJ=[];
@@ -154,7 +163,7 @@ function execAbility(a,tg){if(a.mount){doMount();return}if(a.way){waystoneArrive
   else if(id==='regen'){swingAnim(true);sfx('bow');const tx=tg.x,tz=tg.z;rainFx(tx,tz);fxEmit({k:'r',x:tx,z:tz,r:6,c:0xffd36a});for(let k=0;k<14;k++){const x=tx+rand(-5,5),z=tz+rand(-5,5);proj('arrow',new THREE.Vector3(x-2,groundH(x,z)+18,z-2),[x,groundH(x,z),z],40+rand(0,10),null)}setTimeout(()=>{for(const m of enemiesNear(tx,tz,6))dealDamage(m,hitDmg(2.3,id))},450)}
   else if(id==='drank'){takePotion('heal');heal(ST.maxhp*.45);healFx(ME.pos.x,ME.pos.y,ME.pos.z,0x70ff8a);refreshBag()}
   else if(id==='mdrank'){takePotion('mana');P.mp=Math.min(ST.maxmp,P.mp+ST.maxmp*.5);healFx(ME.pos.x,ME.pos.y,ME.pos.z,0x6aa8ff);refreshBag()}
-  else if(id==='thuis'){beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);twirlFx(ME.pos.x,ME.pos.y+1,ME.pos.z,0x7cf0ff);teleport(rand(-3,3),rand(5,8));beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);sfx('frost')}
+  else if(id==='thuis'){beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);twirlFx(ME.pos.x,ME.pos.y+1,ME.pos.z,0x7cf0ff);teleport(...hearthTarget());beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);sfx('frost')}
   else execTalentSkill(a,tg);
   buildBar(true)}
 function heal(n){n=Math.round(n);P.hp=Math.min(ST.maxhp,P.hp+n);floatText('me','+'+n,'heal')}

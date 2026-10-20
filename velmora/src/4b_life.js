@@ -13,10 +13,17 @@ const NODES=[];
   /* Dragon Realm: Emberstone, Ashwood and Fireblossom between the camp and the volcano */
   const placeR=(type,item,count)=>{for(let i=0,t=0;i<count&&t<900;t++){const a=r()*6.28,d=VOLC.r+12+r()*70,x=DRK.x+Math.cos(a)*d,z=DRK.z+Math.sin(a)*d;
     if(drkLava(x,z)||Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)<38||Math.hypot(x-DRK_ENTRY.x,z-DRK_ENTRY.z)<20||Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<14)continue;NODES.push({id:'n'+NODES.length,type,item,x,z});i++}};
-  placeR('erts','Emberstone',14);placeR('hout','Ashwood',10);placeR('kruid','Fireblossom',12)}
+  placeR('erts','Emberstone',14);placeR('hout','Ashwood',10);placeR('kruid','Fireblossom',12);
+  /* the Woods of Elvia: Mithril in the highlands and Thornwood, Elderwood in the deep forest, Moonpetal by the lakes */
+  const okE=(x,z)=>Math.hypot(x-WS.x,z-WS.z)>WS.R+24&&!ELV_LAKES.some(l=>Math.hypot(x-l.x,z-l.z)<l.r*1.12)&&elvRiver(x,z)[0]>7&&elvPathDist(x,z)>4&&Math.max(Math.abs(x-ELV.x),Math.abs(z-ELV.z))<410&&Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)>30;
+  const placeE=(type,item,count,cx,cz,rad,ok)=>{for(let i=0,t=0;i<count&&t<1500;t++){const a=r()*6.28,d=Math.sqrt(r())*rad,x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d;if(!okE(x,z)||(ok&&!ok(x,z)))continue;NODES.push({id:'n'+NODES.length,type,item,x,z});i++}};
+  const hiE=(x,z)=>(z-ELV.z)<elvCliff(x-ELV.x)-12;
+  placeE('erts','Mithril Ore',10,ELV.x+40,ELV.z-310,110,hiE);placeE('erts','Mithril Ore',6,ELV.x+330,ELV.z+150,70);
+  placeE('hout','Elderwood',10,ELV.x-260,ELV.z-20,120);placeE('hout','Elderwood',6,ELV.x+300,ELV.z+60,80);
+  for(const l of ELV_LAKES)placeE('kruid','Moonpetal',l.r>60?6:4,l.x,l.z,l.r*1.6)}
 const NODE_N={hout:'Fallen Trunk',erts:'Ore Vein',kruid:''};
 const NODE_SK={hout:'woodcutting',erts:'mining',kruid:'herbalism'};
-const NODE_REQ={'Silver Ore':10,'Emberstone':20,'Ashwood':20,'Moonbloom':5,'Bloodroot':10,'Fireblossom':20};
+const NODE_REQ={'Silver Ore':10,'Emberstone':20,'Ashwood':20,'Moonbloom':5,'Bloodroot':10,'Fireblossom':20,'Mithril Ore':30,'Elderwood':30,'Moonpetal':30};
 const NODE_COL={'Iron Ore':0xc8783a,'Silver Ore':0xdfe8f2,'Emberstone':0xff5a1a,'Sunleaf':0xffd94a,'Moonbloom':0x7ab8ff,'Bloodroot':0xe04040,'Flax':0xc8e0a0,'Fireblossom':0xff7a20};
 for(const n of NODES){const g=new THREE.Group();const y=groundH(n.x,n.z);g.position.set(n.x,y,n.z);g.rotation.y=hash(n.x|0,n.z|0)*6;scene.add(g);n.g=g;n.y=y;n.kind='node';n.rig={h:.8};
   n.name=n.type==='kruid'?n.item:n.type==='erts'?n.item.replace(/ Ore$/,'')+' Vein':n.item==='Ashwood'?'Ashwood Trunk':NODE_N[n.type];
@@ -64,18 +71,21 @@ function finishSkin(m){if(m.skinned||!m.dead)return;m.skinned=true;const S=SKIN[
   burst(m.x,m.y+.4,m.z,0xb08a60,14,2.2);sfx('loot');refreshBag();saveGame()}
 /* ---- fishing (timing mini-game) ---- */
 /* aan de oever: zelf (bijna) droog staan en een paar meter verderop diep water */
-function atShore(){const d=Math.hypot(ME.pos.x-LAKE.x,ME.pos.z-LAKE.z);if(d>LAKE.r*1.45||d<LAKE.r*.45)return false;const a=Math.atan2(LAKE.x-ME.pos.x,LAKE.z-ME.pos.z);return groundH(ME.pos.x,ME.pos.z)>-1.15&&groundH(ME.pos.x+Math.sin(a)*6,ME.pos.z+Math.cos(a)*6)<-.95}
+/* the lake you stand at: Mirror Lake (water at -0.7) or one of the lakes of Elvia */
+function shoreLake(){const all=[{x:LAKE.x,z:LAKE.z,r:LAKE.r,wl:-.7,home:1},...(inElv(ME.pos.x)?ELV_LAKES:[])];
+  for(const L of all){const d=Math.hypot(ME.pos.x-L.x,ME.pos.z-L.z);if(d>L.r*1.45||d<L.r*.45)continue;const a=Math.atan2(L.x-ME.pos.x,L.z-ME.pos.z);if(groundH(ME.pos.x,ME.pos.z)>L.wl-.45&&groundH(ME.pos.x+Math.sin(a)*6,ME.pos.z+Math.cos(a)*6)<L.wl-.25)return L}return null}
+function atShore(){return!!shoreLake()}
 let bobber=null,fishLine=null;
-function startFish(){if(ME.mounted)dismount();if(ME.dead||ACT.cur||ME.cast)return;if(!atShore())return toast('Stand on the shore of Mirror Lake to fish');if(!useEnergy(1))return;needToolClips();
-  const a=Math.atan2(LAKE.x-ME.pos.x,LAKE.z-ME.pos.z);ME.ry=a;const bx=ME.pos.x+Math.sin(a)*7,bz=ME.pos.z+Math.cos(a)*7;
+function startFish(){if(ME.mounted)dismount();if(ME.dead||ACT.cur||ME.cast)return;const LK=shoreLake();if(!LK)return toast(inElv(ME.pos.x)?'Stand on the shore of a lake to fish':'Stand on the shore of Mirror Lake to fish');if(!useEnergy(1))return;needToolClips();
+  const a=Math.atan2(LK.x-ME.pos.x,LK.z-ME.pos.z);ME.ry=a;const bx=ME.pos.x+Math.sin(a)*7,bz=ME.pos.z+Math.cos(a)*7;
   if(!bobber){bobber=new THREE.Group();scene.add(bobber);loadEnv('Q_Lure_1').then(g=>{if(!g)return;const o=envClone(g);const s=.42/Math.max(...o.userData.size);o.scale.setScalar(s);o.position.y=-.08;bobber.add(o)})}
   if(!fishLine){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));fishLine=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xe8e8e8,transparent:true,opacity:.7}));fishLine.frustumCulled=false;scene.add(fishLine)}
-  bobber.position.set(bx,-.62,bz);bobber.visible=false;fishLine.visible=false;const L=lifeOf('fishing');ACT.cur={k:'fish',t:0,wait:rand(4,10)*Math.max(.45,1-L.lv*.01),phase:'cast',lbl:'Casting…',bx,bz,anim:'fishcast'};log('You cast your line…','sys')}
+  bobber.position.set(bx,LK.wl+.08,bz);bobber.visible=false;fishLine.visible=false;const L=lifeOf('fishing');ACT.cur={k:'fish',t:0,wait:rand(4,10)*Math.max(.45,1-L.lv*.01),phase:'cast',lbl:'Casting…',bx,bz,anim:'fishcast'};log('You cast your line…','sys')}
 function fishBite(){const A=ACT.cur;A.phase='bite';A.t=0;A.anim='fishbite';sfx('hit');sfx('loot');ringFx(A.bx,A.bz,2,0xffffff,.5,-.7);burst(A.bx,-.4,A.bz,0xcfefff,16,2.5);
   const L=lifeOf('fishing');A.zone=[rand(.2,.6),.2+L.lv*.003];A.m=0;A.dir=1;$('#fishBar').hidden=false;$('#fishZone').style.left=(A.zone[0]*100)+'%';$('#fishZone').style.width=(A.zone[1]*100)+'%';toast('A bite! Press F / Action inside the green zone')}
 function fishHook(){const A=ACT.cur;if(!A||A.k!=='fish'||A.phase!=='bite')return false;const[z0,w]=A.zone;const inZ=A.m>=z0&&A.m<=z0+w;const perfect=Math.abs(A.m-(z0+w/2))<w*.18;const bx=A.bx,bz=A.bz;endFish();
   if(!inZ){log('The fish got away…','err');lifeXp('fishing',4);return true}
-  const L=lifeOf('fishing');const roll=FISH.map(([n,wt],i)=>[n,wt*(i>=3?(1+L.lv*.04)*(perfect?2:1):1)]);let tot=roll.reduce((s,f)=>s+f[1],0),r=Math.random()*tot,got='Perch';for(const[n,wt]of roll){if((r-=wt)<=0){got=n;break}}
+  const L=lifeOf('fishing');const roll=(inElv(ME.pos.x)?ELV_FISH:FISH).map(([n,wt],i)=>[n,wt*(i>=3?(1+L.lv*.04)*(perfect?2:1):1)]);let tot=roll.reduce((s,f)=>s+f[1],0),r=Math.random()*tot,got='Perch';for(const[n,wt]of roll){if((r-=wt)<=0){got=n;break}}
   if(giveMat(got,1)){questEvent('fish',got,1);floatText('me',(perfect?'Perfect! ':'')+got,MATS[got].r>=2?'gold':'heal')}lifeXp('fishing',perfect?32:24);sfx('quest');
   ACT.post={anim:'fishcatch',t:1.5};flyFish(got,bx,bz);refreshBag();saveGame();return true}
 function endFish(){ACT.cur=null;$('#fishBar').hidden=true;$('#castbar').hidden=true;if(bobber)bobber.visible=false;if(fishLine)fishLine.visible=false}
@@ -103,7 +113,7 @@ function craftGear(rc){const G=rc.gear,o=craftOdds(rc);const roll=Math.random();
   it.n=(r>=3?'Masterwork ':'')+rc.out+(r>=2&&sf?' '+sf:'');it.crafted=P.name;it.req=Math.max(1,G.il-1);it.price=Math.round(it.price*1.1);return it}
 function finishCraft(rc){const why=canCraft(rc);if(why){toast(why);return false}for(const[n,q,tag]of rc.in)invTake(n,tag,q);const L=lifeOf(rc.sk);
   if(rc.gear){const it=craftGear(rc);addItem(it);log('You craft: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span>','loot',true);floatText('me',it.n,it.r>=3?'gold':'heal');
-    if(it.r>=3){banner('Masterwork!',it.n);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z)}questEvent('craft','gear'+(rc.gear.tier+1),1);questEvent('craft',rc.id,1);lifeXp(rc.sk,[60,110,160][rc.gear.tier])}
+    if(it.r>=3){banner('Masterwork!',it.n);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z)}questEvent('craft','gear'+(rc.gear.tier+1),1);questEvent('craft',rc.id,1);lifeXp(rc.sk,[60,110,160,220][rc.gear.tier])}
   else{const q=rc.q+(Math.random()<L.lv*.012?1:0);if(rc.potion){addItem(potion(rc.potion,q));log('You make: ['+rc.out+'] x'+q,'loot')}else giveMat(rc.out,q);questEvent('craft',rc.id,1);lifeXp(rc.sk,rc.lv>=20?24:rc.lv>=8?20:15)}
   craftDoneFx(rc);sfx('loot');refreshBag();if(!$('#pLife').hidden)refreshLife();saveGame();return true}
 function craftDoneFx(rc){const x=ME.pos.x+Math.sin(ME.ry)*1.1,z=ME.pos.z+Math.cos(ME.ry)*1.1,y=ME.pos.y+1;
@@ -156,7 +166,7 @@ function renderModelIcon(g,tint){const S=96;if(!_micRT){_micRT=new THREE.WebGLRe
 
 /* ---- crafting book (K) ---- */
 let lifeTab='smithing',lifeOpen={};
-const TIER_N=['Tier I · Novice','Tier II · Expert','Tier III · Artisan'];
+const TIER_N=['Tier I · Novice','Tier II · Expert','Tier III · Artisan','Tier IV · Grandmaster'];
 const SLOT_EN={wapen:'Weapon',hoofd:'Head',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
 function recipeRow(rc){const why=canCraft(rc);const lockedLv=lifeOf(rc.sk).lv<rc.lv;
   const ins=rc.in.map(([n,q,tag])=>{const have=invCount(n,tag);return'<span class="'+(have>=q?'ok':'no')+'">'+q+'× '+esc(tag?{wood:'any wood',herb:'any herb',fish:'any fish',ore:'any ore'}[tag]:n)+' ('+have+')</span>'}).join(' ');
@@ -177,7 +187,7 @@ function refreshLife(){if(!P)return;energyTick();migrateLife();const b=$('#lifeB
   if(lifeTab==='fishing')h+='<p class="lhint">Stand on the shore of Mirror Lake and press F. Strike when the marker is inside the green zone.</p>';
   const list=RECIPES.filter(r=>r.sk===lifeTab);const proc=list.filter(r=>!r.gear),gear=list.filter(r=>r.gear);
   if(proc.length){h+='<div class="lrec">';for(const rc of proc)h+=recipeRow(rc);h+='</div>'}
-  if(gear.length){for(let t=0;t<3;t++){const G=gear.filter(r=>r.gear.tier===t);if(!G.length)continue;const k=lifeTab+t;const open=lifeOpen[k]??(lifeOf(lifeTab).lv>=G[0].lv-2||t===0);
+  if(gear.length){for(let t=0;t<4;t++){const G=gear.filter(r=>r.gear.tier===t);if(!G.length)continue;const k=lifeTab+t;const open=lifeOpen[k]??(lifeOf(lifeTab).lv>=G[0].lv-2||t===0);
     h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+k+'">'+TIER_N[t]+' <small>from '+rankOf(Math.min(...G.map(r=>r.lv)))+'</small></button>';if(open){h+='<div class="lrec">';for(const rc of G)h+=recipeRow(rc);h+='</div>'}}}
   h+='</div></div>';b.innerHTML=h;
   b.querySelectorAll('canvas[data-ic]').forEach(c=>drawIcon(c,[c.dataset.ic,'#4a5a3a','#1a2410'],40));

@@ -59,7 +59,7 @@ const ABIL={
 const COMMON_ABIL=[
   {id:'drank',n:'Healing Potion',lvl:1,cd:20,cost:0,item:'heal',ic:['potion','#ff4b4b','#3d0505'],d:'Instantly restores 45% of your health.'},
   {id:'mdrank',n:'Power Potion',lvl:1,cd:20,cost:0,item:'mana',ic:['potion','#4b8bff','#05153d'],d:'Instantly restores 50% of your mana, energy or focus.'},
-  {id:'thuis',n:'Hearthstone',lvl:1,cd:60,cost:0,cast:4,ic:['hearth','#7cf0ff','#0b2a3a'],d:'Return to the square of Silverbrook after 4 seconds.'}
+  {id:'thuis',n:'Hearthstone',lvl:1,cd:60,cost:0,cast:4,ic:['hearth','#7cf0ff','#0b2a3a'],d:'Return home after 4 seconds: the square of Silverbrook, or WindStorm once you have rested at its inn.'}
 ];
 const MON={
   ever:{n:'Wild Boar',kind:'boar',col:0x6b4a32,lv:[1,2],aggro:0,spd:5.2,size:1,xpM:1},
@@ -82,6 +82,16 @@ const MON={
   drakonier:{n:'Dragon Priest',kind:'human',col:0x8a2a1a,lv:[16,17],aggro:17,spd:5.4,size:1,xpM:1.1,ranged:18,proj:'fire',wt:'staf'},
   lavadrake:{n:'Lava Drake',kind:'trex',col:0x2a1a16,lv:[17,18],aggro:16,spd:5.8,size:2.3,elite:1,xpM:1,hpM:1.2,respawn:75},
   broedling:{n:'Fire Broodling',kind:'dragon',col:0xd85a1a,lv:[19,19],aggro:40,spd:7.2,size:.95,xpM:.3,ranged:12,proj:'fire',add:1},
+  /* the Woods of Elvia (level 20–25) */
+  elvwolf:{n:'Thornfang Wolf',kind:'wolf',col:0x5a6a4a,lv:[20,21],aggro:14,spd:7.2,size:1.15,xpM:1},
+  elvspider:{n:'Silkweaver',kind:'spider',col:0x2a4a3a,lv:[21,22],aggro:13,spd:6,size:1.3,xpM:1.05},
+  elvbandit:{n:'Greenwood Outlaw',kind:'human',col:0x3a5a2a,lv:[21,22],aggro:15,spd:6,size:1,xpM:1.05,wt:'zwaard'},
+  outlawking:{n:'Rook, the Greenwood King',kind:'human',col:0x2a4a1a,lv:[23,23],aggro:16,spd:6,size:1.35,elite:1,xpM:1,wt:'bijl',respawn:120},
+  fenraptor:{n:'Fen Raptor',kind:'raptor',col:0x4a6a3a,lv:[22,23],aggro:16,spd:8,size:1.2,xpM:1.05},
+  mossbrute:{n:'Moss Brute',kind:'golem',col:0x5a6a3a,lv:[22,24],aggro:13,spd:5,size:1.45,xpM:1.3,hpM:1.6},
+  elvwisp:{n:'Silverfall Wisp',kind:'imp',col:0x9affd8,lv:[23,24],aggro:16,spd:6.4,size:.9,xpM:1.1,ranged:18,hover:1.4},
+  elderstag:{n:'Elder Stag',kind:'boar',col:0xc8b8a0,lv:[24,24],aggro:10,spd:7,size:1.6,elite:1,xpM:1,respawn:90},
+  oakheart:{n:'Oakheart the Ancient',kind:'trex',col:0x3a5a2a,lv:[25,25],aggro:18,spd:5.6,size:3.4,elite:1,xpM:1.4,hpM:2.6,dmgM:1.25,respawn:240},
   vyraxion:{n:'Vyraxion the Ash Queen',kind:'dragon',col:0x8a1a12,lv:[22,22],aggro:26,spd:6,size:4.2,boss:1,elite:1,dragon:1,dmgM:1.6,xpM:1.6,hpM:4,respawn:300,fire:1}
 };
 const QUESTS=[
@@ -104,7 +114,18 @@ const QUESTS=[
   {id:'c1',n:'Fire in the Forge',giver:'hilde',lvl:2,txt:'Every smith starts with a bar. Mine Iron Ore from the veins in the hills and around the old mine, then smelt three Iron Bars at my forge here in the Artisans\' Yard.',obj:{craft:'ironbar',n:3,lbl:'Iron Bar smelted'},xp:260,gold:8,life:{smithing:120},done:'Good, solid bars. You have the arms for this work.'},
   {id:'c2',n:'Hides and Threads',giver:'hilde',lvl:3,req:'c1',txt:'Leather is just as important as steel. Loot a boar or a wolf, press F on its body to skin it, and tan two pieces of Leather at the tannery.',obj:{craft:'leather',n:2,lbl:'Leather tanned'},xp:320,gold:10,life:{leatherworking:120,skinning:80},done:'Nicely tanned. Soft, but it will stop a claw.'},
   {id:'c3',n:'Your First Masterpiece',giver:'hilde',lvl:4,req:'c2',txt:'Now make something worth wearing. Craft any Tier I armour piece or weapon: plate at the forge, leather at the tannery or cloth at the tailor\'s table. With luck it turns out Rare, or even a Masterwork!',obj:{craft:'gear1',n:1,lbl:'Tier I item crafted'},xp:480,gold:15,life:{tailoring:100},done:'Now that is craftsmanship! Keep at it and one day you will forge with Emberstone from the Dragon Realm.'},
-  {id:'q8',n:'The Molten Heart',giver:'dorrik',lvl:11,req:'q7',txt:'Deep in the cave lives Ignaroth, a golem of lava as old as the mountains. As long as he lives, the cave keeps melting further. Bring friends and put out his fire.',obj:{kill:['ignaroth'],n:1,lbl:'Ignaroth defeated'},xp:5200,gold:150,item:3,done:'Ignaroth has been extinguished! The Ashen Hills are forever grateful, hero.'}
+  {id:'q8',n:'The Molten Heart',giver:'dorrik',lvl:11,req:'q7',txt:'Deep in the cave lives Ignaroth, a golem of lava as old as the mountains. As long as he lives, the cave keeps melting further. Bring friends and put out his fire.',obj:{kill:['ignaroth'],n:1,lbl:'Ignaroth defeated'},xp:5200,gold:150,item:3,done:'Ignaroth has been extinguished! The Ashen Hills are forever grateful, hero.'},
+  /* ---- the Woods of Elvia: WindStorm's questline (level 20–25) ---- */
+  {id:'e1',n:'A Capital in the Woods',giver:'corwin',lvl:19,txt:'So you crossed the Dragon Realm to reach us? Then you are no ordinary sellsword. The Thornfang wolves of the Whispering Glade, west of the city, have been dragging off our woodcutters. Thin the pack: eight of them.',obj:{kill:['elvwolf'],n:8,lbl:'Thornfang Wolf slain'},xp:5200,gold:60,item:2,done:'Eight! The woodcutters will sing your name tonight. WindStorm needs heroes like you.'},
+  {id:'e2',n:'Silk and Venom',giver:'liora',lvl:20,txt:'The Silkweavers of Thornwood, east of the city, spin webs across our patrol paths. My rangers need antivenom, and for that we need their glands. Bring me six.',obj:{collect:['elvspider'],n:6,chance:.6,lbl:'Silkweaver Gland collected',item:'Silkweaver Gland'},xp:5600,gold:65,pots:3,done:'Good hunting. These will save lives out in Thornwood.'},
+  {id:'e3',n:'Outlaws of Fernwater',giver:'liora',lvl:21,req:'e2',txt:'An outlaw band has made camp on the shore of Fernwater, far to the south-west. They rob every caravan to the Dragon Realm. Break them: seven outlaws and their self-crowned king, Rook.',obj:{kill:['elvbandit','outlawking'],n:8,lbl:'Outlaws defeated'},xp:7400,gold:90,item:2,done:'Rook\'s crown of twigs, ha! The roads are safe again. Well done.'},
+  {id:'e4',n:'The Moss Brutes',giver:'corwin',lvl:22,req:'e1',txt:'Up in the Elvian Highlands, north of the waterfalls, Moss Brutes are tearing down our watchtowers. Take the path up the cliffs east of Moonmere and destroy seven of them.',obj:{kill:['mossbrute'],n:7,lbl:'Moss Brute destroyed'},xp:8200,gold:100,item:2,done:'The towers stand again. The Highlands are ours once more.'},
+  {id:'e5',n:'Wisps of Silverfall',giver:'sabine',lvl:22,txt:'The wisps around Silverfall Lake have turned hostile, and the cathedral\'s wards are failing. Something has poisoned the falls. Dispel six wisps so I can study the residue.',obj:{kill:['elvwisp'],n:6,lbl:'Wisp dispelled'},xp:8000,gold:95,pots:3,done:'Fascinating… this is old magic, older than WindStorm itself. Keep your eyes open, hero.'},
+  {id:'e6',n:'Lake Bounty',giver:'tomas',lvl:19,txt:'The harbour market wants fresh fish from the lakes of Elvia. Fish from the shore of any lake here, Lake Elvia right outside the harbour is fine. Five fish will do.',obj:{fish:1,n:5,lbl:'Fish caught'},xp:3200,gold:45,life:{fishing:200},done:'Silverfins as long as my arm! You have a gift, friend.'},
+  {id:'e7',n:'Moonpetals',giver:'elinor',lvl:19,txt:'Moonpetal only grows in the deep woods of Elvia and it is the base of every remedy we make. Pick six for me. You will need some skill in herbalism.',obj:{gather:'Moonpetal',n:6,lbl:'Moonpetal picked'},xp:3400,gold:45,life:{herbalism:220},done:'Lovely and fresh! Come back to me whenever you need potions.'},
+  {id:'e8',n:'Fen Raptors',giver:'sabine',lvl:23,req:'e5',txt:'Raptors from the fens near Moonmere have started hunting the wisps\' poison, and it makes them savage. Cull eight of them before they reach the farms.',obj:{kill:['fenraptor'],n:8,lbl:'Fen Raptor slain'},xp:9600,gold:110,item:2,done:'Their blood glows… the poison spreads. We must find its source.'},
+  {id:'e9',n:'The Elder Stags',giver:'liora',lvl:24,req:'e3',txt:'Even the Elder Stags west of Lake Elvia have gone mad. It breaks my heart, but they must be put to rest. Bring me four of their great antlers.',obj:{collect:['elderstag'],n:4,chance:1,lbl:'Antler collected',item:'Antler of the Elder Stag'},xp:10800,gold:130,item:3,done:'Rest now, old ones. Thank you, hero. I could not have done it myself.'},
+  {id:'e10',n:'Oakheart the Ancient',giver:'corwin',lvl:25,req:'e4',txt:'Our scouts saw it at last: Oakheart, an ancient beast of moss and bark that walks the western Highlands. It is the heart of the poison. Gather your friends and bring it down.',obj:{kill:['oakheart'],n:1,lbl:'Oakheart defeated'},xp:14000,gold:250,item:3,done:'Oakheart has fallen! By the King\'s command, you are named a Champion of WindStorm.'},
 ];
 /* the stable in Silverbrook (model: Quaternius, placed in 2_world.js) and Stablemaster Hob in front of it */
 const STABLE={x:56,z:27,ry:0};const STABLE_PETS=[{id:'whitehorse',dx:-8,dz:-8,ry:2.5},{id:'donkey',dx:10,dz:-1,ry:-2.3}];const STABLE_NPC=[56,17.4,Math.PI*.92];
@@ -131,7 +152,7 @@ const SUFFIX=[['of the Bear',0,1],['of the Tiger',1,0],['of the Eagle',.6,.6],['
 const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter']};
 const ARM_SLOT={hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
 const xpNeed=l=>40*l+15*l*l;
-const MAXLVL=20;
+const MAXLVL=25;
 /* ===== life skills: gathering (mining, woodcutting, herbalism, skinning, fishing) and crafting (smithing, leatherworking,
    tailoring, cooking, alchemy). Icons with m: are thumbnails rendered from the downloaded 3D models. ===== */
 const RANKS=['Novice','Apprentice','Journeyman','Expert','Artisan','Master','Grandmaster'];
@@ -164,7 +185,15 @@ const MATS={
   'Grilled Fish':{m:'KF_fish',t:'#d89050',price:6,food:{hp:.1,dur:600,d:'+10% health'}},"Hunter's Stew":{m:'KF_pot-stew',price:9,food:{pow:.08,dur:600,d:'+8% power'}},
   'Fish Soup':{m:'KF_pan-stew',price:18,r:1,food:{hp:.15,pow:.05,dur:900,d:'+15% health and +5% power'}},'Ember Roast':{m:'KF_meat-raw',t:'#c86a3a',price:30,r:2,food:{hp:.12,pow:.12,dur:1200,d:'+12% health and +12% power'}},
   'Elixir of Fury':{m:'KS_bottle',t:'#ff6a4a',price:14,r:1,elixir:{dmg:.15,dur:600,d:'+15% damage'}},'Elixir of Ironskin':{m:'KS_bottle',t:'#a8c0e0',price:14,r:1,elixir:{arm:.3,dur:600,d:'+30% armour'}},
-  'Dragonfire Elixir':{m:'KS_bottle-large',t:'#ff8a30',price:36,r:2,elixir:{dmg:.12,arm:.2,dur:900,d:'+12% damage and +20% armour'}}
+  'Dragonfire Elixir':{m:'KS_bottle-large',t:'#ff8a30',price:36,r:2,elixir:{dmg:.12,arm:.2,dur:900,d:'+12% damage and +20% armour'}},
+  /* the Woods of Elvia (tier IV) */
+  'Mithril Ore':{m:'Q_Mineral',t:'#8ae0f0',price:10,r:3,tag:'ore'},'Mithril Bar':{m:'Q_Gold_Ingots',t:'=#a8e8f4',price:48,r:3},
+  'Elderwood':{m:'KS_resource-wood',t:'#d8b884',price:11,r:3,tag:'wood'},'Moonpetal':{m:'KN_flower_purpleA',t:'#e0c8ff',price:11,tag:'herb',r:3},
+  'Elvian Hide':{m:'Q_Bag',t:'#7a8a5a',price:9,r:2},'Elvenhide Leather':{m:'Q_Bags',t:'#6a7a44',price:44,r:3},'Moonsilk Thread':{m:'KT_rope_bundle_A',t:'#d8e4ff',price:8,r:2},'Moonsilk Cloth':{m:'Q_Bag',t:'#c8d8ff',price:44,r:3},
+  'Silverfin Trout':{m:'KS_fish',t:'#c8dce8',price:6,tag:'fish',r:1},'Moonmere Eel':{m:'KS_fish',t:'#6a7aa8',price:9,tag:'fish',r:1},'Elvian Salmon':{m:'KS_fish',t:'#ff9a7a',price:16,tag:'fish',r:2},'Crown Pike':{m:'KS_fish',t:'#ffe08a',price:55,tag:'fish',r:3},
+  'Silkweaver Gland':{m:'KS_bottle',t:'#8aff6a',price:4},'Antler of the Elder Stag':{m:'D_Bones',t:'#e8dcc0',price:20,r:2},
+  'Elvian Feast':{m:'KF_pot-stew',t:'#a8c870',price:46,r:3,food:{hp:.16,pow:.14,dur:1500,d:'+16% health and +14% power'}},
+  'Elixir of the Grove':{m:'KS_bottle-large',t:'#8affa8',price:50,r:3,elixir:{dmg:.15,arm:.25,dur:1200,d:'+15% damage and +25% armour'}}
 };
 /* old Dutch item names → new names (save migration) */
 const MAT_OLD={'Hout':'Wood','Stevig hout':'Sturdy Wood','IJzererts':'Iron Ore','Zilvererts':'Silver Ore','Zonnekruid':'Sunleaf','Maanbloem':'Moonbloom','Bloedwortel':'Bloodroot','Baars':'Perch','Karper':'Carp','Snoek':'Pike','Goudbaars':'Golden Perch','Meerspook':'Lake Phantom','Rauw vlees':'Raw Meat','Planken':'Planks','IJzerstaaf':'Iron Bar','Zilverstaaf':'Silver Bar','Kruidenpoeder':'Herb Powder','Gegrilde vis':'Grilled Fish','Jagersstoofpot':"Hunter's Stew",'Vissoep':'Fish Soup','Elixir van Woede':'Elixir of Fury','Elixir van IJzerhuid':'Elixir of Ironskin','Ruwe everhuid':'Rough Hide','Wolfspels':'Rough Hide','Spinrag':'Spider Silk'};
@@ -189,33 +218,44 @@ const RECIPES=[
   {id:'mana',sk:'alchemy',st:'cauldron',out:'Power Potion',q:2,in:[['Moonbloom',2],['Herb Powder',1]],lv:2,t:2,potion:'mana'},
   {id:'woede',sk:'alchemy',st:'cauldron',out:'Elixir of Fury',q:1,in:[['Bloodroot',2],['Iron Bar',1]],lv:8,t:2.6},
   {id:'ijzerhuid',sk:'alchemy',st:'cauldron',out:'Elixir of Ironskin',q:1,in:[['Iron Bar',1],['Moonbloom',2],['Herb Powder',1]],lv:10,t:2.6},
-  {id:'drakvuur',sk:'alchemy',st:'cauldron',out:'Dragonfire Elixir',q:1,in:[['Fireblossom',2],['Drake Scale',1],['Herb Powder',1]],lv:24,t:3}
+  {id:'drakvuur',sk:'alchemy',st:'cauldron',out:'Dragonfire Elixir',q:1,in:[['Fireblossom',2],['Drake Scale',1],['Herb Powder',1]],lv:24,t:3},
+  {id:'mithrilbar',sk:'smithing',st:'forge',out:'Mithril Bar',q:1,in:[['Mithril Ore',3],['Elderwood',1]],lv:34,t:2.8},
+  {id:'elvleather',sk:'leatherworking',st:'tannery',out:'Elvenhide Leather',q:1,in:[['Elvian Hide',2],['Moonpetal',1]],lv:34,t:2.8},
+  {id:'moonsilk',sk:'tailoring',st:'loom',out:'Moonsilk Cloth',q:1,in:[['Moonsilk Thread',3],['Moonpetal',1]],lv:34,t:2.8},
+  {id:'feast',sk:'cooking',st:'fire',out:'Elvian Feast',q:1,in:[['Fish',2,'fish'],['Raw Meat',1],['Moonpetal',1]],lv:36,t:3},
+  {id:'grove',sk:'alchemy',st:'cauldron',out:'Elixir of the Grove',q:1,in:[['Moonpetal',2],['Silkweaver Gland',1],['Herb Powder',1]],lv:36,t:3.2}
 ];
 /* craftable gear: three tiers per profession. The armour type follows the class that wears it. */
 const GEAR_SETS={
   smithing:{cls:'krijger',weap:[['Sword','zwaard'],['Battleaxe','bijl']],tiers:[
     {lv:0,il:5,pre:'Iron',mat:'Iron Bar',x:null,w:['Planks',2]},
     {lv:12,il:10,pre:'Silversteel',mat:'Silver Bar',x:['Iron Bar',2],w:['Planks',2]},
-    {lv:25,il:16,pre:'Emberforged',mat:'Emberstone Bar',x:['Silver Bar',2],w:['Ashwood',2]}]},
+    {lv:25,il:16,pre:'Emberforged',mat:'Emberstone Bar',x:['Silver Bar',2],w:['Ashwood',2]},
+    {lv:38,il:23,pre:'Mithril',mat:'Mithril Bar',x:['Emberstone Bar',2],w:['Elderwood',2]}]},
   leatherworking:{cls:'jager',weap:[['Bow','boog']],tiers:[
     {lv:0,il:5,pre:'Tanned',mat:'Leather',x:null,w:['Planks',3]},
     {lv:12,il:10,pre:'Hardened',mat:'Thick Leather',x:['Leather',2],w:['Sturdy Wood',3]},
-    {lv:25,il:16,pre:'Drakeskin',mat:'Drakeskin',x:['Thick Leather',2],w:['Ashwood',3]}]},
+    {lv:25,il:16,pre:'Drakeskin',mat:'Drakeskin',x:['Thick Leather',2],w:['Ashwood',3]},
+    {lv:38,il:23,pre:'Elvenhide',mat:'Elvenhide Leather',x:['Drakeskin',2],w:['Elderwood',3]}]},
   tailoring:{cls:'magier',weap:[['Staff','staf']],tiers:[
     {lv:0,il:5,pre:'Linen',mat:'Linen',x:null,w:['Planks',2]},
     {lv:12,il:10,pre:'Silken',mat:'Silk Cloth',x:['Linen',2],w:['Sturdy Wood',2]},
-    {lv:25,il:16,pre:'Emberweave',mat:'Emberweave',x:['Silk Cloth',2],w:['Ashwood',2]}]}};
+    {lv:25,il:16,pre:'Emberweave',mat:'Emberweave',x:['Silk Cloth',2],w:['Ashwood',2]},
+    {lv:38,il:23,pre:'Moonsilk',mat:'Moonsilk Cloth',x:['Emberweave',2],w:['Elderwood',2]}]}};
 const GEAR_BASE={krijger:{hoofd:'Helm',borst:'Breastplate',handen:'Gauntlets',benen:'Legplates',voeten:'Sabatons'},jager:{hoofd:'Hood',borst:'Tunic',handen:'Gloves',benen:'Leggings',voeten:'Boots'},magier:{hoofd:'Hat',borst:'Robe',handen:'Handwraps',benen:'Trousers',voeten:'Sandals'}};
 const GEAR_SLOT={hoofd:[3,0],handen:[2,1],voeten:[2,2],benen:[4,3],wapen:[4,4],borst:[5,5]};/* [materiaal, extra vaardigheidsniveau] */
 for(const sk in GEAR_SETS){const S=GEAR_SETS[sk];S.tiers.forEach((T,ti)=>{
   for(const slot in GEAR_SLOT){const[q,dl]=GEAR_SLOT[slot];const big=slot==='borst'||slot==='benen'||slot==='wapen';
     const wl=slot==='wapen'?S.weap:[[GEAR_BASE[S.cls][slot],null]];
-    wl.forEach(([bn,wt],wi)=>{const ins=[[T.mat,q]];if(T.x&&big)ins.push([T.x[0],T.x[1]]);if(slot==='wapen')ins.push([T.w[0],T.w[1]]);if(slot==='wapen'&&sk==='tailoring')ins.push([['Moonbloom','Bloodroot','Fireblossom'][ti],2]);
+    wl.forEach(([bn,wt],wi)=>{const ins=[[T.mat,q]];if(T.x&&big)ins.push([T.x[0],T.x[1]]);if(slot==='wapen')ins.push([T.w[0],T.w[1]]);if(slot==='wapen'&&sk==='tailoring')ins.push([['Moonbloom','Bloodroot','Fireblossom','Moonpetal'][ti],2]);
       RECIPES.push({id:sk+ti+slot+(wi||''),sk,st:LIFE[sk].st,gear:{slot,cls:S.cls,il:T.il,wt,tier:ti},out:T.pre+' '+bn,q:1,in:ins,lv:T.lv+dl+(wi?1:0),t:3.2+ti*.4})})}})}
 /* rings, smithed for your own class */
 RECIPES.push({id:'ring1',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:10,tier:1},out:'Silver Band',q:1,in:[['Silver Bar',3],['Moonbloom',2]],lv:15,t:3.4},
-  {id:'ring2',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:16,tier:2},out:'Ember Signet',q:1,in:[['Emberstone Bar',3],['Silver Bar',1]],lv:28,t:3.8});
+  {id:'ring2',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:16,tier:2},out:'Ember Signet',q:1,in:[['Emberstone Bar',3],['Silver Bar',1]],lv:28,t:3.8},
+  {id:'ring3',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:23,tier:3},out:'Mithril Crown Ring',q:1,in:[['Mithril Bar',3],['Moonpetal',2]],lv:42,t:4});
 const FISH=[['Perch',45],['Carp',30],['Pike',17],['Golden Perch',6],['Lake Phantom',2]];
+const ELV_FISH=[['Silverfin Trout',44],['Moonmere Eel',30],['Elvian Salmon',18],['Golden Perch',6],['Crown Pike',2]];
 /* beasts you can skin after looting: [material, chance, extra material at higher skill] */
-const SKIN={ever:{it:'Rough Hide',lv:0},wolf:{it:'Rough Hide',lv:0,x:['Thick Hide',8]},spin:{it:'Spider Silk',lv:5},raptor:{it:'Drake Scale',lv:20,x:['Thick Hide',0]},vleer:{it:'Thick Hide',lv:15},welp:{it:'Drake Scale',lv:20},lavadrake:{it:'Drake Scale',lv:22,n:3},broedling:{it:'Drake Scale',lv:20}};
+const SKIN={ever:{it:'Rough Hide',lv:0},wolf:{it:'Rough Hide',lv:0,x:['Thick Hide',8]},spin:{it:'Spider Silk',lv:5},raptor:{it:'Drake Scale',lv:20,x:['Thick Hide',0]},vleer:{it:'Thick Hide',lv:15},welp:{it:'Drake Scale',lv:20},lavadrake:{it:'Drake Scale',lv:22,n:3},broedling:{it:'Drake Scale',lv:20},
+  elvwolf:{it:'Elvian Hide',lv:30},elvspider:{it:'Moonsilk Thread',lv:30,n:2},fenraptor:{it:'Elvian Hide',lv:32,x:['Drake Scale',0]},elderstag:{it:'Elvian Hide',lv:34,n:3},oakheart:{it:'Elvian Hide',lv:30,n:5}};
 const BAG=36;
