@@ -30,20 +30,20 @@ function canRideHere(){return ME.pos.x<700}
    over walls, trees and the lake; land by descending to the ground. */
 const FLY_SPD=1.5,FLY_MAX=55;
 function flyMount(){return !!(ME.mounted&&MOUNTS[ME.mounted]&&MOUNTS[ME.mounted].fly)}
-function overTown(x,z){return x<700&&x>-1000&&Math.hypot(x,z)<TOWN.wall+6}
+function overTown(x,z){return x<700&&x>-1000&&Math.hypot(x,z)<TOWN.wall+6||inElv(x)&&Math.hypot(x-WS.x,z-WS.z)<WS.R+8}
 function canFlyHere(x,z){return x<700&&!overTown(x,z)}
 let _flyWarn=0;
 /* called from the physics step instead of gravity while you sit on a flying mount; returns true when it handled the vertical */
 function flyStep(h,gh){if(!flyMount())return false;const up=KEYS.has(' ')||S.upHeld,dn=KEYS.has('x')||KEYS.has('control')||S.dnHeld;
   const okHere=canFlyHere(ME.pos.x,ME.pos.z);
-  if(!ME.air){if(up&&okHere&&!ME.dead){ME.air=true;ME.vy=6;ME.pos.y=gh+.05;dustFx(ME.pos.x,ME.pos.z,10);sfx('swing')}else{if(up&&!okHere&&performance.now()>_flyWarn){_flyWarn=performance.now()+3000;toast(overTown(ME.pos.x,ME.pos.z)?'You cannot fly over Silverbrook':'You cannot fly here')}ME.pos.y=gh;return true}}
-  let tv=up?9:dn?-11:0;if(!okHere){tv=-12;if(performance.now()>_flyWarn){_flyWarn=performance.now()+3000;toast('You cannot fly over Silverbrook')}}
+  if(!ME.air){if(up&&okHere&&!ME.dead){ME.air=true;ME.vy=6;ME.pos.y=gh+.05;dustFx(ME.pos.x,ME.pos.z,10);sfx('swing')}else{if(up&&!okHere&&performance.now()>_flyWarn){_flyWarn=performance.now()+3000;toast(overTown(ME.pos.x,ME.pos.z)?'You cannot fly over '+(inElv(ME.pos.x)?'WindStorm':'Silverbrook'):'You cannot fly here')}ME.pos.y=gh;return true}}
+  let tv=up?9:dn?-11:0;if(!okHere){tv=-12;if(performance.now()>_flyWarn){_flyWarn=performance.now()+3000;toast('You cannot fly over '+(inElv(ME.pos.x)?'WindStorm':'Silverbrook'))}}
   ME.vy+=(tv-ME.vy)*Math.min(1,h*4);ME.pos.y+=ME.vy*h;
-  const top=Math.min(gh+FLY_MAX,ME.pos.x<-1000?95:85);if(ME.pos.y>top){ME.pos.y=top;ME.vy=Math.min(ME.vy,0)}
+  const top=Math.min(gh+FLY_MAX,inElv(ME.pos.x)?110:ME.pos.x<-1000?95:85);if(ME.pos.y>top){ME.pos.y=top;ME.vy=Math.min(ME.vy,0)}
   if(ME.pos.y<=gh){ME.pos.y=gh;if(ME.vy<-6)landFx();ME.vy=0;ME.air=false}return true}
 function flyingHigh(){return flyMount()&&ME.air&&ME.pos.y>groundH(ME.pos.x,ME.pos.z)+5}
 /* in the air only the edge of the world stops you */
-function collideAir(p){if(p.x<-1000){drkCollide(p,.5);return}p.x=clamp(p.x,-255,255);p.z=clamp(p.z,-262,255)}
+function collideAir(p){if(p.x<-2600){p.x=clamp(p.x,ELV.x-438,ELV.x+430);p.z=clamp(p.z,ELV.z-432,ELV.z+432);return}if(p.x<-1000){drkCollide(p,.5);return}p.x=clamp(p.x,-255,255);p.z=clamp(p.z,-262,255)}
 function toggleMount(){if(!P||S.mode!=='play'||ME.dead)return;if(ME.mounted){dismount();return}ensureMounts();
   if(!canRideHere())return toast("You can't ride here");if(ME.combat>0)return toast("You can't mount while in combat");if(ME.cast||ACT.cur)return toast('You are still busy');
   ME.cast={a:{n:MOUNTS[P.mountSel].n,id:'mount',mount:true},t:0,dur:1.3,tg:null};$('#castbar').hidden=false}

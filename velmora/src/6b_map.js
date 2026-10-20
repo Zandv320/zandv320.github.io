@@ -119,16 +119,51 @@ function* drkAtlasGen(){const N=isTouch?760:1024,k=N/DSZ,X0=DRK.x-DSZ/2,Z0=DRK.z
   for(const[x,z,c2]of[[DRK_EXIT.x,DRK_EXIT.z,'#6ac8ff'],[VOLC_DOOR.x,VOLC_DOOR.z,'#ff5a1a']]){g.fillStyle='#1a1210';g.beginPath();g.arc(x,z,3.4,Math.PI,0);g.lineTo(x+3.4,z+1.6);g.lineTo(x-3.4,z+1.6);g.closePath();g.fill();g.strokeStyle=c2;g.lineWidth=.6;g.stroke()}
   g.setTransform(1,0,0,1,0,0);const vg=g.createRadialGradient(N/2,N/2,N*.38,N/2,N/2,N*.75);vg.addColorStop(0,'rgba(20,10,5,0)');vg.addColorStop(1,'rgba(20,10,5,.5)');g.fillStyle=vg;g.fillRect(0,0,N,N);
   DATLAS.c=c}
+/* ---- the Woods of Elvia: shaded terrain, lakes, rivers and waterfalls, roads, WindStorm's walls and buildings ---- */
+const EATLAS={c:null};
+function elvAtlasBuild(){if(EATLAS.c)return EATLAS.c;if(!EATLAS.gen)EATLAS.gen=elvAtlasGen();while(!EATLAS.gen.next().done){}return EATLAS.c}
+function* elvAtlasGen(){const N=isTouch?900:1400,k=N/ESZ,X0=ELV.x-ESZ/2,Z0=ELV.z-ESZ/2;const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d');
+  const col=elvTerrain.geometry.attributes.color.array;const img=g.createImageData(N,N),D=img.data,step=ESZ/N;
+  const WT=new Float32Array(EHN*EHN);for(let i=0;i<EHN;i++){for(let j=0;j<EHN;j++){const x=X0+j*ECELL,z=Z0+i*ECELL;let w=elvLake(x,z)?1:0;if(!w){const[rd,,rw]=elvRiver(x,z);w=rd<rw?1:0}WT[i*EHN+j]=w}if(i%30===29)yield}
+  const bil=(A,x,z)=>{const fx=clamp((x-X0)/ECELL,0,ESEG-.001),fz=clamp((z-Z0)/ECELL,0,ESEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i,a=i*EHN+j;return(A[a]*(1-u)+A[a+1]*u)*(1-v)+(A[a+EHN]*(1-u)+A[a+EHN+1]*u)*v};
+  for(let py=0;py<N;py++){if(py%32===31)yield;const z=Z0+(py+.5)*step;for(let px=0;px<N;px++){const x=X0+(px+.5)*step;
+    const fx=clamp((x-X0)/ECELL,0,ESEG-.001),fz=clamp((z-Z0)/ECELL,0,ESEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i;const a=(i*EHN+j)*3,b=a+3,cc=a+EHN*3,d=cc+3;
+    let rgb=[0,1,2].map(n=>Math.pow((col[a+n]*(1-u)+col[b+n]*u)*(1-v)+(col[cc+n]*(1-u)+col[d+n]*u)*v,1/2.2)*255);
+    const hx=elvH(x+1.5,z)-elvH(x-1.5,z),hz=elvH(x,z+1.5)-elvH(x,z-1.5);const nl=Math.hypot(hx/3,1,hz/3);const sh=clamp((-hx/3*-.55+.56-hz/3*-.62)/nl,0,1);rgb=rgb.map(q=>q*(.62+sh*.62));
+    const w=bil(WT,x,z);if(w>.45){const t=(Math.sin(x*.35+z*.2)*.5+.5)*.12;rgb=[lerp(70,95,t),lerp(140,165,t),lerp(172,196,t)]}
+    const e=Math.max(Math.abs(x-ELV.x),Math.abs(z-ELV.z));if(e>420)rgb=rgb.map(q=>q*.55);
+    const gr=(hash(px+1900,py)-.5)*9;const o=(py*N+px)*4;D[o]=rgb[0]+gr;D[o+1]=rgb[1]+gr;D[o+2]=rgb[2]+gr;D[o+3]=255}}
+  g.putImageData(img,0,0);g.setTransform(k,0,0,k,-X0*k,-Z0*k);g.lineCap='round';g.lineJoin='round';
+  /* forest canopy: soft dark blobs */{const R=mulberry(77);for(let i=0;i<2600;i++){const x=X0+20+R()*(ESZ-40),z=Z0+20+R()*(ESZ-40);if(Math.hypot(x-WS.x,z-WS.z)<WS.R+16||elvLake(x,z)||elvPathDist(x,z)<6)continue;const dn=fbm((x-ELV.x)*.01+3,(z-ELV.z)*.01+8);if(R()>dn*1.5-.2)continue;g.fillStyle='rgba(20,52,24,.28)';g.beginPath();g.arc(x,z,2.6+R()*1.6,0,7);g.fill()}}
+  for(const[w,cl]of[[6,'rgba(40,30,20,.8)'],[4.2,'#c4ac82']]){g.strokeStyle=cl;g.lineWidth=w;for(const p of ELV_ROADS){g.beginPath();p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.stroke()}}
+  for(const f of ELV_FALLS){g.fillStyle='rgba(255,255,255,.85)';g.beginPath();g.arc(f.x,f.z,2.4,0,7);g.fill()}
+  /* WindStorm: streets, walls, buildings */
+  g.fillStyle='#b8ae9c';g.beginPath();g.arc(WS.x,WS.z,WS.R,0,7);g.fill();
+  for(const[w,cl]of[[6,'#8a8070'],[4.6,'#d4cab4']]){g.strokeStyle=cl;g.lineWidth=w;for(const p of WS_STREETS){g.beginPath();p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.stroke()}}
+  g.fillStyle='#d8ceb8';g.beginPath();g.arc(WS.x,WS.z,WS.plaza,0,7);g.fill();g.fillStyle='#6ab0d8';g.beginPath();g.arc(WS.x,WS.z,4.5,0,7);g.fill();
+  const ROOF={red:'#b8432f',blue:'#3f6fb8',yellow:'#d9a43a',green:'#4f9a4a'};
+  for(const b of WS_B){const cl=Object.keys(ROOF).find(q=>b.m.endsWith(q));g.save();g.translate(b.x,b.z);g.rotate(-b.ry);g.fillStyle='rgba(30,25,15,.35)';g.fillRect(-b.w/2+.8,-b.d/2+.8,b.w*.86,b.d*.86);g.fillStyle=/castle|tower/.test(b.m)?'#9a9890':cl?ROOF[cl]:'#a0603a';g.fillRect(-b.w*.43,-b.d*.43,b.w*.86,b.d*.86);g.strokeStyle='rgba(40,25,15,.7)';g.lineWidth=.4;g.strokeRect(-b.w*.43,-b.d*.43,b.w*.86,b.d*.86);g.restore()}
+  g.strokeStyle='#6e6a62';g.lineWidth=4;g.beginPath();g.arc(WS.x,WS.z,WS.R,0,7);g.stroke();g.lineWidth=2.4;g.beginPath();g.arc(WS_CIT.x,WS_CIT.z,WS_CIT.r,0,7);g.stroke();
+  for(const t of[...WS_WALL.tow,...WS_WALL.gate]){g.fillStyle='#3f6fb8';g.beginPath();g.arc(t.x,t.z,3,0,7);g.fill()}
+  for(const d of[-22,0,22]){g.fillStyle='#8a6a4a';g.fillRect(WS.x+d-3,WS.z+WS.R+20,6,20)}
+  /* the gate back and the waystone */g.fillStyle='#1a1210';g.beginPath();g.arc(ELV_EXIT.x,ELV_EXIT.z,4,0,7);g.fill();g.strokeStyle='#ff7a30';g.lineWidth=.8;g.stroke();
+  const wsn=WAYSTONES.find(w=>w.id==='ws');g.fillStyle='#7ad8ff';g.beginPath();g.arc(wsn.x,wsn.z,2.4,0,7);g.fill();
+  g.setTransform(1,0,0,1,0,0);const vg=g.createRadialGradient(N/2,N/2,N*.4,N/2,N/2,N*.75);vg.addColorStop(0,'rgba(10,20,10,0)');vg.addColorStop(1,'rgba(10,20,10,.45)');g.fillStyle=vg;g.fillRect(0,0,N,N);
+  EATLAS.c=c}
 /* which picture the map shows where you are: Velmora, the Dragon Realm or a dungeon (world rectangle in metres) */
 function mapSource(){const x=ME.pos.x;
   if(x>1250){const D=x>1700?D3:D2;return{key:D.name,img:D.img,x0:D.X-D.C/2*D.c,z0:D.Z-D.R/2*D.c,w:D.C*D.c,h:D.R*D.c,title:D.name,dun:1}}
   if(x>700)return{key:'crypt',img:dunImg,x0:DUN.x-DC/2*DUN.c,z0:DUN.z-DR/2*DUN.c,w:DC*DUN.c,h:DR*DUN.c,title:'Crypt of Kaal-Morath',dun:1};
+  if(inElv(x))return{key:'elv',img:elvAtlasBuild(),x0:ELV.x-ESZ/2,z0:ELV.z-ESZ/2,w:ESZ,h:ESZ,title:'The Woods of Elvia'};
   if(inDrk(x))return{key:'drk',img:drkAtlasBuild(),x0:DRK.x-DSZ/2,z0:DRK.z-DSZ/2,w:DSZ,h:DSZ,title:'The Dragon Realm'};
   atlasBuild();return{key:'vel',img:ATLAS.c,x0:-320,z0:-320,w:640,h:640,title:'Map of Velmora'}}
 /* labels: region names (always), places (from a little zoom), buildings (zoomed in) */
 const MAP_LABELS={vel:[[0,'Twilight Wood',-30,-150],[0,'Ashen Hills',205,-215],[0,'Bandit Heath',165,-140],[0,'Bone Hills',-170,-250],[0,'Mirror Lake',-150,128],[0,'Golden Fields',10,178],[0,'Silverdale',175,65],[0,'Silverbrook',0,-86],
     [1,"Artisans' Yard",-108,-28],[1,'Arena',126,-24],[1,'Bandit Camp',150,-132],[1,'Crypt of Kaal-Morath',-172,-236],[1,"Ignaroth's Fire Cave",206,-196],[1,'Dragon Pass ➜',228,88],[1,'Farm',46,96],[1,'Mill',-34,108],
     [2,'The Keep',30,-58],[2,'Church of the Light',40,14],[2,'Silver Tankard',-34,-30],[2,'Market Street',-40,15],[2,'Barracks',50,-18],[2,'Mill Pond',-38,46],[2,'Town Square',0,-27],[2,'Stables',58,40]],
+  elv:[[0,'WindStorm',WS.x,WS.z-WS.R-14],[0,'Elvian Highlands',ELV.x+40,ELV.z-300],[0,'Silverfall Lake',ELV.x-100,ELV.z-100],[0,'Moonmere',ELV.x+250,ELV.z-108],[0,'Lake Elvia',ELV.x+70,ELV.z+262],[0,'Fernwater',ELV.x-300,ELV.z+250],[0,'Whispering Glade',ELV.x-330,ELV.z-60],[0,'Thornwood',ELV.x+330,ELV.z+120],
+    [1,'⬅ To the Dragon Realm',ELV_EXIT.x+40,ELV_EXIT.z-12],[1,'Silverfalls',ELV.x-104,ELV.z-178],[1,'Moonfall',ELV.x+256,ELV.z-178],[1,'Harbour',WS.x,WS.z+WS.R+44],[1,'Citadel',WS_CIT.x,WS_CIT.z-WS_CIT.r-6],
+    [2,'Royal Castle',WS_CIT.x,WS_CIT.z+4],[2,'Cathedral',WS.x-55,WS.z-74],[2,'Grand Plaza',WS.x,WS.z-30],[2,'Market',WS.x-36,WS.z-36],[2,'The Gilded Gryphon',WS.x-50,WS.z+76],[2,'Barracks',WS.x+86,WS.z-38],[2,'Waystone',WS.x+15,WS.z+24]],
   drk:[[1,'⬅ To Silverdale',-170,-10],[1,'Volcano door',-50,-12],[0,"Dragonhunters' Camp",-138,48],[0,'Mount Dragonrest',0,-24],[0,'Dragon Nests',10,150],[0,'Shrines',122,-62],[0,'Fire Fields',0,-150],[0,'Ash Plains',-95,-110]]};
 function mapFit(){const S=MAPST.src;return Math.min(MAPST.w/S.w,MAPST.h/S.h)}
 function mapResize(){const c=$('#bigmap');const r=c.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);const w=Math.max(200,Math.round(r.width)),h=Math.max(200,Math.round(r.height));

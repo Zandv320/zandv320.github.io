@@ -6,7 +6,7 @@
      waar Vyraxion de Asvorst woont.
    Alle modellen zijn CC0: Quaternius (draken, vleermuizen, raptors, lavadrakes, bomen, rotsen, kerkerdecor). */
 const DRK={x:-1600,z:0,R:186};
-const inDrk=x=>x<-1000;
+const inDrk=x=>x<-1000&&x>-2600;
 const VOLC={x:DRK.x,z:DRK.z,r:80,h:46,cr:15};
 const DRK_GATE={x:228,z:100};                         /* Drakenpas in Zilverdal */
 const DRK_ENTRY={x:DRK.x-160,z:4};                    /* aankomst in het Drakenrijk */
@@ -15,15 +15,15 @@ const DRK_CAMP={x:DRK.x-138,z:26};                    /* Drakenjagerskamp */
 const VOLC_DOOR={x:VOLC.x-50,z:VOLC.z};               /* ingang van de vulkaankerker */
 /* ---- lava: rivieren vanaf de kraterrand naar beneden, en losse poelen ---- */
 const DRK_RIVERS=[];{const R=mulberry(7071);
-  for(const a0 of[.25,1.62,-1.58,-.8]){const pts=[];let w=1.7;for(let r=16;r<178;r+=5){const a=a0+.28*Math.sin(r*.034+a0*3)+.1*Math.sin(r*.11+a0);pts.push([DRK.x+Math.cos(a)*r,DRK.z+Math.sin(a)*r,w]);w=Math.min(3.6,w+.06+R()*.04)}DRK_RIVERS.push(pts)}}
+  for(const a0 of[.62,1.62,-1.58,-.8]){const pts=[];let w=1.7;for(let r=16;r<178;r+=5){const a=a0+.28*Math.sin(r*.034+a0*3)+.1*Math.sin(r*.11+a0);pts.push([DRK.x+Math.cos(a)*r,DRK.z+Math.sin(a)*r,w]);w=Math.min(3.6,w+.06+R()*.04)}DRK_RIVERS.push(pts)}}
 const DRK_POOLS=[];{const R=mulberry(7072);for(let i=0,t=0;i<9&&t<400;t++){const a=R()*6.28,d=96+R()*64,x=DRK.x+Math.cos(a)*d,z=DRK.z+Math.sin(a)*d;
-  if(Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)<44||Math.abs(z-DRK.z)<14&&x<DRK.x)continue;DRK_POOLS.push({x,z,r:3+R()*3.5});i++}}
+  if(Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)<44||Math.abs(z-DRK.z)<14&&x<DRK.x||Math.hypot(x-DRK.x-160,z-DRK.z)<40)continue;DRK_POOLS.push({x,z,r:3+R()*3.5});i++}}
 function riverDist(x,z){let best=1e9,bw=2;for(const pts of DRK_RIVERS)for(let i=0;i<pts.length-1;i++){const[ax,az,aw]=pts[i],[bx,bz]=pts[i+1];const d=segDist(x,z,ax,az,bx,bz);if(d<best){best=d;bw=aw}}return[best,bw]}
 /* staat (x,z) in de lava? (rivier, poel of kratermeer) */
 function drkLava(x,z){if(!inDrk(x))return false;const dv=Math.hypot(x-VOLC.x,z-VOLC.z);if(dv<VOLC.cr*.62)return true;if(dv<VOLC.cr+2)return false;
   const[d,w]=riverDist(x,z);if(d<w*.85)return true;for(const p of DRK_POOLS)if(Math.hypot(x-p.x,z-p.z)<p.r*.85)return true;return false}
 /* ---- paden ---- */
-const DRK_PATHS=[[[DRK_EXIT.x,DRK_EXIT.z],[DRK.x-150,10],[DRK.x-122,14],[DRK.x-92,4],[DRK.x-62,0],[VOLC_DOOR.x,0]],[[DRK.x-122,14],[DRK.x-110,-60],[DRK.x-60,-118]],[[DRK.x-92,4],[DRK.x-60,90],[DRK.x-10,130]],[[DRK.x-60,-118],[DRK.x+60,-110],[DRK.x+118,-30]]];
+const DRK_PATHS=[[[DRK.x+118,-30],[DRK.x+142,-12],[DRK.x+163,0]],[[DRK_EXIT.x,DRK_EXIT.z],[DRK.x-150,10],[DRK.x-122,14],[DRK.x-92,4],[DRK.x-62,0],[VOLC_DOOR.x,0]],[[DRK.x-122,14],[DRK.x-110,-60],[DRK.x-60,-118]],[[DRK.x-92,4],[DRK.x-60,90],[DRK.x-10,130]],[[DRK.x-60,-118],[DRK.x+60,-110],[DRK.x+118,-30]]];
 function drkPathDist(x,z){let m=1e9;for(const p of DRK_PATHS)for(let i=0;i<p.length-1;i++){const d=segDist(x,z,p[i][0],p[i][1],p[i+1][0],p[i+1][1]);if(d<m)m=d}return m}
 /* ---- hoogteveld ---- */
 const DSZ=380,DSEG=190,DCELL=DSZ/DSEG,DHN=DSEG+1;
@@ -34,7 +34,7 @@ function drkRaw(x,z){const u=x-DRK.x,v=z-DRK.z;
   const rimH=VOLC.h*Math.pow(1-VOLC.cr/VOLC.r,1.25)+2;if(d<VOLC.cr){h=rimH-12*(1-(d/VOLC.cr)**2)}
   const e=Math.max(Math.abs(u),Math.abs(v));if(e>158)h+=(e-158)*.3;
   /* kamp en aankomst vlak; paden zacht */
-  for(const f of[{x:DRK_CAMP.x,z:DRK_CAMP.z,r:24},{x:DRK_EXIT.x+8,z:DRK_EXIT.z,r:16}]){const fd=Math.hypot(x-f.x,z-f.z);if(fd<f.r)h=lerp(1.5,h,smooth(clamp((fd-f.r*.6)/(f.r*.4),0,1)))}
+  for(const f of[{x:DRK_CAMP.x,z:DRK_CAMP.z,r:24},{x:DRK_EXIT.x+8,z:DRK_EXIT.z,r:16},{x:DRK.x+156,z:DRK.z,r:16}]){const fd=Math.hypot(x-f.x,z-f.z);if(fd<f.r)h=lerp(1.5,h,smooth(clamp((fd-f.r*.6)/(f.r*.4),0,1)))}
   const pd=drkPathDist(x,z);if(pd<6&&d>VOLC.r*.55)h=lerp(h*.7+.4,h,smooth(pd/6));
   /* geulen voor de lava */
   const[rd,rw]=riverDist(x,z);if(rd<rw+1.5)h-=.9*smooth(1-rd/(rw+1.5));for(const p of DRK_POOLS){const pd2=Math.hypot(x-p.x,z-p.z);if(pd2<p.r+1)h-=.7*smooth(1-pd2/(p.r+1))}
@@ -82,7 +82,7 @@ const LAVA_MAT=new THREE.MeshBasicMaterial({map:LAVA_TEX,color:new THREE.Color()
 /* ---- portalen en poorten (procedureel deel; modellen komen in buildDrakeEnv) ---- */
 /* the three gates of the Dragon Realm: a D_Arch (opening along z) with the portal filling it exactly, colliders only on the
    arch posts, and the pillars with fire bowls just outside the arch */
-const DRK_ARCH={gate:{x:DRK_GATE.x,z:DRK_GATE.z,s:2.6,col:0xff5a1a,skull:1},exit:{x:DRK_EXIT.x,z:DRK_EXIT.z,s:2.4,col:0x6ac8ff,skull:0},door:{x:VOLC_DOOR.x,z:VOLC_DOOR.z,s:2.2,col:0xff7a20,skull:1}};
+const DRK_ARCH={gate:{x:DRK_GATE.x,z:DRK_GATE.z,s:2.6,col:0xff5a1a,skull:1},exit:{x:DRK_EXIT.x,z:DRK_EXIT.z,s:2.4,col:0x6ac8ff,skull:0},door:{x:VOLC_DOOR.x,z:VOLC_DOOR.z,s:2.2,col:0xff7a20,skull:1},elvia:{x:DRK.x+163,z:DRK.z,s:2.6,col:0x5aff8a,skull:0}};
 const DRK_PORTALS={};for(const k in DRK_ARCH){const a=DRK_ARCH[k];const y=groundH(a.x,a.z);DRK_PORTALS[k]=portalMesh(a.col,a.s,a.x,y,a.z,Math.PI/2);
   for(const sd of[-1,1]){addCol(a.x,a.z+sd*1.58*a.s,.46*a.s);const cz=a.z+sd*(2.05*a.s+1.4);addCol(a.x,cz,1.1);addFlame(scene,a.x,y+6.35,cz,1.6,0xff8a30);addLight(a.x,y+6.8,cz,0xff8a40,26,16)}}
 /* vulkaankern rond de ingang: niet door de berg heen lopen naast de deur */
@@ -131,7 +131,7 @@ const drkImg=(()=>{const W=380,c=document.createElement('canvas');c.width=c.heig
 /* ---- omgevingsmodellen (async, bij het laden) ---- */
 async function buildDrakeEnv(){if(window.__NOGLTF)return;
   const R=mulberry(9393);const jobs=[];
-  const ok=(x,z,clear=5)=>Math.max(Math.abs(x-DRK.x),Math.abs(z-DRK.z))<158&&Math.hypot(x-VOLC.x,z-VOLC.z)>VOLC.cr+6&&!drkLava(x,z)&&riverDist(x,z)[0]>riverDist(x,z)[1]+2&&drkPathDist(x,z)>clear&&Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)>26&&Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)>18&&Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)>12;
+  const ok=(x,z,clear=5)=>Math.max(Math.abs(x-DRK.x),Math.abs(z-DRK.z))<158&&Math.hypot(x-VOLC.x,z-VOLC.z)>VOLC.cr+6&&!drkLava(x,z)&&riverDist(x,z)[0]>riverDist(x,z)[1]+2&&drkPathDist(x,z)>clear&&Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)>26&&Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)>18&&Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)>12&&Math.hypot(x-DRK.x-160,z-DRK.z)>18;
   /* verkoolde bomen, lavabomen en basaltblokken (instanced + LOD) */
   const deadL=[],lavaL=[],rockL=[];
   for(let i=0;i<2400&&deadL.length<150;i++){const x=DRK.x-160+R()*320,z=DRK.z-160+R()*320;if(ok(x,z)&&Math.hypot(x-VOLC.x,z-VOLC.z)>VOLC.r*.8&&(fbm(x*.02,z*.02)>.45||R()<.15))deadL.push([x,z,.8+R()*.6,R()*6.28])}
@@ -151,7 +151,7 @@ async function buildDrakeEnv(){if(window.__NOGLTF)return;
     for(const[u,v]of[[-30,112],[22,132],[60,104],[-60,140]]){const x=DRK.x+u,z=DRK.z+v,y=drkH(x,z);for(let k=0;k<9;k++){const a=k/9*6.28;P(k%2?'Rock_6':'Rock_7',x+Math.cos(a)*3.2,z+Math.sin(a)*3.2,a,.9)}
     P('D_Bones',x,z,R()*6,1.2);addCol(x,z,2.2);addLight(x,y+1.5,z,0xff6a20,10,8,true)}
   /* schrijnen van de drakenpriesters (oost) */
-  for(const[u,v]of[[110,-40],[140,10],[100,40]]){const x=DRK.x+u,z=DRK.z+v,y=drkH(x,z);P('D_Pedestal',x,z,0,2.2);for(let k=0;k<6;k++){const a=k/6*6.28;P('D_Column2',x+Math.cos(a)*6,z+Math.sin(a)*6,a,1.6);addCol(x+Math.cos(a)*6,z+Math.sin(a)*6,.7)}
+  for(const[u,v]of[[110,-40],[128,56],[100,40]]){const x=DRK.x+u,z=DRK.z+v,y=drkH(x,z);P('D_Pedestal',x,z,0,2.2);for(let k=0;k<6;k++){const a=k/6*6.28;P('D_Column2',x+Math.cos(a)*6,z+Math.sin(a)*6,a,1.6);addCol(x+Math.cos(a)*6,z+Math.sin(a)*6,.7)}
     addFlame(scene,x,y+2.6,z,2.4,0xff5a10);addLight(x,y+3,z,0xff6a20,30,18);addCol(x,z,1.4)}
   /* Drakenjagerskamp: vuur, tenten, banieren, toortsen, kisten */
   {const cx=DRK_CAMP.x,cz=DRK_CAMP.z,y=drkH(cx,cz);P('D_Woodfire',cx,cz,0,1.6);addFlame(scene,cx,y+.7,cz,2.6,0xff8a30);addLight(cx,y+2,cz,0xffa050,34,18);addCol(cx,cz,1.2);

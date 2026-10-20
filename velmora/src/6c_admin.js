@@ -20,7 +20,7 @@ const admBtn=(id,t,alt)=>'<button class="btn'+(alt?' alt':'')+'" id="'+id+'">'+t
 const admIn=(id,v,min,max)=>'<input type="number" id="'+id+'" value="'+v+'" min="'+min+'" max="'+max+'">';
 const admSel=(id,opts,v)=>'<select id="'+id+'">'+opts.map(([k,t])=>'<option value="'+k+'"'+(String(k)===String(v)?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select>';
 const ADM_TP=[['Silverbrook square',0,8],['Arena',ARENA.x-4,ARENA.z+22],["Artisans' Yard",CRAFT.x+6,CRAFT.z+6],['Stables',STABLE.x,STABLE.z-9],['Farm',FARM.x,FARM.z-8],['Mirror Lake',LAKE.x+LAKE.r+4,LAKE.z],
-  ['Bandit Camp',CAMP.x,CAMP.z+30],['Crypt entrance',CRYPT.x,CRYPT.z+8],['Crypt (inside)','dun'],['Fire Cave entrance',CAVE.x,CAVE.z+9],["Ignaroth's Fire Cave (inside)",'cave'],['Dragon Realm','drk'],['Volcano (Vyraxion)','volc']];
+  ['Bandit Camp',CAMP.x,CAMP.z+30],['Crypt entrance',CRYPT.x,CRYPT.z+8],['Crypt (inside)','dun'],['Fire Cave entrance',CAVE.x,CAVE.z+9],["Ignaroth's Fire Cave (inside)",'cave'],['Dragon Realm','drk'],['WindStorm (Elvia)',WS.x,WS.z+WS.plaza+8],['Woods of Elvia gate',ELV_ENTRY.x,ELV_ENTRY.z],['Silverfalls (Elvia)',ELV.x-100,ELV.z-150],['Volcano (Vyraxion)','volc']];
 function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
   $('#admTabs').innerHTML=[['char','Character'],['items','Items'],['life','Skills & quests'],['cheat','Cheats']].map(([k,t])=>'<button class="'+(ADM_TAB===k?'on':'')+'" data-t="'+k+'">'+t+'</button>').join('');
   $('#admTabs').querySelectorAll('button').forEach(x=>x.onclick=()=>{ADM_TAB=x.dataset.t;renderAdmin()});

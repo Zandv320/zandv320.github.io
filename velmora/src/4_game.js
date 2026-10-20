@@ -138,7 +138,7 @@ function startCd(a){const cd=abCd(a);if(cd)ME.cds[a.id]=cd;if(!a.item)ME.gcd=1;P
 const _f=new THREE.Vector3();
 function myHand(){return _f.set(ME.pos.x+Math.sin(ME.ry)*.5,ME.pos.y+1.4,ME.pos.z+Math.cos(ME.ry)*.5).clone()}
 function fxEmit(o){netEmit('fx',o)}
-function execAbility(a,tg){if(a.mount){doMount();return}
+function execAbility(a,tg){if(a.mount){doMount();return}if(a.way){waystoneArrive(a.way);return}
   startCd(a);const id=a.id;
   if(id==='slag'){swingAnim(false);sfx('swing');setTimeout(()=>{if(!tg.dead){slamFx(tg.x,tg.y+(tg.rig&&tg.rig.h||1.5)*.55,tg.z,ME.ry);fxEmit({k:'sl',x:tg.x,y:tg.y+(tg.rig&&tg.rig.h||1.5)*.55,z:tg.z,r:ME.ry});dealDamage(tg,hitDmg(1.5,id));if(TM('slag.leech'))heal(ST.maxhp*TM('slag.leech'));sfx('hit');}},140);ME.swing=Math.max(ME.swing,.6)}
   else if(id==='storm'){const dx=tg.x-ME.pos.x,dz=tg.z-ME.pos.z,L=Math.hypot(dx,dz);ME.dash={x:tg.x-dx/L*1.6,z:tg.z-dz/L*1.6,t:Math.min(.45,L/40),t0:0,sx:ME.pos.x,sz:ME.pos.z,tg};sfx('swing')}
@@ -202,7 +202,7 @@ function takeHit(dmg,src){if(ME.dead||S.mode!=='play'||S.god)return;ME.hurtT=.35
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
 function die(){if(ME.mounted)dismount();if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('You were defeated by '+esc(r?r.n:'another player')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('You have died.','err');saveGame()}
-function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
+function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(elvRespawn()){}else if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
 
 /* ---------- monster AI (runs on the lobby host, or locally when offline) ---------- */
 function players(){const L=[];if(P&&S.mode==='play')L.push({id:myId(),x:ME.pos.x,z:ME.pos.z,dead:ME.dead,lvl:P.level,me:1});for(const r of REMOTES.values())if(r.inW)L.push({id:r.id,x:r.x,z:r.z,dead:r.dead,lvl:r.lvl});return L}

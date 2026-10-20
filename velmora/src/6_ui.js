@@ -238,6 +238,7 @@ function w2m(x,z,cx,cz,sc,W){return[W/2+(x-cx)*sc,W/2+(z-cz)*sc]}
 function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0,W,W);mg.beginPath();mg.arc(W/2,W/2,W/2,0,7);mg.clip();mg.fillStyle='#4a6a34';mg.fillRect(0,0,W,W);
   const sc=inD?1.6:1.1;const cx=ME.pos.x,cz=ME.pos.z;
   if(ME.pos.x>1250){const D=ME.pos.x>1700?D3:D2;const ox=D.X-D.C/2*D.c,oz=D.Z-D.R/2*D.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D.img,x0,y0,D.C*D.c*sc,D.R*D.c*sc)}
+  else if(inElv(ME.pos.x)){const[x0,y0]=w2m(ELV.x-ESZ/2,ELV.z-ESZ/2,cx,cz,sc,W);mg.drawImage(elvImg,x0,y0,ESZ*sc,ESZ*sc)}
   else if(inDrk(ME.pos.x)){const[x0,y0]=w2m(DRK.x-DSZ/2,DRK.z-DSZ/2,cx,cz,sc,W);mg.drawImage(drkImg,x0,y0,DSZ*sc,DSZ*sc)}
   else if(inD){const ox=DUN.x-DC/2*DUN.c,oz=DUN.z-DR/2*DUN.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(dunImg,x0,y0,DC*DUN.c*sc,DR*DUN.c*sc)}
   else{const[x0,y0]=w2m(-320,-320,cx,cz,sc,W);mg.drawImage(ATLAS.c||mapImg,x0,y0,640*sc,640*sc)}

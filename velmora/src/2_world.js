@@ -93,13 +93,13 @@ const HM=new Float32Array(HN*HN);
 for(let i=0;i<HN;i++)for(let j=0;j<HN;j++)HM[i*HN+j]=rawH(-WSIZE/2+j*CELL,-WSIZE/2+i*CELL);
 const DUN={x:1000,z:0,c:6};
 function groundH(x,z){
-  if(x>700)return 0;if(x<-1000)return drkH(x,z);
+  if(x>700)return 0;if(x<-2600)return elvH(x,z);if(x<-1000)return drkH(x,z);
   const fx=clamp((x+WSIZE/2)/CELL,0,SEG-.001),fz=clamp((z+WSIZE/2)/CELL,0,SEG-.001),j=Math.floor(fx),i=Math.floor(fz),u=fx-j,v=fz-i;
   const a=HM[i*HN+j],b=HM[i*HN+j+1],c=HM[(i+1)*HN+j],d=HM[(i+1)*HN+j+1];
   return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
 function inForest(x,z){return z<-52&&z>-262&&x<112&&x>-250}
 function zoneAt(x,z){
-  if(x>1700)return'Heart of the Volcano';if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
+  if(x>1700)return'Heart of the Volcano';if(x<-2600)return elvZone(x,z);if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
   if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Ashen Hills';if(x>196&&Math.abs(z-100)<26)return'Dragon Pass';
   if(Math.hypot((x-ARENA.x)/1.0,(z-ARENA.z)/1.09)<ARENA.r+14)return'Arena of Silverbrook';
   if(Math.hypot(x-CRAFT.x,z-CRAFT.z)<CRAFT.r+4)return"Artisans' Yard";
@@ -205,7 +205,7 @@ function collide(p,r){
   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){const dx=p.x-c.x,dz=p.z-c.z,rr=c.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr&&dd>1e-6){const d=Math.sqrt(dd),k=(rr-d)/d;p.x+=dx*k;p.z+=dz*k}}}
   for(const b of BOXES){if(p.x<b.x0-r||p.x>b.x1+r||p.z<b.z0-r||p.z>b.z1+r)continue;const qx=clamp(p.x,b.x0,b.x1),qz=clamp(p.z,b.z0,b.z1),dx=p.x-qx,dz=p.z-qz,dd=dx*dx+dz*dz;
     if(dd>1e-6){const d=Math.sqrt(dd);if(d<r){p.x+=dx/d*(r-d);p.z+=dz/d*(r-d)}}else{const l=p.x-b.x0,rr=b.x1-p.x,t=p.z-b.z0,bb=b.z1-p.z,m=Math.min(l,rr,t,bb);if(m===l)p.x=b.x0-r;else if(m===rr)p.x=b.x1+r;else if(m===t)p.z=b.z0-r;else p.z=b.z1+r}}
-  if(p.x<-1000){drkCollide(p,r);return}
+  if(p.x<-2600){elvCollide(p,r);return}if(p.x<-1000){drkCollide(p,r);return}
   p.x=clamp(p.x,-255,255);p.z=clamp(p.z,-262,255);
   if(Math.hypot(p.x-LAKE.x,p.z-LAKE.z)<LAKE.r*.86){const a=Math.atan2(p.z-LAKE.z,p.x-LAKE.x);p.x=LAKE.x+Math.cos(a)*LAKE.r*.86;p.z=LAKE.z+Math.sin(a)*LAKE.r*.86}
 }

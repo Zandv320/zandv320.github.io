@@ -16,10 +16,12 @@ const ENV_MAT=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:RAMP});
 const ENV_IM=[],ENV_LOD=[];
 /* instanced vegetatie met LOD: per variant twee InstancedMeshes (gedetailleerd dichtbij, vereenvoudigd veraf);
    updEnvLod() verdeelt de instanties elke ~0.3 s op afstand tot de camera. */
+/* models that come with a low-detail version (name_lod) */
+const ENV_LODS=new Set(["BirchTree_Dead_1", "BirchTree_Dead_2", "BushBerries_1", "Bush_1", "Bush_2", "C_Wheat_4", "CommonTree_1", "CommonTree_2", "CommonTree_3", "CommonTree_Dead_1", "CommonTree_Dead_2", "CommonTree_Dead_3", "CommonTree_Dead_4", "CommonTree_Dead_5", "K_grave", "K_gravestone-bevel", "K_gravestone-broken", "K_gravestone-cross", "K_gravestone-cross-large", "K_gravestone-decorative", "K_gravestone-round", "K_gravestone-wide", "N_Wheat", "PineTree_1", "PineTree_2", "PineTree_3", "Rock_1", "Rock_2", "Rock_3", "Rock_4", "Rock_5", "Rock_6", "Rock_7", "Rock_Moss_1", "Rock_Moss_2", "Rock_Moss_3", "Tree_Lava_1", "Tree_Lava_2", "Tree_Lava_3", "Willow_Dead_3"]);
 async function envInstances(names,list,groupOf,scaleOf,cast=true,tint=null){
   const tg=g=>{if(g&&tint){const c=g.attributes.color.array;for(let i=0;i<c.length;i+=3){c[i]*=tint.r;c[i+1]*=tint.g;c[i+2]*=tint.b}}return g};
   const geos=await Promise.all(names.map(async n=>{const g=await loadEnv(n);return g?tg(envMerged(g)):null}));if(geos.some(g=>!g))return false;
-  const lods=await Promise.all(names.map(async n=>{const g=await loadEnv(n+'_lod');return g?tg(envMerged(g)):null}));
+  const lods=await Promise.all(names.map(async n=>{if(!ENV_LODS.has(n))return null;const g=await loadEnv(n+'_lod');return g?tg(envMerged(g)):null}));
   const buckets=names.map(()=>[]);list.forEach((t,i)=>buckets[groupOf(t,i)%names.length].push(t));
   buckets.forEach((b,vi)=>{if(!b.length)return;const geo=geos[vi];const bb=geo.boundingBox;const mats=new Float32Array(b.length*16),pos=new Float32Array(b.length*2);
     b.forEach((t,i)=>{const s=scaleOf(t,bb);_p.set(t[0],groundH(t[0],t[1])-.05,t[1]);_e.set(0,t[3],0);_q.setFromEuler(_e);_s.set(s[0],s[1],s[2]);_m.compose(_p,_q,_s);_m.toArray(mats,i*16);pos[i*2]=t[0];pos[i*2+1]=t[1]});

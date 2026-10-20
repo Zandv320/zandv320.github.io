@@ -29,7 +29,8 @@ async function buildVisualEnv(){if(window.__NOGLTF)return;const R=mulberry(5151)
       /* voet van de berg op de laagste grond eromheen, zodat de rand nergens zweeft */let gy=1e9;for(const rr of[.8,1.6,2.3])for(let a=0;a<6.28;a+=.7)gy=Math.min(gy,groundH(x+Math.cos(a)*s*rr,z+Math.sin(a)*s*rr));
       jobs.push(envPlace(n,x,z,R()*6.28,()=>[s,s,s],scene,gy-groundH(x,z)-6).then(o=>{noShadow(o);if(tint)tintObj(o,tint)}))}}};
   ring(0,0,272,308,46,(x,z,r)=>x-r<DRK_GATE.x+26&&Math.abs(z-DRK_GATE.z)<r+18?[x,DRK_GATE.z+Math.sign(z-DRK_GATE.z||1)*(r+18)]:null);/* opening voor de Drakenpas */
-  ring(DRK.x,DRK.z,192,222,46,(x,z,r)=>x+r>DRK_ENTRY.x-26&&Math.abs(z-DRK_ENTRY.z)<r+18?[x,DRK_ENTRY.z+Math.sign(z-DRK_ENTRY.z||1)*(r+18)]:null,new THREE.Color(.42,.36,.33),.5);
+  ring(ELV.x,ELV.z,470,508,52,null,new THREE.Color(.8,.9,.82),1.15);/* mountains around the Woods of Elvia */
+  ring(DRK.x,DRK.z,192,222,46,(x,z,r)=>(x<DRK.x&&x+r>DRK_ENTRY.x-26||x>DRK.x&&x-r<DRK_ARCH.elvia.x+26)&&Math.abs(z-DRK.z)<r+18?[x,DRK.z+Math.sign(z-DRK.z||1)*(r+18)]:null,new THREE.Color(.42,.36,.33),.5);
   /* ---------- wolken ---------- */
   {const CL=['CL_Cloud_1','CL_Cloud_2','CL_Cloud_3'];const src=await Promise.all(CL.map(loadEnv));if(src.every(Boolean)){
     const cm=new THREE.MeshToonMaterial({color:0xffffff,fog:false,emissive:0x8899aa,emissiveIntensity:.35,gradientMap:RAMP});
