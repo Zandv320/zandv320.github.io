@@ -35,22 +35,24 @@ function palMap(src,tier){const k=src.uuid+'|'+tier;let t=_palTex.get(k);if(t)re
   t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.flipY=src.flipY;t.minFilter=THREE.LinearMipmapLinearFilter;t.anisotropy=4;_palTex.set(k,t);return t}
 /* the same for meshes coloured by vertex colours (KayKit weapons and shields): a repainted copy of the geometry */
 const _palGeo=new Map();
-function palGeo(geo,tier){const k=geo.uuid+'|'+tier;let g=_palGeo.get(k);if(g)return g;const C=geo.attributes.color;if(!C)return geo;const T=PAL_TIERS[tier]||PAL_TIERS[1];
+function palGeo(geo,tier,wpn){const k=geo.uuid+'|'+tier+(wpn?'w':'');let g=_palGeo.get(k);if(g)return g;const C=geo.attributes.color;if(!C)return geo;const T=PAL_TIERS[tier]||PAL_TIERS[1];
   g=geo.clone();const A=g.attributes.color,arr=new Float32Array(A.count*A.itemSize),c=new THREE.Color();
-  for(let i=0;i<A.count;i++){c.setRGB(A.getX(i),A.getY(i),A.getZ(i));const cl=palClass(c.clone().convertLinearToSRGB());let out=c;if(cl){const lm=Math.max(.35,Math.min(1.3,(c.r*.3+c.g*.59+c.b*.11)/.5));out=new THREE.Color(T[cl]).convertSRGBToLinear().multiplyScalar(cl==='metal'?Math.max(.8,lm):1)}
+  for(let i=0;i<A.count;i++){c.setRGB(A.getX(i),A.getY(i),A.getZ(i));let cl=palClass(c.clone().convertLinearToSRGB());/* on a weapon dark blue-grey is steel, not cloth */if(wpn&&cl==='cloth2')cl='metal';let out=c;if(cl){const lm=Math.max(.35,Math.min(1.3,(c.r*.3+c.g*.59+c.b*.11)/.5));out=new THREE.Color(T[cl]).convertSRGBToLinear().multiplyScalar(cl==='metal'?Math.max(.8,lm):1)}
     arr[i*A.itemSize]=out.r;arr[i*A.itemSize+1]=out.g;arr[i*A.itemSize+2]=out.b;if(A.itemSize===4)arr[i*4+3]=A.getW(i)}
   g.setAttribute('color',new THREE.BufferAttribute(arr,A.itemSize));_palGeo.set(k,g);return g}
 /* is this mesh part of a piece that has its own look (helmet, shoulder pads, cloak)? */
 function palOwnLook(x){for(let o=x;o;o=o.parent){const u=o.userData;if(u.helm||u.shoulder||u.cloak||u.eglow)return true}return false}
 /* repaint the whole knight: body, outfits, weapons and shield */
 function paladinize(r,m,o){if(!r.m||r.m!==m)return;const tier=clamp(o.pt|0||1,1,4);const T=PAL_TIERS[tier];
-  m.traverse(x=>{if(!x.isMesh||x.userData.palDone||palOwnLook(x))return;const mt=x.material;if(!mt)return;
+  /* an undead paladin keeps its own bones (the skeleton atlas is not a knight atlas): only the armour it wears is repainted */const undead=RACES[o.race]&&RACES[o.race].undead;
+  m.traverse(x=>{if(!x.isMesh||x.userData.palDone||palOwnLook(x))return;if(undead&&!x.userData.outfit)return;const mt=x.material;if(!mt)return;
     if(mt.map&&mt.map.image){x.material=mt.clone();x.material.map=palMap(mt.map,tier);if(T.emi){x.material.emissiveMap=x.material.map;x.material.emissive=new THREE.Color(0xffffff);x.material.emissiveIntensity=T.emi}x.material.needsUpdate=true}
     else if(x.geometry&&x.geometry.attributes.color&&mt.vertexColors){x.geometry=palGeo(x.geometry,tier);if(T.emi){x.material=mt.clone();x.material.emissive=new THREE.Color(T.gold);x.material.emissiveIntensity=T.emi*.5}}
     x.userData.palDone=1});
   r._pal={tier,acc:0}}
 /* weapons and shields are attached later than the outfit: they get the palette as they come in */
-function palWeapon(r,w,o){if(!w||o.cls!=='paladijn')return;const tier=clamp(o.pt|0||1,1,4),T=PAL_TIERS[tier];w.traverse(x=>{if(!x.isMesh)return;if(x.geometry.attributes.color)x.geometry=palGeo(x.geometry,tier);if(T.emi){x.material.emissive=new THREE.Color(T.gold);x.material.emissiveIntensity=Math.max(x.material.emissiveIntensity||0,T.emi*.6)}x.userData.palDone=1})}
+function palWeapon(r,w,o){if(!w||o.cls!=='paladijn')return;const tier=clamp(o.pt|0||1,1,4),T=PAL_TIERS[tier];w.traverse(x=>{if(!x.isMesh)return;if(x.geometry.attributes.color)x.geometry=palGeo(x.geometry,tier,!w.userData.wmodel||!/shield/i.test(w.userData.wmodel));
+    /* parts coloured by their material instead of vertex colours (the spiked ball of the mace) */else{const c=x.material.color.clone().convertLinearToSRGB();const cl=palClass(c);if(cl){const to=new THREE.Color(T[cl]);if(cl==='metal')to.multiplyScalar(Math.max(.8,Math.min(1.1,(c.r+c.g+c.b)/1.6)));x.material.color.copy(to)}}if(T.emi){x.material.emissive=new THREE.Color(T.gold);x.material.emissiveIntensity=Math.max(x.material.emissiveIntensity||0,T.emi*.6)}x.userData.palDone=1})}
 /* shields by rarity, from a plain round shield to the great crested shield */
 const PAL_SHIELDS=['XA_shield_round','XA_shield_badge','XW_shield_A','XA_shield_badge_color','XW_shield_C'];
 function palShieldFor(it){if(!it)return null;return PAL_SHIELDS[clamp(it.r|0,0,4)]}
