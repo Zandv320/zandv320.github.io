@@ -338,11 +338,12 @@ function playerLook(p){/* p: {race,cls,hair,eq}; every equipped slot changes the
   const C=CLASSES[p.cls];const R=RACES[p.race];const eq=p.eq||{};const cls=p.cls;
   const ch=eq.borst,hd=eq.hoofd,gl=eq.handen,lg=eq.benen,ft=eq.voeten;
   const best=Math.max(-1,...['borst','hoofd','handen','benen','voeten','wapen'].map(k=>eq[k]?eq[k].r|0:-1));
-  const o={cls,eqHead:!!hd,eqChest:!!ch,rar:Math.max(0,best),gear:{hoofd:gearDesc(hd,cls),borst:gearDesc(ch,cls),handen:gearDesc(gl,cls),benen:gearDesc(lg,cls),voeten:gearDesc(ft,cls)},wvis:eq.wapen&&eq.wapen.vis?gearDesc(eq.wapen,cls):null,race:p.race,skin:R.orc?R.hair[p.hair||0]:R.skin,hair:R.orc?0x1c1712:R.hair[p.hair||0],chest:gearCol(ch,cls)??C.chest,pants:gearCol(lg,cls)??C.pants,cape:C.cape,hl:helmTier(eq.hoofd),sp:eq.schouders?(eq.schouders.spt||clamp(eq.schouders.r|0,1,4)):0,wt:eq.wapen?eq.wapen.wt:'none',ench:eq.wapen&&eq.wapen.ench||'',awt:C.wt,wr:eq.wapen?eq.wapen.r:0,
+  const o={cls,eqHead:!!hd,eqChest:!!ch,rar:Math.max(0,best),gear:{hoofd:gearDesc(hd,cls),borst:gearDesc(ch,cls),handen:gearDesc(gl,cls),benen:gearDesc(lg,cls),voeten:gearDesc(ft,cls)},wvis:eq.wapen&&eq.wapen.vis?gearDesc(eq.wapen,cls):null,race:p.race,skin:R.orc?R.hair[p.hair||0]:R.skin,hair:R.orc?0x1c1712:R.hair[p.hair||0],chest:gearCol(ch,cls)??C.chest,pants:gearCol(lg,cls)??C.pants,cape:C.cape,hl:helmTier(eq.hoofd),sp:eq.schouders?(eq.schouders.spt||clamp(eq.schouders.r|0,1,4)):0,ck:cloakFor(eq.rug,cls),ckc:eq.rug?cloakTint(eq.rug,cls):null,ckr:eq.rug?eq.rug.r|0:0,wt:eq.wapen?eq.wapen.wt:'none',ench:eq.wapen&&eq.wapen.ench||'',awt:C.wt,wr:eq.wapen?eq.wapen.r:0,
     boots:gearCol(ft,cls)??0x3a2818,bootsBig:!!ft,gloves:gearCol(gl,cls),glovesBig:!!gl&&cls==='krijger',legPlate:!!lg&&cls==='krijger',chestMetal:!!ch&&cls==='krijger',trim:best>=2?RCOL[best]:0};
   Object.assign(o,outfitLook(p,cls));
   if(ch&&ch.r>=2){const cc=new THREE.Color(C.cape).lerp(new THREE.Color(RCOL[ch.r]),.35);o.cape=cc.getHex()}
   if(cls==='krijger'){o.warrior=true;o.chest=gearCol(ch,cls)??0xb8864f;o.pants=gearCol(lg,cls)??0x5a5652;o.cape=ch&&ch.r>=2?o.cape:0x262a4c;o.gloves=gearCol(gl,cls)??0x6b4322;if(!o.hair||o.hair===R.hair[0])o.hair=R.hair[p.hair||0]}
+  /* the simple (non-glTF) body shows a cape only with a cloak equipped, in the cloak's colour */o.cape=eq.rug?o.ckc:null;
   if(cls==='magier'){o.robe=gearCol(ch,cls)??0x3a2a6a;if(ch)o.pads=gearCol(ch,cls);if(hd)o.hat=gearCol(hd,cls)}
   if(cls==='jager'){if(hd)o.hood=gearCol(hd,cls);o.pads=ch?gearCol(ch,cls):null}
   return o}
@@ -370,6 +371,7 @@ function drawIcon(cv,ic,sz=64){
   else if(k==='potion'){g.beginPath();g.arc(32,40,15,0,7);g.fill();g.fillRect(27,14,10,14);g.fillStyle=c1;g.beginPath();g.arc(32,42,11,0,7);g.fill();g.fillStyle='#8a5a2a';g.fillRect(26,10,12,6)}
   else if(k==='hearth'){g.beginPath();g.ellipse(32,34,16,20,0,0,7);g.fill();g.fillStyle=c2;g.beginPath();g.ellipse(32,34,8,11,0,0,7);g.fill()}
   else if(k==='schouders'){for(const s of[-1,1]){g.beginPath();g.ellipse(32+s*13,34,12,9,s*.35,Math.PI,0);g.lineTo(32+s*24,40);g.lineTo(32+s*2,40);g.closePath();g.fill()}g.fillStyle=c2;g.fillRect(29,26,6,20)}
+  else if(k==='rug'){g.beginPath();g.moveTo(20,12);g.lineTo(44,12);g.quadraticCurveTo(52,34,54,54);g.lineTo(42,50);g.lineTo(32,55);g.lineTo(22,50);g.lineTo(10,54);g.quadraticCurveTo(12,34,20,12);g.closePath();g.fill();g.fillStyle=c2;g.fillRect(20,11,24,5);g.beginPath();g.arc(32,14,4,0,7);g.fill()}
   else if(k==='hoofd'){g.beginPath();g.arc(32,34,17,Math.PI,0);g.lineTo(49,44);g.lineTo(15,44);g.closePath();g.fill();g.fillStyle=c2;g.fillRect(22,36,20,4)}
   else if(k==='borst'){g.beginPath();g.moveTo(14,16);g.lineTo(26,12);g.lineTo(32,18);g.lineTo(38,12);g.lineTo(50,16);g.lineTo(46,30);g.lineTo(46,52);g.lineTo(18,52);g.lineTo(18,30);g.closePath();g.fill()}
   else if(k==='handen'){g.beginPath();g.roundRect(18,22,26,30,6);g.fill();for(let i=0;i<4;i++){g.beginPath();g.roundRect(18+i*7,10,6,16,3);g.fill()}g.beginPath();g.roundRect(42,28,12,8,4);g.fill()}

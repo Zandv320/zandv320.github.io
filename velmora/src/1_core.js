@@ -146,14 +146,14 @@ const NPCS=[
 ];
 /* tekstkleuren: licht genoeg voor de bruine panelen (met donkere schaduw), en verzadigd genoeg om ze te herkennen */
 const RARITY=[{n:'Common',c:'#ffffff'},{n:'Uncommon',c:'#5dff73'},{n:'Rare',c:'#7cc0ff'},{n:'Epic',c:'#e0a3ff'},{n:'Legendary',c:'#ffab4a'}];
-const SLOTS=['hoofd','schouders','borst','handen','benen','voeten','ring','wapen'];
-const SLOT_NL={wapen:'Weapon',hoofd:'Head',schouders:'Shoulders',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
+const SLOTS=['hoofd','schouders','rug','borst','handen','benen','voeten','ring','wapen'];
+const SLOT_NL={wapen:'Weapon',hoofd:'Head',schouders:'Shoulders',rug:'Cloak',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
 const MAT={krijger:['Iron','Steel','Chainmail','Battered'],magier:['Silk','Linen','Runic','Stardust'],jager:['Leather','Wolfhide','Scaled','Falconfeather']};
-const BASE={schouders:{krijger:'Pauldrons',magier:'Mantle',jager:'Spaulders'},hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots'}};
+const BASE={schouders:{krijger:'Pauldrons',magier:'Mantle',jager:'Spaulders'},rug:{krijger:'Cape',magier:'Cloak',jager:'Cloak'},hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots'}};
 const WEAP={krijger:[['Sword','zwaard'],['Battleaxe','bijl']],magier:[['Staff','staf'],['Wand','staf']],jager:[['Bow','boog'],['Longbow','boog']]};
 const SUFFIX=[['of the Bear',0,1],['of the Tiger',1,0],['of the Eagle',.6,.6],['of the Owl',.8,.3],['of the Wolf',.5,.7],['of the Light',.7,.5]];
 const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter']};
-const ARM_SLOT={schouders:.8,hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
+const ARM_SLOT={schouders:.8,rug:.5,hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
 const xpNeed=l=>40*l+15*l*l;
 const MAXLVL=25;
 /* ===== life skills: gathering (mining, woodcutting, herbalism, skinning, fishing) and crafting (smithing, leatherworking,
@@ -245,8 +245,8 @@ const GEAR_SETS={
     {lv:12,il:10,pre:'Silken',mat:'Silk Cloth',x:['Linen',2],w:['Sturdy Wood',2]},
     {lv:25,il:16,pre:'Emberweave',mat:'Emberweave',x:['Silk Cloth',2],w:['Ashwood',2]},
     {lv:38,il:23,pre:'Moonsilk',mat:'Moonsilk Cloth',x:['Emberweave',2],w:['Elderwood',2]}]}};
-const GEAR_BASE={krijger:{hoofd:'Helm',borst:'Breastplate',handen:'Gauntlets',benen:'Legplates',voeten:'Sabatons'},jager:{hoofd:'Hood',borst:'Tunic',handen:'Gloves',benen:'Leggings',voeten:'Boots'},magier:{hoofd:'Hat',borst:'Robe',handen:'Handwraps',benen:'Trousers',voeten:'Sandals'}};
-const GEAR_SLOT={hoofd:[3,0],handen:[2,1],voeten:[2,2],benen:[4,3],wapen:[4,4],borst:[5,5]};/* [materiaal, extra vaardigheidsniveau] */
+const GEAR_BASE={krijger:{rug:'Cape',hoofd:'Helm',borst:'Breastplate',handen:'Gauntlets',benen:'Legplates',voeten:'Sabatons'},jager:{rug:'Cloak',hoofd:'Hood',borst:'Tunic',handen:'Gloves',benen:'Leggings',voeten:'Boots'},magier:{rug:'Cloak',hoofd:'Hat',borst:'Robe',handen:'Handwraps',benen:'Trousers',voeten:'Sandals'}};
+const GEAR_SLOT={hoofd:[3,0],rug:[2,1],handen:[2,1],voeten:[2,2],benen:[4,3],wapen:[4,4],borst:[5,5]};/* [materiaal, extra vaardigheidsniveau] */
 for(const sk in GEAR_SETS){const S=GEAR_SETS[sk];S.tiers.forEach((T,ti)=>{
   for(const slot in GEAR_SLOT){const[q,dl]=GEAR_SLOT[slot];const big=slot==='borst'||slot==='benen'||slot==='wapen';
     const wl=slot==='wapen'?S.weap:[[GEAR_BASE[S.cls][slot],null]];

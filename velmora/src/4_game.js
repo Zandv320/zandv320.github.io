@@ -23,7 +23,7 @@ function makeGear(slot,il,r,cls){
   else{n=mt+' '+n.toLowerCase();n=n[0].toUpperCase()+n.slice(1);if(Math.random()<.5)sta=Math.max(1,Math.round(budget*.4))}
   if(r>=3){const ep={krijger:['Bonebreaker','Grave Axe of Morath','Crownsplitter'],magier:['Staff of Eternal Night','Whispering Skullstaff','Soulflame'],jager:['Shadowbow of Kaal-Morath','Bonestring','Gravewarden\'s Longbow']};if(slot==='wapen')n=pick(ep[cls]);else n='Crown Shard '+n.split(' ').slice(1).join(' ');pow=Math.round(pow*1.15+2);sta=Math.round(sta*1.15+2)}
   Object.assign(it,{n,pow,sta,arm});it.price=Math.round((il*1.6+2)*(1+r*1.3));return it}
-function randSlot(){return pick(['wapen','hoofd','borst','handen','benen','voeten','ring','borst','benen'])}
+function randSlot(){return pick(['wapen','hoofd','rug','borst','handen','benen','voeten','ring','borst','benen'])}
 const potion=(pt,q=1)=>({id:uid(),kind:'potion',pt,n:pt==='mana'?'Power Potion':'Healing Potion',q,price:1,r:0});
 const matItem=(n,q=1)=>({id:uid(),kind:'mat',n,q,price:(MATS[n]||{}).price||1,r:(MATS[n]||{}).r||0});
 const junkItem=(type,l)=>({id:uid(),kind:'junk',n:pick(JUNK[type]||['Junk']),q:1,price:Math.max(1,Math.round(l*.8)),r:-1});
@@ -34,7 +34,10 @@ function countItem(pt){return P.inv.reduce((s,x)=>s+(x&&x.kind==='potion'&&x.pt=
 function takePotion(pt){const i=P.inv.findIndex(x=>x&&x.kind==='potion'&&x.pt===pt);if(i<0)return false;if(--P.inv[i].q<=0)P.inv[i]=null;return true}
 function newChar(name,race,cls,hair){const c={id:uid(),talents:{},pvp:false,honor:0,name,race,cls,hair,level:1,xp:0,gold:3,inv:Array(BAG).fill(null),life:{},energy:100,buffs:{},eq:{},quests:{},done:[],x:rand(-3,3),z:rand(4,8),ry:Math.PI,hp:-1,mp:-1,kills:0,created:Date.now()};
   const w=makeGear('wapen',1,0,cls);w.n={krijger:'Worn Sword',magier:'Apprentice Staff',jager:'Simple Bow'}[cls];w.wt=CLASSES[cls].wt;w.req=1;c.eq.wapen=w;c.eq.borst=makeGear('borst',1,0,cls);c.eq.borst.n={krijger:'Apprentice Shirt',magier:'Apprentice Robe',jager:'Apprentice Tunic'}[cls];
+  c.eq.rug=starterCloak(cls);c.ckGiven=1;
   c.inv[0]=potion('heal',3);c.inv[1]=potion('mana',2);return c}
+/* everyone starts with a plain cloak (characters from before the cloak slot get one too, once) */
+function starterCloak(cls){const it=makeGear('rug',1,0,cls);it.n="Traveller's Cloak";it.req=1;it.c=0x8a6a48;return it}
 function calcStats(){TMC=null;const C=CLASSES[P.cls],R=RACES[P.race];let pow=C.pow+C.powL*(P.level-1),sta=C.sta+C.staL*(P.level-1),arm=P.level*C.armorK*1.5;
   for(const s of SLOTS){const it=P.eq[s];if(!it)continue;pow+=it.pow||0;sta+=it.sta||0;arm+=it.arm||0}
   pow*=(R.pow||1)*(1+TM('powp'));const now=Date.now();P.buffs=P.buffs||{};let hpB=0,armB=0,dmgB=0;for(const k of['food','elixir']){const b=P.buffs[k];if(!b)continue;if(b.until<now){delete P.buffs[k];continue}const f=(MATS[b.n]||{})[k];if(!f)continue;pow*=1+(f.pow||0);hpB+=f.hp||0;armB+=f.arm||0;dmgB+=f.dmg||0}
@@ -193,6 +196,7 @@ function reward(m){
   if(t.dragon){L.items.length=0;L.items.push(makeLegendary(P.cls));L.items.push(makeGear(randSlot(),22,3,P.cls));L.items.push(potion('heal',3))}
   else if(t.boss){L.items.push(makeGear('wapen',11,3,P.cls));L.items.push(makeGear(randSlot(),11,2,P.cls))}
   {const hm=helmDrop(m.type);if(hm){L.items.push(hm);log('✦ '+t.n+' dropped <span style="color:'+rarCol(hm)+'">['+esc(hm.n)+']</span>!','loot',true)}}
+  {const ck=cloakDrop(m.type);if(ck){L.items.push(ck);log('✦ '+t.n+' dropped <span style="color:'+rarCol(ck)+'">['+esc(ck.n)+']</span>!','loot',true)}}
   {const sp=shoulderDrop(m.type);if(sp){L.items.push(sp);log('✦ '+t.n+' dropped <span style="color:'+rarCol(sp)+'">['+esc(sp.n)+']</span>!','loot',true)}}
   if(Math.random()<.45&&!t.add)L.items.push(junkItem(m.type,m.lvl));
   if((m.type==='ever'||m.type==='wolf')&&Math.random()<.55)L.items.push(matItem('Raw Meat',1));

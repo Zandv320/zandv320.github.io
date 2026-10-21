@@ -3,18 +3,19 @@
    same Rig_Medium skeleton (identical bone names and rest pose), so body parts of one character can be bound to the
    bones of another: a Mage can wear the Knight's breastplate, a Warrior the Barbarian's bear hat, and so on.
    Every armour slot picks an outfit set; every weapon picks a model. Both follow from the item itself (its name, rarity
-   and crafting tier), so every player sees the same thing without extra network data. */
+   and crafting tier), so every player sees the same thing without extra network data. Capes are no longer part of a
+   chest outfit: they come from the cloak slot (3h_cloak.js). */
 const P2=(m,...n)=>n.map(x=>[m,x]);
 const OUTFITS={
-  knight:{hoofd:P2('O_Knight','Knight_Helmet'),borst:P2('O_Knight','Knight_Body','Knight_Cape'),handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
+  knight:{hoofd:P2('O_Knight','Knight_Helmet'),borst:P2('O_Knight','Knight_Body'),handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
   barbarian:{hoofd:P2('O_Barbarian','Barbarian_BearHat'),borst:P2('O_Barbarian','Barbarian_Body'),handen:P2('O_Barbarian','Barbarian_ArmLeft','Barbarian_ArmRight'),benen:P2('O_Barbarian','Barbarian_LegLeft','Barbarian_LegRight')},
-  mage:{hoofd:P2('O_Mage','Mage_Hat'),borst:P2('O_Mage','Mage_Body','Mage_Cape'),handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
-  rogue:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),mask:1,borst:P2('O_Rogue','Rogue_Body','Rogue_Cape'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')},
-  hooded:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Head','RogueHooded_Mask'),head:1,borst:P2('O_Rogue_Hooded','RogueHooded_Body','RogueHooded_Cape'),handen:P2('O_Rogue_Hooded','RogueHooded_ArmLeft','RogueHooded_ArmRight'),benen:P2('O_Rogue_Hooded','RogueHooded_LegLeft','RogueHooded_LegRight')},
-  ranger:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),mask:1,borst:P2('O_Ranger','Ranger_Body','Ranger_Cape','Ranger_Quiver'),handen:P2('O_Ranger','Ranger_ArmLeft','Ranger_ArmRight'),benen:P2('O_Ranger','Ranger_LegLeft','Ranger_LegRight')},
-  bone:{hoofd:P2('O_Skeleton_Warrior','Skeleton_Warrior_Helmet'),borst:[...P2('O_Knight','Knight_Body'),...P2('O_Skeleton_Warrior','Skeleton_Warrior_Cloak')],handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
-  bonemage:{hoofd:P2('O_Skeleton_Mage','Skeleton_Mage_Hat'),borst:[...P2('O_Mage','Mage_Body'),...P2('O_Skeleton_Minion','Skeleton_Minion_Cloak')],handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
-  bonerogue:{hoofd:P2('O_Skeleton_Rogue','Skeleton_Rogue_Hood'),borst:[...P2('O_Rogue','Rogue_Body'),...P2('O_Skeleton_Warrior','Skeleton_Warrior_Cloak')],handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')}};
+  mage:{hoofd:P2('O_Mage','Mage_Hat'),borst:P2('O_Mage','Mage_Body'),handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
+  rogue:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),mask:1,borst:P2('O_Rogue','Rogue_Body'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')},
+  hooded:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Head','RogueHooded_Mask'),head:1,borst:P2('O_Rogue_Hooded','RogueHooded_Body'),handen:P2('O_Rogue_Hooded','RogueHooded_ArmLeft','RogueHooded_ArmRight'),benen:P2('O_Rogue_Hooded','RogueHooded_LegLeft','RogueHooded_LegRight')},
+  ranger:{hoofd:P2('O_Rogue_Hooded','RogueHooded_Mask'),mask:1,borst:P2('O_Ranger','Ranger_Body','Ranger_Quiver'),handen:P2('O_Ranger','Ranger_ArmLeft','Ranger_ArmRight'),benen:P2('O_Ranger','Ranger_LegLeft','Ranger_LegRight')},
+  bone:{hoofd:P2('O_Skeleton_Warrior','Skeleton_Warrior_Helmet'),borst:P2('O_Knight','Knight_Body'),handen:P2('O_Knight','Knight_ArmLeft','Knight_ArmRight'),benen:P2('O_Knight','Knight_LegLeft','Knight_LegRight')},
+  bonemage:{hoofd:P2('O_Skeleton_Mage','Skeleton_Mage_Hat'),borst:P2('O_Mage','Mage_Body'),handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
+  bonerogue:{hoofd:P2('O_Skeleton_Rogue','Skeleton_Rogue_Hood'),borst:P2('O_Rogue','Rogue_Body'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')}};
 /* per class: which sets an armour piece can have, from plain to fancy */
 const OUTFIT_CLS={krijger:['barbarian','knight','bone'],magier:['mage','hooded','bonemage'],jager:['rogue','ranger','hooded','bonerogue']};
 /* weapon models per weapon type and class, roughly from plain to fancy */
