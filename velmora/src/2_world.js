@@ -22,6 +22,12 @@ const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scen
 /* omgevingsocclusie (GTAO): zachte contactschaduw in hoeken, onder karakters en tussen huizen */
 const gtao=new GTAOPass(scene,camera,innerWidth,innerHeight);gtao.output=GTAOPass.OUTPUT.Default;gtao.blendIntensity=.85;
 gtao.updateGtaoMaterial({radius:.6,distanceExponent:1.5,thickness:1.2,scale:1.1,samples:12,distanceFallOff:1,screenSpaceRadius:false});gtao.updatePdMaterial({lumaPhi:10,depthPhi:2,normalPhi:3,radius:4,rings:2,samples:12});composer.addPass(gtao);
+/* GTAO without a second scene render: the AO reads the depth the main render already wrote (a depth texture on the
+   composer's buffers) and rebuilds the normals from it. Before, the whole scene was drawn twice per frame (once more
+   with a normal material); for a flat-shaded world the rebuilt normals are the same faces. */
+{for(const rt of[composer.renderTarget1,composer.renderTarget2]){rt.depthTexture=new THREE.DepthTexture(rt.width,rt.height);rt.depthTexture.type=THREE.UnsignedIntType}
+  gtao._renderGBuffer=false;for(const m of[gtao.gtaoMaterial,gtao.pdMaterial]){m.defines.NORMAL_VECTOR_TYPE=0;m.defines.DEPTH_SWIZZLING='x';m.uniforms.tNormal.value=null;m.needsUpdate=true}
+  const _gr=gtao.render.bind(gtao);gtao.render=(r,wb,rb,...x)=>{const d=rb.depthTexture;if(d&&gtao.gtaoMaterial.uniforms.tDepth.value!==d){gtao.gtaoMaterial.uniforms.tDepth.value=d;gtao.pdMaterial.uniforms.tDepth.value=d}return _gr(r,wb,rb,...x)}}
 const bloom=new UnrealBloomPass(new THREE.Vector2(512,512),.36,.5,.9);composer.addPass(bloom);
 const grade=new ShaderPass({uniforms:{tDiffuse:{value:null},sat:{value:1.12},vig:{value:.34}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform sampler2D tDiffuse;uniform float sat,vig;varying vec2 vUv;void main(){vec4 c=texture2D(tDiffuse,vUv);float l=dot(c.rgb,vec3(.299,.587,.114));c.rgb=mix(vec3(l),c.rgb,sat);c.rgb=(c.rgb-.5)*1.05+.5;float d=distance(vUv,vec2(.5));c.rgb*=1.-smoothstep(.42,.95,d)*vig;gl_FragColor=c;}'});composer.addPass(grade);composer.addPass(new OutputPass());const smaa=new SMAAPass(innerWidth,innerHeight);composer.addPass(smaa);
 
