@@ -463,6 +463,52 @@ body.touch #pTalent{left:50%;right:auto;top:auto;bottom:max(6px,env(safe-area-in
 @media (max-width:700px),(max-height:500px){#tTabs{display:flex;gap:6px;margin-bottom:8px}#tTabs button{flex:1}#tTrees{grid-template-columns:1fr}.ttree:not(.on){display:none}}
 body.tal #tbtns,body.tal #joy,body.tal #tJump{visibility:hidden}
 .tset{margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,209,0,.25);font-size:12px}.tsetn{color:#ffd100;font-weight:700;margin-bottom:2px}.tseton{color:#fff2b0;padding-left:8px}.tsetoff{color:#8a8478;padding-left:8px}.tsetb{color:#5dff73;margin-top:3px}
+
+/* ===== crafting book: modern, responsive (container queries follow the window size, so resizing the window reflows it) ===== */
+#pLife{container-type:inline-size;border:1px solid rgba(232,192,106,.35);border-image:none;border-radius:16px;background:linear-gradient(180deg,rgba(30,24,18,.97),rgba(14,11,8,.97));box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,230,170,.08);filter:none;padding:12px 14px 14px;width:min(980px,96vw);height:min(80vh,720px)}
+#pLife>h3{border:0;margin:0 0 6px;padding:0 0 6px;font-size:20px}
+#pLife .lwrap{display:grid;grid-template-columns:210px 1fr;gap:14px;margin:0;min-height:0;flex:1}
+#pLife .lside{display:flex;flex-direction:column;gap:4px;overflow:auto;padding:4px;background:rgba(0,0,0,.25);border-radius:12px}
+#pLife .lgrp{font:700 11px Cinzel,serif;color:var(--gold2);letter-spacing:.12em;margin:8px 6px 2px}
+#pLife .lsk{display:flex;align-items:center;gap:10px;background:transparent;border:1px solid transparent;border-radius:10px;padding:6px 8px;color:var(--ink);cursor:pointer;text-align:left;transition:background .15s,border-color .15s}
+#pLife .lsk:hover{background:rgba(255,220,150,.06)}#pLife .lsk.sel{background:linear-gradient(90deg,rgba(232,192,106,.18),rgba(232,192,106,.04));border-color:rgba(232,192,106,.5);box-shadow:none}
+#pLife .lring{flex:none;width:42px;height:42px;border-radius:50%;padding:3px;background:conic-gradient(#9cff6a var(--p),rgba(255,255,255,.08) 0);display:grid;place-items:center}
+#pLife .lring canvas{width:36px!important;height:36px!important;border-radius:50%;border:0;display:block}
+#pLife .lskt b{display:block;font-size:13px;font-weight:600}#pLife .lskt small{font-size:11px;color:var(--gold)}
+#pLife .lmain{overflow:auto;min-height:0;padding-right:6px}
+#pLife .lhead{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,rgba(232,192,106,.14),rgba(232,192,106,.02));border:1px solid rgba(232,192,106,.22);position:sticky;top:0;z-index:2;backdrop-filter:blur(6px)}
+#pLife .lhead>canvas{width:56px;height:56px;border-radius:12px;border:1px solid rgba(232,192,106,.4);flex:none}
+#pLife .lht{flex:1;min-width:0}#pLife .lht h4{margin:0;font:700 20px Cinzel,serif;color:var(--gold)}#pLife .lrank{font-size:13px;color:#fff1cf}#pLife .lrank span{color:var(--muted);opacity:.8}
+#pLife .lxp{position:relative;height:14px;border-radius:7px;background:rgba(0,0,0,.45);margin-top:6px;overflow:hidden}#pLife .lxp i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#4aa82a,#b6ff8a);border-radius:7px}#pLife .lxp span{position:relative;font-size:10px;line-height:14px;display:block;text-align:center;text-shadow:0 1px 2px #000}
+#pLife .len{flex:none;text-align:right;min-width:110px}#pLife .len b{font-size:16px;color:#ffe08a}#pLife .len small{display:block;font-size:11px;color:var(--muted)}#pLife .lenb{height:6px;border-radius:3px;background:rgba(0,0,0,.45);margin-top:4px;overflow:hidden}#pLife .lenb i{display:block;height:100%;background:linear-gradient(90deg,#d8a030,#ffe08a)}
+#pLife .lhint{font-size:13px;color:var(--muted);margin:10px 2px 0;line-height:1.45}#pLife .lhint.sub{opacity:.75;font-size:12px;margin-top:4px}
+#pLife .lwarn{margin:10px 0 0;padding:8px 12px;border-radius:10px;background:rgba(255,140,60,.12);border:1px solid rgba(255,140,60,.35);color:#ffc890;font-size:13px}
+#pLife .ltool{display:flex;gap:8px;margin:12px 0 4px}
+#pLife .ltool input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid rgba(232,192,106,.3);background:rgba(0,0,0,.45);color:var(--ink);font-size:13px;outline:none}#pLife .ltool input:focus{border-color:var(--gold)}
+#pLife .lchip{flex:none;padding:0 14px;border-radius:999px;border:1px solid rgba(232,192,106,.35);background:rgba(0,0,0,.35);color:var(--muted);font-size:12px;cursor:pointer}#pLife .lchip.on{background:rgba(120,220,90,.2);border-color:#8ae06a;color:#d8ffc8}
+#pLife .ltier{display:flex;align-items:center;gap:10px;width:100%;margin:14px 0 8px;padding:8px 12px;border-radius:10px;background:rgba(255,220,150,.05);border:1px solid rgba(232,192,106,.18);color:var(--gold);font:700 13px Cinzel,serif;cursor:pointer;text-align:left}
+#pLife .ltier:before{content:'›';display:inline-block;transition:transform .15s;font-size:18px;line-height:1}#pLife .ltier.open:before{content:'›';transform:rotate(90deg)}
+#pLife .ltier small{color:var(--muted);font:12px system-ui;opacity:.8}#pLife .ltier em{margin-left:auto;font:600 11px system-ui;color:#1a120a;background:var(--gold);border-radius:999px;padding:1px 8px;font-style:normal}
+#pLife .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+#pLife .lcard{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);transition:border-color .15s,transform .15s,background .15s}
+#pLife .lcard:hover{border-color:rgba(232,192,106,.45);background:rgba(255,230,170,.06);transform:translateY(-1px)}
+#pLife .lcard.ready{border-color:rgba(138,224,106,.35)}#pLife .lcard.lock{opacity:.5}
+#pLife .lch{display:flex;gap:10px;align-items:center}#pLife .lch canvas{width:44px!important;height:44px!important;border-radius:10px;border:1px solid rgba(232,192,106,.3);flex:none}
+#pLife .lcn{min-width:0}#pLife .lcn b{display:block;font-size:14px;line-height:1.2}#pLife .lcn small{font-size:11px;color:var(--gold)}#pLife .lcn small.no{color:#ff9a8a}
+#pLife .lci{font-size:12px;color:var(--muted);opacity:.85}#pLife .lci.ok{color:#9cff8a;opacity:1}
+#pLife .lmats{display:flex;flex-wrap:wrap;gap:4px}#pLife .lm{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08)}#pLife .lm b{font-weight:600}#pLife .lm i{font-style:normal;margin-left:5px;opacity:.7}
+#pLife .lm.ok{color:#b8ffa8;border-color:rgba(138,224,106,.35)}#pLife .lm.no{color:#ffaa98;border-color:rgba(255,120,100,.3)}
+#pLife .lcb{display:flex;gap:6px;margin-top:auto}#pLife .lcb .btn{flex:1;min-height:32px;font-size:13px;padding:2px 10px}
+@container (max-width:640px){#pLife .lwrap{grid-template-columns:1fr}#pLife .lside{flex-direction:row;overflow-x:auto;overflow-y:hidden;flex:none}#pLife .lgrp{display:none}#pLife .lsk{flex:none}#pLife .lskt small{display:none}#pLife .lhead{flex-wrap:wrap}#pLife .len{min-width:0;text-align:left;width:100%}#pLife .ltool{top:0}#pLife .lhead{position:relative}}
+@container (max-width:420px){#pLife .lgrid{grid-template-columns:1fr}#pLife .lskt{display:none}#pLife .lsk{padding:4px}}
+body.touch #pLife{width:100%;height:auto;border-radius:16px 16px 0 0}
+#pLife .lcb .btn{border:0;border-image:none;border-radius:9px;background:linear-gradient(180deg,#f0cf7a,#c4923e);color:#22160a;font-weight:700;text-shadow:none;box-shadow:0 2px 0 #6a4a1a,0 4px 12px rgba(0,0,0,.35);filter:none}
+#pLife .lcb .btn:hover{background:linear-gradient(180deg,#ffe09a,#d8a64e)}#pLife .lcb .btn.alt{flex:0 0 64px;background:rgba(0,0,0,.35);color:var(--gold);box-shadow:inset 0 0 0 1px rgba(232,192,106,.45)}
+#pLife .lcb .btn:disabled{background:rgba(255,255,255,.06);color:rgba(255,255,255,.35);box-shadow:none;cursor:default}
+#pLife>h3 .x{transform:scale(.85)}
+/* ===== resizable windows: drag the corner grip; double-click the title to reset ===== */
+.rgrip{position:absolute;right:2px;bottom:2px;width:18px;height:18px;cursor:nwse-resize;z-index:5;opacity:.55;background:linear-gradient(135deg,transparent 0 45%,var(--gold) 45% 52%,transparent 52% 64%,var(--gold) 64% 71%,transparent 71% 83%,var(--gold) 83% 90%,transparent 90%);border-radius:0 0 12px 0}
+.rgrip:hover{opacity:1}body.touch .rgrip{display:none}.panel.resized{max-height:94vh!important;max-width:98vw!important}
 </style>
   <script type="module" src="./main.js"></script>
 </head>

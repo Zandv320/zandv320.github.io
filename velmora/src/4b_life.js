@@ -105,7 +105,7 @@ const TAG_N={wood:'wood',herb:'herbs',fish:'fish',ore:'ore'};
 function canCraft(rc){const L=lifeOf(rc.sk);if(L.lv<rc.lv)return LIFE[rc.sk].n+' '+rankOf(rc.lv)+' required';if(rc.st&&!nearStation(rc.st))return'Go to '+ST_HINT[rc.st];if(rc.ench){const w=enchCheck(rc);if(w)return w}for(const[n,q,tag]of rc.in)if(invCount(n,tag)<q)return'Not enough '+(tag?TAG_N[tag]:n);if(rc.gear&&P.inv.indexOf(null)<0)return'Your bag is full';return''}
 function startCraft(rc,times=1){if(ME.mounted)dismount();if(ACT.cur||ME.cast||ME.dead)return;const why=canCraft(rc);if(why)return toast(why);if(!useEnergy(rc.gear?2:1))return;needToolClips();
   if(rc.st){const s=STATIONS.filter(s=>s.k===rc.st).sort((a,b)=>Math.hypot(a.x-ME.pos.x,a.z-ME.pos.z)-Math.hypot(b.x-ME.pos.x,b.z-ME.pos.z))[0];if(s)faceTo(s.x,s.z)}
-  ACT.cur={k:'craft',rc,t:0,dur:Math.max(1,rc.t-lifeOf(rc.sk).lv*.015),left:times-1,anim:CRAFT_ANIM[rc.sk]||'grind',fx:.5,lbl:(rc.gear?'Crafting ':'Making ')+rc.out+'…'};$('#castbar').hidden=false}
+  ACT.cur={k:'craft',rc,t:0,dur:Math.max(1,rc.t-lifeOf(rc.sk).lv*.015),left:times-1,anim:CRAFT_ANIM[rc.sk]||'grind',fx:.5,lbl:(rc.gear?'Crafting ':'Making ')+rc.out+'…'};$('#castbar').hidden=false;/* the book steps aside while you work, and comes back when you're done */if(!$('#pLife').hidden){closePanel('pLife');ACT.reopen=1}}
 /* gecrafte uitrusting: meestal groen, soms blauw, zelden paars (meesterwerk); hoger ambacht dan het recept vereist = betere kansen */
 function craftOdds(rc){const over=Math.max(0,lifeOf(rc.sk).lv-rc.lv);return{blue:Math.min(.6,.22+over*.02),epic:Math.min(.1,.03+over*.003)}}
 function craftGear(rc){const G=rc.gear,o=craftOdds(rc);const roll=Math.random();const r=roll<o.epic?3:roll<o.epic+o.blue?2:1;const cls=G.cls||P.cls;
@@ -129,7 +129,7 @@ function actFx(A){const tx=A.n?A.n.x:A.m?A.m.x:ME.pos.x+Math.sin(ME.ry)*1.1,tz=A
   else if(A.anim==='saw'){for(let i=0;i<5;i++)emitP({x:tx,y:ty+.9,z:tz,vx:FRN(-1,1),vy:FRN(0,1),vz:FRN(-1,1),grav:4,life:FRN(.5,.9),size:.18,size1:.1,col:0xe8c890,a:1,a1:0,cell:FXC.dirt,add:false})}
   else if(A.anim==='cook'||A.anim==='brew'){const c=A.anim==='brew'?pick([0x7aff6a,0xc08aff,0x6ab8ff]):0xf0f0f0;for(let i=0;i<3;i++)emitP({x:tx+FRN(-.3,.3),y:ty+1,z:tz+FRN(-.3,.3),vy:FRN(.6,1.2),drag:.5,life:FRN(.8,1.3),size:.5,size1:1.4,col:c,a:A.anim==='brew'?.8:.35,a1:0,cell:A.anim==='brew'?FXC.soft:FXC.smoke,add:A.anim==='brew'})}
   else if(A.anim==='tan'||A.anim==='sew'||A.anim==='grind'){emitP({x:tx,y:ty+1,z:tz,life:.4,size:.3,size1:.8,col:0xfff0d0,a:.7,a1:0,cell:FXC.glint})}}
-function updActivity(dt,moving){if(ACT.post&&ACT.post.t>0)ACT.post.t-=dt;updFly(dt);const A=ACT.cur;if(!A)return;
+function updActivity(dt,moving){if(ACT.post&&ACT.post.t>0)ACT.post.t-=dt;updFly(dt);const A=ACT.cur;if(!A){if(ACT.reopen){ACT.reopen+=dt;if(ACT.reopen>1.6){ACT.reopen=0;if(P&&!ME.dead)openPanel('pLife')}}return}
   if(moving&&!(A.k==='fish'&&A.phase==='bite')){toast('Interrupted');if(A.k==='fish')endFish();ACT.cur=null;$('#castbar').hidden=true;return}
   A.t+=dt;if(A.fx!=null){A.fx-=dt;if(A.fx<=0){A.fx=A.anim==='mine'?1.24:A.anim==='chop'?.66:A.anim==='forge'?.9:.7;actFx(A)}}
   if(A.k==='gather'){setBar($('#castbar'),A.t,A.dur,A.lbl);if(A.t>=A.dur){ACT.cur=null;$('#castbar').hidden=true;finishGather(A.n,A.sk)}}
@@ -169,34 +169,48 @@ function renderModelIcon(g,tint){const S=96;if(!_micRT){_micRT=new THREE.WebGLRe
 let lifeTab='smithing',lifeOpen={};
 const TIER_N=['Tier I · Novice','Tier II · Expert','Tier III · Artisan','Tier IV · Grandmaster'];
 const SLOT_EN={wapen:'Weapon',hoofd:'Head',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
-function recipeRow(rc){const why=canCraft(rc);const lockedLv=lifeOf(rc.sk).lv<rc.lv;
-  const ins=rc.in.map(([n,q,tag])=>{const have=invCount(n,tag);return'<span class="'+(have>=q?'ok':'no')+'">'+q+'× '+esc(tag?{wood:'any wood',herb:'any herb',fish:'any fish',ore:'any ore'}[tag]:n)+' ('+have+')</span>'}).join(' ');
-  let info='';if(rc.gear){const o=craftOdds(rc);info='<div class="ins gi">'+SLOT_EN[rc.gear.slot]+' · item level '+rc.gear.il+' · <span style="color:'+RARITY[1].c+'">Uncommon</span>, <span style="color:'+RARITY[2].c+'">'+Math.round(o.blue*100)+'% Rare</span>, <span style="color:'+RARITY[3].c+'">'+Math.round(o.epic*100)+'% Masterwork</span></div>'}
-  else if(rc.ench){const E=ENCH[rc.ench],cur=P.eq[E.slot];const ce=cur&&cur.ench&&ENCH[cur.ench];info='<div class="ins ok">'+esc(E.txt)+(E.type?' · <span style="color:#'+new THREE.Color(ENCH_TYPES[E.type].col).getHexString()+'">glowing '+ENCH_TYPES[E.type].n.toLowerCase()+' aura</span>':'')+'</div><div class="ins gi">'+(cur?'Your '+esc(cur.n)+(ce?' · now: '+esc(ce.n):' · not enchanted'):'Nothing equipped in this slot')+'</div>'}
-  else{const M=MATS[rc.out];if(M&&(M.food||M.elixir))info='<div class="ins ok">'+(M.food||M.elixir).d+'</div>'}
+/* ---- the crafting book: a modern, responsive window (skills on the left, recipes as cards; search and a 'can make' filter) ---- */
+let lifeQ='',lifeCan=false;
+const LIFE_HINTS={mining:'Iron veins around the mines and hills · Silver veins (Expert) in the Ashen Hills and Bone Hills · Emberstone (Artisan) in the Dragon Realm · Mithril in the Elvian Highlands.',
+  woodcutting:'Fallen trunks in Twilight Wood and near the lake · Ashwood (Artisan) in the Dragon Realm · Elderwood in the Woods of Elvia. Saw planks at the sawmill.',
+  herbalism:'Sunleaf in the fields · Moonbloom and Bloodroot in the woods · Flax near the farmlands · Fireblossom (Artisan) in the Dragon Realm · Moonpetal in Elvia.',
+  skinning:'Loot a beast first, then press F on its body. Boars and wolves give Rough Hide, spiders Spider Silk, fire bats Thick Hide and drakes Drake Scales.',
+  fishing:'Stand on the shore of a lake and press F. Strike when the marker is inside the green zone.',
+  enchanting:'Disenchant gear you don\'t need (bag → item → Disenchant): common and uncommon gear gives Arcane Dust, rare Glimmering Essence, epic and legendary Radiant Shards. One enchantment per item; a new one replaces the old.'};
+function recipeCard(rc){const why=canCraft(rc);const lockedLv=lifeOf(rc.sk).lv<rc.lv;
+  const mats=rc.in.map(([n,q,tag])=>{const have=invCount(n,tag);return'<span class="lm '+(have>=q?'ok':'no')+'"><b>'+q+'×</b> '+esc(tag?{wood:'any wood',herb:'any herb',fish:'any fish',ore:'any ore'}[tag]:n)+'<i>'+have+'</i></span>'}).join('');
+  let info='';if(rc.gear){const o=craftOdds(rc);info='<div class="lci">'+(SLOT_NL[rc.gear.slot]||rc.gear.slot)+' · ilvl '+rc.gear.il+' · <span style="color:'+RARITY[2].c+'">'+Math.round(o.blue*100)+'% rare</span> · <span style="color:'+RARITY[3].c+'">'+Math.round(o.epic*100)+'% masterwork</span></div>'}
+  else if(rc.ench){const E=ENCH[rc.ench],cur=P.eq[E.slot];const ce=cur&&cur.ench&&ENCH[cur.ench];info='<div class="lci ok">'+esc(E.txt)+(E.type?' · <span style="color:#'+new THREE.Color(ENCH_TYPES[E.type].col).getHexString()+'">'+ENCH_TYPES[E.type].n.toLowerCase()+' aura</span>':'')+'</div><div class="lci">'+(cur?esc(cur.n)+(ce?' · now '+esc(ce.n):''):'Nothing equipped in this slot')+'</div>'}
+  else{const M=MATS[rc.out];if(M&&(M.food||M.elixir))info='<div class="lci ok">'+(M.food||M.elixir).d+'</div>'}
   const ic=rc.gear?'g:'+rc.id:rc.ench?'e:'+rc.ench:'o:'+rc.out;
-  return'<div class="rc'+(lockedLv?' lock':'')+'"><canvas data-ri="'+esc(ic)+'" width="48" height="48"></canvas><div class="rci"><b'+(rc.gear?' style="color:'+RARITY[1].c+'"':'')+'>'+esc(rc.out)+(rc.q>1?' ×'+rc.q:'')+'</b>'+(rc.lv?' <small>'+rankOf(rc.lv)+'</small>':'')+'<div class="ins">'+ins+'</div>'+info+'</div><div class="rcb"><button class="btn" data-c="'+rc.id+'" data-n="1"'+(why?' disabled title="'+esc(why)+'"':'')+'>'+(rc.ench?'Enchant':'Make')+'</button>'+(rc.gear||rc.ench?'':'<button class="btn alt" data-c="'+rc.id+'" data-n="10"'+(why?' disabled':'')+'>×10</button>')+'</div></div>'}
+  return'<div class="lcard'+(lockedLv?' lock':why?' miss':' ready')+'"><div class="lch"><canvas data-ri="'+esc(ic)+'" width="48" height="48"></canvas><div class="lcn"><b'+(rc.gear?' style="color:'+RARITY[1].c+'"':'')+'>'+esc(rc.out)+(rc.q>1?' ×'+rc.q:'')+'</b>'+(rc.lv?'<small'+(lockedLv?' class="no"':'')+'>'+(lockedLv?'🔒 ':'')+rankOf(rc.lv)+'</small>':'')+'</div></div>'+info+'<div class="lmats">'+mats+'</div>'
+    +'<div class="lcb"><button class="btn" data-c="'+rc.id+'" data-n="1"'+(why?' disabled title="'+esc(why)+'"':'')+'>'+(rc.ench?'Enchant':'Make')+'</button>'+(rc.gear||rc.ench?'':'<button class="btn alt" data-c="'+rc.id+'" data-n="10"'+(why?' disabled':'')+'>×10</button>')+'</div></div>'}
 function refreshLife(){if(!P)return;energyTick();migrateLife();const b=$('#lifeBody');if(!LIFE[lifeTab])lifeTab='smithing';
-  let h='<div class="bar enb" id="enBar" style="height:20px"><i style="transform:scaleX('+clamp((P.energy??100)/maxEnergy(),0,1)+')"></i><span>Energy '+Math.floor(P.energy??100)+' / '+maxEnergy()+'</span></div><div class="lwrap"><div class="lside">';
-  for(const kind of['gather','craft']){h+='<div class="lgrp">'+(kind==='gather'?'Gathering':'Crafting')+'</div>';for(const k in LIFE){if(LIFE[k].kind!==kind)continue;const L=lifeOf(k);
-    h+='<button class="lsk'+(k===lifeTab?' sel':'')+'" data-t="'+k+'"><canvas data-ic="'+LIFE[k].ic+'" width="40" height="40"></canvas><div><b>'+LIFE[k].n+'</b><small>'+rankOf(L.lv)+'</small><div class="bar" style="--c1:#b6ff8a;--c2:#3a8a2a;height:6px"><i style="transform:scaleX('+clamp(L.xp/lifeNeed(L.lv),0,1)+')"></i><span></span></div></div></button>'}}
-  h+='</div><div class="lmain"><h4>'+LIFE[lifeTab].n+'</h4><p class="lhint">'+LIFE[lifeTab].d+'</p>';
-  const T=LIFE[lifeTab];if(T.st&&!nearStation(T.st))h+='<p class="lhint warn">Crafting needs '+ST_HINT[T.st]+'.</p>';
-  if(lifeTab==='mining')h+='<p class="lhint">Iron veins around the mines and hills · Silver veins (Expert) in the Ashen Hills and Bone Hills · Emberstone (Artisan) in the Dragon Realm.</p>';
-  if(lifeTab==='woodcutting')h+='<p class="lhint">Fallen trunks in Twilight Wood and near the lake · Ashwood trunks (Artisan) in the Dragon Realm. Saw planks at the sawmill.</p>';
-  if(lifeTab==='herbalism')h+='<p class="lhint">Sunleaf in the fields · Moonbloom and Bloodroot in the woods · Flax near the farmlands · Fireblossom (Artisan) in the Dragon Realm.</p>';
-  if(lifeTab==='skinning')h+='<p class="lhint">Loot a beast first, then press F on its body. Boars and wolves give Rough Hide (wolves sometimes Thick Hide), spiders Spider Silk, fire bats Thick Hide and drakes Drake Scales.</p>';
-  if(lifeTab==='fishing')h+='<p class="lhint">Stand on the shore of Mirror Lake and press F. Strike when the marker is inside the green zone.</p>';
-  if(lifeTab==='enchanting')h+='<p class="lhint">Disenchant gear you do not need: open your bag, click an item and choose Disenchant. Common and uncommon gear gives Arcane Dust, rare gear Glimmering Essence, epic and legendary gear Radiant Shards. One enchantment per item; a new one replaces the old.</p>';
-  const list=RECIPES.filter(r=>r.sk===lifeTab&&!(r.gear&&(r.gear.cls==='paladijn')!==(P.cls==='paladijn')&&(r.gear.cls==='paladijn'||r.gear.cls==='krijger')));/* smiths see the plate of their own kind: paladins the paladin set, everyone else the warrior set */const proc=list.filter(r=>!r.gear&&!r.ench),gear=list.filter(r=>r.gear),ench=list.filter(r=>r.ench);
-  if(proc.length){h+='<div class="lrec">';for(const rc of proc)h+=recipeRow(rc);h+='</div>'}
-  for(const[k,lbl,f]of[['w','Weapon enchantments (with aura)',r=>ENCH[r.ench].slot==='wapen'],['a','Armour enchantments',r=>ENCH[r.ench].slot!=='wapen']]){const G=ench.filter(f);if(!G.length)continue;const key=lifeTab+k;const open=lifeOpen[key]??true;
-    h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+key+'">'+lbl+'</button>';if(open){h+='<div class="lrec">';for(const rc of G.sort((a,b)=>a.lv-b.lv))h+=recipeRow(rc);h+='</div>'}}
-  if(gear.length){for(let t=0;t<4;t++){const G=gear.filter(r=>r.gear.tier===t);if(!G.length)continue;const k=lifeTab+t;const open=lifeOpen[k]??(lifeOf(lifeTab).lv>=G[0].lv-2||t===0);
-    h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+k+'">'+TIER_N[t]+' <small>from '+rankOf(Math.min(...G.map(r=>r.lv)))+'</small></button>';if(open){h+='<div class="lrec">';for(const rc of G)h+=recipeRow(rc);h+='</div>'}}}
-  h+='</div></div>';b.innerHTML=h;
-  b.querySelectorAll('canvas[data-ic]').forEach(c=>drawIcon(c,[c.dataset.ic,'#4a5a3a','#1a2410'],40));
+  const foc=document.activeElement&&document.activeElement.id==='lifeQ'?document.activeElement.selectionStart:null;
+  const en=Math.floor(P.energy??100),enM=maxEnergy();
+  let h='<div class="lwrap"><nav class="lside">';
+  for(const kind of['gather','craft']){h+='<div class="lgrp">'+(kind==='gather'?'Gathering':'Crafting')+'</div>';for(const k in LIFE){if(LIFE[k].kind!==kind)continue;const L=lifeOf(k);const f=clamp(L.xp/lifeNeed(L.lv),0,1);
+    h+='<button class="lsk'+(k===lifeTab?' sel':'')+'" data-t="'+k+'"><span class="lring" style="--p:'+(f*100).toFixed(1)+'%"><canvas data-ic="'+LIFE[k].ic+'" width="40" height="40"></canvas></span><span class="lskt"><b>'+LIFE[k].n+'</b><small>'+rankOf(L.lv)+'</small></span></button>'}}
+  const T=LIFE[lifeTab],L=lifeOf(lifeTab),need=lifeNeed(L.lv);
+  h+='</nav><section class="lmain"><header class="lhead"><canvas data-ic="'+T.ic+'" width="56" height="56"></canvas><div class="lht"><h4>'+T.n+'</h4><div class="lrank">'+rankOf(L.lv)+' <span>· level '+(L.lv+1)+' / 70</span></div><div class="lxp"><i style="width:'+(clamp(L.xp/need,0,1)*100).toFixed(1)+'%"></i><span>'+L.xp+' / '+need+' xp</span></div></div>'
+    +'<div class="len" title="Energy recharges on its own"><b>⚡ '+en+'</b><small>/ '+enM+' energy</small><div class="lenb"><i style="width:'+(clamp(en/enM,0,1)*100).toFixed(1)+'%"></i></div></div></header>';
+  h+='<p class="lhint">'+T.d+'</p>';if(LIFE_HINTS[lifeTab])h+='<p class="lhint sub">'+LIFE_HINTS[lifeTab]+'</p>';
+  if(T.st&&!nearStation(T.st))h+='<p class="lwarn">⚠ Crafting needs '+ST_HINT[T.st]+'.</p>';
+  const list=RECIPES.filter(r=>r.sk===lifeTab&&!(r.gear&&(r.gear.cls==='paladijn')!==(P.cls==='paladijn')&&(r.gear.cls==='paladijn'||r.gear.cls==='krijger')));/* smiths see the plate of their own kind: paladins the paladin set, everyone else the warrior set */
+  if(list.length){const q=lifeQ.trim().toLowerCase();const vis=r=>(!q||r.out.toLowerCase().includes(q)||r.in.some(([n])=>n.toLowerCase().includes(q)))&&(!lifeCan||!canCraft(r));
+    h+='<div class="ltool"><input id="lifeQ" type="search" placeholder="Search recipes or materials…" value="'+esc(lifeQ)+'"><button class="lchip'+(lifeCan?' on':'')+'" id="lifeCan">Can make now</button></div>';
+    const groups=[];const proc=list.filter(r=>!r.gear&&!r.ench),gear=list.filter(r=>r.gear),ench=list.filter(r=>r.ench);
+    if(proc.length)groups.push({key:lifeTab+'p',lbl:'Recipes',items:proc,open:true});
+    for(const[k,lbl,f]of[['w','Weapon enchantments · with aura',r=>ENCH[r.ench].slot==='wapen'],['a','Armour enchantments',r=>ENCH[r.ench].slot!=='wapen']]){const G=ench.filter(f).sort((a,b)=>a.lv-b.lv);if(G.length)groups.push({key:lifeTab+k,lbl,items:G,open:true})}
+    for(let t=0;t<4;t++){const G=gear.filter(r=>r.gear.tier===t);if(G.length)groups.push({key:lifeTab+t,lbl:TIER_N[t],sub:'from '+rankOf(Math.min(...G.map(r=>r.lv))),items:G,open:lifeOf(lifeTab).lv>=G[0].lv-2||t===0})}
+    let shown=0;for(const g of groups){const items=g.items.filter(vis);if(!items.length)continue;shown+=items.length;const open=q||lifeCan?true:(lifeOpen[g.key]??g.open);
+      h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+g.key+'"><span>'+g.lbl+'</span>'+(g.sub?'<small>'+g.sub+'</small>':'')+'<em>'+items.length+'</em></button>';if(open)h+='<div class="lgrid">'+items.map(recipeCard).join('')+'</div>'}
+    if(!shown)h+='<p class="lhint">'+(lifeCan?'You can\'t make anything here right now: gather materials or level up first.':'No recipes match your search.')+'</p>'}
+  h+='</section></div>';b.innerHTML=h;
+  b.querySelectorAll('canvas[data-ic]').forEach(c=>drawIcon(c,[c.dataset.ic,'#4a5a3a','#1a2410'],c.width));
   b.querySelectorAll('canvas[data-ri]').forEach(c=>{const v=c.dataset.ri;if(v.startsWith('e:')){drawIcon(c,enchIcon(v.slice(2)),48);return}if(v.startsWith('g:')){const rc=RECIPES.find(r=>r.id===v.slice(2));const G=rc.gear;drawIcon(c,[G.slot==='wapen'?G.wt:G.slot,'#3a8a3a','#0c240c'],48)}else{const n=v.slice(2);drawIcon(c,itemIcon(n==='Healing Potion'?potion('heal'):n==='Power Potion'?potion('mana'):matItem(n)),48)}});
-  b.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{lifeTab=x.dataset.t;refreshLife()});
+  b.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>{lifeTab=x.dataset.t;b.querySelector('.lmain')&&(b.querySelector('.lmain').scrollTop=0);refreshLife()});
   b.querySelectorAll('[data-tier]').forEach(x=>x.onclick=()=>{lifeOpen[x.dataset.tier]=!x.classList.contains('open');refreshLife()});
+  const qi=$('#lifeQ');if(qi){qi.oninput=()=>{lifeQ=qi.value;refreshLife()};qi.onkeydown=e=>e.stopPropagation();if(foc!=null){qi.focus();qi.setSelectionRange(foc,foc)}}
+  const cb=$('#lifeCan');if(cb)cb.onclick=()=>{lifeCan=!lifeCan;refreshLife()};
   b.querySelectorAll('[data-c]').forEach(x=>x.onclick=()=>{const rc=RECIPES.find(r=>r.id===x.dataset.c);startCraft(rc,+x.dataset.n)})}

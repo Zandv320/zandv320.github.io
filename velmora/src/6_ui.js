@@ -10,6 +10,17 @@ $('#pTalent').addEventListener('click',()=>{if(isTouch)hideTip()});
 function syncPop(){const B=document.body.classList,port=B.contains('portrait');B.toggle('pop',isTouch&&panels.some(p=>(port||p==='pDialog')&&!$('#'+p).hidden));B.toggle('bagdlg',!$('#pDialog').hidden&&!$('#pBag').hidden)}
 function openPanel(id){if(isTouch&&document.body.classList.contains('portrait')&&id!=='pDialog')for(const p of panels)if(p!==id&&p!=='pDialog'&&!$('#'+p).hidden)closePanel(p);if(id==='pDialog'||id==='pMenu'||id==='pMap'||id==='pQuest')for(const p of['pDialog','pMenu','pMap','pQuest'])if(p!==id)$('#'+p).hidden=true;$('#'+id).hidden=false;if(id==='pBag')refreshBag();if(id==='pChar')refreshChar();if(id==='pQuest')refreshQuestLog();if(id==='pMap')mapOpen();if(id==='pLife')refreshLife();if(id==='pTalent'){refreshTalent();document.body.classList.add('tal')}syncPop()}
 function closePanel(id){$('#'+id).hidden=true;if(id==='pTalent')document.body.classList.remove('tal');if(id==='pDialog')S.shop=false;hideTip();syncPop()}
+/* ---- resizable windows: drag the grip in the bottom-right corner, double-click the title to reset; sizes are remembered per window ---- */
+const PSIZE=(()=>{try{return JSON.parse(localStorage.getItem('velmora-psize')||'{}')}catch(e){return{}}})();
+function savePSize(){try{localStorage.setItem('velmora-psize',JSON.stringify(PSIZE))}catch(e){}}
+function applyPSize(el){const z=PSIZE[el.id];if(!z||isTouch)return;el.style.width=Math.min(z.w,innerWidth*.98)+'px';el.style.height=Math.min(z.h,innerHeight*.94)+'px';el.classList.add('resized')}
+for(const id of panels){const el=$('#'+id);if(!el||id==='pMenu')continue;applyPSize(el);const g=document.createElement('div');g.className='rgrip';g.title='Drag to resize · double-click the title to reset';el.appendChild(g);
+  g.addEventListener('pointerdown',e=>{if(isTouch)return;e.preventDefault();e.stopPropagation();g.setPointerCapture(e.pointerId);const r=el.getBoundingClientRect();const m=new DOMMatrix(getComputedStyle(el).transform);
+    /* a centred window grows to both sides: twice the pointer movement */const kx=m.m41?2:1,ky=m.m42?2:1;const x0=e.clientX,y0=e.clientY,w0=r.width,h0=r.height;
+    const mv=ev=>{const w=clamp(w0+(ev.clientX-x0)*kx,280,innerWidth*.98),h=clamp(h0+(ev.clientY-y0)*ky,200,innerHeight*.94);el.style.width=w+'px';el.style.height=h+'px';el.classList.add('resized')};
+    const up=ev=>{g.removeEventListener('pointermove',mv);g.removeEventListener('pointerup',up);const rr=el.getBoundingClientRect();PSIZE[el.id]={w:Math.round(rr.width),h:Math.round(rr.height)};savePSize()};
+    g.addEventListener('pointermove',mv);g.addEventListener('pointerup',up)});
+  const h3=el.querySelector('h3');if(h3)h3.addEventListener('dblclick',()=>{delete PSIZE[el.id];savePSize();el.style.width='';el.style.height='';el.classList.remove('resized')})}
 function togglePanel(id){if($('#'+id).hidden)openPanel(id);else closePanel(id)}
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{const p=b.closest('.panel');if(p)closePanel(p.id)}));
 document.querySelectorAll('#mbtn [data-p]').forEach(b=>b.addEventListener('click',()=>togglePanel(b.dataset.p)));
