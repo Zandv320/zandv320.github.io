@@ -2,7 +2,7 @@
    Spelers/NPC's/menselijke vijanden: KayKit Adventurers & Skeletons (CC0, Kay Lousberg).
    Dieren: Quaternius Animated Animals / Easy Enemies (CC0).
    De rig die hieruit komt is compatibel met animRig(): r.gltf=true → animGltf(). */
-const GLTF_MODELS={krijger:'Knight',magier:'Mage',jager:'Rogue'};
+const GLTF_MODELS={paladijn:'Knight',krijger:'Knight',magier:'Mage',jager:'Rogue'};
 const MODEL_BASE=new URL('models/',location.href).href;
 const gltfCache=new Map();let _gl=null;function gltfLoader(){if(!_gl){_gl=new GLTFLoader();_gl.setMeshoptDecoder(MeshoptDecoder)}return _gl}
 function loadGltf(name){
@@ -35,7 +35,7 @@ function tintedMap(src,skin,hair,srgb,eye){
 /* KayKit mensachtigen: standaard clipkaart */
 const ATK_1H=['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Stab','1H_Melee_Attack_Chop'],ATK_2H=['2H_Melee_Attack_Chop','2H_Melee_Attack_Slice','2H_Melee_Attack_Spin'];
 const CM_KAY={idle:'Idle',cidle:'Blocking',walk:'Walking_A',run:'Running_A',jumpS:'Jump_Start',jumpI:'Jump_Idle',land:'Jump_Land',cast:'Spellcasting',die:'Death_A',hit:'Hit_A',
-  atk:{krijger:['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Chop'],bijl:ATK_2H,magier:['Spellcast_Shoot'],jager:['2H_Ranged_Shoot'],staf:['Spellcast_Shoot'],boog:['2H_Ranged_Shoot'],ak:['2H_Ranged_Shoot'],def:ATK_1H}};
+  atk:{krijger:['1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Chop'],paladijn:['1H_Melee_Attack_Chop','1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Slice_Horizontal'],bijl:ATK_2H,magier:['Spellcast_Shoot'],jager:['2H_Ranged_Shoot'],staf:['Spellcast_Shoot'],boog:['2H_Ranged_Shoot'],ak:['2H_Ranged_Shoot'],def:ATK_1H}};
 /* generieke bouwer: model, hoogte, zichtbare props, eigen wapen, kleur-tints, clipkaart */
 /* GLTFLoader geeft elk lichaamsdeel een eigen skelet (met eigen bottentextuur en eigen update per frame).
    Delen met dezelfde botten en bindhouding krijgen hier één gedeeld skelet: scheelt textures en rekenwerk, vooral op mobiel. */

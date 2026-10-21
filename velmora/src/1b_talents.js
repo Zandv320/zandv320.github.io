@@ -45,6 +45,37 @@ const TALENTS={
    {id:'k_ijzerwil',n:'Iron Will',t:3,max:2,mod:{regen:.004},d:'In combat you regenerate {0.4}% health per second.',ic:['heart','#7ad87a','#0d3a0d']},
    {id:'k_standvastig',n:'Steadfast',t:3,max:2,mod:{dodge:.05},d:'{5}% chance to fully block an attack.',ic:['shield','#e0e0e0','#202020']},
    {id:'k_onbreekbaar',n:'Unbreakable',t:4,max:1,skill:{id:'onbreekbaar',n:'Unbreakable',cd:60,cost:0,range:0,ic:['shield','#7ae0ff','#0d2a3a'],d:'50% less damage taken for 8 seconds.'},d:'Teaches Unbreakable: half damage taken for 8 seconds.',ic:['shield','#7ae0ff','#0d2a3a']}]}],
+ paladijn:[
+  {id:'heilig',n:'Holy',ic:['cross','#fff6c8','#7a5a10'],d:'The healer: strong heals for yourself and your group.',nodes:[
+   {id:'p_helend',n:'Healing Light',t:0,max:3,mod:{heal:.06},d:'Your heals restore {6}% more health.',ic:['cross','#fff6c8','#7a5a10']},
+   {id:'p_wijsheid',n:'Divine Wisdom',t:0,max:3,mod:{mpp:.05},d:'+{5}% mana.',ic:['sun','#a8d0ff','#0d2a5a']},
+   {id:'p_verlichting',n:'Illumination',t:1,max:3,mod:{mregen:.10},d:'You regenerate mana {10}% faster.',ic:['sun','#fff0a8','#5a4a10']},
+   {id:'p_snellicht',n:'Swift Light',t:1,max:2,mod:{'flits_licht.cast':.3},d:'Flash of Light casts {0.3} s faster.',ic:['cross','#ffe9a0','#5a3a06']},
+   {id:'p_heiliglicht',n:'Holy Light',t:2,max:1,skill:{id:'heiliglicht',n:'Holy Light',cd:0,cost:38,range:30,heal:1,cast:2.4,ic:['sun','#ffffff','#a07a10'],d:'A slow, powerful heal: restores a huge amount of health to your friendly target or yourself.'},d:'Teaches Holy Light: a slow but huge heal.',ic:['sun','#ffffff','#a07a10']},
+   {id:'p_genade',n:'Divine Grace',t:2,max:2,mod:{'flits_licht.cost':4},d:'Flash of Light costs {4} less mana.',ic:['cross','#d8f0ff','#1a3a5a']},
+   {id:'p_gezegend',n:'Blessed Life',t:3,max:2,mod:{hpp:.04},d:'+{4}% health.',ic:['heart','#ffe0a0','#5a3a10']},
+   {id:'p_lichtgratie',n:'Light\'s Grace',t:3,max:2,mod:{'heiliglicht.cast':.4,'heiliglicht.cost':4},d:'Holy Light casts {0.4} s faster and costs {4} less mana.',ic:['sun','#fff8d8','#7a5a10']},
+   {id:'p_dageraad',n:'Light of Dawn',t:4,max:1,skill:{id:'dageraad',n:'Light of Dawn',cd:18,cost:40,range:0,ic:['halo','#fff2b0','#8a6a10'],d:'A wave of light heals you and every group member within 18 metres.'},d:'Teaches Light of Dawn: heal your whole group around you.',ic:['halo','#fff2b0','#8a6a10']}]},
+  {id:'bescherm',n:'Protection',ic:['shield','#a8c8ff','#1a2a5a'],d:'The tank: holds the enemy\'s attention and takes the blows.',nodes:[
+   {id:'p_taai',n:'Toughness',t:0,max:3,mod:{armp:.08},d:'+{8}% armour.',ic:['shield','#d8e0ff','#2a3050']},
+   {id:'p_schildkunde',n:'Shield Specialization',t:0,max:3,mod:{dr:.02},d:'You take {2}% less damage.',ic:['shield','#ffe08a','#4a3a10']},
+   {id:'p_plicht',n:'Sacred Duty',t:1,max:3,mod:{hpp:.05},d:'+{5}% health.',ic:['heart','#fff0c0','#5a3a10']},
+   {id:'p_behoed',n:'Guarded by the Light',t:1,max:2,mod:{regen:.004},d:'In combat you regenerate {0.4}% health per second.',ic:['cross','#c8f0ff','#1a3a5a']},
+   {id:'p_wraakschild',n:'Avenger\'s Shield',t:2,max:1,skill:{id:'wraakschild',n:'Avenger\'s Shield',cd:12,cost:20,range:25,need:1,ic:['shield','#ffe9a0','#8a5a00'],d:'Hurl your shield: it strikes your target and bounces to 2 more enemies for 150% weapon damage, dazes them for 1.5 s and taunts them all onto you.'},d:'Teaches Avenger\'s Shield: a bouncing shield throw that taunts every enemy it hits.',ic:['shield','#ffe9a0','#8a5a00']},
+   {id:'p_rechtvaardig',n:'Righteous Fury',t:2,max:2,mod:{'kruis.dmg':.12},d:'Crusader Strike deals {12}% more damage.',ic:['hammer','#ffd070','#4a2a00']},
+   {id:'p_bolwerk',n:'Redoubt',t:3,max:2,mod:{dodge:.05},d:'{5}% chance to block an attack with your shield.',ic:['shield','#e8e8f0','#202030']},
+   {id:'p_afrekening',n:'Reckoning',t:3,max:2,mod:{'wraakschild.cd':3},d:'Avenger\'s Shield is ready {3} s sooner.',ic:['shield','#ffc060','#4a2a00']},
+   {id:'p_oudekoningen',n:'Guardian of Ancient Kings',t:4,max:1,skill:{id:'oudekoningen',n:'Guardian of Ancient Kings',cd:75,cost:0,range:0,ic:['wing','#ffe08a','#6a4a00'],d:'An ancient king of light stands guard over you: 60% less damage taken for 10 seconds.'},d:'Teaches Guardian of Ancient Kings: 60% less damage for 10 seconds.',ic:['wing','#ffe08a','#6a4a00']}]},
+  {id:'vergelding',n:'Retribution',ic:['hammer','#ffb070','#5a1a00'],d:'The damage dealer: heavy holy blows with a great hammer.',nodes:[
+   {id:'p_tweehand',n:'Two-Handed Mastery',t:0,max:3,mod:{wdmg:.04},d:'+{4}% weapon damage.',ic:['hammer','#e8d0a0','#3a2a10']},
+   {id:'p_kruistocht',n:'Crusade',t:0,max:3,mod:{'kruis.dmg':.10},d:'Crusader Strike deals {10}% more damage.',ic:['hammer','#ffe08a','#5a3a06']},
+   {id:'p_overtuiging',n:'Conviction',t:1,max:3,mod:{crit:2},d:'+{2}% critical chance.',ic:['star','#ffe08a','#4a3a00']},
+   {id:'p_heiligvuur',n:'Sanctified Wrath',t:1,max:2,mod:{haste:.05},d:'+{5}% attack speed.',ic:['sun','#ffc070','#5a2a00']},
+   {id:'p_goddelijkestorm',n:'Divine Storm',t:2,max:1,skill:{id:'goddelijkestorm',n:'Divine Storm',cd:9,cost:25,range:0,ic:['whirl','#fff0a0','#7a5a00'],d:'Spin your hammer in a storm of light: 130% weapon damage to every enemy within 7 metres, and you heal for 15% of it.'},d:'Teaches Divine Storm: holy damage to all enemies around you.',ic:['whirl','#fff0a0','#7a5a00']},
+   {id:'p_bevel',n:'Seal of Command',t:2,max:2,mod:{critdmg:.10},d:'Critical hits deal {10}% extra damage.',ic:['star','#ffb060','#4a1a00']},
+   {id:'p_oorlogskunst',n:'Art of War',t:3,max:2,mod:{'oordeel.cd':2},d:'Judgement is ready {2} s sooner.',ic:['sun','#ffe9a0','#6a4a06']},
+   {id:'p_toorn',n:'Hammer of Wrath',t:3,max:2,mod:{exec:.08},d:'{8}% more damage against enemies below 35% health.',ic:['hammer','#ff9a5a','#4a1000']},
+   {id:'p_wraak',n:'Avenging Wrath',t:4,max:1,skill:{id:'wraak',n:'Avenging Wrath',cd:75,cost:0,range:0,ic:['wing','#fff2a0','#8a5a00'],d:'Wings of light unfold: +30% damage and +30% healing for 20 seconds.'},d:'Teaches Avenging Wrath: wings of light, +30% damage and healing for 20 seconds.',ic:['wing','#fff2a0','#8a5a00']}]}],
  magier:[
   {id:'vuur',n:'Fire',ic:['fire','#ffb02e','#7a1500'],d:'Burning spells and big explosions.',nodes:[
    {id:'m_brand',n:'Searing Fire',t:0,max:3,mod:{'vuur.dmg':.08},d:'Firebolt deals {8}% more damage.',ic:['fire','#ffb02e','#7a1500']},

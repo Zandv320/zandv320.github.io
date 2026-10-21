@@ -21,7 +21,7 @@ function cloakMainCell(geo){let c=_ckMain.get(geo.uuid);if(c)return c;const U=ge
 /* cloak colours: a cloth palette of its own (the armour palettes are too dark for a big cape); legendaries are fixed */
 const CK_PAL=[0xd04848,0x4a78d8,0x4aa858,0x9058c8,0xc89848,0x40a8b0,0xc04888,0x7a8298,0xe0d0b0];
 const CK_LEG_COL={krijger:[0xa82820,0xffc050],magier:[0x5a30a8,0xd8a8ff],jager:[0x2a7034,0xe0ff70]};
-function cloakTint(it,cls){if((it.r|0)>=4)return(CK_LEG_COL[cls]||CK_LEG_COL.krijger)[0];return it.c!=null?it.c:CK_PAL[strHash(String(it.n||it.id||''))%CK_PAL.length]}
+function cloakTint(it,cls){if((it.r|0)>=4)return(CK_LEG_COL[cls]||CK_LEG_COL.krijger)[0];const pal=(typeof CK_PAL_C!=='undefined'&&CK_PAL_C[cls])||CK_PAL;return it.c!=null?it.c:pal[strHash(String(it.n||it.id||''))%pal.length]}
 function cloakColors(o){const r=o.ckr|0;const main=new THREE.Color(o.ckc??0x6a3a8e);/* a cape is seen mostly from behind, in its own shade: keep it light enough to read */const hsl={};main.getHSL(hsl);main.setHSL(hsl.h,Math.min(hsl.s,.62),Math.max(hsl.l,.46));const dark=main.clone().multiplyScalar(.62);
   let hem=dark;if(r>=4)hem=new THREE.Color((CK_LEG_COL[o.cls]||CK_LEG_COL.krijger)[1]);else if(r>=2)hem=dark.clone().lerp(new THREE.Color(RCOL[r]),.5);return[main.getHex(),hem.getHex()]}
 /* recolour the cape's atlas cells: every cell keeps its own shading, measured against its brightest pixel, so the

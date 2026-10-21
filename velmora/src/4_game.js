@@ -21,7 +21,7 @@ function makeGear(slot,il,r,cls){
   const mt=pick(MAT[cls]);
   if(r>=1||slot==='ring'){const sf=pick(SUFFIX);pow=Math.round(budget*sf[1]);sta=Math.round(budget*sf[2]);if(!pow&&!sta)sta=1;n=(slot==='ring'?'':mt+' ')+n+' '+sf[0]}
   else{n=mt+' '+n.toLowerCase();n=n[0].toUpperCase()+n.slice(1);if(Math.random()<.5)sta=Math.max(1,Math.round(budget*.4))}
-  if(r>=3){const ep={krijger:['Bonebreaker','Grave Axe of Morath','Crownsplitter'],magier:['Staff of Eternal Night','Whispering Skullstaff','Soulflame'],jager:['Shadowbow of Kaal-Morath','Bonestring','Gravewarden\'s Longbow']};if(slot==='wapen')n=pick(ep[cls]);else n='Crown Shard '+n.split(' ').slice(1).join(' ');pow=Math.round(pow*1.15+2);sta=Math.round(sta*1.15+2)}
+  if(r>=3){const ep={paladijn:['Lightbringer','Hammer of the Silver Hand','Truthguard'],krijger:['Bonebreaker','Grave Axe of Morath','Crownsplitter'],magier:['Staff of Eternal Night','Whispering Skullstaff','Soulflame'],jager:['Shadowbow of Kaal-Morath','Bonestring','Gravewarden\'s Longbow']};if(slot==='wapen')n=pick(ep[cls]);else n='Crown Shard '+n.split(' ').slice(1).join(' ');pow=Math.round(pow*1.15+2);sta=Math.round(sta*1.15+2)}
   Object.assign(it,{n,pow,sta,arm});it.price=Math.round((il*1.6+2)*(1+r*1.3));return it}
 function randSlot(){return pick(['wapen','hoofd','rug','borst','handen','benen','voeten','ring','borst','benen'])}
 const potion=(pt,q=1)=>({id:uid(),kind:'potion',pt,n:pt==='mana'?'Power Potion':'Healing Potion',q,price:1,r:0});
@@ -33,7 +33,7 @@ function addItem(it){
 function countItem(pt){return P.inv.reduce((s,x)=>s+(x&&x.kind==='potion'&&x.pt===pt?x.q:0),0)}
 function takePotion(pt){const i=P.inv.findIndex(x=>x&&x.kind==='potion'&&x.pt===pt);if(i<0)return false;if(--P.inv[i].q<=0)P.inv[i]=null;return true}
 function newChar(name,race,cls,hair){const c={id:uid(),talents:{},pvp:false,honor:0,name,race,cls,hair,level:1,xp:0,gold:3,inv:Array(BAG).fill(null),life:{},energy:100,buffs:{},eq:{},quests:{},done:[],x:rand(-3,3),z:rand(4,8),ry:Math.PI,hp:-1,mp:-1,kills:0,created:Date.now()};
-  const w=makeGear('wapen',1,0,cls);w.n={krijger:'Worn Sword',magier:'Apprentice Staff',jager:'Simple Bow'}[cls];w.wt=CLASSES[cls].wt;w.req=1;c.eq.wapen=w;c.eq.borst=makeGear('borst',1,0,cls);c.eq.borst.n={krijger:'Apprentice Shirt',magier:'Apprentice Robe',jager:'Apprentice Tunic'}[cls];
+  const w=makeGear('wapen',1,0,cls);w.n={krijger:'Worn Sword',magier:'Apprentice Staff',jager:'Simple Bow',paladijn:'Initiate\'s Hammer'}[cls];w.wt=CLASSES[cls].wt;w.req=1;c.eq.wapen=w;c.eq.borst=makeGear('borst',1,0,cls);c.eq.borst.n={krijger:'Apprentice Shirt',magier:'Apprentice Robe',jager:'Apprentice Tunic',paladijn:'Initiate\'s Tabard'}[cls];
   c.eq.rug=starterCloak(cls);c.ckGiven=1;
   c.inv[0]=potion('heal',3);c.inv[1]=potion('mana',2);return c}
 /* everyone starts with a plain cloak (characters from before the cloak slot get one too, once) */
@@ -140,7 +140,8 @@ function useAbility(i){
   if(!a.item&&ME.gcd>0)return;
   if(a.item&&!countItem(a.item))return toast('You have no '+a.n.toLowerCase()+'s left');
   if(abCost(a)>P.mp)return toast('Not enough '+resName());
-  let tg=null;if(a.need){tg=isEnemy(ME.target)?ME.target:null;if(!tg){tg=nearestEnemy(a.range+2);if(tg)setTarget(tg)}if(!tg)return toast('You have no target');
+  let tg=null;if(a.heal){tg=healTarget();if(tg!=='me'&&Math.hypot(tg.x-ME.pos.x,tg.z-ME.pos.z)>a.range)return toast('Your friend is too far away');if(tg!=='me')faceTo(tg.x,tg.z)}
+  if(a.need){tg=isEnemy(ME.target)?ME.target:null;if(!tg){tg=nearestEnemy(a.range+2);if(tg)setTarget(tg)}if(!tg)return toast('You have no target');
     const d=distTo(tg)-tg.size*.6;if(d>a.range)return toast('Your target is too far away');if(a.min&&d<a.min)return toast('You are too close');
     if(a.cond==='exec'&&tg.hp/(tg.mhp||1)>.3)return toast('Only on enemies below 30% health');faceTo(tg.x,tg.z);ME.auto=true}
   if(a.cast){ME.cast={a,t:0,dur:abCast(a),tg};$('#castbar').hidden=false;return}
@@ -167,7 +168,7 @@ function execAbility(a,tg){if(a.mount){doMount();return}if(a.way){waystoneArrive
   else if(id==='drank'){takePotion('heal');heal(ST.maxhp*.45);healFx(ME.pos.x,ME.pos.y,ME.pos.z,0x70ff8a);refreshBag()}
   else if(id==='mdrank'){takePotion('mana');P.mp=Math.min(ST.maxmp,P.mp+ST.maxmp*.5);healFx(ME.pos.x,ME.pos.y,ME.pos.z,0x6aa8ff);refreshBag()}
   else if(id==='thuis'){beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);twirlFx(ME.pos.x,ME.pos.y+1,ME.pos.z,0x7cf0ff);teleport(...hearthTarget());beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);sfx('frost')}
-  else execTalentSkill(a,tg);
+  else if(!execPaladin(a,tg))execTalentSkill(a,tg);
   buildBar(true)}
 function heal(n){n=Math.round(n);P.hp=Math.min(ST.maxhp,P.hp+n);floatText('me','+'+n,'heal')}
 function teleport(x,z){ME.pos.set(x,groundH(x,z),z);PERF.t=0;ME.dash=null;ME.portalCd=2;if(ME.target&&ME.target.kind==='mon'&&Math.hypot(ME.target.x-x,ME.target.z-z)>60)setTarget(null);ME.combat=0;snapCam=true;updZone(true)}
@@ -177,8 +178,8 @@ function dealDamage(m,dmg,o={}){
   const crit=Math.random()*100<ST.crit+tbuff('crit');if(crit)dmg*=2+TM('critdmg');if(m.hp/(m.mhp||1)<.35)dmg*=1+TM('exec');dmg=Math.max(1,Math.round(dmg));
   {const hy=m.y+(m.rig.h||1.5)*.55;if(Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z)<5+(m.size||1))hitFx(m.x,hy,m.z,crit);else if(crit)emitP({x:m.x,y:hy+.3,z:m.z,life:.45,size:2,size1:3.2,col:0xffe080,a:1,a1:0,cell:FXC.crit,vrot:2,must:1})}
   floatText(m,dmg+(crit?'!':''),crit?'dmg crit':'dmg');ME.combat=6;m.hurtT=.3;if(!ME.target)setTarget(m);
-  if(isAuth())authDamage(m,dmg,myId(),o);else{netEmit('dmg',{m:m.id,d:dmg,r:o.root||0,s:o.stun||0});m.hp=Math.max(1,m.hp-dmg);m.predUntil=performance.now()+450;if(o.root)m.root=o.root;if(o.stun)m.stun=o.stun}}
-function authDamage(m,dmg,from,o={}){if(m.dead||m.evade)return;m.hp-=dmg;m.threat[from]=(m.threat[from]||0)+dmg;m.taps.add(from);if(!m.tgt){m.tgt=from;if(m.t.boss)bossEngage(m)}if(o.root)m.root=Math.max(m.root,o.root);if(o.stun)m.stun=Math.max(m.stun,o.stun);if(m.hp<=0)killMon(m)}
+  if(isAuth())authDamage(m,dmg,myId(),o);else{netEmit('dmg',{m:m.id,d:dmg,r:o.root||0,s:o.stun||0,t:o.taunt?1:0});m.hp=Math.max(1,m.hp-dmg);m.predUntil=performance.now()+450;if(o.root)m.root=o.root;if(o.stun)m.stun=o.stun}}
+function authDamage(m,dmg,from,o={}){if(m.dead||m.evade)return;m.hp-=dmg;m.threat[from]=(m.threat[from]||0)+dmg;/* taunt (Avenger's Shield): the monster turns on you, with more threat than anyone else */if(o.taunt){const top=Math.max(0,...Object.values(m.threat));m.threat[from]=top*1.15+dmg+50;if(m.tgt)m.tgt=from}m.taps.add(from);if(!m.tgt){m.tgt=from;if(m.t.boss)bossEngage(m)}if(o.root)m.root=Math.max(m.root,o.root);if(o.stun)m.stun=Math.max(m.stun,o.stun);if(m.hp<=0)killMon(m)}
 function killMon(m){const taps=[...m.taps];m.dead=true;m.hp=0;m.deadT=m.add?6:(m.t.respawn||28);m.tgt=null;m.threat={};m.taps.clear();
   if(m.t.boss){for(const a of MONS.filter(x=>x.add&&!x.dead&&Math.abs(x.x-m.x)<90))killMon(a);m.bt={stomp:9,bolt:5,sum:0,enr:0};if(m.t.dragon)dragonReset(m)}
   netEmit('mdie',{id:m.id,taps});onMonDeath(m,taps)}
@@ -213,7 +214,7 @@ function gainXp(n,src){if(P.level>=MAXLVL)return;n=Math.round(n*(RACES[P.race].x
   while(P.level<MAXLVL&&P.xp>=xpNeed(P.level)){P.xp-=xpNeed(P.level);P.level++;calcStats();P.hp=ST.maxhp;P.mp=ST.maxmp;beamFx(ME.pos.x,ME.pos.z,0xffd34d,1.6,1.5);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z);sfx('lvl');banner('Level '+P.level+'!','You have grown stronger');log('You have reached level '+P.level+'!','sys');
     const nw=ABIL[P.cls].find(a=>a.lvl===P.level);if(nw)log('New ability learned: '+nw.n,'sys');log('+1 talent point'+(isTouch?'':' (N)'),'sys');netEmit('fx',{k:'lvl',x:ME.pos.x,z:ME.pos.z});buildBar(true);refreshNpcMarks()}
   if(P.level>=MAXLVL)P.xp=0;saveGame()}
-function takeHit(dmg,src){if(ME.dead||S.mode!=='play'||S.god)return;ME.hurtT=.35;if(src&&src.x!=null){const dx=ME.pos.x-src.x,dz=ME.pos.z-src.z,L=Math.hypot(dx,dz)||1;ME.kb={x:dx/L*2.2,z:dz/L*2.2}}if(src&&src.kind==='pl'){ME.lastPvp={by:src.id,t:performance.now()};if(!ME.target)setTarget(src)}if(Math.random()<TM('dodge')){floatText('me',P.cls==='krijger'?'Blocked':'Dodged','miss');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xe8f0ff,5,3,.3,.3);return}const lvl=src&&src.lvl||P.level;const red=ST.arm/(ST.arm+40+lvl*12);dmg=Math.max(1,Math.round(dmg*(1-red)*(1-Math.min(.75,TM('dr')+tbuff('dr')))*rand(.9,1.1)));P.hp-=dmg;ME.combat=6;floatText('me','-'+dmg,'hurt');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xff8070,7,4,.32,.35);emitP({x:ME.pos.x,y:ME.pos.y+1.1,z:ME.pos.z,life:.16,size:1.6,size1:2,col:0xff6a50,a:.8,a1:0,cell:FXC.arc,must:1});sfx('hurt');
+function takeHit(dmg,src){if(ME.dead||S.mode!=='play'||S.god)return;if(tbuff('immune')){floatText('me','Immune','miss');return}ME.hurtT=.35;if(src&&src.x!=null){const dx=ME.pos.x-src.x,dz=ME.pos.z-src.z,L=Math.hypot(dx,dz)||1;ME.kb={x:dx/L*2.2,z:dz/L*2.2}}if(src&&src.kind==='pl'){ME.lastPvp={by:src.id,t:performance.now()};if(!ME.target)setTarget(src)}if(Math.random()<TM('dodge')){floatText('me',P.cls==='krijger'||P.cls==='paladijn'?'Blocked':'Dodged','miss');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xe8f0ff,5,3,.3,.3);return}const lvl=src&&src.lvl||P.level;const red=ST.arm/(ST.arm+40+lvl*12);dmg=Math.max(1,Math.round(dmg*(1-red)*(1-Math.min(.75,TM('dr')+tbuff('dr')))*rand(.9,1.1)));P.hp-=dmg;ME.combat=6;floatText('me','-'+dmg,'hurt');sparks(ME.pos.x,ME.pos.y+1.1,ME.pos.z,0xff8070,7,4,.32,.35);emitP({x:ME.pos.x,y:ME.pos.y+1.1,z:ME.pos.z,life:.16,size:1.6,size1:2,col:0xff6a50,a:.8,a1:0,cell:FXC.arc,must:1});sfx('hurt');
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
 function die(){if(ME.mounted)dismount();if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('You were defeated by '+esc(r?r.n:'another player')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('You have died.','err');saveGame()}

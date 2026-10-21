@@ -110,10 +110,11 @@ async function startNet(){
   room.on('chat',m=>{const d=m.data||{};if(typeof d.t!=='string')return;const r=REMOTES.get(m.peer);const who=r?r.n:'Someone';
     if(d.g){if(!GROUP||GROUP.leader!==d.g)return;log('<span class="c-grp">[Group] '+esc(who)+': '+esc(d.t.slice(0,120))+'</span>','grp',true)}else log('<b>'+esc(who)+':</b> '+esc(d.t.slice(0,120)),'say',true);sfx('chat');
     if(r)r.bubble={t:d.t.slice(0,60),until:performance.now()+5000}});
-  room.on('dmg',m=>{if(!isAuth())return;const d=m.data||{};const mon=MONMAP.get(d.m);if(!mon)return;authDamage(mon,clamp(+d.d||0,0,5000),m.peer,{root:clamp(+d.r||0,0,5),stun:clamp(+d.s||0,0,3)})});
+  room.on('dmg',m=>{if(!isAuth())return;const d=m.data||{};const mon=MONMAP.get(d.m);if(!mon)return;authDamage(mon,clamp(+d.d||0,0,5000),m.peer,{root:clamp(+d.r||0,0,5),stun:clamp(+d.s||0,0,3),taunt:d.t?1:0})});
   room.on('msreq',()=>{if(room.isHost())fullSnap=true});
   room.on('ms',m=>{if(room.isHost())return;applySnap(m.data)});
   room.on('mdie',m=>{const d=m.data||{};const mon=MONMAP.get(d.id);if(!mon||!Array.isArray(d.taps))return;if(!mon.dead||!mon.lootDone){mon.lootDone=1;onMonDeath(mon,d.taps)}});
+  room.on('pheal',m=>{const d=m.data||{};if(d.to!==myId())return;receiveHeal(d,m.peer)});
   room.on('mhit',m=>{const d=m.data||{};if(d.to!==myId())return;const mon=MONMAP.get(d.m);takeHit(clamp(+d.d||0,0,2000),mon||{lvl:P?P.level:1});if(+d.r>0&&!ME.dead)ME.root=Math.max(ME.root,clamp(+d.r,0,3))});
   room.on('pdmg',m=>{const d=m.data||{};if(d.to!==myId()||S.mode!=='play'||ME.dead)return;const r=REMOTES.get(m.peer);if(!r||!pvpHostile(r))return;
     takeHit(clamp(+d.d||0,0,3000)*.5,r);if(+d.s>0)ME.stun=Math.max(ME.stun,clamp(+d.s,0,2));if(+d.r>0)ME.root=Math.max(ME.root,clamp(+d.r,0,3))});
@@ -126,6 +127,7 @@ async function startNet(){
     else if(d.k==='r'){const x=+d.x,z=+d.z,c=+d.c;if(c===0xdde6ff)whirlFx(x,groundH(x,z),z);else if(c===0x9ae0ff)novaFx(x,z);else if(c===0xffc040)shoutFx(x,groundH(x,z),z);else if(c===0xffd36a)rainFx(x,z);else ringFx(x,z,clamp(+d.r,1,12),c||0xffffff,.5)}
     else if(d.k==='tw'){const x=+d.x,z=+d.z;twirlFx(x,groundH(x,z)+1,z,0xc08aff);if(isFinite(+d.fx)&&Math.hypot(+d.fx-x,+d.fz-z)<20)blinkFx(+d.fx,groundH(+d.fx,+d.fz),+d.fz,x,groundH(x,z),z)}
     else if(d.k==='sl'&&isFinite(+d.x)){slamFx(+d.x,+d.y,+d.z,+d.r||0)}
+    else if(d.k==='hl'&&isFinite(+d.x)){const x=+d.x,z=+d.z;healFx(x,groundH(x,z),z,0xffe9a0);if(d.big)beamFx(x,z,0xffe08a,.7,.9)}
     else if(d.k==='ci'&&isFinite(+d.x)){chargeImpactFx(+d.x,groundH(+d.x,+d.z),+d.z)}
     else if(drakeFxNet(d)){}
     else if(d.k==='tele')teleFx(+d.x,+d.z,clamp(+d.r,1,12),clamp(+d.d,.2,4));

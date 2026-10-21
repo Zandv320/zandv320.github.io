@@ -14,6 +14,11 @@ const LEGENDS={
     {s:'borst',n:'Robe of Glowing Scales',c:0x8e2a12,mods:{mpp:.15,mregen:.25,hpp:.05},leg:'Legendary: 15% more mana, 25% faster mana regeneration and 5% more health.'},
     {s:'hoofd',n:'Crown of Smouldering Ash',c:0x3a1a14,mods:{cdall:.1,critdmg:.15},leg:'Legendary: all cooldowns 10% shorter and critical hits +15% damage.'},
     {s:'handen',n:'Sparkgrips',c:0xd85a1a,mods:{costall:.1,'vuur.cast':.25},leg:'Legendary: abilities cost 10% less and Firebolt is 0.25 s faster.'}],
+  paladijn:[
+    {s:'wapen',wt:'bijl',n:'Dawnbreaker, Hammer of the Ash Queen\'s Bane',c:0xffd870,mods:{'kruis.dmg':.25,'goddelijkestorm.dmg':.2,wdmg:.05},leg:'Legendary: Crusader Strike +25%, Divine Storm +20% damage and +5% weapon damage.'},
+    {s:'borst',n:'Dragonforged Aegis of Light',c:0xf4ead0,mods:{dr:.05,hpp:.08,heal:.05},leg:'Legendary: you take 5% less damage, have 8% more health and heal 5% more.'},
+    {s:'hoofd',n:'Crown of the Dawn',c:0xfff0c0,mods:{heal:.10,mpp:.08},leg:'Legendary: your heals restore 10% more and you have 8% more mana.'},
+    {s:'handen',n:'Gauntlets of the Sun King',c:0xe8c060,mods:{'oordeel.dmg':.25,haste:.06},leg:'Legendary: Judgement +25% damage and +6% attack speed.'}],
   jager:[
     {s:'wapen',wt:'boog',n:'Dragonstring, Bow of the Ash Queen',c:0x6a1a10,mods:{'schot.dmg':.25,haste:.08,crit:3},leg:'Legendary: Aimed Shot +25% damage, +8% attack speed and +3% critical chance.'},
     {s:'borst',n:'Coat of Dragonhide',c:0x7a3018,mods:{dodge:.06,speed:.06,hpp:.05},leg:'Legendary: 6% chance to dodge attacks, 6% faster movement and 5% more health.'},

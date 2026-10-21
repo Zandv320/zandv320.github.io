@@ -35,6 +35,7 @@ const RACES={
 const CLASSES={
   krijger:{n:'Warrior',desc:'Fights up close with sword and axe. Lots of health and heavy blows. Uses energy.',res:'energie',hp:90,hpL:22,sta:10,staL:2.2,pow:12,powL:3,range:3.2,spd:2.3,cape:0x8c1f1f,chest:0x7a7f88,pants:0x3d3a36,wt:'zwaard',armorK:3,col:'#c79c6e'},
   magier:{n:'Mage',desc:'Commands fire and frost from afar. Little health, enormous damage. Uses mana.',res:'mana',hp:70,hpL:15,sta:8,staL:1.6,pow:14,powL:3.6,range:28,spd:1.9,cape:0x2a3f9a,chest:0x4b3a8c,pants:0x2b2340,wt:'staf',armorK:1,col:'#69ccf0'},
+  paladijn:{n:'Paladin',desc:'A holy knight with hammer and shield. Protects, heals and smites with the Light: Protection, Holy or Retribution. Uses mana.',res:'mana',hp:86,hpL:21,sta:10,staL:2.1,pow:12,powL:3.1,range:3.2,spd:2.4,cape:0xe8e2cc,chest:0xc8ccd6,pants:0x2c3a6a,wt:'zwaard',armorK:3,col:'#f58cba'},
   jager:{n:'Hunter',desc:'A marksman with bow and arrow. Fast, agile and deadly at range. Uses focus.',res:'focus',hp:80,hpL:18,sta:9,staL:1.9,pow:13,powL:3.3,range:30,spd:2.2,cape:0x2f5a2a,chest:0x6b4b2a,pants:0x3b3022,wt:'boog',armorK:2,col:'#abd473'}
 };
 const RES_COL={energie:'enb',mana:'mpb',focus:'fob'};
@@ -50,6 +51,11 @@ const ABIL={
     {id:'nova',n:'Frost Nova',lvl:2,cd:14,cost:22,range:0,ic:['frost','#a8e4ff','#0d3a66'],d:'Freezes all enemies within 9 metres for 4 seconds and deals light damage.'},
     {id:'flits',n:'Blink',lvl:4,cd:15,cost:15,range:0,ic:['blink','#d9a8ff','#3a1266'],d:'Teleport 13 metres forward.'},
     {id:'meteoor',n:'Meteor',lvl:6,cd:20,cost:35,range:30,need:1,cast:1.8,ic:['meteor','#ff7a2e','#4a0d00'],d:'A meteor strikes your target: 260% damage to everything within 6 metres.'}],
+  paladijn:[
+    {id:'kruis',n:'Crusader Strike',lvl:1,cd:0,cost:10,range:3.4,need:1,ic:['hammer','#ffe08a','#5a3a06'],d:'Strike with the Light for 140% weapon damage and restore 2% of your mana.'},
+    {id:'oordeel',n:'Judgement',lvl:2,cd:8,cost:15,range:22,need:1,ic:['sun','#fff0a8','#6a4a06'],d:'Unleash a hammer of light at your target: 160% weapon damage as holy damage.'},
+    {id:'flits_licht',n:'Flash of Light',lvl:4,cd:0,cost:22,range:30,heal:1,cast:1.5,ic:['cross','#fff6c8','#7a5a10'],d:'Heal your friendly target (or yourself) for a large amount. Click a group member to heal them.'},
+    {id:'godschild',n:'Divine Shield',lvl:6,cd:90,cost:0,range:0,ic:['shield','#ffe9a0','#6a4a00'],d:'A shield of holy light makes you immune to all damage for 8 seconds.'}],
   jager:[
     {id:'schot',n:'Aimed Shot',lvl:1,cd:0,cost:15,range:32,need:1,ic:['arrow','#e8d7a0','#3d2a0f'],d:'A carefully aimed shot for 150% weapon damage.'},
     {id:'multi',n:'Multi-Shot',lvl:2,cd:8,cost:25,range:32,need:1,ic:['multi','#9be07a','#173d0d'],d:'Hits your target and up to four nearby enemies for 95% weapon damage.'},
@@ -157,9 +163,9 @@ const NPCS=[
 const RARITY=[{n:'Common',c:'#ffffff'},{n:'Uncommon',c:'#5dff73'},{n:'Rare',c:'#7cc0ff'},{n:'Epic',c:'#e0a3ff'},{n:'Legendary',c:'#ffab4a'}];
 const SLOTS=['hoofd','schouders','rug','borst','handen','benen','voeten','ring','wapen'];
 const SLOT_NL={wapen:'Weapon',hoofd:'Head',schouders:'Shoulders',rug:'Cloak',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
-const MAT={krijger:['Iron','Steel','Chainmail','Battered'],magier:['Silk','Linen','Runic','Stardust'],jager:['Leather','Wolfhide','Scaled','Falconfeather']};
-const BASE={schouders:{krijger:'Pauldrons',magier:'Mantle',jager:'Spaulders'},rug:{krijger:'Cape',magier:'Cloak',jager:'Cloak'},hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots'}};
-const WEAP={krijger:[['Sword','zwaard'],['Battleaxe','bijl']],magier:[['Staff','staf'],['Wand','staf']],jager:[['Bow','boog'],['Longbow','boog']]};
+const MAT={paladijn:['Blessed','Silvered','Consecrated','Templar'],krijger:['Iron','Steel','Chainmail','Battered'],magier:['Silk','Linen','Runic','Stardust'],jager:['Leather','Wolfhide','Scaled','Falconfeather']};
+const BASE={schouders:{krijger:'Pauldrons',magier:'Mantle',jager:'Spaulders',paladijn:'Spaulders'},rug:{krijger:'Cape',magier:'Cloak',jager:'Cloak',paladijn:'Tabard Cape'},hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood',paladijn:'Helm'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic',paladijn:'Chestguard'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves',paladijn:'Gauntlets'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers',paladijn:'Legguards'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots',paladijn:'Sabatons'}};
+const WEAP={paladijn:[['Warhammer','zwaard'],['Mace','zwaard'],['Greathammer','bijl']],krijger:[['Sword','zwaard'],['Battleaxe','bijl']],magier:[['Staff','staf'],['Wand','staf']],jager:[['Bow','boog'],['Longbow','boog']]};
 const SUFFIX=[['of the Bear',0,1],['of the Tiger',1,0],['of the Eagle',.6,.6],['of the Owl',.8,.3],['of the Wolf',.5,.7],['of the Light',.7,.5]];
 const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter']};
 const ARM_SLOT={schouders:.8,rug:.5,hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
@@ -239,7 +245,7 @@ const RECIPES=[
 ];
 /* craftable gear: three tiers per profession. The armour type follows the class that wears it. */
 const GEAR_SETS={
-  smithing:{cls:'krijger',weap:[['Sword','zwaard'],['Battleaxe','bijl']],tiers:[
+  smithing:{cls:'krijger',alt:{cls:'paladijn',weap:[['Warhammer','zwaard'],['Greathammer','bijl']]},weap:[['Sword','zwaard'],['Battleaxe','bijl']],tiers:[
     {lv:0,il:5,pre:'Iron',mat:'Iron Bar',x:null,w:['Planks',2]},
     {lv:12,il:10,pre:'Silversteel',mat:'Silver Bar',x:['Iron Bar',2],w:['Planks',2]},
     {lv:25,il:16,pre:'Emberforged',mat:'Emberstone Bar',x:['Silver Bar',2],w:['Ashwood',2]},
@@ -254,13 +260,14 @@ const GEAR_SETS={
     {lv:12,il:10,pre:'Silken',mat:'Silk Cloth',x:['Linen',2],w:['Sturdy Wood',2]},
     {lv:25,il:16,pre:'Emberweave',mat:'Emberweave',x:['Silk Cloth',2],w:['Ashwood',2]},
     {lv:38,il:23,pre:'Moonsilk',mat:'Moonsilk Cloth',x:['Emberweave',2],w:['Elderwood',2]}]}};
-const GEAR_BASE={krijger:{rug:'Cape',hoofd:'Helm',borst:'Breastplate',handen:'Gauntlets',benen:'Legplates',voeten:'Sabatons'},jager:{rug:'Cloak',hoofd:'Hood',borst:'Tunic',handen:'Gloves',benen:'Leggings',voeten:'Boots'},magier:{rug:'Cloak',hoofd:'Hat',borst:'Robe',handen:'Handwraps',benen:'Trousers',voeten:'Sandals'}};
+const GEAR_BASE={paladijn:{rug:'Tabard Cape',hoofd:'Helm',borst:'Chestguard',handen:'Gauntlets',benen:'Legguards',voeten:'Sabatons'},krijger:{rug:'Cape',hoofd:'Helm',borst:'Breastplate',handen:'Gauntlets',benen:'Legplates',voeten:'Sabatons'},jager:{rug:'Cloak',hoofd:'Hood',borst:'Tunic',handen:'Gloves',benen:'Leggings',voeten:'Boots'},magier:{rug:'Cloak',hoofd:'Hat',borst:'Robe',handen:'Handwraps',benen:'Trousers',voeten:'Sandals'}};
 const GEAR_SLOT={hoofd:[3,0],rug:[2,1],handen:[2,1],voeten:[2,2],benen:[4,3],wapen:[4,4],borst:[5,5]};/* [materiaal, extra vaardigheidsniveau] */
-for(const sk in GEAR_SETS){const S=GEAR_SETS[sk];S.tiers.forEach((T,ti)=>{
+/* a profession can also make the same gear for a second class (smithing: plate for warriors and paladins) */
+for(const sk in GEAR_SETS){const S0=GEAR_SETS[sk];for(const S of[S0,...(S0.alt?[{...S0,...S0.alt,suf:'p'}]:[])])S0.tiers.forEach((T,ti)=>{
   for(const slot in GEAR_SLOT){const[q,dl]=GEAR_SLOT[slot];const big=slot==='borst'||slot==='benen'||slot==='wapen';
     const wl=slot==='wapen'?S.weap:[[GEAR_BASE[S.cls][slot],null]];
     wl.forEach(([bn,wt],wi)=>{const ins=[[T.mat,q]];if(T.x&&big)ins.push([T.x[0],T.x[1]]);if(slot==='wapen')ins.push([T.w[0],T.w[1]]);if(slot==='wapen'&&sk==='tailoring')ins.push([['Moonbloom','Bloodroot','Fireblossom','Moonpetal'][ti],2]);
-      RECIPES.push({id:sk+ti+slot+(wi||''),sk,st:LIFE[sk].st,gear:{slot,cls:S.cls,il:T.il,wt,tier:ti},out:T.pre+' '+bn,q:1,in:ins,lv:T.lv+dl+(wi?1:0),t:3.2+ti*.4})})}})}
+      RECIPES.push({id:sk+ti+slot+(wi||'')+(S.suf||''),sk,st:LIFE[sk].st,gear:{slot,cls:S.cls,il:T.il,wt,tier:ti},out:T.pre+' '+bn,q:1,in:ins,lv:T.lv+dl+(wi?1:0),t:3.2+ti*.4})})}})}
 /* rings, smithed for your own class */
 RECIPES.push({id:'ring1',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:10,tier:1},out:'Silver Band',q:1,in:[['Silver Bar',3],['Moonbloom',2]],lv:15,t:3.4},
   {id:'ring2',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:16,tier:2},out:'Ember Signet',q:1,in:[['Emberstone Bar',3],['Silver Bar',1]],lv:28,t:3.8},

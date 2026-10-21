@@ -17,9 +17,10 @@ const OUTFITS={
   bonemage:{hoofd:P2('O_Skeleton_Mage','Skeleton_Mage_Hat'),borst:P2('O_Mage','Mage_Body'),handen:P2('O_Mage','Mage_ArmLeft','Mage_ArmRight'),benen:P2('O_Mage','Mage_LegLeft','Mage_LegRight')},
   bonerogue:{hoofd:P2('O_Skeleton_Rogue','Skeleton_Rogue_Hood'),borst:P2('O_Rogue','Rogue_Body'),handen:P2('O_Rogue','Rogue_ArmLeft','Rogue_ArmRight'),benen:P2('O_Rogue','Rogue_LegLeft','Rogue_LegRight')}};
 /* per class: which sets an armour piece can have, from plain to fancy */
-const OUTFIT_CLS={krijger:['barbarian','knight','bone'],magier:['mage','hooded','bonemage'],jager:['rogue','ranger','hooded','bonerogue']};
+const OUTFIT_CLS={paladijn:['knight','knight','bone'],krijger:['barbarian','knight','bone'],magier:['mage','hooded','bonemage'],jager:['rogue','ranger','hooded','bonerogue']};
 /* weapon models per weapon type and class, roughly from plain to fancy */
 const WMODELS={
+  paladijn:{zwaard:['XW_hammer_A','XW_hammer_B','XW_hammer_A','XW_hammer_B','XW_hammer_C'],bijl:['XW_hammer_A','XW_hammer_B','XW_hammer_C','XW_hammer_A']},
   krijger:{zwaard:['XA_sword_1handed','XW_sword_B','XA_axe_1handed','XW_sword_E','XW_sword_C','XW_sword_D','XS_Skeleton_Blade'],bijl:['XA_axe_2handed','XW_axe_A','XW_hammer_C','XW_axe_B','XW_hammer_A','XA_sword_2handed','XW_hammer_B','XW_axe_C','XW_halberd','XS_Skeleton_Axe','XA_sword_2handed_color'],staf:['XA_sword_2handed'],boog:['XA_axe_2handed']},
   magier:{staf:['XA_staff','XW_staff_B','XS_Skeleton_Staff','XW_staff_A'],zwaard:['XA_wand','XW_wand_A'],bijl:['XA_staff'],boog:['XA_staff']},
   jager:{boog:['XA_bow_withString','XW_bow_A_withString','XA_crossbow_2handed','XW_bow_B_withString','XS_Skeleton_Crossbow'],zwaard:['XA_dagger','XW_dagger_A','XW_dagger_B'],staf:['XA_dagger'],bijl:['XA_dagger']}};
@@ -89,9 +90,9 @@ async function attachWeaponModel(r,m,name,slotName,rar){if(!name)return null;con
 async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
   /* de oude wapenprops uit het basismodel uit */for(const s of[m.getObjectByName('handslotr'),m.getObjectByName('handslotl'),...(r.shH?[r.shH]:[])]){if(s)for(const c of s.children)if(!c.userData.wmodel&&c!==r.tool)c.visible=false}
   const main=o.wt==='boog'?'handslotl':'handslotr',off=o.wt==='boog'?'handslotr':'handslotl';
-  const w=await attachWeaponModel(r,m,o.wm,main,o.wr|0);if(w){r.weapon=w}
-  if(o.sm)await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(o.om)await attachWeaponModel(r,m,o.om,off,0)}
+  const w=await attachWeaponModel(r,m,o.wm,main,o.wr|0);if(w){r.weapon=w;if(o.wsc)w.scale.multiplyScalar(clamp(+o.wsc||1,.5,2));if(o.cls==='paladijn')palWeapon(r,w,o)}
+  if(o.sm){const s=await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(s&&o.cls==='paladijn')palWeapon(r,s,o)}if(o.om)await attachWeaponModel(r,m,o.om,off,0)}
 /* the part of a look that describes outfits and weapon models (small, goes over the network) */
 function outfitLook(p,cls){const eq=p.eq||{};const out={};for(const s of['hoofd','borst','handen','benen']){if(s==='hoofd'&&helmTier(eq.hoofd))continue;const k=outfitFor(eq[s],cls);if(k)out[s]=k}
   const w=eq.wapen,wt=w?w.wt:null;const res={outfits:out,wm:weaponFor(w,cls,wt),sm:null,om:null};
-  if(cls==='krijger'&&wt==='zwaard')res.sm=shieldFor(w);if(cls==='magier'&&wt==='zwaard')res.om='XA_spellbook_open';return res}
+  if(cls==='krijger'&&wt==='zwaard')res.sm=shieldFor(w);if(cls==='paladijn'){if(wt==='zwaard')res.sm=palShieldFor(w);res.wsc=wt==='bijl'?1.35:1.1;res.wtn=palWeaponTint(w)}if(cls==='magier'&&wt==='zwaard')res.om='XA_spellbook_open';return res}
