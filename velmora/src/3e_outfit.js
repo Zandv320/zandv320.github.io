@@ -88,12 +88,17 @@ const _wSrc=new Map();
 function wModel(name){let p=_wSrc.get(name);if(!p){p=new Promise(res=>gltfLoader().load(MODEL_BASE+'wpn/'+name+'.glb',g=>res(g),undefined,()=>res(null)));_wSrc.set(name,p)}return p}
 async function attachWeaponModel(r,m,name,slotName,rar){if(!name)return null;const g=await wModel(name);if(!g||!r.m)return null;const slot=m.getObjectByName(slotName);if(!slot)return null;
   const w=g.scene.clone(true);w.traverse(x=>{if(x.isMesh){x.castShadow=true;const mt=new THREE.MeshToonMaterial({color:x.material.color.clone(),vertexColors:!!x.geometry.attributes.color,gradientMap:RAMP});if(rar>=2){mt.emissive=new THREE.Color(RCOL[rar]);mt.emissiveIntensity=.04+(rar-2)*.07}x.material=mt}});
+  /* some models come with the blade on the wrong side for the hand: turn them so the cutting edge faces down/forward */if(WFLIP.has(name))w.rotation.y+=Math.PI;/* per-model hold corrections */{const t=(window.__WR&&window.__WR[name])||WROT[name];if(t){w.rotation.x+=t[0];w.rotation.y+=t[1];w.rotation.z+=t[2]}}
   w.userData.wmodel=name;slot.add(w);return w}
+/* crossbows sit in the right hand turned a quarter (as the KayKit Rogue holds its own crossbow); the plain bow is modelled flat */
+const WROT={XA_crossbow_2handed:[0,1.5708,0],XS_Skeleton_Crossbow:[0,1.5708,0],XA_bow_withString:[0,-1.5708,0]};
+const WFLIP=new Set(['XA_axe_1handed','XW_axe_C','XW_halberd']);
 async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
   /* de oude wapenprops uit het basismodel uit */for(const s of[m.getObjectByName('handslotr'),m.getObjectByName('handslotl'),...(r.shH?[r.shH]:[])]){if(s)for(const c of s.children)if(!c.userData.wmodel&&c!==r.tool)c.visible=false}
-  const main=o.wt==='boog'?'handslotl':'handslotr',off=o.wt==='boog'?'handslotr':'handslotl';
+  const xb=/crossbow/i.test(o.wm||'');const main=o.wt==='boog'&&!xb?'handslotl':'handslotr',off=o.wt==='boog'&&!xb?'handslotr':'handslotl';
   const w=await attachWeaponModel(r,m,o.wm,main,o.wr|0);if(w){r.weapon=w;if(o.wsc)w.scale.multiplyScalar(clamp(+o.wsc||1,.5,2));if(o.cls==='paladijn')palWeapon(r,w,o)}
-  if(o.sm){const s=await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(s&&o.cls==='paladijn')palWeapon(r,s,o)}if(o.om)await attachWeaponModel(r,m,o.om,off,0)}
+  if(o.sm){const s=await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(s&&o.cls==='paladijn')palWeapon(r,s,o);
+    /* a weapon in the off hand: the left hand slot is mirrored, turn the weapon round so the blade points the same way as the main hand's */if(s&&!/shield/i.test(o.sm)){s.rotation.y+=Math.PI;r.oweapon=s}}if(o.om)await attachWeaponModel(r,m,o.om,off,0)}
 /* the part of a look that describes outfits and weapon models (small, goes over the network) */
 function outfitLook(p,cls){const eq=p.eq||{};const out={};for(const s of['hoofd','borst','handen','benen']){if(s==='hoofd'&&helmTier(eq.hoofd))continue;const k=outfitFor(eq[s],cls);if(k)out[s]=k}
   const w=eq.wapen,wt=w?w.wt:null;const res={outfits:out,wm:weaponFor(w,cls,wt),sm:null,om:null};

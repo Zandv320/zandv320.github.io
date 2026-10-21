@@ -64,14 +64,15 @@ function enchShellMat(col,push,int){return new THREE.ShaderMaterial({transparent
   vertexShader:'uniform float time,push;varying vec3 vN,vV;varying float vY;void main(){float w=1.+.35*sin(time*4.+position.y*30.+position.x*17.);vec3 p=position+normal*push*w;vec4 mv=modelViewMatrix*vec4(p,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);vY=position.y;gl_Position=projectionMatrix*mv;}',
   fragmentShader:'uniform float time,gain;uniform vec3 col;varying vec3 vN,vV;varying float vY;void main(){float f=pow(1.-abs(dot(vN,vV)),1.6);float fl=.75+.25*sin(time*6.+vY*40.);gl_FragColor=vec4(col*(.18+f*1.5)*gain*fl,1.);}'})}
 const _ev=new THREE.Vector3(),_ev2=new THREE.Vector3();
-function enchGlow(r){const id=r&&r.o&&r.o.ench,w=r&&r.weapon;const G=r&&r._eg;
-  if(!w||!id||!ENCH[id]||!ENCH[id].type){if(G){for(const g of G.shells)g.parent&&g.parent.remove(g);r._eg=null}return null}
+/* the glow of one hand: main hand (r.weapon, look.ench) or a weapon in the off hand (r.oweapon, look.ench2) */
+function enchGlow(r,off){if(!r)return null;const key=off?'_eg2':'_eg';const id=r.o&&(off?r.o.ench2:r.o.ench),w=off?r.oweapon:r.weapon;const G=r[key];
+  if(!w||!id||!ENCH[id]||!ENCH[id].type){if(G){for(const g of G.shells)g.parent&&g.parent.remove(g);r[key]=null}return null}
   if(G&&G.w===w&&G.id===id)return G;if(G)for(const g of G.shells)g.parent&&g.parent.remove(g);
   const E=ENCH[id],T=ENCH_TYPES[E.type];const shells=[],pts=[];w.updateMatrixWorld(true);
   w.traverse(m=>{if(!m.isMesh||m.userData.eglow||!m.geometry||!m.geometry.attributes.position)return;if(!m.geometry.attributes.normal)m.geometry.computeVertexNormals();m.getWorldScale(_ev);const ws=Math.max(1e-4,(_ev.x+_ev.y+_ev.z)/3);
     const g=new THREE.Mesh(m.geometry,enchShellMat(T.col,(.02+E.rank*.014)/ws,.6+E.rank*.32));g.userData.eglow=1;g.renderOrder=3;g.castShadow=false;g.receiveShadow=false;m.add(g);shells.push(g);
     const pa=m.geometry.attributes.position;for(let k=0;k<14;k++){const i=Math.floor(Math.random()*pa.count);pts.push([m,pa.getX(i),pa.getY(i),pa.getZ(i)])}});
-  return r._eg={w,id,shells,pts,E,T,acc:0}}
+  return r[key]={w,id,shells,pts,E,T,acc:0}}
 /* particles that belong to each element */
 function enchSpark(type,x,y,z,rank,T){const k=(.7+rank*.3)*1.45;
   if(type==='flame'){emitP({x,y,z,vx:FRN(-.3,.3),vy:FRN(1.2,2.6),vz:FRN(-.3,.3),life:FRN(.35,.6),size:.32*k,size1:.06,col:0xffd060,col1:0xff3a0a,a:1,a1:0,cell:FXC.fire,vrot:FRN(-3,3)});if(Math.random()<.2)emitP({x,y:y+.2,z,vy:1.4,life:.9,size:.25,size1:.6,col:0x3a2a20,a:.25,a1:0,cell:FXC.smoke2,add:false})}
@@ -81,7 +82,8 @@ function enchSpark(type,x,y,z,rank,T){const k=(.7+rank*.3)*1.45;
   else if(type==='holy'){emitP({x,y,z,vx:FRN(-.2,.2),vy:FRN(.4,1),vz:FRN(-.2,.2),life:FRN(.7,1.2),size:.26*k,size1:.04,col:0xfffbe0,col1:0xffc840,a:1,a1:0,cell:FXC.glint,vrot:FRN(-1,1)})}
   else if(type==='shadow'){emitP({x,y,z,vx:FRN(-.25,.25),vy:FRN(.2,.8),vz:FRN(-.25,.25),life:FRN(.6,1),size:.25,size1:.7*k,col:0x2a0a3a,a:.55,a1:0,cell:FXC.smoke2,add:false,vrot:FRN(-1,1)});if(Math.random()<.5)emitP({x,y,z,vy:FRN(.2,.6),life:.6,size:.18*k,size1:.03,col:0xc87aff,a:1,a1:0,cell:FXC.crit})}}
 /* per frame for one rig (yourself or another player) */
-function enchFx(r,dt){const G=enchGlow(r);if(!G)return;r.weapon.getWorldPosition(_ev2);if(Math.abs(_ev2.x-camTarget.x)+Math.abs(_ev2.z-camTarget.z)>45)return;
+function enchFx(r,dt){enchFxHand(r,dt,false);enchFxHand(r,dt,true)}
+function enchFxHand(r,dt,off){const G=enchGlow(r,off);if(!G)return;G.w.getWorldPosition(_ev2);if(Math.abs(_ev2.x-camTarget.x)+Math.abs(_ev2.z-camTarget.z)>45)return;
   const rate=(GFX.q==='laag'?10:GFX.q==='middel'?20:30)*(.6+G.E.rank*.4);G.acc+=dt*rate;let n=Math.floor(G.acc);G.acc-=n;n=Math.min(n,6);
   for(let i=0;i<n;i++){const[m,x,y,z]=G.pts[Math.floor(Math.random()*G.pts.length)];_ev.set(x,y,z);m.localToWorld(_ev);enchSpark(G.E.type,_ev.x,_ev.y,_ev.z,G.E.rank,G.T)}}
 function updEnchant(dt,t){ENCH_U.time.value=t}

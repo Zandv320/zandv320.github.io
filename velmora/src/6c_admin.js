@@ -33,6 +33,7 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
     h+=admRow('Monsters defeated',admIn('aKills',P.kills|0,0,9999999)+admBtn('aKillsB','Set'))}
   else if(ADM_TAB==='items'){const SL=SLOTS.map(s=>[s,SLOT_NL[s]]);
     h+=admRow('New gear',admSel('aSlot',SL,'wapen')+admIn('aIl',P.level,1,30)+admSel('aRar',RARITY.map((r,i)=>[i,r.n]),3)+admBtn('aGear','Create'));
+    /* weapons: pick the kind, one-handed or two-handed */h+=admRow('Weapon kind','<small>for Main Hand</small>'+admSel('aWt',[['','Any'],...WEAP[P.cls].map((w,i)=>[String(i),w[0]+' · '+(TWO_HAND.has(w[1])?'Two-Hand':'One-Hand')])],''));
     h+=admRow('Potions',admIn('aPq',10,1,99)+admBtn('aPh','Healing')+admBtn('aPm','Power',1));
     h+=admRow('Materials',admSel('aMat',Object.keys(MATS).map(k=>[k,k]),'Iron Bar')+admIn('aMq',20,1,99)+admBtn('aMatB','Give'));
     ensureMounts();h+=admRow('Mounts','<small>'+P.mounts.length+' / '+Object.keys(MOUNTS).length+' owned</small>'+admBtn('aMntAll','Unlock all')+admBtn('aMntNone','Back to horse only',1));
@@ -58,7 +59,7 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
   on('aHonB',()=>{P.honor=admNum('aHon',0,999999);refreshPvpUi&&refreshPvpUi();admDone('honour set.')});
   on('aKillsB',()=>{P.kills=admNum('aKills',0,9999999);admDone('kills set.')});
   /* items */
-  on('aGear',()=>{const s=$('#aSlot').value,r=+$('#aRar').value,il=admNum('aIl',1,30);const it=s==='schouders'?makeShoulders(P.cls,clamp(r,1,4)):s==='rug'?makeCloak(P.cls,clamp(r,0,4)):s==='hoofd'&&r>=1?makeHelm(P.cls,clamp(r,1,4)):r>=4?makeLegendary(P.cls,s):makeGear(s,il,r,P.cls);if(r>=4){it.il=Math.max(it.il||1,il);it.req=1}else it.req=1;
+  on('aGear',()=>{const s=$('#aSlot').value,r=+$('#aRar').value,il=admNum('aIl',1,30);const wk=$('#aWt')?$('#aWt').value:'';const it=s==='wapen'&&wk!==''?admWeapon(+wk,il,r):s==='schouders'?makeShoulders(P.cls,clamp(r,1,4)):s==='rug'?makeCloak(P.cls,clamp(r,0,4)):s==='hoofd'&&r>=1?makeHelm(P.cls,clamp(r,1,4)):r>=4?makeLegendary(P.cls,s):makeGear(s,il,r,P.cls);if(r>=4){it.il=Math.max(it.il||1,il);it.req=1}else it.req=1;
     if(!addItem(it))return toast('Your bag is full');log('Admin: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span> created.','loot',true);admDone('item in your bag.')});
   on('aPh',()=>{if(!addItem(potion('heal',admNum('aPq',1,99))))return toast('Your bag is full');admDone('healing potions added.')});
   on('aPm',()=>{if(!addItem(potion('mana',admNum('aPq',1,99))))return toast('Your bag is full');admDone('power potions added.')});
@@ -89,3 +90,9 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
 function confirmTwice(id){const e=$('#'+id);if(e.dataset.sure)return true;e.dataset.sure=1;e.textContent='Click again to confirm';setTimeout(()=>{if(e.isConnected){delete e.dataset.sure;renderAdmin()}},3000);return false}
 /* per-frame cheat effects */
 function adminFrame(){if(!S.admin||!P)return;if(S.god&&!ME.dead){P.hp=ST.maxhp;P.mp=ST.maxmp}if(S.noCd){for(const k in ME.cds)ME.cds[k]=0;ME.gcd=0}}
+
+/* a weapon of one chosen kind (sword, axe, greatsword…): rolled until it matches, a legendary is turned into that kind */
+function admWeapon(k,il,r){const[bn,wt]=WEAP[P.cls][k];const gs=bn==='Greatsword';const ok=it=>it.wt===wt&&!!it.gs===gs&&(r>=3||it.n.includes(bn));
+  if(r>=4){const it=makeLegendary(P.cls,'wapen');it.wt=wt;it.gs=gs?1:0;const pw=it.pow,st=it.sta;weaponStats(it,Math.max(il,24),4,P.cls);it.pow=pw;it.sta=st;return it}
+  for(let i=0;i<200;i++){const it=makeGear('wapen',il,r,P.cls);if(ok(it))return it}
+  const it=makeGear('wapen',il,r,P.cls);it.wt=wt;it.gs=gs?1:0;weaponStats(it,il,r,P.cls);return it}

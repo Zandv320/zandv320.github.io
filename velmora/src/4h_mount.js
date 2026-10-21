@@ -86,7 +86,7 @@ function shPlace(w,B,cfg,dz){const sz=B.sz,c=B.c;const ix=[0,1,2].sort((a,b)=>sz
 function syncSheath(r,want){const m=r.m;if(!m)return;
   if(want){const items=[];for(const sn of['handslotr','handslotl']){const s=m.getObjectByName(sn);if(s)for(const w of s.children)if(w.visible&&w!==r.tool)items.push([w,s])}
     if(items.length){if(!r.shH){const ch=m.getObjectByName('chest');if(!ch)return;r.shH=new THREE.Object3D();ch.add(r.shH)}
-      const wt=(r.o&&r.o.wt)||r.wt,mainSlot=wt==='boog'?'handslotl':'handslotr';const done=[];
+      const wt=(r.o&&r.o.wt)||r.wt,mainSlot=r.weapon&&r.weapon.parent&&/handslot/.test(r.weapon.parent.name)?r.weapon.parent.name:wt==='boog'?'handslotl':'handslotr';const done=[];
       for(const[w,s]of items){const B=shBox(w);if(!B)continue;w.userData.shSave={from:s,p:w.position.clone(),q:w.quaternion.clone()};
         const main=s.name===mainSlot,ln=B.sz.slice().sort((a,b)=>b-a);const role=main?(wt==='boog'?'bow':wt==='staf'?'staff':'main'):(ln[0]>ln[1]*1.8?'long':'flat');done.push([w,B,role])}
       const shield=done.some(x=>x[2]==='flat');for(const[w,B,role]of done){shPlace(w,B,SHEATH[role],role==='main'&&shield?-SHEATH.shieldGap:0);r.shH.add(w)}}}
