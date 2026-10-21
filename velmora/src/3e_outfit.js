@@ -32,7 +32,9 @@ function pickFrom(list,it,bias=0){const h=strHash(String(it.n||it.id||''));const
 function outfitFor(it,cls){if(!it)return null;if(it.vis&&it.vis.o&&OUTFITS[it.vis.o])return it.vis.o;const L=OUTFIT_CLS[cls]||OUTFIT_CLS.krijger;
   const pre=String(it.n||'').replace(/^Masterwork /,'').split(' ')[0];if(TIER_LOOK[pre]){const o=TIER_LOOK[pre];return L.includes(o)||cls===it.cls?o:L[0]}
   if((it.r|0)>=4)return L[Math.min(L.length-1,1+(strHash(String(it.n))%2))];return pickFrom(L,it)}
-function weaponFor(it,cls,wt){if(!it||!wt||wt==='none'||wt==='ak')return null;if(it.vis&&it.vis.w&&WMODEL_ALL.has(it.vis.w))return it.vis.w;const L=(WMODELS[cls]||WMODELS.krijger)[wt];if(!L)return null;
+/* greatswords: the KayKit two-handed swords, the coloured one from rare upwards */
+const GREATSWORDS=['XA_sword_2handed','XA_sword_2handed_color'];
+function weaponFor(it,cls,wt){if(!it||!wt||wt==='none'||wt==='ak')return null;if(it.vis&&it.vis.w&&WMODEL_ALL.has(it.vis.w))return it.vis.w;if(it.gs)return GREATSWORDS[(it.r|0)>=2?1:0];const L=(WMODELS[cls]||WMODELS.krijger)[wt];if(!L)return null;
   if(/^(Versleten|Worn)/.test(it.n||''))return cls==='krijger'&&wt==='zwaard'?'XW_sword_A':L[0];const pre=String(it.n||'').replace(/^Masterwork /,'').split(' ')[0];const ti={Iron:0,Tanned:0,Linen:0,Silversteel:1,Hardened:1,Silken:1,Emberforged:2,Drakeskin:2,Emberweave:2}[pre];
   if(ti!=null)return L[Math.min(L.length-1,ti*2+((it.r|0)>=3?1:0))];return pickFrom(L,it,1)}
 function shieldFor(it){return it?pickFrom(SHIELD_M,it,2):null}
@@ -95,4 +97,5 @@ async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
 /* the part of a look that describes outfits and weapon models (small, goes over the network) */
 function outfitLook(p,cls){const eq=p.eq||{};const out={};for(const s of['hoofd','borst','handen','benen']){if(s==='hoofd'&&helmTier(eq.hoofd))continue;const k=outfitFor(eq[s],cls);if(k)out[s]=k}
   const w=eq.wapen,wt=w?w.wt:null;const res={outfits:out,wm:weaponFor(w,cls,wt),sm:null,om:null};
-  if(cls==='krijger'&&wt==='zwaard')res.sm=shieldFor(w);if(cls==='paladijn'){if(wt==='zwaard')res.sm=palShieldFor(w);res.wsc=wt==='bijl'?1.35:1.1;res.wtn=palWeaponTint(w)}if(cls==='magier'&&wt==='zwaard')res.om='XA_spellbook_open';return res}
+  /* the off hand comes from the off-hand slot (shield, second weapon, tome); a two-hander leaves it empty */if(!isTwoHand(w))offhandLook(eq,cls,res);
+  if(cls==='paladijn'){res.wsc=wt==='bijl'&&!(w&&w.gs)?1.35:1.1;res.wtn=palWeaponTint(w)}return res}

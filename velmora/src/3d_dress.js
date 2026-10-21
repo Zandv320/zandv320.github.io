@@ -57,7 +57,7 @@ const UNDEAD_MODEL={paladijn:'Skeleton_Warrior',krijger:'Skeleton_Warrior',magie
 function playerModel(o){const cls=o.cls;if(RACES[o.race]&&RACES[o.race].undead)return UNDEAD_MODEL[cls]||'Skeleton_Warrior';if(o.outfits)return GLTF_MODELS[cls];for(const slot in GEAR_VIS[cls]||{}){const v=GEAR_VIS[cls][slot];if(v.model&&o.gear&&o.gear[slot])return v.model}return GLTF_MODELS[cls]}
 function playerProps(o){const on=[];const V=GEAR_VIS[o.cls]||{};const G=o.gear||{};
   for(const slot in V){const d=G[slot];if(!d)continue;if(o.outfits&&o.outfits[slot])continue;const v=V[slot];if(d.p)on.push(d.p);else if(v.props)on.push(...v.props);if(v.extra&&!o.om)on.push(...Object.keys(v.extra))}
-  const wv=o.wt&&WEAPON_VIS[o.wt];if(wv&&wv.shield&&(o.cls==='krijger'||o.cls==='paladijn')&&o.wt&&!o.sm)on.push(SHIELDS[clamp(o.wr|0,0,3)]);
+  const wv=o.wt&&WEAPON_VIS[o.wt];if(wv&&wv.shield&&o.shd&&(o.cls==='krijger'||o.cls==='paladijn')&&o.wt&&!o.sm)on.push(SHIELDS[clamp(o.wr|0,0,3)]);
   return on}
 function weaponProp(o){if(o.wvis&&o.wvis.p)return o.wvis.p;const wv=o.wt&&WEAPON_VIS[o.wt];return wv?wv[o.cls]||null:null}
 /* props en atlas kleuren; eigen glb-wapen inladen */

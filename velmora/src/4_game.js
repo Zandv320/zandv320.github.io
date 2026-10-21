@@ -15,7 +15,9 @@ const ME={stun:0,root:0,lastPvp:null,g:null,rig:null,pos:new THREE.Vector3(),vy:
 function makeGear(slot,il,r,cls){
   il=Math.max(1,il);const rm=1+r*.3;let n,pow=0,sta=0,arm=0,it={id:uid(),kind:'gear',s:slot,r,il,req:Math.max(1,il-1),cls};
   const budget=(1.4+il*1.1)*rm*(slot==='borst'||slot==='benen'||slot==='wapen'?1.3:1);
-  if(slot==='wapen'){const[bn,wt]=pick(WEAP[cls]);it.wt=wt;const avg=(3+il*2.2)*(1+r*.22);it.spd=CLASSES[cls].spd;it.min=Math.round(avg*.75);it.max=Math.round(avg*1.25);n=bn}
+  /* the off hand: a shield (warrior, paladin), a tome (mage), a quiver (hunter); warriors can also find a second one-handed weapon */
+  if(slot==='offhand'){if(cls==='krijger'&&Math.random()<.35)return makeOneHand(il,r,cls);const sub=offSub(cls);it.sub=sub;n=BASE.offhand[cls]||'Shield';if(sub==='shield')arm=Math.round(il*CLASSES[cls].armorK*1.15*(1+r*.15))}
+  else if(slot==='wapen'){const[bn,wt]=pick(WEAP[cls]);it.wt=wt;n=bn;if(bn==='Greatsword')it.gs=1;weaponStats(it,il,r,cls)}
   else if(slot==='ring')n=pick(['Ring','Signet Ring','Band']);
   else{n=BASE[slot][cls];arm=Math.round(il*CLASSES[cls].armorK*ARM_SLOT[slot]*(1+r*.15))}
   const mt=pick(MAT[cls]);
@@ -23,7 +25,7 @@ function makeGear(slot,il,r,cls){
   else{n=mt+' '+n.toLowerCase();n=n[0].toUpperCase()+n.slice(1);if(Math.random()<.5)sta=Math.max(1,Math.round(budget*.4))}
   if(r>=3){const ep={paladijn:['Lightbringer','Hammer of the Silver Hand','Truthguard'],krijger:['Bonebreaker','Grave Axe of Morath','Crownsplitter'],magier:['Staff of Eternal Night','Whispering Skullstaff','Soulflame'],jager:['Shadowbow of Kaal-Morath','Bonestring','Gravewarden\'s Longbow']};if(slot==='wapen')n=pick(ep[cls]);else n='Crown Shard '+n.split(' ').slice(1).join(' ');pow=Math.round(pow*1.15+2);sta=Math.round(sta*1.15+2)}
   Object.assign(it,{n,pow,sta,arm});it.price=Math.round((il*1.6+2)*(1+r*1.3));return it}
-function randSlot(){return pick(['wapen','hoofd','rug','borst','handen','benen','voeten','ring','borst','benen'])}
+function randSlot(){return pick(['wapen','offhand','hoofd','rug','borst','handen','benen','voeten','ring','borst','benen'])}
 const potion=(pt,q=1)=>({id:uid(),kind:'potion',pt,n:pt==='mana'?'Power Potion':'Healing Potion',q,price:1,r:0});
 const matItem=(n,q=1)=>({id:uid(),kind:'mat',n,q,price:(MATS[n]||{}).price||1,r:(MATS[n]||{}).r||0});
 const junkItem=(type,l)=>({id:uid(),kind:'junk',n:pick(JUNK[type]||['Junk']),q:1,price:Math.max(1,Math.round(l*.8)),r:-1});
@@ -33,7 +35,7 @@ function addItem(it){
 function countItem(pt){return P.inv.reduce((s,x)=>s+(x&&x.kind==='potion'&&x.pt===pt?x.q:0),0)}
 function takePotion(pt){const i=P.inv.findIndex(x=>x&&x.kind==='potion'&&x.pt===pt);if(i<0)return false;if(--P.inv[i].q<=0)P.inv[i]=null;return true}
 function newChar(name,race,cls,hair){const c={id:uid(),talents:{},pvp:false,honor:0,name,race,cls,hair,level:1,xp:0,gold:3,inv:Array(BAG).fill(null),life:{},energy:100,buffs:{},eq:{},quests:{},done:[],x:rand(-3,3),z:rand(4,8),ry:Math.PI,hp:-1,mp:-1,kills:0,created:Date.now()};
-  const w=makeGear('wapen',1,0,cls);w.n={krijger:'Worn Sword',magier:'Apprentice Staff',jager:'Simple Bow',paladijn:'Initiate\'s Hammer'}[cls];w.wt=CLASSES[cls].wt;w.req=1;c.eq.wapen=w;c.eq.borst=makeGear('borst',1,0,cls);c.eq.borst.n={krijger:'Apprentice Shirt',magier:'Apprentice Robe',jager:'Apprentice Tunic',paladijn:'Initiate\'s Tabard'}[cls];
+  const w=makeGear('wapen',1,0,cls);w.n={krijger:'Worn Sword',magier:'Apprentice Staff',jager:'Simple Bow',paladijn:'Initiate\'s Hammer'}[cls];w.wt=CLASSES[cls].wt;w.req=1;c.eq.wapen=w;if(cls==='krijger'||cls==='paladijn'){c.eq.offhand=starterShield(cls)}c.ohGiven=1;c.eq.borst=makeGear('borst',1,0,cls);c.eq.borst.n={krijger:'Apprentice Shirt',magier:'Apprentice Robe',jager:'Apprentice Tunic',paladijn:'Initiate\'s Tabard'}[cls];
   c.eq.rug=starterCloak(cls);c.ckGiven=1;
   c.inv[0]=potion('heal',3);c.inv[1]=potion('mana',2);return c}
 /* everyone starts with a plain cloak (characters from before the cloak slot get one too, once) */
@@ -41,8 +43,8 @@ function starterCloak(cls){const it=makeGear('rug',1,0,cls);it.n="Traveller's Cl
 function calcStats(){TMC=null;const C=CLASSES[P.cls],R=RACES[P.race];let pow=C.pow+C.powL*(P.level-1),sta=C.sta+C.staL*(P.level-1),arm=P.level*C.armorK*1.5;
   for(const s of SLOTS){const it=P.eq[s];if(!it)continue;pow+=it.pow||0;sta+=it.sta||0;arm+=it.arm||0}
   pow*=(R.pow||1)*(1+TM('powp'));const now=Date.now();P.buffs=P.buffs||{};let hpB=0,armB=0,dmgB=0;for(const k of['food','elixir']){const b=P.buffs[k];if(!b)continue;if(b.until<now){delete P.buffs[k];continue}const f=(MATS[b.n]||{})[k];if(!f)continue;pow*=1+(f.pow||0);hpB+=f.hp||0;armB+=f.arm||0;dmgB+=f.dmg||0}
-  const w=P.eq.wapen;
-  ST={pow:Math.round(pow),sta:Math.round(sta),arm:Math.round(arm*(1+armB+TM('armp'))),maxhp:Math.round((C.hp+C.hpL*(P.level-1)+sta*8)*(R.hp||1)*(1+hpB+TM('hpp'))),maxmp:C.res==='mana'?Math.round((90+P.level*16+pow*1.5)*(R.mp||1)*(1+TM('mpp'))):100,wmin:w?w.min:2,wmax:w?w.max:4,spd:w?w.spd:C.spd,crit:5+(P.cls==='jager'?5:0)+pow*.04+TM('crit'),dmgMul:(R.dmg||1)*(1+dmgB),res:C.res};
+  const w=P.eq.wapen;const ow=P.eq.offhand&&P.eq.offhand.s==='wapen'?P.eq.offhand:null;
+  ST={pow:Math.round(pow),sta:Math.round(sta),arm:Math.round(arm*(1+armB+TM('armp'))),maxhp:Math.round((C.hp+C.hpL*(P.level-1)+sta*8)*(R.hp||1)*(1+hpB+TM('hpp'))),maxmp:C.res==='mana'?Math.round((90+P.level*16+pow*1.5)*(R.mp||1)*(1+TM('mpp'))):100,wmin:w?w.min:2,wmax:w?w.max:4,owmin:ow?ow.min:0,owmax:ow?ow.max:0,spd:w?w.spd:C.spd,crit:5+(P.cls==='jager'?5:0)+pow*.04+TM('crit'),dmgMul:(R.dmg||1)*(1+dmgB),res:C.res};
   if(P.hp<0||P.hp>ST.maxhp)P.hp=ST.maxhp;if(P.mp<0||P.mp>ST.maxmp)P.mp=ST.maxmp}
 const hitDmg=(m,id='auto')=>(rand(ST.wmin,ST.wmax)+ST.pow*.45+P.level)*m*ST.dmgMul*(ME.buff>0?1.25:1)*(1+TM('wdmg')+TM(id+'.dmg')+tbuff('dmg'));
 
@@ -136,6 +138,7 @@ function useAbility(i){
   if(!P||ME.dead||S.mode!=='play')return;if(ME.mounted)dismount();if(ACT.cur){if(ACT.cur.k==='fish')endFish();ACT.cur=null;$('#castbar').hidden=true}if(ME.stun>0)return toast('You are stunned');const a=bar()[i];if(!a)return;
   if(P.level<a.lvl)return toast('You learn '+a.n+' at level '+a.lvl);
   if((ME.cds[a.id]||0)>0)return toast('That ability is not ready yet');
+  if((a.id==='schildslag'||a.id==='wraakschild')&&!(P.eq.offhand&&P.eq.offhand.sub==='shield'))return toast('You need a shield in your off hand');
   if(ME.cast)return toast('You are still busy');
   if(!a.item&&ME.gcd>0)return;
   if(a.item&&!countItem(a.item))return toast('You have no '+a.n.toLowerCase()+'s left');
