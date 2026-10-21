@@ -43,6 +43,7 @@ function fsHint(){if($('#fsHint'))return;const d=document.createElement('div');d
 document.addEventListener('fullscreenchange',updFs);document.addEventListener('webkitfullscreenchange',updFs);
 $('#bFull').addEventListener('click',toggleFullscreen);$('#bFull2').addEventListener('click',toggleFullscreen);updFs();
 $('#bSound').addEventListener('click',()=>{S.sound=!S.sound;$('#bSound').textContent='Sound: '+(S.sound?'on':'off')});
+const camBtn=()=>$('#bCam').textContent='Camera: '+(TD.on?'Top-down':'Third-person');camBtn();$('#bCam').addEventListener('click',()=>{tdSet(!TD.on);camBtn();log(TD.on?'Top-down camera: click the ground to walk, click an enemy to attack. Q/E or right-drag to turn, scroll to zoom.':'Third-person camera.','sys')});
 const gfxBtn=()=>$('#bGfx').textContent='Graphics: '+GFX_N[GFX.q];gfxBtn();$('#bGfx').addEventListener('click',()=>{GFX.q=GFX.q==='hoog'?'middel':GFX.q==='middel'?'laag':'hoog';GFX.auto=9;applyGfx();gfxBtn()});
 $('#bQuit').addEventListener('click',()=>{toMenu()});
 $('#bPvp').addEventListener('click',()=>setPvp(!P.pvp));

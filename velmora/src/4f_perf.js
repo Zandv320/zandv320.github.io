@@ -52,7 +52,7 @@ function setZoneLayer(inDun){if(PERF.inDun===inDun)return;PERF.inDun=inDun;
   /* de schaduwkaart en GTAO gebruiken dezelfde cameralagen */camera.layers.set(0);camera.layers.enable(inDun?PERF.L_DUN:PERF.L_OVER)}
 /* per frame: zonelaag, en elke 0,4 s de vakken op afstand */
 function updPerf(dt){const c=camTarget;setZoneLayer(c.x>700);PERF.t-=dt;if(PERF.t>0)return;PERF.t=.4;
-  const R=Math.min((GFX.q==='laag'?170:GFX.q==='middel'?230:320)*(isTouch?.8:1),scene.fog.far+30);
+  const R=TD.on?80:Math.min((GFX.q==='laag'?170:GFX.q==='middel'?230:320)*(isTouch?.8:1),scene.fog.far+30);
   for(const L of PERF.cells){const d=Math.hypot(L.x-c.x,L.z-c.z)-L.r;L.m.visible=d<R}}
 /* procedurele monsters (o.a. de Vuurgrot-wezens) bestaan uit tientallen losse onderdelen. Per bewegend lichaamsdeel
    (heup, arm, hoofd…) worden de stilstaande onderdelen samengevoegd; de gewrichten zelf blijven, dus animaties werken gewoon.

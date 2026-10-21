@@ -28,7 +28,7 @@ async function envInstances(names,list,groupOf,scaleOf,cast=true,tint=null){
     const mk=(g)=>{const im=new THREE.InstancedMesh(g,ENV_MAT,b.length);im.userData.wx=b[0][0];im.castShadow=cast;im.receiveShadow=true;im.frustumCulled=false;im.count=0;scene.add(im);ENV_IM.push(im);return im};
     const imHi=mk(geo),imLo=lods[vi]?mk(lods[vi]):null;ENV_LOD.push({n:b.length,mats,pos,imHi,imLo})});return true}
 /* (px,pz) camerapositie en (fx,fz) kijkrichting: wat ruim achter de camera staat wordt niet getekend */
-function updEnvLod(cx,cz,R,px=cx,pz=cz,fx=0,fz=0){const R2=R*R;const far=Math.min(R*8,scene.fog.far+40);const F2=far*far;const back=fx||fz;
+function updEnvLod(cx,cz,R,px=cx,pz=cz,fx=0,fz=0,cap=1e9){const R2=R*R;const far=Math.min(R*8,scene.fog.far+40,cap);const F2=far*far;const back=fx||fz;
   for(const L of ENV_LOD){const hi=L.imHi.instanceMatrix.array,lo=L.imLo&&L.imLo.instanceMatrix.array;let nh=0,nl=0;
     for(let i=0;i<L.n;i++){const X=L.pos[i*2],Z=L.pos[i*2+1];if(back&&(X-px)*fx+(Z-pz)*fz<-28)continue;const dx=X-cx,dz=Z-cz,d2=dx*dx+dz*dz;
       if(d2<R2||!lo){hi.set(L.mats.subarray(i*16,i*16+16),nh*16);nh++}else if(d2<F2){lo.set(L.mats.subarray(i*16,i*16+16),nl*16);nl++}}
