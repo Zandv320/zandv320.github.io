@@ -60,7 +60,7 @@ function playerProps(o){const on=[];const V=GEAR_VIS[o.cls]||{};const G=o.gear||
   return on}
 function weaponProp(o){if(o.wvis&&o.wvis.p)return o.wvis.p;const wv=o.wt&&WEAPON_VIS[o.wt];return wv?wv[o.cls]||null:null}
 /* props en atlas kleuren; eigen glb-wapen inladen */
-function dressGltf(r,m,o){const G=o.gear||{};const key=JSON.stringify(G);if(o.sp)attachShoulders(r,m,o);if(o.outfits)applyOutfit(r,m,o);if(o.wm||o.sm||o.om)applyWeapons(r,m,o);if(RACES[o.race]&&RACES[o.race].undead)return;/* skeletten: eigen textuur houden */
+function dressGltf(r,m,o){const G=o.gear||{};const key=JSON.stringify(G);if(o.sp)attachShoulders(r,m,o);if(o.hl)attachHelm(r,m,o);if(o.outfits)applyOutfit(r,m,o);if(o.wm||o.sm||o.om)applyWeapons(r,m,o);if(RACES[o.race]&&RACES[o.race].undead)return;/* skeletten: eigen textuur houden */
   m.traverse(x=>{if(!x.isSkinnedMesh||!x.material.map)return;const kind=/Arm/.test(x.name)?'Arm':/Leg/.test(x.name)?'Leg':/Head/.test(x.name)?'Head':/Body/.test(x.name)?'Body':null;if(!kind)return;
     if(kind==='Head'&&!/Hooded/.test(x.name))return;
     const skin=atlasSkin(x.material.map);const nm=x.material.clone();nm.map=dressedMap(x.material.map,dressMapping(kind,G,skin),kind+'|'+key);x.material=nm});

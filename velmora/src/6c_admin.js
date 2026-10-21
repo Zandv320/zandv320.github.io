@@ -58,7 +58,7 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
   on('aHonB',()=>{P.honor=admNum('aHon',0,999999);refreshPvpUi&&refreshPvpUi();admDone('honour set.')});
   on('aKillsB',()=>{P.kills=admNum('aKills',0,9999999);admDone('kills set.')});
   /* items */
-  on('aGear',()=>{const s=$('#aSlot').value,r=+$('#aRar').value,il=admNum('aIl',1,30);const it=s==='schouders'?makeShoulders(P.cls,clamp(r,1,4)):r>=4?makeLegendary(P.cls,s):makeGear(s,il,r,P.cls);if(r>=4){it.il=Math.max(it.il||1,il);it.req=1}else it.req=1;
+  on('aGear',()=>{const s=$('#aSlot').value,r=+$('#aRar').value,il=admNum('aIl',1,30);const it=s==='schouders'?makeShoulders(P.cls,clamp(r,1,4)):s==='hoofd'&&r>=1?makeHelm(P.cls,clamp(r,1,4)):r>=4?makeLegendary(P.cls,s):makeGear(s,il,r,P.cls);if(r>=4){it.il=Math.max(it.il||1,il);it.req=1}else it.req=1;
     if(!addItem(it))return toast('Your bag is full');log('Admin: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span> created.','loot',true);admDone('item in your bag.')});
   on('aPh',()=>{if(!addItem(potion('heal',admNum('aPq',1,99))))return toast('Your bag is full');admDone('healing potions added.')});
   on('aPm',()=>{if(!addItem(potion('mana',admNum('aPq',1,99))))return toast('Your bag is full');admDone('power potions added.')});

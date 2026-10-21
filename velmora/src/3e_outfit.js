@@ -91,6 +91,6 @@ async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
   const w=await attachWeaponModel(r,m,o.wm,main,o.wr|0);if(w){r.weapon=w}
   if(o.sm)await attachWeaponModel(r,m,o.sm,off,o.wr|0);if(o.om)await attachWeaponModel(r,m,o.om,off,0)}
 /* the part of a look that describes outfits and weapon models (small, goes over the network) */
-function outfitLook(p,cls){const eq=p.eq||{};const out={};for(const s of['hoofd','borst','handen','benen']){const k=outfitFor(eq[s],cls);if(k)out[s]=k}
+function outfitLook(p,cls){const eq=p.eq||{};const out={};for(const s of['hoofd','borst','handen','benen']){if(s==='hoofd'&&helmTier(eq.hoofd))continue;const k=outfitFor(eq[s],cls);if(k)out[s]=k}
   const w=eq.wapen,wt=w?w.wt:null;const res={outfits:out,wm:weaponFor(w,cls,wt),sm:null,om:null};
   if(cls==='krijger'&&wt==='zwaard')res.sm=shieldFor(w);if(cls==='magier'&&wt==='zwaard')res.om='XA_spellbook_open';return res}
