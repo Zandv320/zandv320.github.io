@@ -17,20 +17,24 @@ const SP_DEF={
     [{f:'Barbarian',n:'Barbarian_Round_Shield',keep:()=>true,s:[.36,.3,.36],mul:0x9a7048,p:[0,-.02,0]},{f:'outfit/O_Ranger',n:'Ranger_Body',keep:(x,y,z)=>y>.72,s:[.38,.38,.38],p:[0,.03,0]}],
     [{f:'Barbarian',n:'Barbarian_Round_Shield',keep:()=>true,s:[.4,.34,.4],mul:0x7a5a3a,p:[0,-.02,0]},{f:'outfit/O_Barbarian',n:'Barbarian_BearHat',keep:(x,y,z)=>y>.3,s:[.46,.38,.46],p:[0,.05,0],r:[0,-1.57,0]}],
     [{f:'Knight',n:'Spike_Shield',keep:()=>true,s:[.55,.5,.55],p:[0,-.05,0],mul:0x3a4a2a},{f:'outfit/O_Barbarian',n:'Barbarian_BearHat',keep:()=>true,s:[.62,.56,.62],r:[0,-1.57,0],mul:0x6a7a52,glow:0x5aff2a}]],
+  /* mage: whole wizard hats, squashed into closed conical mantles (no cut edges); higher tiers stack a second
+     layer and carry crystals */
   magier:[
-    [{f:'outfit/O_Mage',n:'Mage_Hat',keep:(x,y,z)=>y<.28,s:[.48,.4,.48]}],
-    [{f:'outfit/O_Mage',n:'Mage_Hat',keep:(x,y,z)=>y<.46,s:[.48,.42,.48]}],
-    [{f:'outfit/O_Mage',n:'Mage_Hat',keep:(x,y,z)=>y<.46,s:[.52,.45,.52],mul:0x6a8aff},{f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.15,.2,.15],p:[0,.36,0],col:0x8ae0ff,emi:0x3aa8ff,ei:1.2,spin:1}],
-    [{f:'outfit/O_Mage',n:'Mage_Hat',keep:(x,y,z)=>y<.46,s:[.64,.52,.64],mul:0x9a6aff,glow:0xb07aff},{f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.16,.22,.16],p:[.04,.44,0],col:0xd8a0ff,emi:0xa04aff,ei:1.4,spin:1},
-      {f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.1,.14,.1],p:[.17,.32,.15],col:0xd8a0ff,emi:0xa04aff,ei:1.4,spin:1},{f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.1,.14,.1],p:[.15,.3,-.16],col:0xd8a0ff,emi:0xa04aff,ei:1.4,spin:1}]]};
+    [{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.34,.15,.34],flat:0xd9ccae},{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.36,.035,.36],p:[0,-.005,0],flat:0x8a6a48}],
+    [{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.4,.1,.4],flat:0x2a3a8a},{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.29,.15,.29],p:[0,.05,0],flat:0x5a7ad8}],
+    [{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.42,.11,.42],flat:0xd8a840,emi:0x4a3000,ei:.6},{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.31,.16,.31],p:[0,.055,0],flat:0x3a58d0},{f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.07,.1,.07],p:[0,.2,0],col:0x8ae0ff,emi:0x3aa8ff,ei:1.2,spin:1}],
+    [{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.48,.12,.48],flat:0x3a1a6a},{f:'Mage',n:'Mage_Hat',keep:()=>true,ds:1,s:[.36,.19,.36],p:[0,.06,0],flat:0x8a5ae8,glow:0xb07aff},{f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.08,.12,.08],p:[0,.24,0],col:0xd8a0ff,emi:0xa04aff,ei:1.4,spin:1},
+      {f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.055,.08,.055],p:[.05,.2,.17],col:0xd8a0ff,emi:0xa04aff,ei:1.4,spin:1},{f:'env/Q_Crystal5',n:null,keep:()=>true,s:[.055,.08,.055],p:[.05,.2,-.17],col:0xd8a0ff,emi:0xa04aff,ei:1.4,spin:1}]]};
 const SP_FX={krijger:'flame',jager:'venom',magier:'shadow'};
 /* placement per tier: outward from the shoulder joint, height, tilt (all in metres for a human, scaled with the rig) */
+/* the mage's mantles sit lower and further out: they drape over the arm instead of rising beside the head */
+const SP_FIT_C={magier:[{x:.25,y:-.035,t:.95},{x:.255,y:-.03,t:.92},{x:.26,y:-.025,t:.9},{x:.27,y:-.02,t:.86}]};
 const SP_FIT=[{x:.21,y:.05,t:.72},{x:.22,y:.055,t:.7},{x:.23,y:.06,t:.64},{x:.24,y:.065,t:.58}];
 /* a cut-out piece of a downloaded model, normalised to width 1 with its base at y=0 (cached per piece) */
 const _spGeo=new Map();
 function spPiece(P){const key=P.f+'|'+P.n+'|'+P.keep;let e=_spGeo.get(key);if(e)return e;
   e=loadGltf(P.f).then(g=>{if(!g)return null;let m=null;g.scene.traverse(o=>{if(o.isMesh&&!m&&(P.n==null||o.name===P.n))m=o});if(!m)return null;g.scene.updateMatrixWorld(true);
-    let geo=m.geometry.clone();if(geo.index)geo=geo.toNonIndexed();geo.applyMatrix4(m.isSkinnedMesh?m.bindMatrix:m.matrixWorld);for(const a of['skinIndex','skinWeight'])if(geo.attributes[a])geo.deleteAttribute(a);
+    let geo=P.ds?floatGeo(m.geometry):m.geometry.clone();if(geo.index)geo=geo.toNonIndexed();geo.applyMatrix4(m.isSkinnedMesh?m.bindMatrix:m.matrixWorld);for(const a of['skinIndex','skinWeight'])if(geo.attributes[a])geo.deleteAttribute(a);
     geo.computeBoundingBox();const bb=geo.boundingBox,sz=bb.getSize(new THREE.Vector3());const Pa=geo.attributes.position,keep=[];
     for(let i=0;i<Pa.count;i+=3){let cx=0,cy=0,cz=0;for(let k=0;k<3;k++){cx+=Pa.getX(i+k);cy+=Pa.getY(i+k);cz+=Pa.getZ(i+k)}if(P.keep((cx/3-bb.min.x)/sz.x,(cy/3-bb.min.y)/sz.y,(cz/3-bb.min.z)/sz.z))keep.push(i)}
     const ng=new THREE.BufferGeometry(),gc=['getX','getY','getZ','getW'];for(const an in geo.attributes){const a=geo.attributes[an],it=a.itemSize,arr=new Float32Array(keep.length*3*it);let o=0;for(const i of keep)for(let k=0;k<3;k++)for(let c=0;c<it;c++)arr[o++]=a[gc[c]](i+k);ng.setAttribute(an,new THREE.BufferAttribute(arr,it))}
@@ -38,7 +42,7 @@ function spPiece(P){const key=P.f+'|'+P.n+'|'+P.keep;let e=_spGeo.get(key);if(e)
     return{geo:ng,mat:Array.isArray(m.material)?m.material[0]:m.material}});
   _spGeo.set(key,e);return e}
 const SP_REF=.769;/* scale of the human rig: the sizes above are metres on that rig */
-async function attachShoulders(r,m,o){const tier=clamp(o.sp|0,0,4);if(!tier)return;const cls=SP_DEF[o.cls]?o.cls:'krijger';const D=SP_DEF[cls][tier-1],F=SP_FIT[tier-1];
+async function attachShoulders(r,m,o){const tier=clamp(o.sp|0,0,4);if(!tier)return;const cls=SP_DEF[o.cls]?o.cls:'krijger';const D=SP_DEF[cls][tier-1],F=(SP_FIT_C[cls]||SP_FIT)[tier-1];
   const parts=await Promise.all(D.map(spPiece));if(!r.m||r.m!==m||parts.some(p=>!p))return;
   m.updateMatrixWorld(true);const toM=new THREE.Matrix4().copy(m.matrixWorld).invert();const chest=m.getObjectByName('chest');if(!chest)return;
   const cp=chest.getWorldPosition(new THREE.Vector3()).applyMatrix4(toM);const k=1/SP_REF;r._sp={pads:[],tier,cls,pts:[],acc:0};
@@ -48,7 +52,7 @@ async function attachShoulders(r,m,o){const tier=clamp(o.sp|0,0,4);if(!tier)retu
     const padM=new THREE.Matrix4().makeBasis(X,Y,Z).setPosition(sp).scale(new THREE.Vector3(k,k,k));
     /* hung on the chest bone: the joint position is measured in the bind pose, where the arms point sideways */const boneM=new THREE.Matrix4().multiplyMatrices(toM,chest.matrixWorld);const loc=new THREE.Matrix4().copy(boneM).invert().multiply(padM);
     const pad=new THREE.Group();pad.userData.shoulder=1;loc.decompose(pad.position,pad.quaternion,pad.scale);
-    D.forEach((P,i)=>{const{geo,mat}=parts[i];const mt=mat.clone();if(P.col!=null)mt.color.setHex(P.col);if(P.mul!=null)mt.color.multiply(new THREE.Color(P.mul));if(P.emi!=null){mt.emissive=new THREE.Color(P.emi);mt.emissiveIntensity=P.ei??1}
+    D.forEach((P,i)=>{const{geo,mat}=parts[i];const mt=mat.clone();if(P.col!=null)mt.color.setHex(P.col);if(P.mul!=null)mt.color.multiply(new THREE.Color(P.mul));if(P.flat!=null){mt.map=null;mt.color.setHex(P.flat)}if(P.ds)mt.side=THREE.DoubleSide;if(P.emi!=null){mt.emissive=new THREE.Color(P.emi);mt.emissiveIntensity=P.ei??1}
       const mm=new THREE.Mesh(geo,mt);mm.castShadow=true;mm.scale.set(...P.s);if(P.p)mm.position.set(...P.p);if(P.r)mm.rotation.set(...P.r);if(P.spin)mm.userData.spin=1;pad.add(mm);
       if(P.glow&&typeof enchShellMat==='function'){const sh=new THREE.Mesh(geo,enchShellMat(P.glow,.03,.45));sh.userData.eglow=1;sh.renderOrder=3;mm.add(sh)}
       if(tier===4)for(let q=0;q<8;q++){const pa=geo.attributes.position,j=Math.floor(Math.random()*pa.count);r._sp.pts.push([mm,pa.getX(j),pa.getY(j),pa.getZ(j)])}});
