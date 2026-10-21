@@ -88,10 +88,11 @@ const _wSrc=new Map();
 function wModel(name){let p=_wSrc.get(name);if(!p){p=new Promise(res=>gltfLoader().load(MODEL_BASE+'wpn/'+name+'.glb',g=>res(g),undefined,()=>res(null)));_wSrc.set(name,p)}return p}
 async function attachWeaponModel(r,m,name,slotName,rar){if(!name)return null;const g=await wModel(name);if(!g||!r.m)return null;const slot=m.getObjectByName(slotName);if(!slot)return null;
   const w=g.scene.clone(true);w.traverse(x=>{if(x.isMesh){x.castShadow=true;const mt=new THREE.MeshToonMaterial({color:x.material.color.clone(),vertexColors:!!x.geometry.attributes.color,gradientMap:RAMP});if(rar>=2){mt.emissive=new THREE.Color(RCOL[rar]);mt.emissiveIntensity=.04+(rar-2)*.07}x.material=mt}});
-  /* some models come with the blade on the wrong side for the hand: turn them so the cutting edge faces down/forward */if(WFLIP.has(name))w.rotation.y+=Math.PI;/* per-model hold corrections */{const t=(window.__WR&&window.__WR[name])||WROT[name];if(t){w.rotation.x+=t[0];w.rotation.y+=t[1];w.rotation.z+=t[2]}}
+  /* some models come with the blade on the wrong side for the hand: turn them so the cutting edge faces down/forward */if(WFLIP.has(name))w.rotation.y+=Math.PI;/* per-model hold corrections */{const t=(window.__WR&&window.__WR[name])||WROT[name];if(t){if(t.length===4)w.quaternion.set(t[0],t[1],t[2],t[3]);else{w.rotation.x+=t[0];w.rotation.y+=t[1];w.rotation.z+=t[2]}}}
   w.userData.wmodel=name;slot.add(w);return w}
 /* crossbows sit in the right hand turned a quarter (as the KayKit Rogue holds its own crossbow); the plain bow is modelled flat */
-const WROT={XA_crossbow_2handed:[0,1.5708,0],XS_Skeleton_Crossbow:[0,1.5708,0],XA_bow_withString:[0,-1.5708,0]};
+/* bows are carried lying along your side: the wood below, the string on top, the tips pointing forward and back (quaternions) */
+const WROT={XA_crossbow_2handed:[0,1.5708,0],XS_Skeleton_Crossbow:[0,1.5708,0],XA_bow_withString:[-0.0005,-0.7946,-0.6071,-0.0007],XW_bow_A_withString:[0.5624,0.4289,-0.5613,-0.4296],XW_bow_B_withString:[0.5624,0.4289,-0.5613,-0.4296]};
 const WFLIP=new Set(['XA_axe_1handed','XW_axe_C','XW_halberd']);
 async function applyWeapons(r,m,o){if(!o.wm&&!o.sm&&!o.om)return;
   /* de oude wapenprops uit het basismodel uit */for(const s of[m.getObjectByName('handslotr'),m.getObjectByName('handslotl'),...(r.shH?[r.shH]:[])]){if(s)for(const c of s.children)if(!c.userData.wmodel&&c!==r.tool)c.visible=false}
