@@ -10,7 +10,7 @@
    iets dat later moet bewegen markeer je met userData.dyn=1. */
 const PERF={cells:[],L_OVER:1,L_DUN:2,inDun:null,t:0,stats:null};
 const BATCH_CELL=48;
-function perfExcluded(){const s=new Set([sky,moon,water,terrain,clouds,arenaChest.g,window.__mill,window.__rune,window.__cportal,window.__dportal,window.__vportal,...flames,...flags,...(D2.lava||[])]);s.delete(undefined);s.delete(null);return s}
+function perfExcluded(){const s=new Set([sky,moon,water,terrain,clouds,arenaChest.g,window.__mill,window.__rune,window.__cportal,window.__dportal,window.__vportal,...flames,...flags,...(D2.lava||[]),...(D4.lava||[])]);s.delete(undefined);s.delete(null);return s}
 /* geometrie in wereldcoördinaten met vaste attributen (positie, normaal, uv [, kleur]) en index */
 /* effen kleurmaterialen (geen textuur, geen gloed, niet doorzichtig) worden vertexkleuren op één gedeeld materiaal,
    zodat bv. alle onderdelen van een huismodel samen één draw call worden */

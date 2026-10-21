@@ -152,7 +152,7 @@ function* elvAtlasGen(){const N=isTouch?900:1400,k=N/ESZ,X0=ELV.x-ESZ/2,Z0=ELV.z
   EATLAS.c=c}
 /* which picture the map shows where you are: Velmora, the Dragon Realm or a dungeon (world rectangle in metres) */
 function mapSource(){const x=ME.pos.x;
-  if(x>1250){const D=x>1700?D3:D2;return{key:D.name,img:D.img,x0:D.X-D.C/2*D.c,z0:D.Z-D.R/2*D.c,w:D.C*D.c,h:D.R*D.c,title:D.name,dun:1}}
+  if(x>1250){const D=x>2200?D4:x>1700?D3:D2;return{key:D.name,img:D.img,x0:D.X-D.C/2*D.c,z0:D.Z-D.R/2*D.c,w:D.C*D.c,h:D.R*D.c,title:D.name,dun:1}}
   if(x>700)return{key:'crypt',img:dunImg,x0:DUN.x-DC/2*DUN.c,z0:DUN.z-DR/2*DUN.c,w:DC*DUN.c,h:DR*DUN.c,title:'Crypt of Kaal-Morath',dun:1};
   if(inElv(x))return{key:'elv',img:elvAtlasBuild(),x0:ELV.x-ESZ/2,z0:ELV.z-ESZ/2,w:ESZ,h:ESZ,title:'The Woods of Elvia'};
   if(inDrk(x))return{key:'drk',img:drkAtlasBuild(),x0:DRK.x-DSZ/2,z0:DRK.z-DSZ/2,w:DSZ,h:DSZ,title:'The Dragon Realm'};
@@ -162,7 +162,7 @@ const MAP_LABELS={vel:[[0,'Twilight Wood',-30,-150],[0,'Ashen Hills',205,-215],[
     [1,"Artisans' Yard",-108,-28],[1,'Arena',126,-24],[1,'Bandit Camp',150,-132],[1,'Crypt of Kaal-Morath',-172,-236],[1,"Ignaroth's Fire Cave",206,-196],[1,'Dragon Pass ➜',228,88],[1,'Farm',46,96],[1,'Mill',-34,108],
     [2,'The Keep',30,-58],[2,'Church of the Light',40,14],[2,'Silver Tankard',-34,-30],[2,'Market Street',-40,15],[2,'Barracks',50,-18],[2,'Mill Pond',-38,46],[2,'Town Square',0,-27],[2,'Stables',58,40]],
   elv:[[0,'WindStorm',WS.x,WS.z-WS.R-14],[0,'Elvian Highlands',ELV.x+40,ELV.z-300],[0,'Silverfall Lake',ELV.x-100,ELV.z-100],[0,'Moonmere',ELV.x+250,ELV.z-108],[0,'Lake Elvia',ELV.x+70,ELV.z+262],[0,'Fernwater',ELV.x-300,ELV.z+250],[0,'Whispering Glade',ELV.x-330,ELV.z-60],[0,'Thornwood',ELV.x+330,ELV.z+120],
-    [1,'⬅ To the Dragon Realm',ELV_EXIT.x+40,ELV_EXIT.z-12],[1,'Silverfalls',ELV.x-104,ELV.z-178],[1,'Moonfall',ELV.x+256,ELV.z-178],[1,'Harbour',WS.x,WS.z+WS.R+44],[1,'Citadel',WS_CIT.x,WS_CIT.z-WS_CIT.r-6],[1,'Outlaw Camp',ELV_CAMP.x,ELV_CAMP.z-20],[1,'Oakheart\'s Grove',ELV.x-210,ELV.z-336],
+    [1,'⬅ To the Dragon Realm',ELV_EXIT.x+40,ELV_EXIT.z-12],[1,'Silverfalls',ELV.x-104,ELV.z-178],[1,'Moonfall',ELV.x+256,ELV.z-178],[1,'Harbour',WS.x,WS.z+WS.R+44],[1,'Citadel',WS_CIT.x,WS_CIT.z-WS_CIT.r-6],[1,'Outlaw Camp',ELV_CAMP.x,ELV_CAMP.z-20],[1,'Oakheart\'s Grove',ELV.x-210,ELV.z-336],[1,'Thornroot Hollow',HOLLOW.x,HOLLOW.z-16],
     [2,'Royal Castle',WS_CIT.x,WS_CIT.z+4],[2,'Cathedral',WS.x-55,WS.z-74],[2,'Grand Plaza',WS.x,WS.z-30],[2,'Market',WS.x-36,WS.z-36],[2,'The Gilded Gryphon',WS.x-50,WS.z+76],[2,'Barracks',WS.x+86,WS.z-38],[2,'Waystone',WS.x+15,WS.z+24]],
   drk:[[1,'⬅ To Silverdale',-170,-10],[1,'Volcano door',-50,-12],[0,"Dragonhunters' Camp",-138,48],[0,'Mount Dragonrest',0,-24],[0,'Dragon Nests',10,150],[0,'Shrines',122,-62],[0,'Fire Fields',0,-150],[0,'Ash Plains',-95,-110]]};
 function mapFit(){const S=MAPST.src;return Math.min(MAPST.w/S.w,MAPST.h/S.h)}

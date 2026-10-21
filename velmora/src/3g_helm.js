@@ -57,7 +57,7 @@ function helmFx(r,dt){const H=r&&r._hl;if(!H)return;const t=performance.now()*.0
 /* items: the same bosses as the shoulders; the Ash Queen's legendary helms become tier IV */
 function makeHelm(cls,tier){const il=[8,11,15,24][tier-1];const it=makeGear('hoofd',il,Math.min(tier,3),cls);it.r=tier;it.hlt=tier;it.n=HL_ITEMS[cls][tier-1];it.req=Math.max(1,il-1);
   if(tier===4){const L=HL_LEG[cls];it.mods={...L.mods};it.leg=L.leg;it.pow=Math.round((it.pow||0)*1.2+6);it.sta=Math.round((it.sta||0)*1.2+6);it.arm=Math.round((it.arm||0)*1.3);it.price*=2}return it}
-const HL_DROPS={grisk:[1,.35],boss:[2,.35],outlawking:[3,.22],ignaroth:[3,.3],lavadrake:[3,.05],vyraxion:[4,.25],oakheart:[4,.22]};
+const HL_DROPS={grisk:[1,.35],boss:[2,.35],outlawking:[3,.22],ignaroth:[3,.3],lavadrake:[3,.05],vyraxion:[4,.25],oakheart:[4,.22],thornwarden:[3,.28],silkmother:[4,.28]};
 function helmDrop(type){const d=HL_DROPS[type];if(!d||Math.random()>d[1])return null;return makeHelm(P.cls,d[0])}
 /* which helmet tier an equipped head item shows (0 = the normal outfit) */
 function helmTier(it){if(!it)return 0;if(it.hlt)return it.hlt;if(it.leg&&it.s==='hoofd')return 4;return 0}

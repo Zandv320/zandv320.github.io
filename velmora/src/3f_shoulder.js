@@ -74,5 +74,5 @@ const SP_LEG={krijger:{mods:{critdmg:.12,dr:.04},leg:'Legendary: critical hits d
 function makeShoulders(cls,tier){const il=[8,11,15,24][tier-1],r=[1,2,3,4][tier-1];const it=makeGear('schouders',il,Math.min(r,3),cls);it.r=r;it.spt=tier;it.n=SP_ITEMS[cls][tier-1];it.req=Math.max(1,il-1);
   if(tier===4){const L=SP_LEG[cls];it.mods={...L.mods};it.leg=L.leg;it.pow=Math.round((it.pow||0)*1.2+6);it.sta=Math.round((it.sta||0)*1.2+6);it.arm=Math.round((it.arm||0)*1.3);it.price*=2}return it}
 /* which boss drops which tier, and how often */
-const SP_DROPS={grisk:[1,.4],boss:[2,.4],outlawking:[3,.25],ignaroth:[3,.35],lavadrake:[3,.06],vyraxion:[4,.3],oakheart:[4,.25]};
+const SP_DROPS={grisk:[1,.4],boss:[2,.4],outlawking:[3,.25],ignaroth:[3,.35],lavadrake:[3,.06],vyraxion:[4,.3],oakheart:[4,.25],thornwarden:[3,.3],silkmother:[4,.3]};
 function shoulderDrop(type){const d=SP_DROPS[type];if(!d||Math.random()>d[1])return null;return makeShoulders(P.cls,d[0])}

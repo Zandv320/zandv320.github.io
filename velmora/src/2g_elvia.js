@@ -13,6 +13,8 @@ const WS={x:ELV.x+60,z:ELV.z+20,R:118,H:3,plaza:26,ring:58};
 const ELV_EXIT={x:ELV.x-436,z:ELV.z};                  /* gate back to the Dragon Realm */
 const ELV_ENTRY={x:ELV.x-422,z:ELV.z+3};
 const ELV_LAKES=[{n:'Silverfall Lake',x:ELV.x-100,z:ELV.z-100,r:45,wl:-1},{n:'Moonmere',x:ELV.x+250,z:ELV.z-108,r:38,wl:-1},{n:'Lake Elvia',x:ELV.x+70,z:ELV.z+262,r:98,wl:-1.2},{n:'Fernwater',x:ELV.x-300,z:ELV.z+250,r:40,wl:-.6}];
+/* the Thornroot Hollow: a dungeon under the roots of a dead giant in the far south-east of Thornwood (see 2h_hollow.js) */
+const HOLLOW={x:ELV.x+340,z:ELV.z+284};
 /* the cliff of the Elvian Highlands: the plateau lies north of this line */
 const elvCliff=u=>-172+18*Math.sin(u*.012)+8*Math.sin(u*.031);
 /* rivers (zone-local polylines with a width): three fall from the highlands, two run on to Lake Elvia */
@@ -28,7 +30,8 @@ const ELV_ROADS=[[E(-430,0),E(-330,6),E(-220,18),E(-120,20),[WS.x-WS.R-30,WS.z]]
   [[WS.x,WS.z-WS.R-20],E(40,-142),E(-20,-152),E(-58,-148)],[E(70,-140),E(150,-132),E(205,-124)],
   [[WS.x+WS.R+20,WS.z],E(262,30),E(330,-40),E(360,-180),E(372,-300)],
   /* up the cliff to the highlands */[E(150,-132),E(170,-180),E(150,-226),E(110,-262)],
-  [E(-220,18),E(-262,120),E(-282,206)]];
+  [E(-220,18),E(-262,120),E(-282,206)],
+  /* down through Thornwood to the Hollow */[E(262,30),E(296,110),E(326,190),[HOLLOW.x-2,HOLLOW.z-20]]];
 /* ---- rivers: sampled every 2 m with a water level that only ever falls; a coarse grid finds the nearest sample fast ---- */
 const ELV_RIV=[];const ELV_RIVG=new Map();
 function elvBase(x,z){const u=x-ELV.x,v=z-ELV.z;
@@ -53,6 +56,7 @@ function elvPre(x,z){const u=x-ELV.x,v=z-ELV.z;let h=elvBase(x,z);
   {const d=Math.hypot(x-WS_CIT.x,z-WS_CIT.z);if(d<WS_CIT.r+14)h+=5.5*smooth(clamp(1-(d-WS_CIT.r*.55)/(WS_CIT.r*.45+14),0,1))}
   /* gentle roads and the arrival square */const pd=elvPathDist(x,z);if(pd<10&&dc>WS.R+4)h=lerp(h*.6+WS.H*.4,h,smooth(pd/10));
   {const d=Math.hypot(x-ELV_EXIT.x-10,z-ELV_EXIT.z);if(d<22)h=lerp(2,h,smooth(clamp((d-12)/10,0,1)))}
+  /* a level clearing before the Hollow, the ground rising into a mound behind its gate */{const dx=x-HOLLOW.x,dz=z-HOLLOW.z,d=Math.hypot(dx,dz);if(d<34){const f=smooth(clamp((d-14)/20,0,1));h=lerp(1.6,h,f)}if(dz>3&&d<30)h+=Math.max(0,(1-d/30))*Math.min(1,(dz-3)/6)*9}
   /* lakes: a rim just above the water, a bowl inside */for(const l of ELV_LAKES){const d=Math.hypot(x-l.x,z-l.z)/l.r;if(d<1.7){if(d>1)h=Math.max(h,lerp(l.wl+.7,h,clamp((d-1)/.7,0,1)));h=lerp(-6,h,smooth(clamp((d-.45)/.6,0,1)))}}
   return h}
 {const R=mulberry(5511);for(const rv of ELV_RIVERS_L){const pts=rv.p.map(([u,v])=>E(u,v));const S=[];let wy=1e9;
@@ -218,7 +222,7 @@ async function buildElvia(){if(window.__NOGLTF)return;const R=mulberry(7373);con
   const put=(n,x,z,ry,s,y=0)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],scene,y);
   /* the forest: thousands of trees, bushes, mossy rocks, logs and flowers (instanced, with LOD) */
   const okF=(x,z,clear=6)=>{if(Math.hypot(x-WS.x,z-WS.z)<WS.R+18)return false;if(elvPathDist(x,z)<clear)return false;for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*1.12)return false;const[rd,,rw]=elvRiver(x,z);if(rd<rw+3)return false;
-    if(Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<24||Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)<24)return false;const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>425)return false;
+    if(Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<24||Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)<24||Math.hypot(x-HOLLOW.x,z-HOLLOW.z)<30)return false;const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>425)return false;
     const hx=elvH(x+1.5,z)-elvH(x-1.5,z),hz=elvH(x,z+1.5)-elvH(x,z-1.5);return Math.hypot(hx,hz)/3<.7};
   const common=[],pine=[],bush=[],rock=[],logs=[],flow=[],giant=[];
   for(let i=0;i<26000&&common.length+pine.length<3600;i++){const x=ELV.x-430+R()*860,z=ELV.z-430+R()*860;const dens=fbm((x-ELV.x)*.01+3,(z-ELV.z)*.01+8);if(R()>dens*1.55-.2||!okF(x,z))continue;

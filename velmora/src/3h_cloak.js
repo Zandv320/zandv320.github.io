@@ -61,5 +61,5 @@ const CK_LEG={krijger:{n:'Warbanner of the Ash Queen',mods:{critdmg:.08},leg:'Le
   magier:{n:'Shroud of Falling Stars',mods:{mpp:.06},leg:'Legendary: 6% more mana. Shadows trail behind you.'}};
 function makeCloak(cls,r){const il=[8,10,13,17,24][clamp(r,0,4)];const it=makeGear('rug',il,Math.min(r,3),cls);it.r=r;
   if(r>=4){const L=CK_LEG[cls]||CK_LEG.krijger;it.n=L.n;it.mods={...L.mods};it.leg=L.leg;it.pow=Math.round((it.pow||0)*1.2+4);it.sta=Math.round((it.sta||0)*1.2+4);it.arm=Math.round((it.arm||0)*1.3);it.price*=2}return it}
-const CK_DROPS={vyraxion:.2,oakheart:.18,lavadrake:.05};
+const CK_DROPS={vyraxion:.2,oakheart:.18,lavadrake:.05,silkmother:.25};
 function cloakDrop(type){const p=CK_DROPS[type];if(!p||Math.random()>p)return null;return makeCloak(P.cls,4)}

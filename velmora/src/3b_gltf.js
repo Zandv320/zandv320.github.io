@@ -106,6 +106,13 @@ const MON_GLTF={
   elvwisp:{m:'Demon',h:1.15,props:[],cm:CM_MON,glow:{Atlas:0x7affd0}},
   elderstag:{m:'mount/M_Stag',h:2.6,cm:{...CM_ANIMAL,atk:{def:['Attack_Headbutt','Attack_Kick']},land:'Jump_toIdle'},tint:{Material:0xd8c8a8,'Material.003':0xf4ecd8},glow:{'Material.010':0xa8ff8a},quad:1},
   oakheart:{m:'Trex',h:5.2,cm:CM_TREX,tint:{Green:0x3a5a2a,Black:0x14180e,LightGreen:0x7a9a4a,Red:0x5aff4a,LightYellow:0xc8e08a},glow:{Red:0x5aff4a}},
+  /* the Thornroot Hollow */
+  thornspider:{m:'Spider',h:1.15,cm:CM_SPIDER,tint:{Material:0x26341a,'Material.001':0xb8ff4a},glow:{'Material.001':0x9aff3a},spider:1},
+  blightseer:{m:'Mage',h:1.82,props:['Mage_Hat','Mage_Cape'],wt:'staf',cm:{...CM_KAY,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},skin:0x9a8aa8,hair:0xdce4c8,tint:{}},
+  brambleguard:{m:'Orc',h:2.5,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0x8a7050}},
+  thornwarden:{m:'Orc',h:3.5,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0x5a4630}},
+  silkling:{m:'Spider',h:.62,cm:CM_SPIDER,tint:{Material:0x8aa86a,'Material.001':0xe8ff8a},spider:1},
+  silkmother:{m:'Spider',h:4.6,cm:{...CM_SPIDER,hit:null},tint:{Material:0x161e10,'Material.001':0xc8ff5a},glow:{'Material.001':0xb0ff40},spider:1},
   lavagolem:{drk:1,m:'Orc',h:2.4,props:['Cylinder.008'],cm:CM_MON,tint:{Atlas:0xd08a6a}},
   ignaroth:{drk:1,m:'Demon',h:5.4,props:['Trident'],cm:{...CM_MON,hit:null},tint:{Atlas:0xd07a60}},
   raptor:{drk:1,m:'Velociraptor',h:1.7,cm:CM_RAPTOR,tint:{Brown:0x6a625a,Black:0x1a1614,LightBrown:0xa8643a},quad:1},

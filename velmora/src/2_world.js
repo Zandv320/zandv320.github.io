@@ -105,7 +105,7 @@ function groundH(x,z){
   return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
 function inForest(x,z){return z<-52&&z>-262&&x<112&&x>-250}
 function zoneAt(x,z){
-  if(x>1700)return'Heart of the Volcano';if(x<-2600)return elvZone(x,z);if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
+  if(x>2200)return'Thornroot Hollow';if(x>1700)return'Heart of the Volcano';if(x<-2600)return elvZone(x,z);if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
   if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Ashen Hills';if(x>196&&Math.abs(z-100)<26)return'Dragon Pass';
   if(Math.hypot((x-ARENA.x)/1.0,(z-ARENA.z)/1.09)<ARENA.r+14)return'Arena of Silverbrook';
   if(Math.hypot(x-CRAFT.x,z-CRAFT.z)<CRAFT.r+4)return"Artisans' Yard";
@@ -206,7 +206,7 @@ function addCol(x,z,r,tree,cam){const k=Math.floor(x/10)+','+Math.floor(z/10);le
 function camBlocked(x,y,z){if(x>700)return false;const cx=Math.floor(x/10),cz=Math.floor(z/10);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){if(c.cam){if((x-c.x)**2+(z-c.z)**2<(c.r+.4)**2&&y<groundH(c.x,c.z)+c.cam)return true;continue}if(!c.tree)continue;const R=c.tree*c.r;if((x-c.x)**2+(z-c.z)**2<R*R&&y<groundH(c.x,c.z)+c.r*17)return true}}if(typeof ARENA_RX!=='undefined'){const u=(x-ARENA.x)/ARENA_RX,v=(z-ARENA.z)/ARENA_RZ,rn=Math.hypot(u,v);if(rn>1.06&&rn<1.75&&y<ARENA_H+3+(rn-1)*16)return true}for(const b of BOXES)if(x>b.x0-.3&&x<b.x1+.3&&z>b.z0-.3&&z<b.z1+.3&&y<groundH(x,z)+11)return true;return false}
 function addBox(x,z,w,d){BOXES.push({x0:x-w/2,x1:x+w/2,z0:z-d/2,z1:z+d/2})}
 function collide(p,r){
-  if(p.x>1700){D3.collide(p,r);return}if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
+  if(p.x>2200){D4.collide(p,r);return}if(p.x>1700){D3.collide(p,r);return}if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
   const cx=Math.floor(p.x/10),cz=Math.floor(p.z/10);
   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){const dx=p.x-c.x,dz=p.z-c.z,rr=c.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr&&dd>1e-6){const d=Math.sqrt(dd),k=(rr-d)/d;p.x+=dx*k;p.z+=dz*k}}}
   for(const b of BOXES){if(p.x<b.x0-r||p.x>b.x1+r||p.z<b.z0-r||p.z>b.z1+r)continue;const qx=clamp(p.x,b.x0,b.x1),qz=clamp(p.z,b.z0,b.z1),dx=p.x-qx,dz=p.z-qz,dd=dx*dx+dz*dz;
@@ -503,9 +503,9 @@ function buildDun(def){const M=def.map,R=M.length,C=M[0].length,c=def.c,X=def.x,
   for(let r=0;r<R;r++)for(let k=0;k<C;k++){const ch=M[r][k];const[x,z]=pos(k,r);
     if(def.spawn[ch]){const s=def.spawn[ch];spawns.push(typeof s==='string'?{t:s,x,z}:{t:s[0],lv:[s[1],s[2]],x,z})}
     if(ch==='E'){exit.x=x;exit.z=z;entry.x=x;entry.z=z-7}
-    if(ch==='~'){const l=mesh(new THREE.PlaneGeometry(c,c).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:new THREE.Color().setRGB(.9,.2,.02)}),x,.04,z,grp,false,false);lava.push(l);if((r*7+k)%3===0)addLight(x,1.2,z,0xff5a20,24,12,true)}
-    if(ch==='.'&&((r*5+k*3)%11===0)&&tor<30){tor++;const cr=mesh(new THREE.ConeGeometry(.35,1.6,6),mat(def.crystal,{e:def.crystal,ei:1.6}),x+rand(-2,2),.6,z+rand(-2,2),grp,false);cr.rotation.z=rand(-.4,.4);if(tor%3===0)addLight(cr.position.x,1.5,cr.position.z,def.crystal,22,12)}}
-  const img=document.createElement('canvas');img.width=C*12;img.height=R*12;{const g=img.getContext('2d');g.fillStyle='#140c0a';g.fillRect(0,0,img.width,img.height);for(let r=0;r<R;r++)for(let k=0;k<C;k++)if(M[r][k]!=='#'){g.fillStyle=M[r][k]==='~'?'#c8501a':'#5a4a44';g.fillRect(k*12,r*12,12,12)}}
+    if(ch==='~'){const l=mesh(new THREE.PlaneGeometry(c,c).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:def.pool!=null?new THREE.Color(def.pool):new THREE.Color().setRGB(.9,.2,.02)}),x,.04,z,grp,false,false);lava.push(l);if((r*7+k)%3===0)addLight(x,1.2,z,def.poolLight??0xff5a20,24,12,true)}
+    if(ch==='.'&&!def.noCrystal&&((r*5+k*3)%11===0)&&tor<30){tor++;const cr=mesh(new THREE.ConeGeometry(.35,1.6,6),mat(def.crystal,{e:def.crystal,ei:1.6}),x+rand(-2,2),.6,z+rand(-2,2),grp,false);cr.rotation.z=rand(-.4,.4);if(tor%3===0)addLight(cr.position.x,1.5,cr.position.z,def.crystal,22,12)}}
+  const img=document.createElement('canvas');img.width=C*12;img.height=R*12;{const g=img.getContext('2d');g.fillStyle='#140c0a';g.fillRect(0,0,img.width,img.height);for(let r=0;r<R;r++)for(let k=0;k<C;k++)if(M[r][k]!=='#'){g.fillStyle=M[r][k]==='~'?(def.mapPool||'#c8501a'):(def.mapFloor||'#5a4a44');g.fillRect(k*12,r*12,12,12)}}
   const ex=portalMesh(def.portal||0xffa040,1.75,exit.x,0,exit.z+2.3,0,grp);
   return{X,Z,c,R,C,map:M,cell,pos,collide,spawns,entry,exit,img,lava,portal:ex,name:def.name,grp,wim}}
 const D2=buildDun({x:1400,z:0,c:6,map:D2MAP,floor:0x7a5a48,wall:0x3a2a26,crystal:0xff7a30,spawn:{i:'vuurimp',g:'lavagolem',B:'ignaroth'},name:'Ignaroth\'s Fire Cave'});

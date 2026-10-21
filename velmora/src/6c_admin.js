@@ -20,7 +20,7 @@ const admBtn=(id,t,alt)=>'<button class="btn'+(alt?' alt':'')+'" id="'+id+'">'+t
 const admIn=(id,v,min,max)=>'<input type="number" id="'+id+'" value="'+v+'" min="'+min+'" max="'+max+'">';
 const admSel=(id,opts,v)=>'<select id="'+id+'">'+opts.map(([k,t])=>'<option value="'+k+'"'+(String(k)===String(v)?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select>';
 const ADM_TP=[['Silverbrook square',0,8],['Arena',ARENA.x-4,ARENA.z+22],["Artisans' Yard",CRAFT.x+6,CRAFT.z+6],['Stables',STABLE.x,STABLE.z-9],['Farm',FARM.x,FARM.z-8],['Mirror Lake',LAKE.x+LAKE.r+4,LAKE.z],
-  ['Bandit Camp',CAMP.x,CAMP.z+30],['Crypt entrance',CRYPT.x,CRYPT.z+8],['Crypt (inside)','dun'],['Fire Cave entrance',CAVE.x,CAVE.z+9],["Ignaroth's Fire Cave (inside)",'cave'],['Dragon Realm','drk'],['WindStorm (Elvia)',WS.x,WS.z+WS.plaza+8],['Woods of Elvia gate',ELV_ENTRY.x,ELV_ENTRY.z],['Silverfalls (Elvia)',ELV.x-100,ELV.z-150],['Volcano (Vyraxion)','volc']];
+  ['Bandit Camp',CAMP.x,CAMP.z+30],['Crypt entrance',CRYPT.x,CRYPT.z+8],['Crypt (inside)','dun'],['Fire Cave entrance',CAVE.x,CAVE.z+9],["Ignaroth's Fire Cave (inside)",'cave'],['Dragon Realm','drk'],['WindStorm (Elvia)',WS.x,WS.z+WS.plaza+8],['Woods of Elvia gate',ELV_ENTRY.x,ELV_ENTRY.z],['Silverfalls (Elvia)',ELV.x-100,ELV.z-150],['Volcano (Vyraxion)','volc'],['Thornroot Hollow gate',HOLLOW.x,HOLLOW.z-10],['Thornroot Hollow (inside)','hollow']];
 function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
   $('#admTabs').innerHTML=[['char','Character'],['items','Items'],['life','Skills & quests'],['cheat','Cheats']].map(([k,t])=>'<button class="'+(ADM_TAB===k?'on':'')+'" data-t="'+k+'">'+t+'</button>').join('');
   $('#admTabs').querySelectorAll('button').forEach(x=>x.onclick=()=>{ADM_TAB=x.dataset.t;renderAdmin()});
@@ -83,7 +83,7 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
   on('aRes',()=>{if(!ME.dead)return toast('You are not dead');resurrect();P.hp=ST.maxhp;admDone('resurrected.')});
   on('aKill',()=>{const t=ME.target;if(!t||t.kind!=='mon'||t.dead)return toast('Target a monster first');dealDamage(t,t.hp*50+9999);admDone('target defeated.')});
   b.querySelectorAll('[data-tp]').forEach(x=>x.onclick=()=>{const t=ADM_TP[+x.dataset.tp];if(ME.mounted&&t[1]!==+t[1])dismount();
-    if(t[1]==='dun')enterDungeon();else if(t[1]==='cave')enterCave();else if(t[1]==='drk')enterDrake();else if(t[1]==='volc')enterVolcano();else teleport(t[1],t[2]);
+    if(t[1]==='dun')enterDungeon();else if(t[1]==='cave')enterCave();else if(t[1]==='drk')enterDrake();else if(t[1]==='volc')enterVolcano();else if(t[1]==='hollow')enterHollow();else teleport(t[1],t[2]);
     beamFx(ME.pos.x,ME.pos.z,0x7cf0ff,1.2);log('Admin: teleported to '+t[0]+'.','sys')})}
 /* destructive buttons ask for a second click */
 function confirmTwice(id){const e=$('#'+id);if(e.dataset.sure)return true;e.dataset.sure=1;e.textContent='Click again to confirm';setTimeout(()=>{if(e.isConnected){delete e.dataset.sure;renderAdmin()}},3000);return false}

@@ -92,6 +92,13 @@ const MON={
   elvwisp:{n:'Silverfall Wisp',kind:'imp',col:0x9affd8,lv:[23,24],aggro:16,spd:6.4,size:.9,xpM:1.1,ranged:18,hover:1.4},
   elderstag:{n:'Elder Stag',kind:'boar',col:0xc8b8a0,lv:[24,24],aggro:10,spd:7,size:1.6,elite:1,xpM:1,respawn:90},
   oakheart:{n:'Oakheart the Ancient',kind:'trex',col:0x3a5a2a,lv:[25,25],aggro:18,spd:5.6,size:3.4,elite:1,xpM:1.4,hpM:2.6,dmgM:1.25,respawn:240},
+  /* the Thornroot Hollow (dungeon under Thornwood, level 23–25) */
+  thornspider:{n:'Thornroot Lurker',kind:'spider',col:0x2a3a22,lv:[23,24],aggro:14,spd:6.4,size:1.45,xpM:1.15},
+  blightseer:{n:'Blighted Seer',kind:'human',col:0x4a3a5a,lv:[24,24],aggro:17,spd:5.4,size:1,xpM:1.2,ranged:18,proj:'venom',wt:'staf'},
+  brambleguard:{n:'Bramble Guardian',kind:'golem',col:0x4a3a22,lv:[24,25],aggro:13,spd:5,size:1.6,xpM:1.45,hpM:1.8},
+  thornwarden:{n:'The Thornwarden',kind:'golem',col:0x3a2a16,lv:[25,25],aggro:16,spd:5.2,size:2.2,elite:1,xpM:1.3,hpM:2.6,dmgM:1.2,respawn:150},
+  silkling:{n:'Silkling',kind:'spider',col:0x8aa86a,lv:[24,24],aggro:40,spd:7.2,size:.75,xpM:.3,add:1},
+  silkmother:{n:'Veyrith the Silkmother',kind:'spider',col:0x1a2a14,lv:[25,25],aggro:24,spd:5.8,size:3.6,boss:1,elite:1,dmgM:1.5,xpM:1.8,hpM:4.4,respawn:300},
   vyraxion:{n:'Vyraxion the Ash Queen',kind:'dragon',col:0x8a1a12,lv:[22,22],aggro:26,spd:6,size:4.2,boss:1,elite:1,dragon:1,dmgM:1.6,xpM:1.6,hpM:4,respawn:300,fire:1}
 };
 const QUESTS=[
@@ -128,6 +135,8 @@ const QUESTS=[
   {id:'e8',n:'Fen Raptors',giver:'sabine',lvl:23,req:'e5',txt:'Raptors from the fens near Moonmere have started hunting the wisps\' poison, and it makes them savage. Cull eight of them before they reach the farms.',obj:{kill:['fenraptor'],n:8,lbl:'Fen Raptor slain'},xp:9600,gold:110,item:2,done:'Their blood glows… the poison spreads. We must find its source.'},
   {id:'e9',n:'The Elder Stags',giver:'liora',lvl:24,req:'e3',txt:'Even the Elder Stags west of Lake Elvia have gone mad. It breaks my heart, but they must be put to rest. Bring me four of their great antlers.',obj:{collect:['elderstag'],n:4,chance:1,lbl:'Antler collected',item:'Antler of the Elder Stag'},xp:10800,gold:130,item:3,done:'Rest now, old ones. Thank you, hero. I could not have done it myself.'},
   {id:'e10',n:'Oakheart the Ancient',giver:'corwin',lvl:25,req:'e4',txt:'Our scouts saw it at last: Oakheart, an ancient beast of moss and bark that walks the western Highlands. It is the heart of the poison. Gather your friends and bring it down.',obj:{kill:['oakheart'],n:1,lbl:'Oakheart defeated'},xp:14000,gold:250,item:3,done:'Oakheart has fallen! By the King\'s command, you are named a Champion of WindStorm.'},
+  {id:'e11',n:'The Roots of the Poison',giver:'sabine',lvl:24,req:'e8',txt:'I followed the residue from the falls, and it does not end with Oakheart. It seeps up from beneath Thornwood, from the Thornroot Hollow under the roots of a dead giant in the far south-east. Take the road through Thornwood, go down into the Hollow and clear its tunnels: twelve of the creatures that guard it.',obj:{kill:['thornspider','blightseer','brambleguard'],n:12,lbl:'Hollow creatures slain'},xp:12500,gold:160,pots:4,done:'Seers… elves who drank from the poison and became its servants. Then something down there is feeding it. Something old.'},
+  {id:'e12',n:'Veyrith the Silkmother',giver:'corwin',lvl:25,req:'e11',txt:'Sabine says the poison is spun, not brewed: a spider queen older than WindStorm, Veyrith the Silkmother, nests at the bottom of the Thornroot Hollow. Her guardian, the Thornwarden, blocks the way. Take your strongest friends, cut through, and end her.',obj:{kill:['silkmother'],n:1,lbl:'Silkmother slain'},xp:18000,gold:320,item:3,done:'The rivers run clear again. Elvia is free, and so is WindStorm. Whatever you ask of this city, hero, it is yours.'},
 ];
 /* the stable in Silverbrook (model: Quaternius, placed in 2_world.js) and Stablemaster Hob in front of it */
 const STABLE={x:56,z:27,ry:0};const STABLE_PETS=[{id:'whitehorse',dx:-8,dz:-8,ry:2.5},{id:'donkey',dx:10,dz:-1,ry:-2.3}];const STABLE_NPC=[56,17.4,Math.PI*.92];
@@ -260,5 +269,5 @@ const FISH=[['Perch',45],['Carp',30],['Pike',17],['Golden Perch',6],['Lake Phant
 const ELV_FISH=[['Silverfin Trout',44],['Moonmere Eel',30],['Elvian Salmon',18],['Golden Perch',6],['Crown Pike',2]];
 /* beasts you can skin after looting: [material, chance, extra material at higher skill] */
 const SKIN={ever:{it:'Rough Hide',lv:0},wolf:{it:'Rough Hide',lv:0,x:['Thick Hide',8]},spin:{it:'Spider Silk',lv:5},raptor:{it:'Drake Scale',lv:20,x:['Thick Hide',0]},vleer:{it:'Thick Hide',lv:15},welp:{it:'Drake Scale',lv:20},lavadrake:{it:'Drake Scale',lv:22,n:3},broedling:{it:'Drake Scale',lv:20},
-  elvwolf:{it:'Elvian Hide',lv:30},elvspider:{it:'Moonsilk Thread',lv:30,n:2},fenraptor:{it:'Elvian Hide',lv:32,x:['Drake Scale',0]},elderstag:{it:'Elvian Hide',lv:34,n:3},oakheart:{it:'Elvian Hide',lv:30,n:5}};
+  elvwolf:{it:'Elvian Hide',lv:30},elvspider:{it:'Moonsilk Thread',lv:30,n:2},fenraptor:{it:'Elvian Hide',lv:32,x:['Drake Scale',0]},elderstag:{it:'Elvian Hide',lv:34,n:3},oakheart:{it:'Elvian Hide',lv:30,n:5},thornspider:{it:'Moonsilk Thread',lv:30,n:2},silkmother:{it:'Moonsilk Thread',lv:30,n:6}};
 const BAG=36;

@@ -29,24 +29,24 @@ function leaveDrake(){teleport(DRK_GATE.x-9,DRK_GATE.z);ME.ry=-Math.PI/2;cam.yaw
 function enterVolcano(){teleport(D3.entry.x,D3.entry.z);ME.ry=Math.PI;cam.yaw=0;log('The heat is suffocating. Deep in the volcano, Vyraxion the Ash Queen slumbers…','sys');if(P.level<18)log('Beware: the Heart of the Volcano is meant for heroes of level 18 or higher.','err')}
 function leaveVolcano(){teleport(VOLC_DOOR.x-7,VOLC_DOOR.z);ME.ry=-Math.PI/2;cam.yaw=Math.PI/2}
 /* automatisch door een poort lopen (aangeroepen vanuit de lus) */
-function drakePortals(){const x=ME.pos.x,z=ME.pos.z;
+function drakePortals(){const x=ME.pos.x,z=ME.pos.z;if(hollowPortals(x,z))return true;
   if(inDrk(x)&&Math.hypot(x-DRK_ARCH.elvia.x,z-DRK_ARCH.elvia.z)<2.4){enterElvia();return true}if(inElv(x)&&Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<2.4){leaveElvia();return true}
   if(x<700&&x>-1000&&Math.hypot(x-DRK_GATE.x,z-DRK_GATE.z)<2.4){enterDrake();return true}
   if(inDrk(x)){if(Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)<2.4){leaveDrake();return true}if(Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<2.2){enterVolcano();return true}}
   if(x>1700&&Math.hypot(x-D3.exit.x,z-(D3.exit.z+1.4))<2){leaveVolcano();return true}
   return false}
 /* met F (of Actie) */
-function drakeInteract(){const x=ME.pos.x,z=ME.pos.z;
+function drakeInteract(){const x=ME.pos.x,z=ME.pos.z;if(hollowInteract(x,z))return true;
   {const w=nearWaystone();if(w){useWaystone(w);return true}}if(inDrk(x)&&Math.hypot(x-DRK_ARCH.elvia.x,z-DRK_ARCH.elvia.z)<7){enterElvia();return true}if(inElv(x)&&Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<7){leaveElvia();return true}
   if(x<700&&x>-1000&&Math.hypot(x-DRK_GATE.x,z-DRK_GATE.z)<7){enterDrake();return true}
   if(inDrk(x)){if(Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)<7){leaveDrake();return true}if(Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<7){enterVolcano();return true}}
   if(x>1700&&Math.hypot(x-D3.exit.x,z-D3.exit.z)<6){leaveVolcano();return true}
   return false}
-function drakeRespawn(){const x=ME.pos.x;if(x>1700){teleport(D3.entry.x,D3.entry.z);return true}if(inDrk(x)){teleport(DRK_CAMP.x-4+rand(-2,2),DRK_CAMP.z-8+rand(-2,2));return true}return false}
+function drakeRespawn(){const x=ME.pos.x;if(x>1700&&x<2200){teleport(D3.entry.x,D3.entry.z);return true}if(inDrk(x)){teleport(DRK_CAMP.x-4+rand(-2,2),DRK_CAMP.z-8+rand(-2,2));return true}return false}
 
 /* ---------- lava ---------- */
 const DPOOLS=[];/* lavaplassen van Vyraxion: {x,z,r,t,m} */
-function onLava(x,z){if(inDrk(x))return drkLava(x,z);if(x>1700){if(D3.cell(x,z)==='~')return true;for(const p of DPOOLS)if(Math.hypot(x-p.x,z-p.z)<p.r*.9)return true}return false}
+function onLava(x,z){if(inDrk(x))return drkLava(x,z);if(x>1700&&x<2200){if(D3.cell(x,z)==='~')return true;for(const p of DPOOLS)if(Math.hypot(x-p.x,z-p.z)<p.r*.9)return true}return false}
 function drakeLava(dt){if(ME.dead||ME.air||!P)return;const x=ME.pos.x,z=ME.pos.z;if(!(inDrk(x)||x>1700))return;if(!onLava(x,z)){ME.dlavaT=0;return}
   ME.dlavaT=(ME.dlavaT||0)-dt;if(ME.dlavaT<=0){ME.dlavaT=.5;const d=Math.round(ST.maxhp*.05);P.hp-=d;ME.combat=6;floatText('me','-'+d+' lava','hurt');sparks(x,ME.pos.y+.3,z,0xff7a20,6,3,.3,.4);if(P.hp<=0){P.hp=0;die()}}}
 function lavaPool(x,z,r,life){const m=new THREE.Mesh(new THREE.CircleGeometry(r,26).rotateX(-Math.PI/2),LAVA_MAT);m.position.set(x,groundH(x,z)+.08,z);m.scale.setScalar(.05);scene.add(m);DPOOLS.push({x,z,r,t:life,m})}
@@ -118,7 +118,7 @@ function drakeAmbient(dt){updPools(dt);updDrakeWorld(dt);drkAmbT+=dt;if(drkAmbT<
     if(Math.random()<.6*q){const x=c.x+FRN(-25,25),z=c.z+FRN(-25,25);emitP({x,y:groundH(x,z)+.3,z,vx:FRN(-.4,.4),vy:FRN(1.5,3.5),vz:FRN(-.4,.4),life:FRN(1.5,2.5),size:.18,size1:.05,col:0xffa040,a:1,a1:0,cell:FXC.glint})}
     const dv=Math.hypot(c.x-VOLC.x,c.z-VOLC.z);if(dv<260){const rimH=VOLC.h*Math.pow(1-VOLC.cr/VOLC.r,1.25)+2;for(let i=0;i<Math.round(2*q)+1;i++)emitP({x:VOLC.x+FRN(-6,6),y:rimH-2,z:VOLC.z+FRN(-6,6),vx:FRN(-.5,.5)+1.2,vy:FRN(4,7),vz:FRN(-.5,.5),drag:.15,life:FRN(6,9),size:FRN(6,10),size1:FRN(18,28),col:0x3a302c,col1:0x6a605a,a:.55,a1:0,cell:FXC.smoke2,add:false,must:1});
       if(Math.random()<.5)emitP({x:VOLC.x+FRN(-5,5),y:rimH-4,z:VOLC.z+FRN(-5,5),vy:FRN(6,12),vx:FRN(-2,2),vz:FRN(-2,2),grav:6,life:FRN(1.2,2),size:.6,size1:.2,col:0xffb040,a:1,a1:0,cell:FXC.glint,must:1})}}
-  else if(c.x>1700&&Math.random()<.7*q){const x=c.x+FRN(-20,20),z=c.z+FRN(-20,20);emitP({x,y:.3,z,vy:FRN(1,3),life:FRN(1.5,2.5),size:.16,size1:.05,col:0xffa040,a:1,a1:0,cell:FXC.glint})}
+  else if(c.x>1700&&c.x<2200&&Math.random()<.7*q){const x=c.x+FRN(-20,20),z=c.z+FRN(-20,20);emitP({x,y:.3,z,vy:FRN(1,3),life:FRN(1.5,2.5),size:.16,size1:.05,col:0xffa040,a:1,a1:0,cell:FXC.glint})}
   /* legendarisch wapen: vonken bij de hand */
   if(P&&P.eq&&P.eq.wapen&&P.eq.wapen.r>=4&&!ME.dead){const h=myHand();emitP({x:h.x+FRN(-.15,.15),y:h.y+FRN(-.1,.4),z:h.z+FRN(-.15,.15),vy:FRN(.4,1.2),life:FRN(.4,.7),size:.22,size1:.05,col:0xffa030,col1:0xff4010,a:1,a1:0,cell:FXC.glint})}
   for(const r of REMOTES.values())if(r.rig&&r.wr>=4&&Math.abs(r.x-c.x)<40&&Math.abs(r.z-c.z)<40)emitP({x:r.x+Math.sin(r.ry)*.5,y:r.y+1.4,z:r.z+Math.cos(r.ry)*.5,vy:FRN(.4,1.2),life:.5,size:.2,size1:.05,col:0xffa030,a:1,a1:0,cell:FXC.glint})}
