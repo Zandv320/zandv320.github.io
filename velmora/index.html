@@ -509,6 +509,9 @@ body.touch #pLife{width:100%;height:auto;border-radius:16px 16px 0 0}
 /* ===== resizable windows: drag the corner grip; double-click the title to reset ===== */
 .rgrip{position:absolute;right:2px;bottom:2px;width:18px;height:18px;cursor:nwse-resize;z-index:5;opacity:.55;background:linear-gradient(135deg,transparent 0 45%,var(--gold) 45% 52%,transparent 52% 64%,var(--gold) 64% 71%,transparent 71% 83%,var(--gold) 83% 90%,transparent 90%);border-radius:0 0 12px 0}
 .rgrip:hover{opacity:1}body.touch .rgrip{display:none}.panel.resized{max-height:94vh!important;max-width:98vw!important}
+/* townsfolk speech bubbles */
+.vbub{position:fixed;left:0;top:0;z-index:6;pointer-events:none;display:none;max-width:220px;padding:6px 10px;border-radius:12px;background:rgba(255,250,238,.94);color:#3a2a18;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.35);text-align:center;white-space:normal}
+.vbub::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:rgba(255,250,238,.94)}
 </style>
   <script type="module" src="./main.js"></script>
 </head>

@@ -12,8 +12,6 @@ import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 /* ===================== utils ===================== */
 const $=s=>document.querySelector(s);
-/* laadscherm bijwerken en één frame afstaan (zie vite.config.js: wordt tussen de delen ingevoegd) */
-const __loadT0=performance.now();function __loadStep(m){const e=$('#loadMsg');if(e)e.textContent=m;if(window.__PROF_LOAD)console.log('load',Math.round(performance.now()-__loadT0),'ms →',m);return new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)))}
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, smooth=t=>t*t*(3-2*t);
 const rand=(a,b)=>a+Math.random()*(b-a), randi=(a,b)=>Math.floor(a+Math.random()*(b-a+1)), pick=a=>a[Math.floor(Math.random()*a.length)];
 const d2=(ax,az,bx,bz)=>(ax-bx)*(ax-bx)+(az-bz)*(az-bz);

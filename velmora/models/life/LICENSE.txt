@@ -1,0 +1,11 @@
+Velmora - living world models (models/life)
+
+plants.glb   Quaternius, "Stylized Nature MegaKit" (ferns, grasses, flowers, clover, mushrooms, bushes). CC0 1.0. https://quaternius.com
+fox.glb, cow.glb, shiba.glb, husky.glb   Quaternius, "Ultimate Animated Animals". CC0 1.0.
+rat.glb, frog.glb   Quaternius (Ultimate Monsters / animated animals). CC0 1.0.
+fish.glb     Quaternius, "Animated Fish". CC0 1.0.
+rabbit.glb   "Rabbit" by Sherkiz. CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+critters.glb contains:
+  sparrow, crow, flying gull, western bluebird, butterfly (blue), mallard duck: "Poly by Google". CC-BY 3.0.
+  butterfly (monarch): "Butterfly" by Poly by Google. CC-BY 3.0.
+All downloaded via Poly Pizza (https://poly.pizza). Optimised (meshopt, smaller textures) and combined for Velmora.
