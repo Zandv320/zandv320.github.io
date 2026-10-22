@@ -203,7 +203,7 @@ function openNpc(n,keep){if(Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z)>6)return toast
   {const ib=$('#innHome');if(ib)ib.onclick=()=>{P.home=P.home==='ws'?'':'ws';sfx('quest');log(P.home==='ws'?'WindStorm is now your home: your hearthstone takes you here.':'Silverbrook is your home again.','sys');saveGame();openNpc(n,true)}}
   const rb=$('#respecB');if(rb)rb.onclick=()=>{if(respecTalents()){openNpc(n,true);refreshTalent()}};
   openPanel('pDialog');S.shop=!!n.def.shop}
-function rewardHtml(q){return'<div class="rew"><span>'+q.xp+' XP</span><span style="color:#8a6a00">'+q.gold+' gold</span>'+(q.item?'<span style="color:'+['#000','#1a8a2a','#1a5ab8','#8a2ac8'][q.item]+'">'+RARITY[q.item].n+' item</span>':'')+(q.pots?'<span>'+q.pots+' potions</span>':'')+'</div>'}
+function rewardHtml(q){return'<div class="rew"><span>'+q.xp+' XP</span><span style="color:#ffd34d">'+q.gold+' gold</span>'+(q.item?'<span style="color:'+['#fff','#5dff73','#7cc0ff','#e0a3ff'][q.item]+'">'+RARITY[q.item].n+' item</span>':'')+(q.pots?'<span>'+q.pots+' potions</span>':'')+'</div>'}
 function showQuest(n,q){const s=qState(q);const b=$('#dBody');const a=P.quests[q.id];
   b.innerHTML='<p><b>'+esc(q.n)+'</b></p><p>'+esc(s==='ready'?q.done:q.txt)+'</p><div class="obj">'+esc(q.obj.lbl)+': '+(a?a.n:0)+' / '+q.obj.n+'</div><p style="margin:6px 0 4px"><b>Reward</b></p>'+rewardHtml(q)+'<div class="row" style="margin-top:12px" id="qBtns"></div>';
   const bb=$('#qBtns');const add=(t,fn,alt)=>{const x=document.createElement('button');x.className='btn'+(alt?' alt':'');x.textContent=t;x.onclick=fn;bb.appendChild(x)};

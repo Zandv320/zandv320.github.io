@@ -512,6 +512,130 @@ body.touch #pLife{width:100%;height:auto;border-radius:16px 16px 0 0}
 /* townsfolk speech bubbles */
 .vbub{position:fixed;left:0;top:0;z-index:6;pointer-events:none;display:none;max-width:220px;padding:6px 10px;border-radius:12px;background:rgba(255,250,238,.94);color:#3a2a18;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.35);text-align:center;white-space:normal}
 .vbub::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:rgba(255,250,238,.94)}
+
+/* ===================== Theme: modern glass (same look as the crafting book) =====================
+   Every window, frame, button, bar, slot and tooltip: dark glass, thin gold edges, round corners, gold buttons.
+   This block comes last and only changes the look, not the layout. */
+:root{--gl1:rgba(32,26,20,.95);--gl2:rgba(14,11,8,.96);--gline:rgba(232,192,106,.32);--gline2:rgba(232,192,106,.62);--gtxt:#f3ead6;--gsoft:rgba(255,240,210,.045);--gsh:0 18px 50px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,230,170,.08)}
+.frame,.panel,#pDialog,#tip.frame,.mpanel.frame{border:1px solid var(--gline);border-image:none;border-radius:16px;background:linear-gradient(180deg,var(--gl1),var(--gl2));box-shadow:var(--gsh);filter:none;color:var(--gtxt)}
+.frame,.frame *,#pDialog,#pDialog *{text-shadow:none}
+.panel,.panel.frame{padding:12px 14px 14px}
+.panel h3{font:700 19px var(--head);color:#ffe9b8;text-shadow:0 1px 0 rgba(0,0,0,.6);letter-spacing:.03em;border-bottom:1px solid var(--gline);padding:0 0 8px;margin:0 0 10px}
+.x{width:30px;height:30px;border-radius:50%;border:1px solid var(--gline);background:rgba(255,255,255,.04);color:transparent;position:relative;filter:none;flex:none;transition:background .15s,border-color .15s}
+.x::before,.x::after{content:'';position:absolute;inset:auto;left:50%;top:50%;width:13px;height:2px;background:#f3d9a0;border-radius:2px;transform:translate(-50%,-50%) rotate(45deg)}
+.x::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.x:hover{background:rgba(232,110,80,.22);border-color:#e88a6a;filter:none}
+/* buttons: gold for actions, glass for the rest */
+.btn{border:1px solid rgba(255,214,130,.6);border-image:none;border-radius:10px;background:linear-gradient(180deg,#f2cf7c,#c9953e);color:#2a1a08;text-shadow:none;font:800 14px var(--ui);letter-spacing:.02em;padding:8px 14px;min-height:40px;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.45);filter:none;transition:filter .15s,transform .1s,background .15s,border-color .15s}
+.btn:hover{filter:brightness(1.08)}.btn:active{transform:translateY(1px);filter:none}
+.btn.alt,#pDialog .btn.alt{background:rgba(255,255,255,.05);border-color:var(--gline);color:#f3dfb0;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.btn.alt:hover{background:rgba(232,192,106,.12);border-color:var(--gline2);filter:none}
+.btn:disabled{filter:grayscale(.8) brightness(.6)}
+#pDialog .btn{color:#2a1a08}#pDialog .btn.alt{color:#f3dfb0}
+.mapbtns .btn.on{background:linear-gradient(180deg,#f2cf7c,#c9953e);color:#2a1a08!important;border-color:rgba(255,214,130,.6)}
+/* bars */
+.bar{border:0;border-radius:99px;background:rgba(0,0,0,.6);box-shadow:inset 0 1px 3px rgba(0,0,0,.85),0 0 0 1px rgba(232,192,106,.28)}
+.bar>i{border-radius:99px;box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(0,0,0,.2)}
+.bar>span{text-shadow:0 1px 2px #000}
+/* unit frames */
+.uf.frame{border-radius:44px 16px 16px 44px;padding:6px 12px 6px 6px}
+.port{border:2px solid #e8c06a;box-shadow:0 0 0 3px rgba(0,0,0,.5),0 0 14px rgba(232,192,106,.25);background:#120e0a}
+.lvl{background:linear-gradient(180deg,#f2cf7c,#c9953e);border:1px solid #2a1a08;color:#2a1a08;width:22px;height:22px;font:800 11px var(--ui)}
+.ufn{color:#fff1d0;font-family:var(--head);text-shadow:none}.ufn small{color:#cdbb95;font-family:var(--ui)}
+.tag{border-radius:8px;background:rgba(232,192,106,.14);border:1px solid var(--gline);color:#ffd77a;padding:0 6px}
+#tframe.hostile{border-color:rgba(232,90,70,.65);box-shadow:0 0 0 1px rgba(232,90,70,.3),0 0 18px rgba(232,90,70,.35),0 10px 30px rgba(0,0,0,.5);filter:none}
+.pm.frame{border-width:1px;border-radius:12px;padding:6px 8px}
+.buff{border-radius:6px;border:1px solid var(--gline);background:rgba(14,11,8,.85);padding:0 5px}
+/* minimap: a gold ring instead of the wooden one */
+#mmring{display:none}
+#mmc{border:0;box-shadow:0 0 0 2px #e8c06a,0 0 0 5px rgba(14,11,8,.92),0 0 0 6px rgba(232,192,106,.4),0 10px 24px rgba(0,0,0,.6)}
+#zone{color:#ffe9b8;text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.7)}
+#online{text-shadow:0 1px 3px #000}
+/* menu buttons and the ride/sheathe buttons */
+.mb,.mountbtn{border:1px solid var(--gline);border-radius:50%;background:radial-gradient(circle at 50% 30%,rgba(66,52,36,.96),rgba(16,12,9,.96));box-shadow:0 4px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,230,170,.14);filter:none;transition:border-color .15s,box-shadow .15s}
+.mb:hover,.mountbtn:hover{border-color:#e8c06a;box-shadow:0 0 14px rgba(232,192,106,.35),0 4px 12px rgba(0,0,0,.5)}
+.mb img{filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
+.mb i{background:rgba(14,11,8,.92);border:1px solid var(--gline);color:#ffe7a8;border-radius:7px}
+.mb small{color:#f3e2bc;text-shadow:0 1px 2px #000,0 0 4px #000}
+.mountbtn.on,.tb.on[data-role=mnt],.tb.on[data-role=shth]{border-color:#7adc3a;box-shadow:0 0 12px rgba(122,220,58,.5),0 4px 12px rgba(0,0,0,.5);background-image:radial-gradient(circle at 50% 30%,rgba(50,80,34,.96),rgba(14,20,10,.96))}
+.mb .tdot{border-color:#120e0a}
+/* action bar */
+#abar{border:1px solid var(--gline);border-image:none;border-radius:18px;background:linear-gradient(180deg,rgba(32,26,20,.9),rgba(14,11,8,.92));padding:6px 8px;gap:6px;box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,230,170,.08);filter:none}
+.slot{border-radius:12px;background:#0e0b08;box-shadow:0 0 0 1px rgba(232,192,106,.45),0 3px 8px rgba(0,0,0,.5)}
+.slot:hover{box-shadow:0 0 0 1px #ffe08a,0 0 12px rgba(255,224,138,.35)}
+.slot .k{background:rgba(10,8,6,.78);color:#ffe7a8;border-radius:0 0 8px 0;font-size:10px;padding:0 4px;text-shadow:none}
+.slot.active{outline:2px solid #ffe08a;outline-offset:2px}
+#xpbar{box-shadow:inset 0 1px 3px rgba(0,0,0,.85),0 0 0 1px rgba(232,192,106,.28)}
+/* bag, equipment and stats */
+.cell{border:0;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.4));box-shadow:inset 0 0 0 1px rgba(232,192,106,.2),inset 0 2px 6px rgba(0,0,0,.5);transition:box-shadow .15s}
+.cell:hover{box-shadow:inset 0 0 0 1px #ffe08a,0 0 10px rgba(255,224,138,.25)}
+.cell canvas{border-radius:9px}
+.cell.r1{box-shadow:inset 0 0 0 2px var(--r1)}.cell.r2{box-shadow:inset 0 0 0 2px var(--r2)}.cell.r3{box-shadow:inset 0 0 0 2px var(--r3),0 0 10px rgba(182,92,255,.5)}.cell.r4{box-shadow:inset 0 0 0 2px var(--r4),0 0 14px rgba(255,128,0,.7)}.cell.rj{box-shadow:inset 0 0 0 1px #555}
+.grid{gap:6px;padding:2px}
+.gold{background:var(--gsoft);border:1px solid rgba(232,192,106,.18);border-radius:10px;padding:7px 12px}
+.eqs{color:#cdbb95}
+.stats{background:var(--gsoft);border:1px solid rgba(232,192,106,.16);border-radius:12px;padding:10px 12px;color:var(--gtxt)}
+.stats span:nth-child(even){color:#ffe7a8}
+.mhd{color:#ffe9b8;font-family:var(--head)}
+.mlist .mrow,#pDialog .mlist .mrow{border:1px solid rgba(232,192,106,.22);border-radius:12px;background:var(--gsoft);color:var(--gtxt)}
+.mlist .mrow .mic{background:radial-gradient(circle at 50% 30%,rgba(66,52,36,.96),rgba(16,12,9,.96));border:1px solid var(--gline)}
+.mlist .mrow.sel,#pDialog .mlist .mrow.sel{border-color:#e8c06a;background:rgba(232,192,106,.14);box-shadow:0 0 0 1px rgba(232,192,106,.35)}
+/* quests */
+.qrow{background:var(--gsoft);border:1px solid rgba(232,192,106,.15);border-radius:12px;padding:10px 12px;margin:0 0 8px}.qrow b{color:#ffd88a}.qrow p{color:#e6dcc6}
+/* talents */
+.ttree{background:var(--gsoft);border:1px solid rgba(232,192,106,.16);border-radius:14px}
+.ttree>header{color:#ffe9b8;font-family:var(--head)}.ttree .tdesc,.trow .tl,.tfoot{color:#cdbb95}
+.tnode{border:2px solid rgba(232,192,106,.35);background:#120e0a;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.45)}
+.tnode.skill{border-color:#e8c06a}
+.tnode b{background:rgba(10,8,6,.9);border:1px solid var(--gline);border-radius:8px}
+#pTalent h3 .tpts{background:rgba(255,255,255,.06);border:1px solid var(--gline);color:#ffe7a8}
+/* map */
+#bigmap{border:1px solid var(--gline);border-radius:12px;box-shadow:inset 0 0 18px rgba(0,0,0,.5)}
+/* menu */
+#pMenu{gap:8px}.mhelp{color:#cdbb95}
+kbd{background:rgba(255,255,255,.08);border:1px solid var(--gline);border-radius:6px;padding:0 5px;color:#ffe7a8;font:700 11px var(--ui)}
+/* NPC windows: same dark glass as the rest */
+#pDialog h3{color:#ffe9b8;border-bottom-color:var(--gline)}
+.dq,.shop button{background:var(--gsoft);border:1px solid rgba(232,192,106,.25);border-radius:10px;color:var(--gtxt);transition:background .15s,border-color .15s}
+.dq:hover,.shop button:hover{background:rgba(232,192,106,.12);border-color:var(--gline2)}
+.dq .m{color:#ffd34d}
+.obj{background:var(--gsoft);border-left:3px solid #e8c06a;border-radius:0 10px 10px 0}
+.shop canvas{border:1px solid var(--gline);border-radius:8px}
+body.touch #pDialog{border-width:1px;padding:10px 12px}
+/* tooltip */
+#tip.frame{border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.7)}
+#tip .tn{font-family:var(--head)}#tip .ts{color:#e6dcc6}
+/* chat */
+#chat.open #log{background:rgba(14,11,8,.72);border:1px solid rgba(232,192,106,.18);border-radius:12px;padding:6px 8px}
+#chatIn,input.txt{background:rgba(10,8,6,.85);color:var(--gtxt);border:1px solid var(--gline);border-radius:10px;padding:8px 10px;outline:none}
+#chatIn:focus,input.txt:focus{border-color:#e8c06a;box-shadow:0 0 0 2px rgba(232,192,106,.2)}
+/* cast and fishing bars */
+#castbar{height:16px}#fishBar{border:1px solid var(--gline);border-radius:99px;overflow:hidden;background:rgba(0,0,0,.6)}
+/* start menu */
+.mpanel h2{color:#ffe9b8;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+.citem,.opt{border:1px solid rgba(232,192,106,.22);border-radius:12px;background:var(--gsoft);color:var(--gtxt);transition:background .15s,border-color .15s}
+.citem:hover,.opt:hover{border-color:var(--gline2)}
+.citem.sel,.opt.sel{border-color:#e8c06a;background:rgba(232,192,106,.14);color:#fff!important;text-shadow:none;box-shadow:0 0 0 1px rgba(232,192,106,.35)}
+.citem small{color:#cdbb95}.cicon{border:1px solid var(--gline);border-radius:10px}
+label.l{color:#cdbb95}.desc{color:var(--gtxt)}
+.back,.net{border:1px solid var(--gline);border-image:none;border-radius:99px;background:rgba(14,11,8,.82);color:#f3dfb0;padding:6px 12px}
+/* notifications */
+#toast{color:#ffe1d8;text-shadow:0 2px 4px #000,0 0 10px rgba(0,0,0,.8)}
+#banner b{color:#ffe9b8;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 22px rgba(0,0,0,.85)}
+body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radius:99px;background:rgba(14,11,8,.85);padding:2px 10px}
+#death h2{color:#ffe9b8;text-shadow:0 3px 0 #000,0 0 20px rgba(0,0,0,.8)}
+/* touch controls */
+#joy{background:radial-gradient(rgba(232,192,106,.07),rgba(0,0,0,.4));border:1px solid rgba(232,192,106,.5);border-radius:50%;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+#joy i{background:radial-gradient(circle at 50% 35%,#f6d58a,#b58436);box-shadow:0 0 0 2px rgba(0,0,0,.6),0 4px 10px rgba(0,0,0,.6)}
+.tb{border:1px solid var(--gline);background:radial-gradient(circle at 50% 30%,rgba(66,52,36,.96),rgba(16,12,9,.96));box-shadow:0 4px 12px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,230,170,.14);filter:none}
+.tb.big{border:2px solid rgba(240,110,80,.8);background:radial-gradient(circle at 50% 30%,rgba(120,40,24,.96),rgba(30,10,6,.96))}.tb.big .lab{background:rgba(60,14,8,.95);border-color:rgba(240,110,80,.8)}
+.tb.big.on{filter:none;box-shadow:0 0 16px rgba(255,90,60,.8),0 4px 12px rgba(0,0,0,.55)}
+.tb.act{border:2px solid rgba(122,220,58,.7);background:radial-gradient(circle at 50% 30%,rgba(50,80,34,.96),rgba(14,20,10,.96))}
+.tb.sm2{background:radial-gradient(circle at 50% 30%,rgba(66,52,36,.96),rgba(16,12,9,.96))}.tb .arr{color:#ffe7a8}
+.tb .lab,.tb .n{background:rgba(14,11,8,.92);border:1px solid var(--gline);color:#ffe7a8;border-radius:9px}
+/* scrollbars */
+.panel,.panel *{scrollbar-width:thin;scrollbar-color:rgba(232,192,106,.4) transparent}
+.panel ::-webkit-scrollbar,.panel::-webkit-scrollbar{width:8px;height:8px}.panel ::-webkit-scrollbar-thumb,.panel::-webkit-scrollbar-thumb{background:rgba(232,192,106,.35);border-radius:8px}.panel ::-webkit-scrollbar-track,.panel::-webkit-scrollbar-track{background:transparent}
 </style>
   <script type="module" src="./main.js"></script>
 </head>
