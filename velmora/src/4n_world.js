@@ -174,7 +174,7 @@ function crPopulate(dt){_crSpawnT-=dt;if(_crSpawnT>0)return;_crSpawnT=1.5;const 
       Promise.all(Array.from({length:n},(_,k)=>crSpawn(k===0&&P.lead?P.lead:P.t,s[0]+(Math.random()-.5)*6,s[1]+(Math.random()-.5)*6,{hr:16}))).then(L=>{P.pend--;for(const c of L)if(c){c.pop=P;c.herd=H;H.m.push(c)}H.lead=H.m[0]})}
     else{P.pend=(P.pend|0)+1;crSpawn(P.t,s[0],s[1],{hr:P.dun?7:14,size:.9+Math.random()*.25}).then(c=>{P.pend--;if(c)c.pop=P})}}}
 function crTick(dt){crPopulate(dt);const R=lwR(),cx=camTarget.x,cz=camTarget.z;
-  for(const c of CR){const d=Math.hypot(c.x-cx,c.z-cz);const vis=d<R+6;c.g.visible=vis;
+  for(const c of CR){const d=Math.hypot(c.x-cx,c.z-cz);const vis=d<R+6&&!(c.follow&&c.follow.gone);c.g.visible=vis;
     if(d>R+20&&!c.follow)continue;crUpdate(c,dt);c.g.position.set(c.x,c.y,c.z);c.g.rotation.y=c.ry;
     c.adt+=dt;if(vis&&(d<22||(LW.frame+c.lod)%(d<45?2:3)===0)){c.mixer.update(c.adt);c.adt=0}}}
 
@@ -268,30 +268,37 @@ function vlPath(G,x,z,tx,tz){const s=vlNear(G,x,z),t=vlNear(G,tx,tz);if(s<0||t<0
   return out.map(k=>[G.x0+(k%N+.5)*G.cell,G.z0+(((k/N)|0)+.5)*G.cell]).concat([[tx,tz]])}
 /* the places villagers go to in a town */
 function vlPois(id){if(id==='sb'){const L=[];for(const s of STALLS)L.push({x:s.x+Math.sin(s.rot)*2.6,z:s.z+Math.cos(s.rot)*2.6,k:'shop',face:s.rot+Math.PI});
-    for(const b of TOWN_B){const dd=(b.q%2?b.w:b.d)/2+1.4,dir=[[0,1],[1,0],[0,-1],[-1,0]][b.q%4];if(/home|tavern|church|blacksmith/.test(b.m))L.push({x:b.x+dir[0]*dd,z:b.z+dir[1]*dd,k:'door',face:Math.atan2(-dir[0],-dir[1])});if(/well/.test(b.m))L.push({x:b.x+2.2,z:b.z,k:'well',face:-Math.PI/2})}
+    for(const b of TOWN_B){const dd=(b.q%2?b.w:b.d)/2+1.4,dir=[[0,1],[1,0],[0,-1],[-1,0]][b.q%4];if(/home|tavern|church|blacksmith/.test(b.m))L.push({x:b.x+dir[0]*dd,z:b.z+dir[1]*dd,k:/tavern/.test(b.m)?'tavern':'door',face:Math.atan2(-dir[0],-dir[1])});if(/well/.test(b.m))L.push({x:b.x+2.2,z:b.z,k:'well',face:-Math.PI/2})}
     for(let i=0;i<8;i++){const a=i/8*6.283;L.push({x:Math.cos(a)*7.5,z:Math.sin(a)*7.5,k:i%2?'sit':'chat',face:Math.atan2(-Math.cos(a),-Math.sin(a))})}
     for(const n of NPCOBJ)if(Math.hypot(n.x,n.z)<TOWN.wall-4)L.push({x:n.x+Math.sin(n.ry||0)*2.4,z:n.z+Math.cos(n.ry||0)*2.4,k:'talk',face:(n.ry||0)+Math.PI});
     for(const p of TOWN_P){if(Math.hypot(p.x,p.z)>TOWN.wall-3)continue;if(/stall-(red|green)/.test(p.m)){for(const sd of[1,-1])L.push({x:p.x+Math.sin(p.ry)*2.4*sd,z:p.z+Math.cos(p.ry)*2.4*sd,k:'shop',face:p.ry+(sd>0?Math.PI:0)})}else if(/bench/.test(p.m))L.push({x:p.x+Math.sin(p.ry)*.9,z:p.z+Math.cos(p.ry)*.9,k:'sit',face:p.ry})}
     for(let i=0;i<10;i++){const a=Math.random()*6.283,r=14+Math.random()*48;L.push({x:Math.cos(a)*r,z:Math.sin(a)*r,k:'stroll'})}return L}
   if(id==='ws'){const L=[];for(const p of WS_PROPS){if(/stall/.test(p.m))L.push({x:p.x-Math.sin(p.ry)*2.8,z:p.z-Math.cos(p.ry)*2.8,k:'shop',face:p.ry});if(/well/.test(p.m))L.push({x:p.x+2,z:p.z,k:'well'})}
-    for(const b of WS_B){const dd=b.d/2+1.6;if(/home|tavern|church|market|blacksmith/.test(b.m))L.push({x:b.x+Math.sin(b.ry)*dd,z:b.z+Math.cos(b.ry)*dd,k:'door',face:b.ry+Math.PI})}
+    for(const b of WS_B){const dd=b.d/2+1.6;if(/home|tavern|church|market|blacksmith/.test(b.m))L.push({x:b.x+Math.sin(b.ry)*dd,z:b.z+Math.cos(b.ry)*dd,k:/tavern/.test(b.m)?'tavern':'door',face:b.ry+Math.PI})}
     for(let i=0;i<8;i++){const a=i/8*6.283;L.push({x:WS.x+Math.cos(a)*10,z:WS.z+Math.sin(a)*10,k:i%2?'sit':'chat',face:Math.atan2(-Math.cos(a),-Math.sin(a))})}
     for(const id2 in WS_NPC_SPOTS){const s=WS_NPC_SPOTS[id2];if(s.ry!=null)L.push({x:s.x+Math.sin(s.ry)*2.4,z:s.z+Math.cos(s.ry)*2.4,k:'talk',face:s.ry+Math.PI})}
     for(let i=0;i<12;i++){const a=Math.random()*6.283,r=WS.plaza+4+Math.random()*(WS.R-WS.plaza-20);L.push({x:WS.x+Math.cos(a)*r,z:WS.z+Math.sin(a)*r,k:'stroll'})}return L}
   return[]}
 const VL_TOWNS=[{id:'sb',x:0,z:0,R:TOWN.wall-1,cell:1,n:[6,9,12],kids:[1,2,2],dogs:1,lines:'sb'},{id:'ws',x:WS.x,z:WS.z,R:WS.R-2,cell:1.5,n:[6,9,12],kids:[1,2,3],dogs:1,lines:'ws',dog:'husky'}];
 const VL_FARM={x:FARM.x,z:FARM.z,n:3};
-function vlBuild(look,x,z,kid){const L=VL_LOOK.models[look.m];const r=buildGltfRig({model:L[0],h:kid?1.12:look.dwarf?1.5:1.78*(.95+look.hs*.1),props:L[1],weaponMesh:kid?null:L[2],skin:VL_LOOK.skin[look.sk],hair:VL_LOOK.hair[look.hr],o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:'mens',skin:VL_LOOK.skin[look.sk],hair:VL_LOOK.hair[look.hr],chest:0x7a6a5a,pants:0x4a3a2a})});
+function vlBuild(look,x,z,kid){const L=VL_LOOK.models[look.m]||['Knight',['Knight_Helmet','Knight_Cape'],'1H_Sword'];const r=buildGltfRig({model:L[0],h:kid?1.12:look.dwarf?1.5:1.78*(.95+look.hs*.1),props:L[1],weaponMesh:kid?null:L[2],skin:VL_LOOK.skin[look.sk],hair:VL_LOOK.hair[look.hr],o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:'mens',skin:VL_LOOK.skin[look.sk],hair:VL_LOOK.hair[look.hr],chest:0x7a6a5a,pants:0x4a3a2a})});
   r.g.position.set(x,groundH(x,z),z);scene.add(r.g);return r}
-function vlSpawn(T,kid){const pois=T.pois;const p=pois[Math.floor(Math.random()*pois.length)];const look={m:Math.floor(Math.random()*VL_LOOK.models.length),sk:Math.floor(Math.random()*VL_LOOK.skin.length),hr:Math.floor(Math.random()*VL_LOOK.hair.length),hs:Math.random(),dwarf:!kid&&Math.random()<.12};
-  const v={T,kid,look,x:p.x,z:p.z,ry:Math.random()*6.28,st:'idle',tm:Math.random()*3,path:null,pi:0,spd:0,pose:null,sayCd:5+Math.random()*10,gone:false,vis:1,lod:Math.floor(Math.random()*3),adt:0};
+function vlSpawn(T,kid,watch){const pois=T.pois;const p=pois[Math.floor(Math.random()*pois.length)];const look={m:watch?VL_LOOK.models.length:Math.floor(Math.random()*VL_LOOK.models.length),sk:Math.floor(Math.random()*VL_LOOK.skin.length),hr:Math.floor(Math.random()*VL_LOOK.hair.length),hs:Math.random(),dwarf:!kid&&Math.random()<.12};
+  const v={T,kid,watch:!!watch,look,x:p.x,z:p.z,ry:Math.random()*6.28,st:'idle',tm:Math.random()*3,path:null,pi:0,spd:0,pose:null,sayCd:5+Math.random()*10,gone:false,vis:1,lod:Math.floor(Math.random()*3),adt:0};
   v.r=vlBuild(look,v.x,v.z,kid);VL.list.push(v);return v}
 function vlGo(v,poi){const G=v.T.grid;const path=G?vlPath(G,v.x,v.z,poi.x,poi.z):[[poi.x,poi.z]];if(!path||!path.length){v.st='idle';v.tm=2;return}v.path=path;v.pi=0;v.poi=poi;v.st='walk';v.pose=null;v.tm=60}
-function vlThink(v){const T=v.T;if(v.kid){/* children run from place to place */const p=T.pois[Math.floor(Math.random()*T.pois.length)];vlGo(v,p);v.run=Math.random()<.7;return}
-  const r=Math.random();if(r<.75){let p;for(let i=0;i<6;i++){p=T.pois[Math.floor(Math.random()*T.pois.length)];if(!VL.list.some(o=>o!==v&&o.poi===p&&o.st!=='walk')||p.k==='chat')break}vlGo(v,p);v.run=false}
+function vlThink(v){const T=v.T;const nt=DAY.night>.55,eve=!nt&&DAY.phase>.47&&DAY.phase<.64,wet=WX.cur.rain>.4;
+  /* the night watch walks the streets day and night */if(v.watch){const P=T.pois.filter(p=>p.k==='stroll'||p.k==='well'||p.k==='chat'||p.k==='talk');vlGo(v,P[Math.floor(Math.random()*P.length)]||T.pois[0]);v.run=false;return}
+  /* at night everyone goes home (the farmers just call it a day) */if(nt){const D=T.pois.filter(p=>p.k==='door'||p.k==='tavern');v.sleep=true;if(!D.length){v.st='in';v.gone=true;v.r.g.visible=false;v.tm=1e9;return}
+    const near=D.sort((a,b)=>Math.hypot(a.x-v.x,a.z-v.z)-Math.hypot(b.x-v.x,b.z-v.z)).slice(0,4);vlGo(v,near[Math.floor(Math.random()*near.length)]);v.run=wet;return}
+  /* evenings at the tavern */if(eve&&!v.kid&&Math.random()<.45){const D=T.pois.filter(p=>p.k==='tavern');if(D.length){vlGo(v,D[Math.floor(Math.random()*D.length)]);v.run=wet;return}}
+  if(v.kid){/* children run from place to place */const p=T.pois[Math.floor(Math.random()*T.pois.length)];vlGo(v,p);v.run=Math.random()<.7;return}
+  const r=Math.random();const market=DAY.phase>.04&&DAY.phase<.47;const ok=p=>(market||p.k!=='shop')&&!(wet&&(p.k==='sit'||p.k==='chat'));if(r<.75){let p;for(let i=0;i<8;i++){p=T.pois[Math.floor(Math.random()*T.pois.length)];if(ok(p)&&(!VL.list.some(o=>o!==v&&o.poi===p&&o.st!=='walk')||p.k==='chat'))break}vlGo(v,p);v.run=wet&&Math.random()<.6}
   else{v.st='idle';v.tm=3+Math.random()*5;v.pose=null}}
 /* what they do once they arrive */
 function vlArrive(v){const p=v.poi;v.path=null;if(p.face!=null)v.ry=p.face;v.st='do';
+  if(v.sleep&&(p.k==='door'||p.k==='tavern')){v.st='in';v.tm=1e9;v.r.g.visible=false;v.gone=true;return}
+  if(p.k==='tavern'){if(Math.random()<.6){v.st='in';v.tm=20+Math.random()*50;v.r.g.visible=false;v.gone=true}else{v.tm=5+Math.random()*6;v.pose='Cheer'}return}
   if(v.kid){v.tm=1+Math.random()*3;v.pose=Math.random()<.4?'Cheer':null;return}
   if(p.k==='shop'||p.k==='talk'||p.k==='well'){v.tm=4+Math.random()*7;v.pose=p.k==='well'?'PickUp':'Interact';return}
   if(p.k==='sit'){v.tm=10+Math.random()*18;v.pose='Sit_Floor_Idle';return}
@@ -301,7 +308,9 @@ function vlArrive(v){const p=v.poi;v.path=null;if(p.face!=null)v.ry=p.face;v.st=
   v.tm=2+Math.random()*4;v.pose=null}
 function vlSay(v,text){let b=VL.bub.find(b=>!b.v);if(!b){if(VL.bub.length>=5)return;const el=document.createElement('div');el.className='vbub';document.body.appendChild(el);b={el,v:null};VL.bub.push(b)}b.v=v;b.t=3.6;b.el.textContent=text;b.el.style.display='block'}
 function vlUpdate(v,dt){const T=v.T;const pd=Math.hypot(ME.pos.x-v.x,ME.pos.z-v.z);v.sayCd-=dt;
-  if(v.st==='in'){v.tm-=dt;if(v.tm<=0){v.gone=false;v.r.g.visible=true;v.st='idle';v.tm=.5}return}
+  if(v.st==='in'){if(v.sleep){if(DAY.night<.45){v.sleep=false;v.tm=Math.random()*30}else return}v.tm-=dt;if(v.tm<=0){v.gone=false;v.r.g.visible=true;v.st='idle';v.tm=.5}return}
+  if(v.sleep&&v.st!=='walk'&&DAY.night<.45)v.sleep=false;
+  if(DAY.night>.55&&!v.sleep&&!v.watch&&v.st!=='walk'&&v.tm>4)v.tm=1+Math.random()*3;
   /* greet the player once in a while */if(pd<4.2&&v.sayCd<=0&&v.st!=='walk'&&!ME.dead){v.sayCd=25+Math.random()*30;const L=VL_LINES[v.kid?'kid':T.lines];vlSay(v,L[Math.floor(Math.random()*L.length)]);v.ry=Math.atan2(ME.pos.x-v.x,ME.pos.z-v.z);if(!v.pose&&v.st!=='walk'){v.wave=1.5}}
   if(v.st==='walk'){v.tm-=dt;const w=v.path[v.pi];const dx=w[0]-v.x,dz=w[1]-v.z,d=Math.hypot(dx,dz);const sp=(v.run?4.2:1.35)*(v.kid?1.1:1);
     if(d<.3){v.pi++;if(v.pi>=v.path.length){vlArrive(v)}}else{const k=Math.min(d,sp*dt)/d;let nx=v.x+dx*k,nz=v.z+dz*k;
@@ -319,18 +328,19 @@ let _vlT=0;
 function vlTick(dt){_vlT-=dt;const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR();
   if(_vlT<=0){_vlT=2;for(const T of VL_TOWNS){const near=Math.hypot(T.x-px,T.z-pz)<T.R+R;const mine=VL.list.filter(v=>v.T===T);
       if(near&&!mine.length){if(!T.grid)T.grid=vlGrid(T.id,T.x,T.z,T.R,T.cell);if(!T.pois)T.pois=vlPois(T.id).filter(p=>{const k=vlNear(T.grid,p.x,p.z);return k>=0});if(!T.pois.length)continue;
-        const adults=[];for(let i=0;i<T.n[q];i++)adults.push(vlSpawn(T,false));for(let i=0;i<T.kids[q];i++)vlSpawn(T,true);
+        const adults=[];for(let i=0;i<T.n[q];i++)adults.push(vlSpawn(T,false));for(let i=0;i<T.kids[q];i++)vlSpawn(T,true);for(let i=0;i<(q?2:1);i++)vlSpawn(T,false,true);
         for(let i=0;i<T.dogs;i++){const o=adults[i];if(o)crSpawn(T.dog||'shiba',o.x+1,o.z+1,{follow:o,size:.9+Math.random()*.2}).then(c=>{if(c)c.owner=T})}}
       if(!near&&mine.length){for(const v of mine){scene.remove(v.r.g);v.gone=true;v.dead=true}VL.list=VL.list.filter(v=>v.T!==T);for(const c of [...CR])if(c.follow&&c.follow.T===T)crRemove(c)}}
     /* farmers on the fields */const nearF=Math.hypot(VL_FARM.x-px,VL_FARM.z-pz)<60+R;const fm=VL.list.filter(v=>v.T===VL_FARM);
     if(nearF&&!fm.length){VL_FARM.lines='farm';VL_FARM.pois=[];for(let i=0;i<14;i++){const x=VL_FARM.x-40+Math.random()*80,z=VL_FARM.z-30+Math.random()*60;const p={x,z};collide(p,.5);VL_FARM.pois.push({x:p.x,z:p.z,k:Math.random()<.6?'well':'stroll'})}VL_FARM.grid=null;for(let i=0;i<VL_FARM.n;i++)vlSpawn(VL_FARM,false)}
     if(!nearF&&fm.length){for(const v of fm){scene.remove(v.r.g);v.dead=true}VL.list=VL.list.filter(v=>v.T!==VL_FARM)}}
   for(const v of VL.list){const d=Math.hypot(v.x-px,v.z-pz);vlUpdate(v,dt);const vis=!v.gone&&d<R+5;v.r.g.visible=vis;if(!vis)continue;
-    v.r.g.position.set(v.x,groundH(v.x,v.z),v.z);v.r.g.rotation.y=v.ry;v.adt+=dt;if(d<20||(LW.frame+v.lod)%(d<40?2:3)===0){vlAnim(v,v.adt);v.adt=0}}
+    v.r.g.position.set(v.x,groundH(v.x,v.z),v.z);v.r.g.rotation.y=v.ry;if(v.watch&&DAY.night>.35&&v.r.m&&d<45){const h=v.r.m.getObjectByName('handslotl');if(h){h.getWorldPosition(_plP);if(Math.random()<dt*30)emitP({x:_plP.x,y:_plP.y+.25,z:_plP.z,vy:1.2,life:.35,size:.42,size1:.08,col:Math.random()<.5?0xffb040:0xff7020,a:1,a1:0,cell:FXC.flame})}}v.adt+=dt;if(d<20||(LW.frame+v.lod)%(d<40?2:3)===0){vlAnim(v,v.adt);v.adt=0}}
   /* speech bubbles above their heads */for(const b of VL.bub){if(!b.v)continue;b.t-=dt;if(b.t<=0||b.v.dead||b.v.gone){b.v=null;b.el.style.display='none';continue}
     _plP.set(b.v.x,groundH(b.v.x,b.v.z)+(b.v.kid?1.5:2.2),b.v.z).project(camera);if(_plP.z>1||Math.abs(_plP.x)>1.1||Math.abs(_plP.y)>1.1){b.el.style.display='none';continue}
     b.el.style.display='block';b.el.style.transform=`translate(${(_plP.x*.5+.5)*innerWidth}px,${(-_plP.y*.5+.5)*innerHeight}px) translate(-50%,-100%)`;b.el.style.opacity=Math.min(1,b.t*2)}}
 
 /* ====================== the loop ====================== */
-function lwUpdate(dt){if(S.mode!=='play')return;if(!LW.init){LW.init=true;plInit();bdInit()}LW.t+=dt;LW.frame++;
+function lwUpdate(dt){if(S.mode!=="play"||window.__NOLW)return;if(!LW.init){LW.init=true;plInit();bdInit()}LW.t+=dt;LW.frame++;
+  try{wxUpdate(dt);ambUpdate(dt)}catch(e){if(!LW.err2){LW.err2=1;console.warn('weather',e)}}
   const t0=performance.now();try{const P=LW.pm||(LW.pm=[0,0,0,0]);let a=performance.now(),b;plUpdate(dt);b=performance.now();P[0]=P[0]*.95+(b-a)*.05;a=b;crTick(dt);b=performance.now();P[1]=P[1]*.95+(b-a)*.05;a=b;bdTick(dt);b=performance.now();P[2]=P[2]*.95+(b-a)*.05;a=b;vlTick(dt);b=performance.now();P[3]=P[3]*.95+(b-a)*.05}catch(e){if(!LW.err){LW.err=1;console.warn('living world',e)}}LW.ms=(LW.ms||0)*.95+(performance.now()-t0)*.05}

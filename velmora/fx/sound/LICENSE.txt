@@ -1,0 +1,15 @@
+Velmora - ambient sounds (fx/sound). All from OpenGameArt.org, trimmed, looped, levelled and converted to mp3 for Velmora.
+
+amb_birds.mp3      "Ambient Bird Sounds" by isaiah658. CC0. https://opengameart.org/content/ambient-bird-sounds
+amb_birds2.mp3     "Birdsong background loop" by koertes. CC-BY 3.0. https://opengameart.org/content/birdsong-background-loop
+amb_crickets.mp3   "Crickets" by dklon. CC-BY 3.0. https://opengameart.org/content/crickets
+amb_rain.mp3       "Rain (loopable)" by Ylmir. CC0. https://opengameart.org/content/rain-loopable
+amb_wind.mp3       "wind1" by Luke.RUSTLTD. CC0. https://opengameart.org/content/wind1
+amb_stream.mp3, amb_waterfall.mp3   "Stream Sounds" by kurt. CC-BY 3.0. https://opengameart.org/content/stream-sounds
+thunder.mp3        "Thunder" by Jerimee. CC-BY 3.0. https://opengameart.org/content/thunder
+hammer1.mp3        "Blacksmith's hammer" by VishwaJai. CC0. https://opengameart.org/content/blacksmiths-hammer
+hammer2.mp3        "Hammer on anvil" by themightyglider. CC0. https://opengameart.org/content/hammer-on-anvil
+bell.mp3, bell2.mp3 "Bell Sounds" by marcelofg55. CC-BY 3.0. https://opengameart.org/content/bell-sounds
+frog1-4.mp3        "Ribbit Frog Sounds" and "Frog Croaks" by EZduzziteh. CC0.
+dog.mp3            "Dog barking (mono)" by HaelDB. CC0. https://opengameart.org/content/dog-barking-mono
+owl.mp3            "Barn Owl Screech" by Luis Gracia (xeno-canto 345927), prepared by AntumDeluge. CC-BY-SA 4.0. https://opengameart.org/content/barn-owl-screech
