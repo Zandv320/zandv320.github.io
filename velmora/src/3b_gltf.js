@@ -60,9 +60,30 @@ function buildGltfRig(spec){
     if(spec.o&&spec.o.gear)dressGltf(r,m,spec.o);if(spec.orc)attachOrcBits(r,m,spec.o);
     if(spec.wmodel)attachWeaponModel(r,m,spec.wmodel,'handslotr',spec.wr|0).then(w=>{if(w)r.weapon=w});if(spec.smodel)attachWeaponModel(r,m,spec.smodel,'handslotl',0);
     if(spec.eye){m.traverse(x=>{if(x.isMesh&&x.material.isMeshBasicMaterial){x.material=x.material.clone();x.material.color.set(spec.eye)}})}
+    /* NPCs and monsters never change clothes: their body parts become one mesh per material (fewer draw calls, also in the shadow map) */if(spec.o&&(spec.o.cls==='npc'||spec.o.cls==='mon'))mergeSkinned(m);
     r.mixer=new THREE.AnimationMixer(m);r.clips=src.clips;r.ready=true;
     r.g.traverse(x=>{if(x.isMesh)x.castShadow=true});if(spec.onReady)spec.onReady(r)});
   return r}
+/* body parts that share a skeleton, a material and a place in the rig are merged into one skinned mesh. The merged
+   geometry is cached per set of source parts, so every clone of the same model shares it. */
+const _mergeCache=new Map(),_ID4=new THREE.Matrix4();
+function mergeSkinned(m){const groups=new Map();m.traverse(x=>{if(x.isSkinnedMesh&&x.visible&&!x.userData.outfit&&!Array.isArray(x.material)){const k=x.material.uuid+'|'+x.parent.uuid;let L=groups.get(k);if(!L)groups.set(k,L=[]);L.push(x)}});
+  for(const L of groups.values()){if(L.length<2)continue;const a=L[0];if(!L.every(x=>x.matrix.equals(a.matrix)&&x.bindMatrix.equals(a.bindMatrix)&&!!x.geometry.index===!!a.geometry.index))continue;
+    /* one skeleton for all parts: the union of their bones (each part's skin lists its own subset) */
+    /* parts may be bound with an offset (inverse bind = reference inverse × M for every bone): their vertices are moved by M */
+    const bones=[],inv=[],idx=new Map(),fix=[];let ok=true;const _mi=new THREE.Matrix4(),_mm=new THREE.Matrix4();
+    for(const x of L){const sk=x.skeleton;let M=null;sk.bones.forEach((b,i)=>{const k=idx.get(b);if(k==null){idx.set(b,bones.length);bones.push(b);inv.push(sk.boneInverses[i])}else{_mm.copy(_mi.copy(inv[k]).invert()).multiply(sk.boneInverses[i]);
+        if(!M)M=_mm.clone();else{const e1=M.elements,e2=_mm.elements;for(let q=0;q<16;q++)if(Math.abs(e1[q]-e2[q])>1e-3){ok=false;break}}}});fix.push(M)}
+    if(!ok)continue;
+    const key=L.map(x=>x.geometry.uuid+':'+x.skeleton.bones.map(b=>b.name).join(',')).join('|');let geo=_mergeCache.get(key);
+    if(geo===undefined){geo=null;try{const names=Object.keys(a.geometry.attributes).filter(n=>/^(position|normal|uv|skinIndex|skinWeight|color)$/.test(n));
+        if(L.every(x=>names.every(n=>x.geometry.attributes[n]))){
+          const parts=L.map(x=>{const g=new THREE.BufferGeometry(),src=x.geometry,map=x.skeleton.bones.map(b=>idx.get(b));for(const n of names){const at=src.attributes[n],sz=at.itemSize,c=at.count;const si=n==='skinIndex';const arr=si?new Uint16Array(c*sz):new Float32Array(c*sz);
+              for(let i=0;i<c;i++){const v=[at.getX(i),sz>1?at.getY(i):0,sz>2?at.getZ(i):0,sz>3?at.getW(i):0];for(let q=0;q<sz;q++)arr[i*sz+q]=si?map[v[q]]:v[q]}g.setAttribute(n,new THREE.BufferAttribute(arr,sz))}
+            if(src.index){const ix=new Uint32Array(src.index.count);for(let i=0;i<ix.length;i++)ix[i]=src.index.getX(i);g.setIndex(new THREE.BufferAttribute(ix,1))}const M=fix[L.indexOf(x)];if(M&&!M.equals(_ID4))g.applyMatrix4(M);return g});
+          geo=BufferGeometryUtils.mergeGeometries(parts,false)||null;if(geo){geo.computeBoundingSphere();geo.computeBoundingBox()}}}catch(e){geo=null}_mergeCache.set(key,geo)}
+    if(!geo)continue;const sm=new THREE.SkinnedMesh(geo,a.material);sm.name=a.name+'+';sm.castShadow=a.castShadow;sm.receiveShadow=a.receiveShadow;sm.frustumCulled=false;
+    sm.position.copy(a.position);sm.quaternion.copy(a.quaternion);sm.scale.copy(a.scale);a.parent.add(sm);sm.bind(new THREE.Skeleton(bones,inv.map(q=>q.clone())),a.bindMatrix);for(const x of L)x.removeFromParent()}}
 /* spelers */
 function buildGltfChar(o){
   const R=RACES[o.race]||RACES.mens;const s0=o.scale||1;

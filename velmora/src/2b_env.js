@@ -25,14 +25,17 @@ async function envInstances(names,list,groupOf,scaleOf,cast=true,tint=null){
   const buckets=names.map(()=>[]);list.forEach((t,i)=>buckets[groupOf(t,i)%names.length].push(t));
   buckets.forEach((b,vi)=>{if(!b.length)return;const geo=geos[vi];const bb=geo.boundingBox;const mats=new Float32Array(b.length*16),pos=new Float32Array(b.length*2);
     b.forEach((t,i)=>{const s=scaleOf(t,bb);_p.set(t[0],groundH(t[0],t[1])-.05,t[1]);_e.set(0,t[3],0);_q.setFromEuler(_e);_s.set(s[0],s[1],s[2]);_m.compose(_p,_q,_s);_m.toArray(mats,i*16);pos[i*2]=t[0];pos[i*2+1]=t[1]});
-    const mk=(g)=>{const im=new THREE.InstancedMesh(g,ENV_MAT,b.length);im.userData.wx=b[0][0];im.castShadow=cast;im.receiveShadow=true;im.frustumCulled=false;im.count=0;scene.add(im);ENV_IM.push(im);return im};
-    const imHi=mk(geo),imLo=lods[vi]?mk(lods[vi]):null;ENV_LOD.push({n:b.length,mats,pos,imHi,imLo})});return true}
+    const mk=(g,c=cast)=>{const im=new THREE.InstancedMesh(g,ENV_MAT,b.length);im.userData.wx=b[0][0];im.castShadow=c;im.receiveShadow=true;im.frustumCulled=false;im.count=0;scene.add(im);ENV_IM.push(im);return im};
+    /* near trees cast shadows, far ones don't (they are outside the shadow map anyway): same picture, much less shadow work */
+    const imHi=mk(geo,false),imHiN=cast?mk(geo,true):null,imLo=lods[vi]?mk(lods[vi],false):null;ENV_LOD.push({n:b.length,mats,pos,imHi,imHiN,imLo})});return true}
 /* (px,pz) camerapositie en (fx,fz) kijkrichting: wat ruim achter de camera staat wordt niet getekend */
+/* radius around the camera target in which trees and rocks cast shadows (the shadow map covers about ±42 m) */
+let ENV_SH_R=64;
 function updEnvLod(cx,cz,R,px=cx,pz=cz,fx=0,fz=0,cap=1e9){const R2=R*R;const far=Math.min(R*8,scene.fog.far+40,cap);const F2=far*far;const back=fx||fz;
-  for(const L of ENV_LOD){const hi=L.imHi.instanceMatrix.array,lo=L.imLo&&L.imLo.instanceMatrix.array;let nh=0,nl=0;
+  const SR=tdIsOn()?48:ENV_SH_R,S2=SR*SR;for(const L of ENV_LOD){const hi=L.imHi.instanceMatrix.array,hn=L.imHiN&&L.imHiN.instanceMatrix.array,lo=L.imLo&&L.imLo.instanceMatrix.array;let nh=0,nl=0,nn=0;
     for(let i=0;i<L.n;i++){const X=L.pos[i*2],Z=L.pos[i*2+1];if(back&&(X-px)*fx+(Z-pz)*fz<-28)continue;const dx=X-cx,dz=Z-cz,d2=dx*dx+dz*dz;
-      if(d2<R2||!lo){hi.set(L.mats.subarray(i*16,i*16+16),nh*16);nh++}else if(d2<F2){lo.set(L.mats.subarray(i*16,i*16+16),nl*16);nl++}}
-    L.imHi.count=nh;L.imHi.instanceMatrix.needsUpdate=true;if(L.imLo){L.imLo.count=nl;L.imLo.instanceMatrix.needsUpdate=true}}}
+      if(hn&&d2<S2&&d2<R2){hn.set(L.mats.subarray(i*16,i*16+16),nn*16);nn++}else if(d2<R2||!lo){hi.set(L.mats.subarray(i*16,i*16+16),nh*16);nh++}else if(d2<F2){lo.set(L.mats.subarray(i*16,i*16+16),nl*16);nl++}}
+    L.imHi.count=nh;L.imHi.instanceMatrix.needsUpdate=true;if(hn){L.imHiN.count=nn;L.imHiN.instanceMatrix.needsUpdate=true}if(L.imLo){L.imLo.count=nl;L.imLo.instanceMatrix.needsUpdate=true}}}
 /* losse objecten (huizen, kramen, kisten): gekloond model met toon-materialen; vensters gloeien 's nachts */
 const envMatCache=new Map();
 function envClone(g){const m=g.scene.clone(true);m.traverse(o=>{if(!o.isMesh)return;if(!o.geometry.attributes.normal)o.geometry.computeVertexNormals();const sm=o.material;let tm=envMatCache.get(sm.uuid);

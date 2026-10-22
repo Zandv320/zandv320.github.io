@@ -73,12 +73,19 @@ function plBiome(x,z){
   if(!okSpot(x,z,2.4))return null;return inForest(x,z)?'forest':'meadow'}
 /* not inside a tree trunk, rock or wall */
 function plFree(x,z,r=.3){const cx=Math.floor(x/10),cz=Math.floor(z/10);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const L=CG.get((cx+a)+','+(cz+b));if(L)for(const c of L)if((x-c.x)**2+(z-c.z)**2<(c.r*.85+r)**2)return false}return true}
-async function plInit(){const g=await lwRaw('plants');if(!g)return;const cap=[2500,4500,7000][lwQ()];
+/* every plant type has up to three instance sets: near (full model), mid (simplified model, same look from afar) and far
+   (simplified, no shadow: the shadow map doesn't reach that far) */
+const PL_NOLOD=new Set(['BushwithFlowers_1','Bush_1','Plant_2','PlantBig_1','Grass_2']);
+async function plInit(){const[g,gl]=await Promise.all([lwRaw('plants'),lwRaw('plants_lod')]);if(!g)return;const cap=[2500,4500,7000][lwQ()];
   for(const key in PL_DEF){const node=g.scene.getObjectByName(key);if(!node)continue;const parts=lwParts(node);if(!parts.length)continue;
+    const lnode=gl&&!PL_NOLOD.has(key)?gl.scene.getObjectByName(key):null;const lparts=lnode?lwParts(lnode):null;
     const box=new THREE.Box3();for(const p of parts){p.geo.computeBoundingBox();box.union(p.geo.boundingBox)}const cx=(box.min.x+box.max.x)/2,cz=(box.min.z+box.max.z)/2;
-    const d=PL_DEF[key],ims=[];for(const p of parts){p.geo.translate(-cx,-box.min.y,-cz);const vc=!!p.geo.attributes.color;const gr=/Grass/i.test(p.mat.name);const mat=lwToon(p.mat,{wind:d.w??.05,k:'pl'+(d.w??.05)+vc+gr+!!d.near,vc,near:!!d.near,tint:gr?[.78,1,.62]:null});
-      const big=/Grass|Clover/.test(key);const im=new THREE.InstancedMesh(p.geo,mat,big?cap:Math.round(cap*.45));im.count=0;im.frustumCulled=false;im.castShadow=!!d.sh;im.receiveShadow=true;im.matrixAutoUpdate=false;scene.add(im);ims.push(im)}
-    PL.types[key]={h:box.max.y-box.min.y,ims,n:0,near:!!d.near}}
+    const d=PL_DEF[key],big=/Grass|Clover/.test(key),n=big?cap:Math.round(cap*.45);const sets=[[],[],[]];
+    parts.forEach((p,pi)=>{p.geo.translate(-cx,-box.min.y,-cz);const vc=!!p.geo.attributes.color;const gr=/Grass/i.test(p.mat.name);const mat=lwToon(p.mat,{wind:d.w??.05,k:'pl'+(d.w??.05)+vc+gr+!!d.near,vc,near:!!d.near,tint:gr?[.78,1,.62]:null});
+      let lg=null;if(lparts){const lp=lparts.find(q=>q.mat.name===p.mat.name)||lparts[pi];if(lp&&!!lp.geo.attributes.color===vc){lg=lp.geo;lg.translate(-cx,-box.min.y,-cz)}}
+      const mkIm=(geo,c)=>{const im=new THREE.InstancedMesh(geo,mat,n);im.count=0;im.frustumCulled=false;im.castShadow=c;im.receiveShadow=true;im.matrixAutoUpdate=false;scene.add(im);return im};
+      sets[0].push(mkIm(p.geo,!!d.sh));sets[1].push(mkIm(lg||p.geo,!!d.sh));if(d.sh)sets[2].push(mkIm(lg||p.geo,false))});
+    PL.types[key]={h:box.max.y-box.min.y,sets,cnt:[0,0,0],near:!!d.near}}
   LW.ready.pl=1}
 const _plM=new THREE.Matrix4(),_plQ=new THREE.Quaternion(),_plE=new THREE.Euler(),_plS=new THREE.Vector3(),_plP=new THREE.Vector3();
 function plCell(cx,cz){const k=cx+','+cz;let c=PL.cells.get(k);if(c)return c;c={};PL.cells.set(k,c);
@@ -90,14 +97,17 @@ function plCell(cx,cz){const k=cx+','+cz;let c=PL.cells.get(k);if(c)return c;c={
       _plE.set((R()-.5)*.12,R()*6.283,(R()-.5)*.12);_plQ.setFromEuler(_plE);_plS.set(s*(.9+R()*.2),s,s*(.9+R()*.2));_plP.set(x,groundH(x,z)-.03,z);_plM.compose(_plP,_plQ,_plS);(L[key]||(L[key]=[])).push(..._plM.elements)}}
   for(const key in L)c[key]=new Float32Array(L[key]);return c}
 function plUpdate(dt){if(!LW.ready.pl)return;const R=lwR(),cx=camTarget.x,cz=camTarget.z;LW_U.uC.value.set(cx,cz,R);PL.acc-=dt;
-  if(PL.acc>0&&Math.hypot(cx-PL.last.x,cz-PL.last.z)<5&&R===PL.last.R)return;PL.acc=.6;PL.last={x:cx,z:cz,R};
-  for(const k in PL.types)PL.types[k].n=0;const t0=performance.now();
+  camera.getWorldDirection(_plP);const tl=Math.hypot(_plP.x,_plP.z)||1;const turned=PL.f&&(_plP.x/tl*PL.f.x+_plP.z/tl*PL.f.z)<.94;
+  if(PL.acc>0&&!turned&&Math.hypot(cx-PL.last.x,cz-PL.last.z)<5&&R===PL.last.R)return;PL.acc=.6;PL.last={x:cx,z:cz,R};
+  for(const k in PL.types)PL.types[k].cnt.fill(0);const t0=performance.now();const SR=TD.on?40:48,LR=TD.on?20:24;
+  /* cells well behind the camera are skipped (refreshed when the camera turns) */camera.getWorldDirection(_plP);const fl=Math.hypot(_plP.x,_plP.z)||1,fx=_plP.x/fl,fz=_plP.z/fl,ccx=camera.position.x,ccz=camera.position.z;PL.f={x:fx,z:fz};
   const i0=Math.floor((cx-R)/10),i1=Math.floor((cx+R)/10),j0=Math.floor((cz-R)/10),j1=Math.floor((cz+R)/10);const RN=R*.52+6;const list=[];
-  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const cd=Math.hypot(i*10+5-cx,j*10+5-cz);if(cd<=R+8)list.push([cd,i,j])}list.sort((a,b)=>a[0]-b[0]);
+  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const cd=Math.hypot(i*10+5-cx,j*10+5-cz);if(cd<=R+8&&(i*10+5-ccx)*fx+(j*10+5-ccz)*fz>-14)list.push([cd,i,j])}list.sort((a,b)=>a[0]-b[0]);
   /* new cells are generated nearest first, a few milliseconds per frame, so walking into new land never stutters */
   for(const[cd,i,j]of list){let c=PL.cells.get(i+','+j);if(!c){if(performance.now()-t0>3){PL.acc=0;PL.last.R=-1;continue}c=plCell(i,j)}const far=cd>RN;
-    for(const k in c){const T=PL.types[k];if(far&&T.near)continue;const a=c[k],cnt=a.length/16;for(const im of T.ims){const room=im.instanceMatrix.count-T.n;if(room<=0)continue;im.instanceMatrix.array.set(cnt<=room?a:a.subarray(0,room*16),T.n*16)}T.n=Math.min(T.ims[0].instanceMatrix.count,T.n+cnt)}}
-  for(const k in PL.types){const T=PL.types[k];for(const im of T.ims){im.count=T.n;im.instanceMatrix.needsUpdate=true}}}
+    for(const k in c){const T=PL.types[k];if(far&&T.near)continue;const a=c[k],cnt=a.length/16;const si=cd<LR?0:(cd>SR&&T.sets[2].length)?2:1;const L=T.sets[si],n0=T.cnt[si];
+      for(const im of L){const room=im.instanceMatrix.count-n0;if(room<=0)continue;im.instanceMatrix.array.set(cnt<=room?a:a.subarray(0,room*16),n0*16)}T.cnt[si]=Math.min(L[0].instanceMatrix.count,n0+cnt)}}
+  for(const k in PL.types){const T=PL.types[k];T.sets.forEach((L,si)=>{for(const im of L){im.count=T.cnt[si];im.instanceMatrix.needsUpdate=true}})}}
 
 /* ====================== animated wildlife ====================== */
 const CR_T={
@@ -184,7 +194,7 @@ function crPopulate(dt){_crSpawnT-=dt;if(_crSpawnT>0)return;_crSpawnT=1.5;const 
     else{P.pend=(P.pend|0)+1;crSpawn(P.t,s[0],s[1],{hr:P.dun?7:14,size:.9+Math.random()*.25}).then(c=>{P.pend--;if(c)c.pop=P})}}}
 function crTick(dt){crPopulate(dt);const R=lwR(),cx=camTarget.x,cz=camTarget.z;
   for(const c of CR){const d=Math.hypot(c.x-cx,c.z-cz);const vis=d<R+6&&!(c.follow&&c.follow.gone);c.g.visible=vis;
-    if(d>R+20&&!c.follow)continue;crUpdate(c,dt);c.g.position.set(c.x,c.y,c.z);c.g.rotation.y=c.ry;
+    if(d>R+20&&!c.follow)continue;{const cs=d<34&&c.T.h>.3&&!c.T.fish;if(c.cs!==cs){c.cs=cs;c.m.traverse(o=>{if(o.isMesh)o.castShadow=cs})}}crUpdate(c,dt);c.g.position.set(c.x,c.y,c.z);c.g.rotation.y=c.ry;
     c.adt+=dt;if(vis&&(d<22||(LW.frame+c.lod)%(d<45?2:3)===0)){c.mixer.update(c.adt);c.adt=0}}}
 
 /* ====================== birds, butterflies and ducks (static models, moved and flapped here) ====================== */
@@ -344,7 +354,7 @@ function vlTick(dt){_vlT-=dt;const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR()
     if(nearF&&!fm.length){VL_FARM.lines='farm';VL_FARM.pois=[];for(let i=0;i<14;i++){const x=VL_FARM.x-40+Math.random()*80,z=VL_FARM.z-30+Math.random()*60;const p={x,z};collide(p,.5);VL_FARM.pois.push({x:p.x,z:p.z,k:Math.random()<.6?'well':'stroll'})}VL_FARM.grid=null;for(let i=0;i<VL_FARM.n;i++)vlSpawn(VL_FARM,false)}
     if(!nearF&&fm.length){for(const v of fm){scene.remove(v.r.g);v.dead=true}VL.list=VL.list.filter(v=>v.T!==VL_FARM)}}
   for(const v of VL.list){const d=Math.hypot(v.x-px,v.z-pz);vlUpdate(v,dt);const vis=!v.gone&&d<R+5;v.r.g.visible=vis;if(!vis)continue;
-    v.r.g.position.set(v.x,groundH(v.x,v.z),v.z);v.r.g.rotation.y=v.ry;if(v.watch&&DAY.night>.35&&v.r.m&&d<45){const h=v.r.m.getObjectByName('handslotl');if(h){h.getWorldPosition(_plP);if(Math.random()<dt*30)emitP({x:_plP.x,y:_plP.y+.25,z:_plP.z,vy:1.2,life:.35,size:.42,size1:.08,col:Math.random()<.5?0xffb040:0xff7020,a:1,a1:0,cell:FXC.flame})}}v.adt+=dt;if(d<20||(LW.frame+v.lod)%(d<40?2:3)===0){vlAnim(v,v.adt);v.adt=0}}
+    v.r.g.position.set(v.x,groundH(v.x,v.z),v.z);v.r.g.rotation.y=v.ry;{const cs=d<36;if(v.cs!==cs&&v.r.ready){v.cs=cs;v.r.g.traverse(o=>{if(o.isMesh)o.castShadow=cs})}}if(v.watch&&DAY.night>.35&&v.r.m&&d<45){const h=v.r.m.getObjectByName('handslotl');if(h){h.getWorldPosition(_plP);if(Math.random()<dt*30)emitP({x:_plP.x,y:_plP.y+.25,z:_plP.z,vy:1.2,life:.35,size:.42,size1:.08,col:Math.random()<.5?0xffb040:0xff7020,a:1,a1:0,cell:FXC.flame})}}v.adt+=dt;if(d<20||(LW.frame+v.lod)%(d<40?2:3)===0){vlAnim(v,v.adt);v.adt=0}}
   /* speech bubbles above their heads */for(const b of VL.bub){if(!b.v)continue;b.t-=dt;if(b.t<=0||b.v.dead||b.v.gone){b.v=null;b.el.style.display='none';continue}
     _plP.set(b.v.x,groundH(b.v.x,b.v.z)+(b.v.kid?1.5:2.2),b.v.z).project(camera);if(_plP.z>1||Math.abs(_plP.x)>1.1||Math.abs(_plP.y)>1.1){b.el.style.display='none';continue}
     b.el.style.display='block';b.el.style.transform=`translate(${(_plP.x*.5+.5)*innerWidth}px,${(-_plP.y*.5+.5)*innerHeight}px) translate(-50%,-100%)`;b.el.style.opacity=Math.min(1,b.t*2)}}
