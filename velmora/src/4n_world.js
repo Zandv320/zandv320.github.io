@@ -98,7 +98,7 @@ function plCell(cx,cz){const k=cx+','+cz;let c=PL.cells.get(k);if(c)return c;c={
   for(const key in L)c[key]=new Float32Array(L[key]);return c}
 function plUpdate(dt){if(!LW.ready.pl)return;const R=lwR(),cx=camTarget.x,cz=camTarget.z;LW_U.uC.value.set(cx,cz,R);PL.acc-=dt;
   camera.getWorldDirection(_plP);const tl=Math.hypot(_plP.x,_plP.z)||1;const turned=PL.f&&(_plP.x/tl*PL.f.x+_plP.z/tl*PL.f.z)<.94;
-  if(PL.acc>0&&!turned&&Math.hypot(cx-PL.last.x,cz-PL.last.z)<5&&R===PL.last.R)return;PL.acc=.6;PL.last={x:cx,z:cz,R};
+  const pmv=Math.hypot(cx-PL.last.x,cz-PL.last.z);if(R===PL.last.R&&!turned&&!(PL.acc<=0&&pmv>1.5)&&pmv<5&&PL.acc>-6)return;PL.acc=.6;PL.last={x:cx,z:cz,R};
   for(const k in PL.types)PL.types[k].cnt.fill(0);const t0=performance.now();const SR=TD.on?40:48,LR=TD.on?20:24;
   /* cells well behind the camera are skipped (refreshed when the camera turns) */camera.getWorldDirection(_plP);const fl=Math.hypot(_plP.x,_plP.z)||1,fx=_plP.x/fl,fz=_plP.z/fl,ccx=camera.position.x,ccz=camera.position.z;PL.f={x:fx,z:fz};
   const i0=Math.floor((cx-R)/10),i1=Math.floor((cx+R)/10),j0=Math.floor((cz-R)/10),j1=Math.floor((cz+R)/10);const RN=R*.52+6;const list=[];
@@ -107,7 +107,7 @@ function plUpdate(dt){if(!LW.ready.pl)return;const R=lwR(),cx=camTarget.x,cz=cam
   for(const[cd,i,j]of list){let c=PL.cells.get(i+','+j);if(!c){if(performance.now()-t0>3){PL.acc=0;PL.last.R=-1;continue}c=plCell(i,j)}const far=cd>RN;
     for(const k in c){const T=PL.types[k];if(far&&T.near)continue;const a=c[k],cnt=a.length/16;const si=cd<LR?0:(cd>SR&&T.sets[2].length)?2:1;const L=T.sets[si],n0=T.cnt[si];
       for(const im of L){const room=im.instanceMatrix.count-n0;if(room<=0)continue;im.instanceMatrix.array.set(cnt<=room?a:a.subarray(0,room*16),n0*16)}T.cnt[si]=Math.min(L[0].instanceMatrix.count,n0+cnt)}}
-  for(const k in PL.types){const T=PL.types[k];T.sets.forEach((L,si)=>{for(const im of L){im.count=T.cnt[si];im.instanceMatrix.needsUpdate=true}})}}
+  for(const k in PL.types){const T=PL.types[k];T.sets.forEach((L,si)=>{for(const im of L)imUpload(im,T.cnt[si])})}}
 
 /* ====================== animated wildlife ====================== */
 const CR_T={
@@ -255,13 +255,14 @@ function bdTick(dt){if(!BD.ok)return;BD.acc-=dt;if(BD.acc<=0){BD.acc=1.2;bdPopul
       if(b.tm<=0){const r=Math.random();if(r<.35){b.hop=.25;b.ry+=(Math.random()-.5)*1.6}else if(r<.7)b.st='peck';else b.st='look';b.tm=.4+Math.random()*1.2}
       const peck=b.st==='peck'?Math.max(0,Math.sin(t*14+b.x*3))*.55:0;b.g.rotation.set(peck,b.ry+(b.st==='look'?Math.sin(t*3+b.z)*.6:0),0)}
     b.g.position.set(b.x,b.y,b.z)}
-  /* butterflies */const L={butterfly:[],bfblue:[]};
+  /* butterflies */const L=_bfL;L.butterfly=0;L.bfblue=0;
   for(const b of BF){b.ph+=dt*b.sp;const x=b.ax+Math.sin(b.ph*1.3)*b.r+Math.sin(b.ph*3.1)*.4,z=b.az+Math.cos(b.ph*.9)*b.r+Math.cos(b.ph*2.7)*.4;const y=groundH(x,z)+b.h+Math.sin(b.ph*5.3)*.25;
-    const ry=Math.atan2(x-(b.x??x),z-(b.z??z));b.x=x;b.z=z;_bfE.set(.25,isFinite(ry)?ry:0,0);_bfQ.setFromEuler(_bfE);_bfP.set(x,y,z);_bfM.compose(_bfP,_bfQ,_bfS);L[b.k].push(_bfM.clone())}
-  for(const k in L){const K=BD.kinds[k];if(!K||!K.ims)continue;for(const im of K.ims){const n=Math.min(L[k].length,im.instanceMatrix.count);for(let i=0;i<n;i++)im.setMatrixAt(i,L[k][i]);im.count=n;im.instanceMatrix.needsUpdate=true}}}
+    const ry=Math.atan2(x-(b.x??x),z-(b.z??z));b.x=x;b.z=z;_bfE.set(.25,isFinite(ry)?ry:0,0);_bfQ.setFromEuler(_bfE);_bfP.set(x,y,z);_bfM.compose(_bfP,_bfQ,_bfS);const K=BD.kinds[b.k];if(K&&K.ims){const i=L[b.k];for(const im of K.ims)if(i<im.instanceMatrix.count)im.setMatrixAt(i,_bfM);L[b.k]=i+1}}
+  for(const k in L){const K=BD.kinds[k];if(!K||!K.ims)continue;for(const im of K.ims)imUpload(im,Math.min(L[k],im.instanceMatrix.count))}}
+const _bfL={butterfly:0,bfblue:0};
 
 /* ====================== townsfolk ====================== */
-const VL={list:[],grids:{},bub:[],acc:0};
+const VL={list:[],grids:{},bub:[],acc:0,bq:[],bqT:0};
 const VL_LOOK={models:[['Barbarian',['Barbarian_Hat'],'Mug'],['Barbarian',[],null],['Rogue',[],null],['Rogue',['Rogue_Cape'],null],['Rogue_Hooded',['Rogue_Cape'],null],['Mage',['Mage_Cape'],'Spellbook'],['Mage',[],null],['Knight',['Knight_Cape'],null],['Knight',[],null],['Barbarian',['Barbarian_Cape'],null]],
   skin:[0xf0d2b8,0xe2b48e,0xd9a98a,0xc89070,0x9a6a4a,0x6e4a32],hair:[0x2a1a10,0x5a3a20,0x8a5a2a,0xc79a4b,0xb5541c,0xd8d8e8,0x1d1d1d,0x6a2b1b]};
 const VL_LINES={sb:['Morning, traveller!','Fresh bread at the market today.','Have you seen the boars near the farm? Nasty brutes.','The Light keep you.','Mind the crypt after dark.','Lovely weather for it.','My cousin swears he saw a dragon over the hills.','Don\'t let Bram overcharge you.','They say the forest wolves are getting bolder.','Ah, an adventurer! Good luck out there.','The well water is the best in the realm.','Busy day, busy day…'],
@@ -302,9 +303,13 @@ const VL_TOWNS=[{id:'sb',x:0,z:0,R:TOWN.wall-1,cell:1,n:[6,9,12],kids:[1,2,2],do
 const VL_FARM={x:FARM.x,z:FARM.z,n:3};
 function vlBuild(look,x,z,kid){const L=VL_LOOK.models[look.m]||['Knight',['Knight_Helmet','Knight_Cape'],'1H_Sword'];const r=buildGltfRig({model:L[0],h:kid?1.12:look.dwarf?1.5:1.78*(.95+look.hs*.1),props:L[1],weaponMesh:kid?null:L[2],skin:VL_LOOK.skin[look.sk],hair:VL_LOOK.hair[look.hr],o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:'mens',skin:VL_LOOK.skin[look.sk],hair:VL_LOOK.hair[look.hr],chest:0x7a6a5a,pants:0x4a3a2a})});
   r.g.position.set(x,groundH(x,z),z);scene.add(r.g);return r}
-function vlSpawn(T,kid,watch){const pois=T.pois;const p=pois[Math.floor(Math.random()*pois.length)];const look={m:watch?VL_LOOK.models.length:Math.floor(Math.random()*VL_LOOK.models.length),sk:Math.floor(Math.random()*VL_LOOK.skin.length),hr:Math.floor(Math.random()*VL_LOOK.hair.length),hs:Math.random(),dwarf:!kid&&Math.random()<.12};
+function vlSpawn(T,kid,watch){const pois=T.pois;const p=pois[Math.floor(Math.random()*pois.length)];const look={m:watch?VL_LOOK.models.length:Math.floor(Math.random()*VL_LOOK.models.length),sk:Math.floor(Math.random()*VL_LOOK.skin.length),hr:0,hs:Math.random(),dwarf:!kid&&Math.random()<.12};
   const v={T,kid,watch:!!watch,look,x:p.x,z:p.z,ry:Math.random()*6.28,st:'idle',tm:Math.random()*3,path:null,pi:0,spd:0,pose:null,sayCd:5+Math.random()*10,gone:false,vis:1,lod:Math.floor(Math.random()*3),adt:0};
-  v.r=vlBuild(look,v.x,v.z,kid);VL.list.push(v);return v}
+  /* fewer skin/hair combinations: each one is a recoloured texture, so they get shared */look.hr=(look.sk*3+Math.floor(Math.random()*3))%VL_LOOK.hair.length;
+  /* the model is built a little later, one at a time, so a town full of people doesn't all arrive in one frame */
+  v.r={g:new THREE.Group(),stub:1};VL.bq.push(v);VL.list.push(v);return v}
+function vlBuildQ(dt){VL.bqT-=dt;if(VL.bqT>0||!VL.bq.length)return;VL.bqT=.12;let v;while((v=VL.bq.shift())&&v.dead);if(!v)return;
+  const r=vlBuild(v.look,v.x,v.z,v.kid);r.g.visible=v.r.g.visible;v.r=r}
 function vlGo(v,poi){const G=v.T.grid;const path=G?vlPath(G,v.x,v.z,poi.x,poi.z):[[poi.x,poi.z]];if(!path||!path.length){v.st='idle';v.tm=2;return}v.path=path;v.pi=0;v.poi=poi;v.st='walk';v.pose=null;v.tm=60}
 function vlThink(v){const T=v.T;const nt=DAY.night>.55,eve=!nt&&DAY.phase>.47&&DAY.phase<.64,wet=WX.cur.rain>.4;
   /* the night watch walks the streets day and night */if(v.watch){const P=T.pois.filter(p=>p.k==='stroll'||p.k==='well'||p.k==='chat'||p.k==='talk');vlGo(v,P[Math.floor(Math.random()*P.length)]||T.pois[0]);v.run=false;return}
@@ -344,7 +349,7 @@ function vlAnim(v,dt){const r=v.r;if(!r.ready&&!r.fallback)return;if(v.wave>0)v.
   if(r.cur&&r.ready&&(r.cur==='Sit_Floor_Idle'||r.cur==='Interact'||r.cur==='Cheer'||r.cur==='PickUp')){r.cur=null;for(const k in r.acts)r.acts[k].fadeOut(.25)}
   animRig(r,{spd:v.spd/(v.run?4.2:2.4),atk:-1},dt)}
 let _vlT=0;
-function vlTick(dt){_vlT-=dt;const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR();
+function vlTick(dt){_vlT-=dt;vlBuildQ(dt);const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR();
   if(_vlT<=0){_vlT=2;for(const T of VL_TOWNS){const near=Math.hypot(T.x-px,T.z-pz)<T.R+R;const mine=VL.list.filter(v=>v.T===T);
       if(near&&!mine.length){if(!T.grid)T.grid=vlGrid(T.id,T.x,T.z,T.R,T.cell);if(!T.pois)T.pois=vlPois(T.id).filter(p=>{const k=vlNear(T.grid,p.x,p.z);return k>=0});if(!T.pois.length)continue;
         const adults=[];for(let i=0;i<T.n[q];i++)adults.push(vlSpawn(T,false));for(let i=0;i<T.kids[q];i++)vlSpawn(T,true);for(let i=0;i<(q?2:1);i++)vlSpawn(T,false,true);
@@ -361,5 +366,7 @@ function vlTick(dt){_vlT-=dt;const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR()
 
 /* ====================== the loop ====================== */
 function lwUpdate(dt){if(S.mode!=="play"||window.__NOLW)return;if(!LW.init){LW.init=true;plInit();bdInit()}LW.t+=dt;LW.frame++;
+  /* compile the shaders of everything that arrived after the start (plants, animals, rain, birds) in the background, before they first show */
+  if(LW.ready.pl&&(LW.warm|0)<2&&LW.t>(LW.warm?10:2.5)&&renderer.compileAsync){LW.warm=(LW.warm|0)+1;try{const rv=rainLines.visible;rainLines.visible=true;renderer.compileAsync(scene,camera).catch(()=>{});rainLines.visible=rv}catch(e){}}
   try{wxUpdate(dt);ambUpdate(dt);rxUpdate(dt)}catch(e){if(!LW.err2){LW.err2=1;console.warn('weather',e)}}
-  const t0=performance.now();try{const P=LW.pm||(LW.pm=[0,0,0,0]);let a=performance.now(),b;plUpdate(dt);b=performance.now();P[0]=P[0]*.95+(b-a)*.05;a=b;crTick(dt);b=performance.now();P[1]=P[1]*.95+(b-a)*.05;a=b;bdTick(dt);b=performance.now();P[2]=P[2]*.95+(b-a)*.05;a=b;vlTick(dt);b=performance.now();P[3]=P[3]*.95+(b-a)*.05}catch(e){if(!LW.err){LW.err=1;console.warn('living world',e)}}LW.ms=(LW.ms||0)*.95+(performance.now()-t0)*.05}
+  const t0=performance.now();try{const P=LW.pm||(LW.pm=[0,0,0,0]),Q=LW.raw||(LW.raw=[0,0,0,0]);let a=performance.now(),b;plUpdate(dt);b=performance.now();Q[0]=b-a;P[0]=P[0]*.95+(b-a)*.05;a=b;crTick(dt);b=performance.now();Q[1]=b-a;P[1]=P[1]*.95+(b-a)*.05;a=b;bdTick(dt);b=performance.now();Q[2]=b-a;P[2]=P[2]*.95+(b-a)*.05;a=b;vlTick(dt);b=performance.now();Q[3]=b-a;P[3]=P[3]*.95+(b-a)*.05}catch(e){if(!LW.err){LW.err=1;console.warn('living world',e)}}LW.ms=(LW.ms||0)*.95+(performance.now()-t0)*.05}

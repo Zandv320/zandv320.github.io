@@ -138,7 +138,7 @@ function updMonsters(dt){const auth=isAuth()&&S.mode!=='menu';const pl=auth?play
 function updRemotes(dt){const k=clamp(dt*10,0,1);for(const r of REMOTES.values()){if(!r.rig)continue;const far=Math.hypot(r.tx-r.x,r.tz-r.z)>30;r.x=far?r.tx:lerp(r.x,r.tx,k);r.y=far?r.ty:lerp(r.y,r.ty,k);r.z=far?r.tz:lerp(r.z,r.tz,k);r.ry+=angDiff(r.ry,r.try)*k;
   if(r.atk>=0){r.atk+=dt*2.6;if(r.atk>1)r.atk=-1}r.rig.g.position.set(r.x,r.y,r.z);r.rig.g.rotation.y=r.ry;const rid=riderFrame(r,r.rig,r.dead?null:r.mt,r.x,r.y,r.z,r.ry,r.mv/7,r.y>groundH(r.x,r.z)+.3,dt);const pry=r.pry??r.ry;r.turnR=lerp(r.turnR||0,angDiff(pry,r.ry)/Math.max(dt,.001)/8,clamp(dt*8,0,1));r.pry=r.ry;enchFx(r.rig,dt);paladinFx(r.rig,dt);shoulderFx(r.rig,dt);cloakFx(r.rig,dt);helmFx(r.rig,dt);animRig(r.rig,{sheath:!!(r.sh||rid),mounted:rid,act:rid?null:(r.lf||null),spd:r.mv/7,atk:r.atk,ranged:r.atkRanged,cast:r.cs,dead:r.dead,combat:!!r.cb,combo:r.co|0,air:r.y>groundH(r.x,r.z)+.3,vy:(r.y-(r.py??r.y))/Math.max(dt,.001),hurt:false,turn:r.turnR,onStep:()=>{if(Math.abs(r.x-camTarget.x)<40&&Math.abs(r.z-camTarget.z)<40)lwStep(r.x,r.z,r.ry,r.mv,false)}},dt);r.py=r.y}}
 let lightT=0,dunF=0,drkF=0,elvF=0;const FOG_ELV=new THREE.Color(0xa6c8b4),ELV_SUN=new THREE.Color(0xfff0c8);const FOG_D3=new THREE.Color(0x3a1408),FOG_D4=new THREE.Color(0x14241a),FOG_DRK=new THREE.Color(0xa07a64),DRK_SUN=new THREE.Color(0xff9a5a);
-let lodAcc=-1;const _lodDir=new THREE.Vector3(),_lodF={x:0,z:1};
+let lodAcc=-1;const _lodDir=new THREE.Vector3(),_lodF={x:0,z:1},_lodP={x:1e9,z:1e9};
 function updWorld(dt,t){
   /* lights pool */
   lightT-=dt;if(lightT<=0){lightT=.3;const c=camTarget;const near=LANCH.map(a=>({a,d:(a.x-c.x)**2+(a.z-c.z)**2})).filter(o=>o.d<70*70).sort((x,y)=>x.d-y.d).slice(0,pointPool.length);pointPool.forEach((l,i)=>{const o=near[i];l.userData.a=o?o.a:null;if(o){l.position.set(o.a.x,o.a.y,o.a.z);l.color.copy(o.a.color);l.distance=o.a.dist}})}
@@ -158,7 +158,8 @@ function updWorld(dt,t){
   torchLight.intensity=dunF*(camTarget.x>2200?34:26);torchLight.color.setHex(camTarget.x>2200?0xd8ffd0:0xffc080);torchLight.position.set(camTarget.x,camTarget.y+3.2,camTarget.z);
   sun.position.copy(camTarget).add(SUN_OFF);sun.target.position.copy(camTarget);sky.position.copy(camera.position);waterMat.uniforms.time.value=t;PORTAL_U.time.value=t;updEnchant(dt,t);portalFx(dt);updElvia(dt,t);updHollow(dt,t);ambientFx(dt,camTarget.x,camTarget.z);drakeAmbient(dt);
   lodAcc+=dt;{camera.getWorldDirection(_lodDir);const fl=Math.hypot(_lodDir.x,_lodDir.z)||1;const fx=_lodDir.x/fl,fz=_lodDir.z/fl;const turned=fx*_lodF.x+fz*_lodF.z<.93;
-    if(lodAcc>.3||lodAcc<0||turned){lodAcc=0;_lodF.x=fx;_lodF.z=fz;updEnvLod(camTarget.x,camTarget.z,TD.on?(GFX.q==='laag'?32:38):(GFX.q==='hoog'?110:GFX.q==='middel'?80:50)*(isTouch?.75:1),camera.position.x,camera.position.z,fx,fz,TD.on?62:1e9)}}
+    const lmv=Math.hypot(camTarget.x-_lodP.x,camTarget.z-_lodP.z);
+    if(lodAcc<0||turned||(lodAcc>.3&&lmv>2.5)||lodAcc>4){lodAcc=0;_lodF.x=fx;_lodF.z=fz;_lodP.x=camTarget.x;_lodP.z=camTarget.z;updEnvLod(camTarget.x,camTarget.z,TD.on?(GFX.q==='laag'?32:38):(GFX.q==='hoog'?110:GFX.q==='middel'?80:50)*(isTouch?.75:1),camera.position.x,camera.position.z,fx,fz,TD.on?62:1e9)}}
   clouds.children.forEach((c,i)=>{c.position.x+=dt*(1.5+i%3);if(c.position.x>520)c.position.x=-520});
   for(const f of flags)f.rotation.y=Math.sin(t*2+f.position.x)*.25;
   if(window.__mill)window.__mill.rotation.z+=dt*.7;if(window.__cportal)window.__cportal.material.opacity=.28+Math.sin(t*3)*.12;if(window.__dportal)window.__dportal.material.opacity=.3+Math.sin(t*3)*.12;if(window.__vportal)window.__vportal.material.opacity=.3+Math.sin(t*2.4)*.12;for(const l of D2.lava)l.material.color.setRGB(.85+Math.sin(t*1.5+l.position.x)*.15,.19+Math.sin(t*2+l.position.z)*.05,.02);if(window.__rune)window.__rune.rotation.y+=dt*.2;
@@ -235,7 +236,7 @@ function loop(){requestAnimationFrame(loop);const PF=window.__PROF,_t0=PF?perfor
   updMonsters(dt);updRemotes(dt);updProj(dt);updFx(dt);updParticles(dt);updTrail(dt);updWorld(dt,t);updPerf(dt);lwUpdate(dt);
   if(isAuth()){snapAcc+=dt;if(snapAcc>=.1){snapAcc=0;sendSnap()}}sendPresence(dt);
   const _t1=PF?performance.now():0;if(!window.__NORENDER){if(isTouch&&(FRAME&1))renderer.shadowMap.needsUpdate=true;if(GFX.post)composer.render();else renderer.render(scene,camera)}const _t2=PF?performance.now():0;updPlates(W,H);updFloat(dt,W,H);
-  if(PF){const _t3=performance.now();PF.n++;PF.upd+=_t1-_t0;PF.ren+=_t2-_t1;PF.ui+=_t3-_t2}}
+  if(PF){const _t3=performance.now();PF.n++;PF.upd+=_t1-_t0;PF.ren+=_t2-_t1;PF.ui+=_t3-_t2;if(window.__SPK&&_t3-_t0>window.__SPKT)window.__SPK.push([+(_t1-_t0).toFixed(1),+(_t2-_t1).toFixed(1),+(_t3-_t2).toFixed(1),(LW.raw||[]).map(v=>+v.toFixed(1)),(window.__WXT||0)])}}
 let snapAcc=0;const perf={t:0,n:0};
 /* dynamische resolutie op mobiel: eerst de renderresolutie omlaag (tot 60%), pas daarna de kwaliteit */
 const DRS={t:0,n:0};

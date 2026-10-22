@@ -40,11 +40,16 @@ function updPsys(S,dt){const pos=S.pos,col=S.col,sz=S.sz,rot=S.rot,cell=S.cell;l
 /* grondeffecten: plat vlak met één atlasvak */
 const _decalGeo=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2);
 const DECALS=[];
-function decal(x,z,o){const c=o.cell||0;const g=_decalGeo.clone();const uv=g.attributes.uv;const cx=c%8,cy=Math.floor(c/8);for(let i=0;i<uv.count;i++){uv.setXY(i,(cx+uv.getX(i))/8,1-(cy+1-uv.getY(i))/4)}
-  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({map:FX_TEX.atlas,color:o.col??0xffffff,transparent:true,opacity:o.a??1,depthWrite:false,blending:o.add===false?THREE.NormalBlending:THREE.AdditiveBlending,polygonOffset:true,polygonOffsetFactor:-2}));
+/* decals share one geometry per atlas cell and reuse their materials: creating and disposing them for every
+   footprint meant fresh buffers each step, and when the last one faded its shader was thrown away and had to be compiled again */
+const _decalG=[],_decalPool={n:[],a:[]};
+function decalGeo(c){let g=_decalG[c];if(g)return g;g=_decalGeo.clone();const uv=g.attributes.uv;const cx=c%8,cy=Math.floor(c/8);for(let i=0;i<uv.count;i++){uv.setXY(i,(cx+uv.getX(i))/8,1-(cy+1-uv.getY(i))/4)}return _decalG[c]=g}
+function decal(x,z,o){const c=o.cell||0;const g=decalGeo(c);const add=o.add!==false;const P=_decalPool[add?'a':'n'];
+  let m=P.pop();if(m){m.geometry=g;m.material.color.set(o.col??0xffffff);m.material.opacity=o.a??1;m.scale.set(1,1,1);m.visible=true}
+  else{m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({map:FX_TEX.atlas,color:o.col??0xffffff,transparent:true,opacity:o.a??1,depthWrite:false,blending:add?THREE.AdditiveBlending:THREE.NormalBlending,polygonOffset:true,polygonOffsetFactor:-2}));m.userData.dpool=P}
   m.position.set(x,(o.y??groundH(x,z))+.06,z);m.rotation.y=o.rot??Math.random()*6.28;scene.add(m);DECALS.push({m,t:0,dur:o.life||1,s0:o.size||2,s1:o.size1??o.size??2,a0:o.a??1,spin:o.spin||0,hold:o.hold||0,ar:o.ar||1});return m}
 function updDecals(dt){for(let i=DECALS.length-1;i>=0;i--){const d=DECALS[i];d.t+=dt;const k=Math.min(1,d.t/d.dur);const s=d.s0+(d.s1-d.s0)*Math.min(1,k*(d.hold?3:1));d.m.scale.set(s,1,s*d.ar);d.m.rotation.y+=d.spin*dt;
-  d.m.material.opacity=d.a0*(d.hold?(k<d.hold?1:1-(k-d.hold)/(1-d.hold)):1-k);if(k>=1){scene.remove(d.m);d.m.geometry.dispose();d.m.material.dispose();DECALS.splice(i,1)}}}
+  d.m.material.opacity=d.a0*(d.hold?(k<d.hold?1:1-(k-d.hold)/(1-d.hold)):1-k);if(k>=1){scene.remove(d.m);if(d.m.userData.dpool&&d.m.userData.dpool.length<120)d.m.userData.dpool.push(d.m);else d.m.material.dispose();DECALS.splice(i,1)}}}
 function updParticles(dt){const h=renderer.domElement.height;const sc=h/(2*Math.tan(camera.fov*Math.PI/360));for(const S of[PS_ADD,PS_NRM,PS_BOOM]){S.m.uniforms.scale.value=sc;updPsys(S,dt)}updDecals(dt)}
 /* ---------------- effectbibliotheek ---------------- */
 const FRN=(a,b)=>a+Math.random()*(b-a);

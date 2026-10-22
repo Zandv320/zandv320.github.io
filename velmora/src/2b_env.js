@@ -35,7 +35,8 @@ function updEnvLod(cx,cz,R,px=cx,pz=cz,fx=0,fz=0,cap=1e9){const R2=R*R;const far
   const SR=tdIsOn()?48:ENV_SH_R,S2=SR*SR;for(const L of ENV_LOD){const hi=L.imHi.instanceMatrix.array,hn=L.imHiN&&L.imHiN.instanceMatrix.array,lo=L.imLo&&L.imLo.instanceMatrix.array;let nh=0,nl=0,nn=0;
     for(let i=0;i<L.n;i++){const X=L.pos[i*2],Z=L.pos[i*2+1];if(back&&(X-px)*fx+(Z-pz)*fz<-28)continue;const dx=X-cx,dz=Z-cz,d2=dx*dx+dz*dz;
       if(hn&&d2<S2&&d2<R2){hn.set(L.mats.subarray(i*16,i*16+16),nn*16);nn++}else if(d2<R2||!lo){hi.set(L.mats.subarray(i*16,i*16+16),nh*16);nh++}else if(d2<F2){lo.set(L.mats.subarray(i*16,i*16+16),nl*16);nl++}}
-    L.imHi.count=nh;L.imHi.instanceMatrix.needsUpdate=true;if(hn){L.imHiN.count=nn;L.imHiN.instanceMatrix.needsUpdate=true}if(L.imLo){L.imLo.count=nl;L.imLo.instanceMatrix.needsUpdate=true}}}
+    imUpload(L.imHi,nh);if(hn)imUpload(L.imHiN,nn);if(L.imLo)imUpload(L.imLo,nl)}}
+function imUpload(im,n){const a=im.instanceMatrix;const ch=im.count!==n||n>0;im.count=n;if(!ch)return;a.clearUpdateRanges();if(n>0)a.addUpdateRange(0,n*16);a.needsUpdate=true}
 /* losse objecten (huizen, kramen, kisten): gekloond model met toon-materialen; vensters gloeien 's nachts */
 const envMatCache=new Map();
 function envClone(g){const m=g.scene.clone(true);m.traverse(o=>{if(!o.isMesh)return;if(!o.geometry.attributes.normal)o.geometry.computeVertexNormals();const sm=o.material;let tm=envMatCache.get(sm.uuid);
