@@ -27,11 +27,20 @@ function lwParts(root){const out=new Map();root.updateMatrixWorld(true);const in
   const res=[];for(const[mt,L]of out){const allC=L.every(g=>g.attributes.color);if(!allC)for(const g of L)g.deleteAttribute('color');res.push({mat:mt,geo:L.length>1?BufferGeometryUtils.mergeGeometries(L.map(g=>g.index?g.toNonIndexed():g),false):L[0]})};return res}
 /* wind sway and edge growth for the instanced plants */
 const LW_U={uC:{value:new THREE.Vector3(0,0,60)}};
+/* plants bend away from the hero and whoever walks near him (4 pushers: x,y,z,radius) */
+const LW_P={value:[new THREE.Vector4(0,-999,0,0),new THREE.Vector4(0,-999,0,0),new THREE.Vector4(0,-999,0,0),new THREE.Vector4(0,-999,0,0)]};
+const LW_PUSH_GLSL=`vec4 mvPosition=vec4(transformed,1.);
+#ifdef USE_INSTANCING
+mvPosition=instanceMatrix*mvPosition;float lph=max(mvPosition.y-instanceMatrix[3].y,0.);
+for(int i=0;i<4;i++){vec4 P=uPush[i];vec2 d=mvPosition.xz-P.xz;float dl=length(d)+1e-4;float f=(1.-smoothstep(P.w*.35,P.w,dl))*step(abs(mvPosition.y-P.y),2.5);float amt=f*min(lph,1.3)*.75;mvPosition.xz+=d/dl*amt;mvPosition.y-=amt*.45;}
+#endif
+mvPosition=modelViewMatrix*mvPosition;gl_Position=projectionMatrix*mvPosition;`;
+function lwPushShader(sh){sh.uniforms.uPush=LW_P;sh.vertexShader='uniform vec4 uPush[4];\n'+sh.vertexShader.replace('#include <project_vertex>',LW_PUSH_GLSL)}
 function lwWind(m,amp=.05,near=false){m.onBeforeCompile=sh=>{sh.uniforms.uT=WIND;sh.uniforms.uC=LW_U.uC;sh.vertexShader='uniform float uT;uniform vec3 uC;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
 #ifdef USE_INSTANCING
 vec2 ipos=vec2(instanceMatrix[3].x,instanceMatrix[3].z);float pRR=${near?'uC.z*.52+4.':'uC.z'};transformed*=1.-smoothstep(pRR-7.,pRR,distance(ipos,uC.xy));
 float wph=ipos.x*.35+ipos.y*.27;float wsw=(sin(uT*1.7+wph)+sin(uT*2.9+wph*1.7)*.5)*${amp.toFixed(3)}*max(position.y,0.);transformed.x+=wsw;transformed.z+=wsw*.4;
-#endif`)};m.customProgramCacheKey=()=>'lwwind'+amp+near}
+#endif`);lwPushShader(sh)};m.customProgramCacheKey=()=>'lwwind'+amp+near}
 const _lwMats=new Map();
 function lwToon(src,opts={}){const key=(src.map?src.map.uuid:src.uuid)+'|'+(opts.k||'');let m=_lwMats.get(key);if(m)return m;
   if(src.map){src.map.colorSpace=THREE.SRGBColorSpace;src.map.anisotropy=4;src.map.minFilter=THREE.LinearMipmapLinearFilter}
@@ -342,5 +351,5 @@ function vlTick(dt){_vlT-=dt;const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR()
 
 /* ====================== the loop ====================== */
 function lwUpdate(dt){if(S.mode!=="play"||window.__NOLW)return;if(!LW.init){LW.init=true;plInit();bdInit()}LW.t+=dt;LW.frame++;
-  try{wxUpdate(dt);ambUpdate(dt)}catch(e){if(!LW.err2){LW.err2=1;console.warn('weather',e)}}
+  try{wxUpdate(dt);ambUpdate(dt);rxUpdate(dt)}catch(e){if(!LW.err2){LW.err2=1;console.warn('weather',e)}}
   const t0=performance.now();try{const P=LW.pm||(LW.pm=[0,0,0,0]);let a=performance.now(),b;plUpdate(dt);b=performance.now();P[0]=P[0]*.95+(b-a)*.05;a=b;crTick(dt);b=performance.now();P[1]=P[1]*.95+(b-a)*.05;a=b;bdTick(dt);b=performance.now();P[2]=P[2]*.95+(b-a)*.05;a=b;vlTick(dt);b=performance.now();P[3]=P[3]*.95+(b-a)*.05}catch(e){if(!LW.err){LW.err=1;console.warn('living world',e)}}LW.ms=(LW.ms||0)*.95+(performance.now()-t0)*.05}
