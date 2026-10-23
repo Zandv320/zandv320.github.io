@@ -203,7 +203,7 @@ function openNpc(n,keep){if(Math.hypot(n.x-ME.pos.x,n.z-ME.pos.z)>6)return toast
   {const ib=$('#innHome');if(ib)ib.onclick=()=>{const here=n.def.inn==='rw'?'rw':'ws';P.home=P.home===here?'':here;sfx('quest');log(P.home?({ws:'WindStorm',rw:'Riftwatch'}[P.home])+' is now your home: your hearthstone takes you here.':'Silverbrook is your home again.','sys');saveGame();openNpc(n,true)}}
   const rb=$('#respecB');if(rb)rb.onclick=()=>{if(respecTalents()){openNpc(n,true);refreshTalent()}};
   openPanel('pDialog');S.shop=!!n.def.shop}
-function rewardHtml(q){return'<div class="rew"><span>'+q.xp+' XP</span><span style="color:#ffd34d">'+q.gold+' gold</span>'+(q.item?'<span style="color:'+['#fff','#5dff73','#7cc0ff','#e0a3ff'][q.item]+'">'+RARITY[q.item].n+' item</span>':'')+(q.pots?'<span>'+q.pots+' potions</span>':'')+'</div>'}
+function rewardHtml(q){return'<div class="rew"><span>'+q.xp+' XP</span><span style="color:#ffd34d">'+q.gold+' gold</span>'+(q.item?'<span style="color:'+['#fff','#5dff73','#7cc0ff','#e0a3ff','#ffab4a'][q.item]+'">'+RARITY[q.item].n+' item</span>':'')+(q.pots?'<span>'+q.pots+' potions</span>':'')+'</div>'}
 function showQuest(n,q){const s=qState(q);const b=$('#dBody');const a=P.quests[q.id];
   b.innerHTML='<p><b>'+esc(q.n)+'</b></p><p>'+esc(s==='ready'?q.done:q.txt)+'</p><div class="obj">'+esc(q.obj.lbl)+': '+(a?a.n:0)+' / '+q.obj.n+'</div><p style="margin:6px 0 4px"><b>Reward</b></p>'+rewardHtml(q)+'<div class="row" style="margin-top:12px" id="qBtns"></div>';
   const bb=$('#qBtns');const add=(t,fn,alt)=>{const x=document.createElement('button');x.className='btn'+(alt?' alt':'');x.textContent=t;x.onclick=fn;bb.appendChild(x)};
@@ -256,7 +256,7 @@ const mm=$('#mmc'),mg=mm.getContext('2d');
 function w2m(x,z,cx,cz,sc,W){return[W/2+(x-cx)*sc,W/2+(z-cz)*sc]}
 function drawMini(){const W=mm.width,inD=ME.pos.x>700;mg.save();mg.clearRect(0,0,W,W);mg.beginPath();mg.arc(W/2,W/2,W/2,0,7);mg.clip();mg.fillStyle='#4a6a34';mg.fillRect(0,0,W,W);
   const sc=inD?1.6:1.1;const cx=ME.pos.x,cz=ME.pos.z;
-  if(ME.pos.x>1250){const D=ME.pos.x>2200?D4:ME.pos.x>1700?D3:D2;const ox=D.X-D.C/2*D.c,oz=D.Z-D.R/2*D.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D.img,x0,y0,D.C*D.c*sc,D.R*D.c*sc)}
+  if(ME.pos.x>1250){const D=ME.pos.x>2800?D5:ME.pos.x>2200?D4:ME.pos.x>1700?D3:D2;const ox=D.X-D.C/2*D.c,oz=D.Z-D.R/2*D.c;const[x0,y0]=w2m(ox,oz,cx,cz,sc,W);mg.drawImage(D.img,x0,y0,D.C*D.c*sc,D.R*D.c*sc)}
   else if(inRift(ME.pos.x)){mg.fillStyle='#120a1e';mg.fillRect(0,0,W,W);const[x0,y0]=w2m(RIFT.x-RSZ/2,RIFT.z-RSZ/2,cx,cz,sc,W);mg.drawImage(riftImg,x0,y0,RSZ*sc,RSZ*sc)}
   else if(inElv(ME.pos.x)){const[x0,y0]=w2m(ELV.x-ESZ/2,ELV.z-ESZ/2,cx,cz,sc,W);mg.drawImage(elvImg,x0,y0,ESZ*sc,ESZ*sc)}
   else if(inDrk(ME.pos.x)){const[x0,y0]=w2m(DRK.x-DSZ/2,DRK.z-DSZ/2,cx,cz,sc,W);mg.drawImage(drkImg,x0,y0,DSZ*sc,DSZ*sc)}

@@ -185,7 +185,7 @@ function crPopulate(dt){_crSpawnT-=dt;if(_crSpawnT>0)return;_crSpawnT=1.5;const 
       return crSpawn(h.t,hx+Math.cos(a)*r,hz+Math.sin(a)*r,w?{water:w,depth:.45+Math.random()*.7,hr:w.r,size:.8+Math.random()*.5}:{area:h.wild?null:{x:h.x,z:h.z,r:h.r},hr:h.r,fixed:1,size:.92+Math.random()*.16})})).then(L=>{const ok=L.filter(Boolean);if(h.wild&&ok.length){const H={m:ok,lead:ok[0]};for(const c of ok){c.herd=H;c.home={x:h.x,z:h.z}}}_crHome.set(i,ok);_crHome.delete('p'+i)})}
     if(!near&&alive.length){for(const c of alive)crRemove(c);_crHome.set(i,[])}});
   /* the roaming ones */const inDun=px>700,inElv2=px<-2600&&px>-5000,inOver=px>-260&&px<260;const day=DAY.night<.55;
-  for(const P of CR_POP){if(P.dun?!(inDun&&(px<1250||px>2200)):!(inElv2||inOver))continue;if(P.day&&!day&&P.t==='rabbit'&&Math.random()<.5)continue;
+  for(const P of CR_POP){if(P.dun?!(inDun&&(px<1250||(px>2200&&px<2800))):!(inElv2||inOver))continue;if(P.day&&!day&&P.t==='rabbit'&&Math.random()<.5)continue;
     const have=CR.filter(c=>c.pop===P&&!c.dead).length+(P.pend|0);const want=P.n[q];if(have>=want)continue;
     const near=P.dun?6:TD.on?34:R*.55,far=P.dun?20:R*.9;
     const s=lwSpot(px,pz,near,far,P.dun?(x,z)=>{const p={x,z};collide(p,.2);return Math.hypot(p.x-x,p.z-z)<.01&&isFinite(groundH(x,z))}:P.test,10);if(!s)continue;

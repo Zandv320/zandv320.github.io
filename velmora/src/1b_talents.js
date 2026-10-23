@@ -139,3 +139,56 @@ const TALENTS={
    {id:'j_roedel',n:'Wild Strength',t:3,max:2,mod:{exec:.06},d:'{6}% more damage against enemies below 35% health.',ic:['skull','#c8e0a0','#1a2a0d']},
    {id:'j_valk',n:'Falcon of Velmora',t:4,max:1,skill:{id:'valk',n:'Falcon of Velmora',cd:45,cost:30,range:32,need:1,ic:['wing','#ffd36a','#3a2a00'],d:'Your falcon dives at your target every second for 8 seconds for 60% weapon damage.'},d:'Teaches Falcon of Velmora: 8 seconds of falcon attacks.',ic:['wing','#ffd36a','#3a2a00']}]}]
 };
+/* ---- The Rift expansion: two more rows per tree, for the road to level 50 ----
+   Row 6 opens at 16 points in a tree, row 7 (the capstone) at 20. With 49 points at level 50 you can fill one tree and most of a second. */
+TIER_REQ.push(16,20);
+const TAL_RIFT={
+ wapens:[
+  {id:'k_slachter',n:'Butcher',t:5,max:3,mod:{'executie.dmg':.12},d:'Execute deals {12}% more damage.',ic:['skull','#ff7a5a','#3a0805']},
+  {id:'k_scherpte',n:'Razor Edge',t:5,max:2,mod:{'doodsslag.dmg':.12},d:'Mortal Strike deals {12}% more damage.',ic:['sword','#ffd0a0','#3a1a05']},
+  {id:'k_meesterwapen',n:'Master of Arms',t:6,max:1,mod:{wdmg:.10,crit:4,'executie.cd':2},d:'Capstone: +10% weapon damage, +4% critical chance and Execute is ready 2 s sooner.',ic:['sword','#c08aff','#2a0a4a']}],
+ woede:[
+  {id:'k_donderslag',n:'Rolling Thunder',t:5,max:3,mod:{'donder.dmg':.12},d:'Thunder Clap deals {12}% more damage.',ic:['shout','#9ad0ff','#0d2a4a']},
+  {id:'k_razend',n:'Frenzy',t:5,max:2,mod:{haste:.04},d:'+{4}% attack speed.',ic:['charge','#ff9a6a','#3a1005']},
+  {id:'k_riftthart',n:'Heart of the Rift',t:6,max:1,mod:{'avatar.cd':30,powp:.06,rage:2},d:'Capstone: Avatar of the Rift is ready 30 s sooner, +6% power and +2 rage per attack.',ic:['star','#c08aff','#2a0a4a']}],
+ bescherming:[
+  {id:'k_rotswand',n:'Rock Wall',t:5,max:3,mod:{armp:.05},d:'+{5}% armour.',ic:['shield','#c8c0b0','#2a2620']},
+  {id:'k_weerstand',n:'Stalwart',t:5,max:2,mod:{hpp:.04,'donder.cd':1.5},d:'+{4}% health and Thunder Clap is ready {1.5} s sooner.',ic:['heart','#ff8a6a','#3a0d06']},
+  {id:'k_voidbolwerk',n:'Bulwark of the Void',t:6,max:1,mod:{dr:.08,dodge:.04,hpp:.06},d:'Capstone: you take 8% less damage, have a 4% chance to block and +6% health.',ic:['shield','#c08aff','#2a0a4a']}],
+ heilig:[
+  {id:'p_stralend',n:'Radiant Hands',t:5,max:3,mod:{heal:.05},d:'Your heals restore {5}% more.',ic:['cross','#fff6c8','#6a5010']},
+  {id:'p_heiliggrond',n:'Hallowed Ground',t:5,max:2,mod:{'wijding.dmg':.15},d:'Consecration deals {15}% more damage.',ic:['sun','#ffe08a','#4a3a06']},
+  {id:'p_lichtbron',n:'Font of the Light',t:6,max:1,mod:{heal:.12,mregen:.2,'handoplegging.cd':60},d:'Capstone: heals restore 12% more, mana regenerates 20% faster and Lay on Hands is ready 60 s sooner.',ic:['heart','#fff2b0','#6a4a06']}],
+ bescherm:[
+  {id:'p_wachter',n:'Sentinel',t:5,max:3,mod:{dr:.02},d:'You take {2}% less damage.',ic:['shield','#ffe9a0','#4a3a06']},
+  {id:'p_standvast',n:'Sanctified Stand',t:5,max:2,mod:{armp:.04,'wijding.cd':1.5},d:'+{4}% armour and Consecration is ready {1.5} s sooner.',ic:['sun','#fff0a8','#3a2a06']},
+  {id:'p_lichtbastion',n:'Bastion of Light',t:6,max:1,mod:{hpp:.1,dr:.05,dodge:.04},d:'Capstone: +10% health, you take 5% less damage and have a 4% chance to block.',ic:['shield','#fff6c8','#6a5010']}],
+ vergelding:[
+  {id:'p_hemelvuur',n:'Heaven\'s Fury',t:5,max:3,mod:{'hemelhamer.dmg':.12},d:'Hammer of the Heavens deals {12}% more damage.',ic:['hammer','#fff6c8','#5a4a10']},
+  {id:'p_ijver',n:'Purifying Zeal',t:5,max:2,mod:{crit:1.5},d:'+{1.5}% critical chance.',ic:['star','#ffe08a','#4a3a06']},
+  {id:'p_lichtbrenger',n:'Lightbringer',t:6,max:1,mod:{wdmg:.08,'oordeel.dmg':.25,'kruis.dmg':.15},d:'Capstone: +8% damage; Judgement deals 25% and Crusader Strike 15% more damage.',ic:['sun','#ffffff','#6a5010']}],
+ vuur:[
+  {id:'m_rifvuur',n:'Riftfire',t:5,max:3,mod:{'vuur.dmg':.06,'meteoor.dmg':.06},d:'Firebolt and Meteor deal {6}% more damage.',ic:['fire','#ff6ad8','#3a0530']},
+  {id:'m_vonk',n:'Living Spark',t:5,max:2,mod:{critdmg:.08},d:'Critical hits deal {8}% extra damage.',ic:['star','#ffb060','#4a1a00']},
+  {id:'m_feniks',n:'Heart of the Phoenix',t:6,max:1,mod:{crit:5,'vuur.cast':.3,'rifscheur.dmg':.2},d:'Capstone: +5% critical chance, Firebolt casts 0.3 s faster and Rift Collapse deals 20% more damage.',ic:['wing','#ff7a2e','#4a0d00']}],
+ vorst:[
+  {id:'m_ijshart',n:'Heart of Ice',t:5,max:3,mod:{'ijsbarriere.cd':3},d:'Ice Barrier is ready {3} s sooner.',ic:['shield','#bfeaff','#0d3a66']},
+  {id:'m_poollicht',n:'Polar Light',t:5,max:2,mod:{'nova.root':1,'kettingblik.dmg':.1},d:'Frost Nova freezes {1} s longer and Chain Lightning deals {10}% more damage.',ic:['frost','#d8f6ff','#0d2a4a']},
+  {id:'m_eeuwigwinter',n:'Eternal Winter',t:6,max:1,mod:{dr:.08,'sneeuwstorm.dmg':.3,'ijslans.dmg':.25},d:'Capstone: you take 8% less damage; Blizzard deals 30% and Ice Lance 25% more damage.',ic:['frost','#ffffff','#0d3a66']}],
+ arcaan:[
+  {id:'m_leegte',n:'Touch of the Void',t:5,max:3,mod:{'rifscheur.dmg':.1},d:'Rift Collapse deals {10}% more damage.',ic:['blink','#ff6ad8','#2a053a']},
+  {id:'m_spanning',n:'Static Charge',t:5,max:2,mod:{'kettingblik.targets':1,'kettingblik.dmg':.05},d:'Chain Lightning jumps to {1} more enemy and deals {5}% more damage.',ic:['charge','#c8e0ff','#1a1a5a']},
+  {id:'m_sterrenzanger',n:'Starsinger',t:6,max:1,mod:{mpp:.12,cdall:.08,'arcraket.dmg':.25},d:'Capstone: +12% mana, all abilities are ready 8% sooner and Arcane Missiles deal 25% more damage.',ic:['star','#d9a8ff','#3a1266']}],
+ scherpschutter:[
+  {id:'j_scherpoog',n:'Deadeye',t:5,max:3,mod:{'snelvuur.dmg':.1},d:'Rapid Fire deals {10}% more damage.',ic:['eye','#ffe0a0','#3a2a05']},
+  {id:'j_adem',n:'Steady Breath',t:5,max:2,mod:{'schot.dmg':.08},d:'Aimed Shot deals {8}% more damage.',ic:['arrow','#e8d7a0','#3d2a0f']},
+  {id:'j_leegteoog',n:'Eye of the Void',t:6,max:1,mod:{crit:5,critdmg:.15,'dodelijk.dmg':.25},d:'Capstone: +5% critical chance, critical hits deal 15% extra damage and Killing Shot deals 25% more.',ic:['eye','#c08aff','#2a0a4a']}],
+ overleving:[
+  {id:'j_valzetter',n:'Trapper',t:5,max:3,mod:{'ijsval.cd':2,'ijsval.root':1},d:'Frost Trap is ready {2} s sooner and freezes {1} s longer.',ic:['frost','#bfeaff','#0d3340']},
+  {id:'j_gehard',n:'Hardened Hide',t:5,max:2,mod:{dr:.03},d:'You take {3}% less damage.',ic:['shield','#c8a070','#2a1a0a']},
+  {id:'j_overlever',n:'Last Survivor',t:6,max:1,mod:{hpp:.1,'riftsalvo.dmg':.25,'explosief.dmg':.25},d:'Capstone: +10% health; Void Barrage and Explosive Shot deal 25% more damage.',ic:['heart','#9be07a','#173d0d']}],
+ wildernis:[
+  {id:'j_roedelleider',n:'Pack Leader',t:5,max:3,mod:{'valk.dmg':.12},d:'Falcon of Velmora deals {12}% more damage.',ic:['wing','#ffd36a','#3a2a00']},
+  {id:'j_windloper',n:'Windrunner',t:5,max:2,mod:{speed:.04,haste:.03},d:'You move {4}% faster and attack {3}% faster.',ic:['leap','#e0e0a0','#2a2a10']},
+  {id:'j_wildhart',n:'Wild Heart',t:6,max:1,mod:{wdmg:.08,exec:.1,'riftsalvo.cd':10},d:'Capstone: +8% damage, 10% more damage against enemies below 35% health and Void Barrage is ready 10 s sooner.',ic:['leaf','#9be07a','#0d2a05']}]};
+for(const c in TALENTS)for(const t of TALENTS[c])if(TAL_RIFT[t.id])t.nodes.push(...TAL_RIFT[t.id]);

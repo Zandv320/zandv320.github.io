@@ -50,7 +50,7 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
     h+='<h4>Teleport</h4><div class="atp">'+ADM_TP.map((t,i)=>'<button class="btn alt" data-tp="'+i+'">'+esc(t[0])+'</button>').join('')+'</div>'}
   b.innerHTML=h;const on=(id,fn)=>{const e=$('#'+id);if(e)e.onclick=fn};
   /* character */
-  on('aLvlB',()=>{const v=admNum('aLvl',1,MAXLVL);P.level=v;P.xp=0;if(talentSpent()>talentPoints()){P.talents={};TMC=null;log('Admin: talents were reset because the new level has fewer points.','sys')}calcStats();P.hp=ST.maxhp;P.mp=ST.maxmp;lvlFx(ME.pos.x,ME.pos.y,ME.pos.z);admDone('level set to '+v+'.')});
+  on('aLvlB',()=>{const v=admNum('aLvl',1,MAXLVL);P.level=v;P.xp=0;if(talentSpent()>talentPoints()){P.talents={};TMC=null;log('Admin: talents were reset because the new level has fewer points.','sys')}calcStats();P.hp=ST.maxhp;P.mp=ST.maxmp;buildBar(true);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z);admDone('level set to '+v+'.')});
   on('aXpB',()=>{P.xp=admNum('aXp',0,xpNeed(P.level)-1);admDone('experience set.')});
   on('aXpL',()=>{if(P.level>=MAXLVL)return toast('Already at the maximum level');gainXp(Math.max(1,Math.ceil((xpNeed(P.level)-P.xp)/(RACES[P.race].xp||1))));admDone('level up!')});
   on('aGoldB',()=>{P.gold=admNum('aGold',0,9999999);admDone('gold set to '+P.gold+'.')});

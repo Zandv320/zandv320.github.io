@@ -45,22 +45,34 @@ const ABIL={
     {id:'slag',n:'Heroic Strike',lvl:1,cd:0,cost:15,range:3.4,need:1,ic:['sword','#d9a441','#5a2a0a'],d:'A powerful blow that deals 150% weapon damage.'},
     {id:'storm',n:'Charge',lvl:2,cd:12,cost:0,range:25,min:5,need:1,ic:['charge','#e0632a','#3d0d06'],d:'Charge at your target and stun it for 1.5 seconds.'},
     {id:'werv',n:'Whirlwind',lvl:4,cd:8,cost:30,range:0,ic:['whirl','#cfd6e0','#2b3342'],d:'Spin around, hitting all enemies within 6 metres for 110% weapon damage.'},
-    {id:'kreet',n:'Battle Cry',lvl:6,cd:45,cost:0,range:0,ic:['shout','#ffcf4d','#7a2a00'],d:'Restores 25% health and grants 25% more damage for 12 seconds.'}],
+    {id:'kreet',n:'Battle Cry',lvl:6,cd:45,cost:0,range:0,ic:['shout','#ffcf4d','#7a2a00'],d:'Restores 25% health and grants 25% more damage for 12 seconds.'},
+    {id:'donder',n:'Thunder Clap',lvl:30,cd:12,cost:25,range:0,ic:['shout','#9ad0ff','#0d2a4a'],d:'Slam the ground: 130% weapon damage to all enemies within 8 metres, stunning them for 1.5 seconds.'},
+    {id:'executie',n:'Execute',lvl:40,cd:6,cost:20,range:3.4,need:1,cond:'exec',ic:['skull','#ff5a3a','#3a0505'],d:'Only on enemies below 30% health: a finishing blow for 380% weapon damage.'},
+    {id:'avatar',n:'Avatar of the Rift',lvl:50,cd:120,cost:0,range:0,ic:['star','#c08aff','#2a0a4a'],d:'Become an avatar of the void for 15 seconds: 30% more damage, 25% less damage taken and 20% faster attacks.'}],
   magier:[
     {id:'vuur',n:'Firebolt',lvl:1,cd:0,cost:12,range:30,need:1,cast:1.3,ic:['fire','#ffb02e','#7a1500'],d:'Hurls a firebolt that deals 170% spell power as damage.'},
     {id:'nova',n:'Frost Nova',lvl:2,cd:14,cost:22,range:0,ic:['frost','#a8e4ff','#0d3a66'],d:'Freezes all enemies within 9 metres for 4 seconds and deals light damage.'},
     {id:'flits',n:'Blink',lvl:4,cd:15,cost:15,range:0,ic:['blink','#d9a8ff','#3a1266'],d:'Teleport 13 metres forward.'},
-    {id:'meteoor',n:'Meteor',lvl:6,cd:20,cost:35,range:30,need:1,cast:1.8,ic:['meteor','#ff7a2e','#4a0d00'],d:'A meteor strikes your target: 260% damage to everything within 6 metres.'}],
+    {id:'meteoor',n:'Meteor',lvl:6,cd:20,cost:35,range:30,need:1,cast:1.8,ic:['meteor','#ff7a2e','#4a0d00'],d:'A meteor strikes your target: 260% damage to everything within 6 metres.'},
+    {id:'ijsbarriere',n:'Ice Barrier',lvl:30,cd:30,cost:25,range:0,ic:['shield','#bfeaff','#0d3a66'],d:'Encase yourself in a barrier of ice: 40% less damage taken for 10 seconds, and enemies next to you are frozen for 2 seconds.'},
+    {id:'kettingblik',n:'Chain Lightning',lvl:40,cd:9,cost:30,range:30,need:1,cast:1.2,ic:['charge','#c8e0ff','#1a1a5a'],d:'Lightning strikes your target for 180% spell power and jumps to up to 4 nearby enemies, losing 15% per jump.'},
+    {id:'rifscheur',n:'Rift Collapse',lvl:50,cd:45,cost:45,range:30,need:1,cast:2,ic:['blink','#ff6ad8','#2a053a'],d:'Tear open a rift at your target. A moment later it collapses: 420% damage to the target and 220% to everything within 7 metres.'}],
   paladijn:[
     {id:'kruis',n:'Crusader Strike',lvl:1,cd:0,cost:10,range:3.4,need:1,ic:['hammer','#ffe08a','#5a3a06'],d:'Strike with the Light for 140% weapon damage and restore 2% of your mana.'},
     {id:'oordeel',n:'Judgement',lvl:2,cd:8,cost:15,range:22,need:1,ic:['sun','#fff0a8','#6a4a06'],d:'Unleash a hammer of light at your target: 160% weapon damage as holy damage.'},
     {id:'flits_licht',n:'Flash of Light',lvl:4,cd:0,cost:22,range:30,heal:1,cast:1.5,ic:['cross','#fff6c8','#7a5a10'],d:'Heal your friendly target (or yourself) for a large amount. Click a group member to heal them.'},
-    {id:'godschild',n:'Divine Shield',lvl:6,cd:90,cost:0,range:0,ic:['shield','#ffe9a0','#6a4a00'],d:'A shield of holy light makes you immune to all damage for 8 seconds.'}],
+    {id:'godschild',n:'Divine Shield',lvl:6,cd:90,cost:0,range:0,ic:['shield','#ffe9a0','#6a4a00'],d:'A shield of holy light makes you immune to all damage for 8 seconds.'},
+    {id:'wijding',n:'Consecration',lvl:30,cd:15,cost:25,range:0,ic:['sun','#ffe08a','#4a3a06'],d:'Consecrate the ground beneath you for 8 seconds: every second 45% weapon damage to enemies within 7 metres.'},
+    {id:'handoplegging',n:'Lay on Hands',lvl:40,cd:180,cost:0,range:30,heal:1,ic:['heart','#fff2b0','#6a4a06'],d:'Heal your friendly target (or yourself) for an enormous amount, without using mana.'},
+    {id:'hemelhamer',n:'Hammer of the Heavens',lvl:50,cd:40,cost:40,range:30,need:1,ic:['hammer','#fff6c8','#5a4a10'],d:'Eight hammers of light fall around your target over 4 seconds, each dealing 90% weapon damage within 4 metres.'}],
   jager:[
     {id:'schot',n:'Aimed Shot',lvl:1,cd:0,cost:15,range:32,need:1,ic:['arrow','#e8d7a0','#3d2a0f'],d:'A carefully aimed shot for 150% weapon damage.'},
     {id:'multi',n:'Multi-Shot',lvl:2,cd:8,cost:25,range:32,need:1,ic:['multi','#9be07a','#173d0d'],d:'Hits your target and up to four nearby enemies for 95% weapon damage.'},
     {id:'sprong',n:'Disengage',lvl:4,cd:15,cost:0,range:0,ic:['leap','#7ad0e0','#0d3340'],d:'Leap 11 metres backwards, away from danger.'},
-    {id:'regen',n:'Arrow Rain',lvl:6,cd:18,cost:35,range:32,need:1,ic:['rain','#ffd36a','#4a2a00'],d:'A rain of arrows: 230% damage to everything within 6 metres of your target.'}]
+    {id:'regen',n:'Arrow Rain',lvl:6,cd:18,cost:35,range:32,need:1,ic:['rain','#ffd36a','#4a2a00'],d:'A rain of arrows: 230% damage to everything within 6 metres of your target.'},
+    {id:'ijsval',n:'Frost Trap',lvl:30,cd:20,cost:20,range:0,ic:['frost','#bfeaff','#0d3340'],d:'Drop a trap at your feet. After a second it bursts: 80% weapon damage to enemies within 7 metres, freezing them for 5 seconds.'},
+    {id:'snelvuur',n:'Rapid Fire',lvl:40,cd:20,cost:30,range:32,need:1,ic:['multi','#ffe0a0','#3a2a05'],d:'Fire eight arrows in quick succession at your target, each for 55% weapon damage.'},
+    {id:'riftsalvo',n:'Void Barrage',lvl:50,cd:45,cost:40,range:32,need:1,ic:['rain','#c08aff','#1a0a3a'],d:'Three waves of void arrows rain down around your target: each wave deals 170% damage to everything within 7 metres.'}]
 };
 const COMMON_ABIL=[
   {id:'drank',n:'Healing Potion',lvl:1,cd:20,cost:0,item:'heal',ic:['potion','#ff4b4b','#3d0505'],d:'Instantly restores 45% of your health.'},
@@ -129,6 +141,11 @@ const MON={
   voidhorror:{n:'Voidspawn Horror',kind:'imp',col:0x6a1a8a,lv:[46,48],aggro:16,spd:6.4,size:1.3,xpM:1.15,hpM:1.3,hover:1.4},
   dreadlord:{n:'Dreadlord',kind:'human',col:0x5a1a2a,lv:[47,49],aggro:16,spd:6,size:1.35,xpM:1.3,hpM:1.6,dmgM:1.1},
   xalthuun:{n:"Xal'thuun the Void Wyrm",kind:'dragon',col:0x2a0a3a,lv:[50,50],aggro:22,spd:6.4,size:4.2,elite:1,xpM:3,hpM:7,dmgM:1.45,ranged:24,proj:'shadow',hover:2.6,respawn:600},
+  voidchanter:{n:'Choir Voidchanter',kind:'human',col:0x3a1a5a,lv:[46,47],aggro:17,spd:5.6,size:1.05,xpM:1.2,hpM:1.2,ranged:20,proj:'arcane',wt:'staf'},
+  sanctumknight:{n:'Hollow Knight of the Song',kind:'human',col:0x2a2a3a,lv:[47,48],aggro:16,spd:5.8,size:1.2,xpM:1.3,hpM:1.6,dmgM:1.1},
+  korvax:{n:'Korvax the Shardbound',kind:'golem',col:0x3a2a6a,lv:[48,48],aggro:20,spd:5.2,size:2.8,boss:1,elite:1,dmgM:1.4,xpM:2,hpM:5,respawn:300},
+  ilvaya:{n:'Seer Ilvaya',kind:'human',col:0x5a2a7a,lv:[49,49],aggro:22,spd:5.6,size:1.7,boss:1,elite:1,dmgM:1.45,xpM:2.2,hpM:4.6,ranged:22,proj:'arcane',wt:'staf',respawn:300},
+  nyxathar:{n:'Nyxathar, the First Voice',kind:'human',col:0x1a0a2a,lv:[50,50],aggro:24,spd:6,size:3.4,boss:1,elite:1,dmgM:1.6,xpM:3,hpM:7.5,respawn:300},
   vyraxion:{n:'Vyraxion the Ash Queen',kind:'dragon',col:0x8a1a12,lv:[22,22],aggro:26,spd:6,size:4.2,boss:1,elite:1,dragon:1,dmgM:1.6,xpM:1.6,hpM:4,respawn:300,fire:1}
 };
 const QUESTS=[
@@ -167,6 +184,34 @@ const QUESTS=[
   {id:'e10',n:'Oakheart the Ancient',giver:'corwin',lvl:25,req:'e4',txt:'Our scouts saw it at last: Oakheart, an ancient beast of moss and bark that walks the western Highlands. It is the heart of the poison. Gather your friends and bring it down.',obj:{kill:['oakheart'],n:1,lbl:'Oakheart defeated'},xp:14000,gold:250,item:3,done:'Oakheart has fallen! By the King\'s command, you are named a Champion of WindStorm.'},
   {id:'e11',n:'The Roots of the Poison',giver:'sabine',lvl:24,req:'e8',txt:'I followed the residue from the falls, and it does not end with Oakheart. It seeps up from beneath Thornwood, from the Thornroot Hollow under the roots of a dead giant in the far south-east. Take the road through Thornwood, go down into the Hollow and clear its tunnels: twelve of the creatures that guard it.',obj:{kill:['thornspider','blightseer','brambleguard'],n:12,lbl:'Hollow creatures slain'},xp:12500,gold:160,pots:4,done:'Seers… elves who drank from the poison and became its servants. Then something down there is feeding it. Something old.'},
   {id:'e12',n:'Veyrith the Silkmother',giver:'corwin',lvl:25,req:'e11',txt:'Sabine says the poison is spun, not brewed: a spider queen older than WindStorm, Veyrith the Silkmother, nests at the bottom of the Thornroot Hollow. Her guardian, the Thornwarden, blocks the way. Take your strongest friends, cut through, and end her.',obj:{kill:['silkmother'],n:1,lbl:'Silkmother slain'},xp:18000,gold:320,item:3,done:'The rivers run clear again. Elvia is free, and so is WindStorm. Whatever you ask of this city, hero, it is yours.'},
+  /* ---- the Nether Rift: "The Song of the Void" (level 25–50) ---- */
+  {id:'r1',n:'Beyond the Gate',giver:'kaelen',lvl:25,txt:'So the Gate let you through. Good. Riftwatch holds, but only just: Rift Wraiths drift in from the Shattered Approach, west of here, and feed on anything warm. Cross the western bridges and lay eight of them to rest.',obj:{kill:['riftwraith'],n:8,lbl:'Rift Wraith dispelled'},xp:3800,gold:70,item:2,done:'Eight! The watch on the west wall will sleep tonight. Welcome to the Rift Wardens, hero.'},
+  {id:'r2',n:'Imps in the Stores',giver:'tessa',lvl:26,txt:'Void Imps! Little horned thieves, they come over the western bridges at night and chew through my crates. Their horns are worth something to the Voidseer, so bring me six while you are at it.',obj:{collect:['voidimp'],n:6,chance:.6,lbl:'Imp Horn collected',item:'Imp Horn'},xp:4000,gold:75,pots:4,done:'Six horns, and not a crate chewed tonight. Take some potions, on the house.'},
+  {id:'r3',n:'Echoes in the Ooze',giver:'nyra',lvl:27,txt:'The Void Oozes of the Shattered Approach hum the same note as the crystals, only lower, like an echo. I need to hear it up close. Burst eight of them and let me listen to what is left.',obj:{kill:['voidooze'],n:8,lbl:'Void Ooze burst'},xp:4300,gold:80,item:2,done:'Yes… a deep, slow note. The whole Rift is singing one song, and something far away is conducting it.'},
+  {id:'r4',n:'Grimshard the Hungering',giver:'kaelen',lvl:29,req:'r1',txt:'Our scouts found the reason the Approach is crawling with creatures: Grimshard, a mass of void-crystal that eats everything that moves, on the westernmost island. Take friends. Break it.',obj:{kill:['grimshard'],n:1,lbl:'Grimshard shattered'},xp:11000,gold:180,item:3,done:'Grimshard is shards and dust. The Approach is ours. Now go north: Warden Sela holds a camp on the Crystal Wastes and she needs help.'},
+  {id:'r5',n:'The Singing Shards',giver:'sela',lvl:30,txt:'Welcome to the Wastes. Everything here sings, and the Shard Gnashers sing loudest: they swarm anyone who walks between the crystals. Clear ten of them so my wardens can scout.',obj:{kill:['shardgnasher'],n:10,lbl:'Shard Gnasher shattered'},xp:5200,gold:95,item:2,done:'Quieter already. You hear how the crystals hum on? That is not the Gnashers. That is the island itself.'},
+  {id:'r6',n:'Prism Hunt',giver:'sela',lvl:31,txt:'Prism Raptors run the Wastes in packs. Their scales split light like glass, and Riftwatch\'s armourer wants them to temper his steel. Bring me six Prismatic Scales.',obj:{collect:['prismraptor'],n:6,chance:.55,lbl:'Prismatic Scale collected',item:'Prismatic Scale'},xp:5500,gold:100,item:2,done:'Beautiful. Oswin will be pleased, and so am I: fewer raptors, fewer funerals.'},
+  {id:'r7',n:'Wings of Glass',giver:'nyra',lvl:32,txt:'Shardlings, little winged things of crystal, carry the song from island to island. If we silence enough of them, perhaps I can hear where it comes from. Eight should do.',obj:{kill:['shardling'],n:8,lbl:'Shardling silenced'},xp:5800,gold:105,item:2,done:'There. A gap in the song, and through the gap… a heartbeat, far to the north-east. Under the Throne of the Void.'},
+  {id:'r8',n:'Behemoths of the Wastes',giver:'sela',lvl:33,req:'r5',txt:'On the high island east of the Wastes walk the Crystal Behemoths: beasts of ice-blue crystal that crush tents for sport. My wardens will not go there. Six of them, and we can build a second camp.',obj:{kill:['crystalbehemoth'],n:6,lbl:'Crystal Behemoth felled'},xp:6300,gold:115,item:2,done:'Six! You fight like a whole squad of wardens.'},
+  {id:'r9',n:'The Prismatic Colossus',giver:'sela',lvl:35,req:'r8',txt:'In the middle of the eastern island stands the Prismatic Colossus, the largest crystal beast we have ever seen. Every Behemoth on that island answers to it. Bring a group and bring it down.',obj:{kill:['colossus'],n:1,lbl:'Colossus felled'},xp:15000,gold:260,item:3,done:'The Colossus has fallen and the Wastes are silent for the first time. Druid Fennick in the Twisted Grove, east of Riftwatch, sent word: something is rotting there.'},
+  {id:'r10',n:'Rot in the Roots',giver:'fennick',lvl:35,txt:'Ah, a hero, at last. The trees of the Grove were already strange when they fell into the Rift, but now Voidspores grow between their roots and poison everything. Pull up ten of them.',obj:{kill:['voidspore'],n:10,lbl:'Voidspore uprooted'},xp:6900,gold:120,item:2,done:'Already the leaves look brighter. Well, brighter for leaves that glow purple.'},
+  {id:'r11',n:'Lurkers in the Mire',giver:'fennick',lvl:36,txt:'Mire Lurkers creep out of the dark pools between the trees and drag my seedlings into the water. Eight of them, please, before they reach my camp.',obj:{kill:['mirelurker'],n:8,lbl:'Mire Lurker slain'},xp:7300,gold:125,item:2,done:'Wet work, but well done.'},
+  {id:'r12',n:'Barbs of the Nether Ray',giver:'nyra',lvl:37,txt:'Nether Rays glide over the Grove, and the barbs on their tails are hollow: they carry the song like a flute. Bring me six barbs and I will build something that can listen to it from far away.',obj:{collect:['netherray'],n:6,chance:.55,lbl:'Ray Barb collected',item:'Ray Barb'},xp:7700,gold:130,item:2,done:'A listening crystal… listen. It is coming from the Throne, as I feared. And someone is singing along. From the Voidspire Ruins.'},
+  {id:'r13',n:'Hollow Skulls',giver:'fennick',lvl:38,req:'r10',txt:'On the north-eastern island of the Grove float the Hollow Skulls: dead things filled with void-fire. My druid sense says they guard something. Clear eight.',obj:{kill:['hollowskull'],n:8,lbl:'Hollow Skull extinguished'},xp:8300,gold:140,item:2,done:'They guarded a ring of mushrooms… and in the middle of it sits something that thinks it is a king.'},
+  {id:'r14',n:'Mycelord Vashk',giver:'fennick',lvl:40,req:'r13',txt:'Mycelord Vashk, a mushroom grown fat on the void, rules the north-eastern island. Every spore in the Grove is his. Gather friends and cut him down at the stem.',obj:{kill:['vashk'],n:1,lbl:'Vashk cut down'},xp:19000,gold:320,item:3,done:'Vashk is compost! The Grove can breathe. Archivist Pell, in the Voidspire Ruins south of Riftwatch, has been asking for you.'},
+  {id:'r15',n:'The Fallen City',giver:'pell',lvl:40,txt:'These ruins were a city once, Voidspire, before the Rift swallowed it. I came to read its walls, but Void Stalkers hunt between them. Ten of them, please, so I can work.',obj:{kill:['voidstalker'],n:10,lbl:'Void Stalker slain'},xp:9000,gold:150,item:2,done:'Thank you. The walls speak of a cult that opened the Rift on purpose. And they are still here.'},
+  {id:'r16',n:'Riftwalkers',giver:'pell',lvl:41,txt:'Riftwalkers stride through the ruins as if they own them. Perhaps they did, once. They tear down every wall I am still reading. Eight of them.',obj:{kill:['riftwalker'],n:8,lbl:'Riftwalker slain'},xp:9500,gold:160,item:2,done:'The inscriptions are safe. And they name the cult: the Choir of the Void.'},
+  {id:'r17',n:'The Choir\'s Cipher',giver:'nyra',lvl:42,txt:'The Choir of the Void writes in a cipher. Its Assassins and Sentinels on the southern islands carry pages of it. Bring me six pages and I will read what they are singing for.',obj:{collect:['voidassassin','sentinel'],n:6,chance:.5,lbl:'Cipher Page collected',item:'Cipher Page'},xp:10000,gold:170,item:2,done:'They sing to wake it. Xal\'thuun, the Void Wyrm, sleeping beneath the Throne. Every note brings it closer to waking.'},
+  {id:'r18',n:'Sentinels of the Spire',giver:'pell',lvl:43,req:'r15',txt:'Masked Sentinels guard the high island of the ruins, where the Choir\'s leader hides. Bring down six so we can get close.',obj:{kill:['sentinel'],n:6,lbl:'Sentinel downed'},xp:10600,gold:180,item:2,done:'The way is open. At the top waits High Cultist Morvane, the Choir\'s voice.'},
+  {id:'r19',n:'High Cultist Morvane',giver:'pell',lvl:45,req:'r18',txt:'Morvane leads the Choir from the high island of the Voidspire Ruins. Silence her, and the song loses its voice. Take your strongest friends.',obj:{kill:['morvane'],n:1,lbl:'Morvane silenced'},xp:24000,gold:400,item:3,done:'Morvane is silent. But the song does not stop… it sings by itself now. Captain Ardyn, at the bridge to the Throne, waits for you.'},
+  {id:'r20',n:'Drakes of the Void',giver:'ardyn',lvl:45,txt:'You are the one who silenced Morvane? Then you can help me. Void Drakes circle the Throne of the Void, north-east of here across the long bridge. Bring down ten.',obj:{kill:['voiddrake'],n:10,lbl:'Void Drake downed'},xp:11300,gold:190,item:2,done:'Ten drakes! The bridge is ours again.'},
+  {id:'r21',n:'Horrors from Below',giver:'ardyn',lvl:46,txt:'Voidspawn Horrors crawl up from beneath the Throne island. Nyra says they are the Wyrm\'s dreams, given teeth. Eight of them.',obj:{kill:['voidhorror'],n:8,lbl:'Voidspawn Horror slain'},xp:11900,gold:200,item:2,done:'If those are its dreams, I do not want to see it awake.'},
+  {id:'r22',n:'The Dreadlords',giver:'ardyn',lvl:47,req:'r20',txt:'Dreadlords guard the Throne: demons that once served the Choir and now serve only the Wyrm. Seven of them, hero. After that, only the Wyrm remains.',obj:{kill:['dreadlord'],n:7,lbl:'Dreadlord slain'},xp:12600,gold:220,item:3,done:'The guards have fallen. Commander Kaelen wants you back at Riftwatch. It is time.'},
+  {id:'r23',n:'The Song Ends',giver:'kaelen',lvl:48,req:'r22',txt:'Xal\'thuun has woken. It circles the Throne of the Void, and as long as it lives, the Rift keeps growing. Gather the strongest heroes you know, cross the long bridge, and end the song. All of Velmora is counting on you.',obj:{kill:['xalthuun'],n:1,lbl:'Xal\'thuun slain'},xp:52000,gold:1200,item:4,done:'The Wyrm is dead and the song has stopped. Listen… for the first time, the Rift is silent. By order of Riftwatch, you are named Voidbreaker. No one in Velmora will forget this.'},
+  {id:'r24',n:'Beneath the Throne',giver:'nyra',lvl:48,req:'r23',txt:'The Wyrm is dead, yet I can still hear it: the Song. It comes from beneath the Throne of the Void. On the far side of the island, away from the long bridge, a gate has opened that was not there before: the Sanctum of the Silent Song, where the Choir first sang. Its door is held by Korvax, a guardian grown from the crystal of the Rift. Break him.',obj:{kill:['korvax'],n:1,lbl:'Korvax shattered'},xp:30000,gold:500,item:3,done:'Korvax is broken? Then the Sanctum is open. I have read every page of the Cipher, and one name keeps coming back: Ilvaya.'},
+  {id:'r25',n:'Keepers of the Sanctum',giver:'ardyn',lvl:47,req:'r23',txt:'Riftwatch scouts say the Sanctum beneath the Throne is full of the Choir\'s dead: chanters still singing with no breath in them, and hollow knights in rusted plate. Put ten of them to rest.',obj:{kill:['voidchanter','sanctumknight'],n:10,lbl:'Sanctum keepers defeated'},xp:14000,gold:240,item:3,done:'Ten fewer voices in that choir. Good. Every one counts.'},
+  {id:'r26',n:'The Last Seer',giver:'nyra',lvl:49,req:'r24',txt:'Ilvaya was the first Seer of the Choir, Morvane\'s sister. She did not die when the Rift opened: she became part of the Song. She waits in the great hall of the Sanctum, among the void pools. She steps through the Rift as easily as you walk, so do not stand where she stood.',obj:{kill:['ilvaya'],n:1,lbl:'Ilvaya silenced'},xp:36000,gold:600,item:3,done:'Her last words are in my notes now… "The Voice was here before us." Go to Kaelen. I fear what comes next.'},
+  {id:'r27',n:'The First Voice',giver:'kaelen',lvl:50,req:'r26',txt:'Nyra is right: the Choir did not make the Song, they only answered it. At the bottom of the Sanctum sings Nyxathar, the First Voice, the thing that broke our sky. Gather the strongest heroes of Velmora, go down, and silence it forever. When the Song falls silent, run from where the void erupts.',obj:{kill:['nyxathar'],n:1,lbl:'Nyxathar silenced'},xp:60000,gold:2000,item:4,done:'It is over. Truly over this time; listen, the Rift is quiet to its very roots. Riftwatch has no title high enough for you, so we made a new one: Voice of Velmora.'},
 ];
 /* the stable in Silverbrook (model: Quaternius, placed in 2_world.js) and Stablemaster Hob in front of it */
 const STABLE={x:56,z:27,ry:0};const STABLE_PETS=[{id:'whitehorse',dx:-8,dz:-8,ry:2.5},{id:'donkey',dx:10,dz:-1,ry:-2.3}];const STABLE_NPC=[56,17.4,Math.PI*.92];
@@ -194,7 +239,7 @@ const SUFFIX=[['of the Bear',0,1],['of the Tiger',1,0],['of the Eagle',.6,.6],['
 const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter'],
   riftwraith:['Wisp of Shadow','Torn Shroud'],voidimp:['Imp Horn','Void-Singed Tail'],voidooze:['Glob of Void Slime'],grimshard:['Hungering Shard'],shardgnasher:['Cracked Shard','Crystal Tooth'],prismraptor:['Prismatic Scale','Glass Claw'],shardling:['Shardling Wing'],crystalbehemoth:['Crystal Knuckle','Shattered Geode'],colossus:['Heart of the Colossus'],
   voidspore:['Spore Sac','Rotten Cap'],mirelurker:['Slick Fin','Mire Pearl'],netherray:['Ray Barb','Iridescent Skin'],hollowskull:['Hollow Skull Fragment','Cold Ember'],vashk:["Vashk's Crown of Spores"],voidstalker:['Stalker Tendril','Void-Black Eye'],riftwalker:['Riftwalker Horn','Warped Club'],voidassassin:['Shadowsilk Mask','Notched Blade'],sentinel:['Sentinel Mask Shard','Gilded Feather'],morvane:["Morvane's Codex"],
-  voiddrake:['Void Drake Fang','Night Scale'],voidhorror:['Writhing Tentacle'],dreadlord:['Dreadlord Horn','Infernal Chain'],xalthuun:["Xal'thuun's Eye"]};
+  voiddrake:['Void Drake Fang','Night Scale'],voidhorror:['Writhing Tentacle'],dreadlord:['Dreadlord Horn','Infernal Chain'],xalthuun:["Xal'thuun's Eye"],voidchanter:['Choir Hymnal','Tattered Choir Robe'],sanctumknight:['Hollow Helm Shard','Song-Etched Bone'],korvax:['Shardbound Heart'],ilvaya:["Ilvaya's Veil"],nyxathar:['Echo of the First Voice']};
 const ARM_SLOT={offhand:0,schouders:.8,rug:.5,hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
 const xpNeed=l=>40*l+15*l*l;
 const MAXLVL=50;
@@ -236,9 +281,17 @@ const MATS={
   'Elderwood':{m:'KS_resource-wood',t:'#d8b884',price:11,r:3,tag:'wood'},'Moonpetal':{m:'KN_flower_purpleA',t:'#e0c8ff',price:11,tag:'herb',r:3},
   'Elvian Hide':{m:'Q_Bag',t:'#7a8a5a',price:9,r:2},'Elvenhide Leather':{m:'Q_Bags',t:'#6a7a44',price:44,r:3},'Moonsilk Thread':{m:'KT_rope_bundle_A',t:'#d8e4ff',price:8,r:2},'Moonsilk Cloth':{m:'Q_Bag',t:'#c8d8ff',price:44,r:3},
   'Silverfin Trout':{m:'KS_fish',t:'#c8dce8',price:6,tag:'fish',r:1},'Moonmere Eel':{m:'KS_fish',t:'#6a7aa8',price:9,tag:'fish',r:1},'Elvian Salmon':{m:'KS_fish',t:'#ff9a7a',price:16,tag:'fish',r:2},'Crown Pike':{m:'KS_fish',t:'#ffe08a',price:55,tag:'fish',r:3},
-  'Silkweaver Gland':{m:'KS_bottle',t:'#8aff6a',price:4},'Antler of the Elder Stag':{m:'D_Bones',t:'#e8dcc0',price:20,r:2},
+  'Silkweaver Gland':{m:'KS_bottle',t:'#8aff6a',price:4},'Imp Horn':{m:'D_Bones',t:'#8a5ad8',price:6},'Prismatic Scale':{m:'Q_Crystal5',t:'#aee8ff',price:9,r:1},'Ray Barb':{m:'D_Bones',t:'#d07aff',price:10,r:1},'Cipher Page':{m:'Q_Parchment',t:'#c8b8ff',price:12,r:1},'Antler of the Elder Stag':{m:'D_Bones',t:'#e8dcc0',price:20,r:2},
   'Elvian Feast':{m:'KF_pot-stew',t:'#a8c870',price:46,r:3,food:{hp:.16,pow:.14,dur:1500,d:'+16% health and +14% power'}},
-  'Elixir of the Grove':{m:'KS_bottle-large',t:'#8affa8',price:50,r:3,elixir:{dmg:.15,arm:.25,dur:1200,d:'+15% damage and +25% armour'}}
+  'Elixir of the Grove':{m:'KS_bottle-large',t:'#8affa8',price:50,r:3,elixir:{dmg:.15,arm:.25,dur:1200,d:'+15% damage and +25% armour'}},
+  /* the Nether Rift (tiers V and VI) */
+  'Riftstone Ore':{m:'Q_Mineral',t:'#9a7aff',price:14,r:3,tag:'ore'},'Riftsteel Bar':{m:'Q_Gold_Ingots',t:'=#a890ff',price:64,r:3},
+  'Voidcrystal':{m:'Q_Crystal5',t:'#ff5ab8',price:22,r:4,tag:'ore'},'Voidforged Bar':{m:'Q_Gold_Ingots',t:'=#ff6ac8',price:95,r:4},
+  'Voidwood':{m:'KS_resource-wood',t:'#7a5a9a',price:15,r:3,tag:'wood'},'Voidbloom':{m:'KN_flower_purpleA',t:'#c06aff',price:15,tag:'herb',r:3},'Starpetal':{m:'KN_flower_yellowA',t:'#aef4ff',price:24,tag:'herb',r:4},
+  'Void Hide':{m:'Q_Bag',t:'#5a3a7a',price:13,r:3},'Voidhide Leather':{m:'Q_Bags',t:'#6a4a9a',price:60,r:3},'Wyrm Scale':{m:'Q_Crystal5',t:'#3a1a5a',price:24,r:4},'Wyrmscale Leather':{m:'Q_Bags',t:'#4a2a7a',price:92,r:4},
+  'Starsilk Thread':{m:'KT_rope_bundle_A',t:'#c8f4ff',price:12,r:3},'Starweave Cloth':{m:'Q_Bag',t:'#aee8ff',price:60,r:3},'Nether Silk':{m:'KT_rope_bundle_A',t:'#ff9ae8',price:20,r:4},'Nethersilk Cloth':{m:'Q_Bag',t:'#e88ae8',price:92,r:4},
+  "Riftwarden's Stew":{m:'KF_pot-stew',t:'#9a6ac8',price:60,r:3,food:{hp:.18,pow:.15,dur:1800,d:'+18% health and +15% power'}},'Starlight Feast':{m:'KF_pan-stew',t:'#aef4ff',price:90,r:4,food:{hp:.22,pow:.18,dur:2400,d:'+22% health and +18% power'}},
+  'Elixir of the Void':{m:'KS_bottle-large',t:'#b06aff',price:64,r:3,elixir:{dmg:.18,arm:.28,dur:1500,d:'+18% damage and +28% armour'}},'Elixir of Starlight':{m:'KS_bottle-large',t:'#aef8ff',price:96,r:4,elixir:{dmg:.22,arm:.32,dur:1800,d:'+22% damage and +32% armour'}}
 };
 /* old Dutch item names → new names (save migration) */
 const MAT_OLD={'Hout':'Wood','Stevig hout':'Sturdy Wood','IJzererts':'Iron Ore','Zilvererts':'Silver Ore','Zonnekruid':'Sunleaf','Maanbloem':'Moonbloom','Bloedwortel':'Bloodroot','Baars':'Perch','Karper':'Carp','Snoek':'Pike','Goudbaars':'Golden Perch','Meerspook':'Lake Phantom','Rauw vlees':'Raw Meat','Planken':'Planks','IJzerstaaf':'Iron Bar','Zilverstaaf':'Silver Bar','Kruidenpoeder':'Herb Powder','Gegrilde vis':'Grilled Fish','Jagersstoofpot':"Hunter's Stew",'Vissoep':'Fish Soup','Elixir van Woede':'Elixir of Fury','Elixir van IJzerhuid':'Elixir of Ironskin','Ruwe everhuid':'Rough Hide','Wolfspels':'Rough Hide','Spinrag':'Spider Silk'};
@@ -268,7 +321,17 @@ const RECIPES=[
   {id:'elvleather',sk:'leatherworking',st:'tannery',out:'Elvenhide Leather',q:1,in:[['Elvian Hide',2],['Moonpetal',1]],lv:34,t:2.8},
   {id:'moonsilk',sk:'tailoring',st:'loom',out:'Moonsilk Cloth',q:1,in:[['Moonsilk Thread',3],['Moonpetal',1]],lv:34,t:2.8},
   {id:'feast',sk:'cooking',st:'fire',out:'Elvian Feast',q:1,in:[['Fish',2,'fish'],['Raw Meat',1],['Moonpetal',1]],lv:36,t:3},
-  {id:'grove',sk:'alchemy',st:'cauldron',out:'Elixir of the Grove',q:1,in:[['Moonpetal',2],['Silkweaver Gland',1],['Herb Powder',1]],lv:36,t:3.2}
+  {id:'grove',sk:'alchemy',st:'cauldron',out:'Elixir of the Grove',q:1,in:[['Moonpetal',2],['Silkweaver Gland',1],['Herb Powder',1]],lv:36,t:3.2},
+  {id:'riftbar',sk:'smithing',st:'forge',out:'Riftsteel Bar',q:1,in:[['Riftstone Ore',3],['Voidwood',1]],lv:46,t:3},
+  {id:'voidbar',sk:'smithing',st:'forge',out:'Voidforged Bar',q:1,in:[['Voidcrystal',3],['Riftsteel Bar',1]],lv:58,t:3.2},
+  {id:'voidleather',sk:'leatherworking',st:'tannery',out:'Voidhide Leather',q:1,in:[['Void Hide',2],['Voidbloom',1]],lv:46,t:3},
+  {id:'wyrmleather',sk:'leatherworking',st:'tannery',out:'Wyrmscale Leather',q:1,in:[['Wyrm Scale',2],['Voidhide Leather',1]],lv:58,t:3.2},
+  {id:'starweave',sk:'tailoring',st:'loom',out:'Starweave Cloth',q:1,in:[['Starsilk Thread',3],['Voidbloom',1]],lv:46,t:3},
+  {id:'nethersilk',sk:'tailoring',st:'loom',out:'Nethersilk Cloth',q:1,in:[['Nether Silk',3],['Starweave Cloth',1]],lv:58,t:3.2},
+  {id:'riftstew',sk:'cooking',st:'fire',out:"Riftwarden's Stew",q:1,in:[['Raw Meat',2],['Voidbloom',1],['Herb Powder',1]],lv:48,t:3.2},
+  {id:'starfeast',sk:'cooking',st:'fire',out:'Starlight Feast',q:1,in:[['Fish',2,'fish'],['Raw Meat',2],['Starpetal',1]],lv:60,t:3.4},
+  {id:'voidelix',sk:'alchemy',st:'cauldron',out:'Elixir of the Void',q:1,in:[['Voidbloom',2],['Prismatic Scale',1],['Herb Powder',1]],lv:48,t:3.4},
+  {id:'starelix',sk:'alchemy',st:'cauldron',out:'Elixir of Starlight',q:1,in:[['Starpetal',2],['Voidcrystal',1],['Herb Powder',1]],lv:60,t:3.6}
 ];
 /* craftable gear: three tiers per profession. The armour type follows the class that wears it. */
 const GEAR_SETS={
@@ -276,32 +339,41 @@ const GEAR_SETS={
     {lv:0,il:5,pre:'Iron',mat:'Iron Bar',x:null,w:['Planks',2]},
     {lv:12,il:10,pre:'Silversteel',mat:'Silver Bar',x:['Iron Bar',2],w:['Planks',2]},
     {lv:25,il:16,pre:'Emberforged',mat:'Emberstone Bar',x:['Silver Bar',2],w:['Ashwood',2]},
-    {lv:38,il:23,pre:'Mithril',mat:'Mithril Bar',x:['Emberstone Bar',2],w:['Elderwood',2]}]},
+    {lv:38,il:23,pre:'Mithril',mat:'Mithril Bar',x:['Emberstone Bar',2],w:['Elderwood',2]},
+    {lv:50,il:34,pre:'Riftsteel',mat:'Riftsteel Bar',x:['Mithril Bar',2],w:['Voidwood',2]},
+    {lv:62,il:46,pre:'Voidforged',mat:'Voidforged Bar',x:['Riftsteel Bar',2],w:['Voidwood',3]}]},
   leatherworking:{cls:'jager',weap:[['Bow','boog']],tiers:[
     {lv:0,il:5,pre:'Tanned',mat:'Leather',x:null,w:['Planks',3]},
     {lv:12,il:10,pre:'Hardened',mat:'Thick Leather',x:['Leather',2],w:['Sturdy Wood',3]},
     {lv:25,il:16,pre:'Drakeskin',mat:'Drakeskin',x:['Thick Leather',2],w:['Ashwood',3]},
-    {lv:38,il:23,pre:'Elvenhide',mat:'Elvenhide Leather',x:['Drakeskin',2],w:['Elderwood',3]}]},
+    {lv:38,il:23,pre:'Elvenhide',mat:'Elvenhide Leather',x:['Drakeskin',2],w:['Elderwood',3]},
+    {lv:50,il:34,pre:'Voidhide',mat:'Voidhide Leather',x:['Elvenhide Leather',2],w:['Voidwood',3]},
+    {lv:62,il:46,pre:'Wyrmscale',mat:'Wyrmscale Leather',x:['Voidhide Leather',2],w:['Voidwood',3]}]},
   tailoring:{cls:'magier',weap:[['Staff','staf']],tiers:[
     {lv:0,il:5,pre:'Linen',mat:'Linen',x:null,w:['Planks',2]},
     {lv:12,il:10,pre:'Silken',mat:'Silk Cloth',x:['Linen',2],w:['Sturdy Wood',2]},
     {lv:25,il:16,pre:'Emberweave',mat:'Emberweave',x:['Silk Cloth',2],w:['Ashwood',2]},
-    {lv:38,il:23,pre:'Moonsilk',mat:'Moonsilk Cloth',x:['Emberweave',2],w:['Elderwood',2]}]}};
+    {lv:38,il:23,pre:'Moonsilk',mat:'Moonsilk Cloth',x:['Emberweave',2],w:['Elderwood',2]},
+    {lv:50,il:34,pre:'Starweave',mat:'Starweave Cloth',x:['Moonsilk Cloth',2],w:['Voidwood',2]},
+    {lv:62,il:46,pre:'Nethersilk',mat:'Nethersilk Cloth',x:['Starweave Cloth',2],w:['Voidwood',2]}]}};
 const GEAR_BASE={paladijn:{offhand:'Shield',rug:'Tabard Cape',hoofd:'Helm',borst:'Chestguard',handen:'Gauntlets',benen:'Legguards',voeten:'Sabatons'},krijger:{offhand:'Shield',rug:'Cape',hoofd:'Helm',borst:'Breastplate',handen:'Gauntlets',benen:'Legplates',voeten:'Sabatons'},jager:{offhand:'Quiver',rug:'Cloak',hoofd:'Hood',borst:'Tunic',handen:'Gloves',benen:'Leggings',voeten:'Boots'},magier:{offhand:'Tome',rug:'Cloak',hoofd:'Hat',borst:'Robe',handen:'Handwraps',benen:'Trousers',voeten:'Sandals'}};
 const GEAR_SLOT={offhand:[3,1],hoofd:[3,0],rug:[2,1],handen:[2,1],voeten:[2,2],benen:[4,3],wapen:[4,4],borst:[5,5]};/* [materiaal, extra vaardigheidsniveau] */
 /* a profession can also make the same gear for a second class (smithing: plate for warriors and paladins) */
 for(const sk in GEAR_SETS){const S0=GEAR_SETS[sk];for(const S of[S0,...(S0.alt?[{...S0,...S0.alt,suf:'p'}]:[])])S0.tiers.forEach((T,ti)=>{
   for(const slot in GEAR_SLOT){const[q,dl]=GEAR_SLOT[slot];const big=slot==='borst'||slot==='benen'||slot==='wapen';
     const wl=slot==='wapen'?S.weap:[[GEAR_BASE[S.cls][slot],null]];
-    wl.forEach(([bn,wt],wi)=>{const ins=[[T.mat,q]];if(T.x&&big)ins.push([T.x[0],T.x[1]]);if(slot==='wapen')ins.push([T.w[0],T.w[1]]);if(slot==='wapen'&&sk==='tailoring')ins.push([['Moonbloom','Bloodroot','Fireblossom','Moonpetal'][ti],2]);
+    wl.forEach(([bn,wt],wi)=>{const ins=[[T.mat,q]];if(T.x&&big)ins.push([T.x[0],T.x[1]]);if(slot==='wapen')ins.push([T.w[0],T.w[1]]);if(slot==='wapen'&&sk==='tailoring')ins.push([['Moonbloom','Bloodroot','Fireblossom','Moonpetal','Voidbloom','Starpetal'][ti],2]);
       RECIPES.push({id:sk+ti+slot+(wi||'')+(S.suf||''),sk,st:LIFE[sk].st,gear:{slot,cls:S.cls,il:T.il,wt,tier:ti},out:T.pre+' '+bn,q:1,in:ins,lv:T.lv+dl+(wi?1:0),t:3.2+ti*.4})})}})}
 /* rings, smithed for your own class */
 RECIPES.push({id:'ring1',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:10,tier:1},out:'Silver Band',q:1,in:[['Silver Bar',3],['Moonbloom',2]],lv:15,t:3.4},
   {id:'ring2',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:16,tier:2},out:'Ember Signet',q:1,in:[['Emberstone Bar',3],['Silver Bar',1]],lv:28,t:3.8},
-  {id:'ring3',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:23,tier:3},out:'Mithril Crown Ring',q:1,in:[['Mithril Bar',3],['Moonpetal',2]],lv:42,t:4});
+  {id:'ring3',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:23,tier:3},out:'Mithril Crown Ring',q:1,in:[['Mithril Bar',3],['Moonpetal',2]],lv:42,t:4},
+  {id:'ring4',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:36,tier:4},out:'Riftsteel Band',q:1,in:[['Riftsteel Bar',3],['Voidbloom',2]],lv:54,t:4.2},
+  {id:'ring5',sk:'smithing',st:'forge',gear:{slot:'ring',cls:null,il:48,tier:5},out:'Voidforged Signet',q:1,in:[['Voidforged Bar',3],['Starpetal',2]],lv:66,t:4.4});
 const FISH=[['Perch',45],['Carp',30],['Pike',17],['Golden Perch',6],['Lake Phantom',2]];
 const ELV_FISH=[['Silverfin Trout',44],['Moonmere Eel',30],['Elvian Salmon',18],['Golden Perch',6],['Crown Pike',2]];
 /* beasts you can skin after looting: [material, chance, extra material at higher skill] */
 const SKIN={ever:{it:'Rough Hide',lv:0},wolf:{it:'Rough Hide',lv:0,x:['Thick Hide',8]},spin:{it:'Spider Silk',lv:5},raptor:{it:'Drake Scale',lv:20,x:['Thick Hide',0]},vleer:{it:'Thick Hide',lv:15},welp:{it:'Drake Scale',lv:20},lavadrake:{it:'Drake Scale',lv:22,n:3},broedling:{it:'Drake Scale',lv:20},
-  elvwolf:{it:'Elvian Hide',lv:30},elvspider:{it:'Moonsilk Thread',lv:30,n:2},fenraptor:{it:'Elvian Hide',lv:32,x:['Drake Scale',0]},elderstag:{it:'Elvian Hide',lv:34,n:3},oakheart:{it:'Elvian Hide',lv:30,n:5},thornspider:{it:'Moonsilk Thread',lv:30,n:2},silkmother:{it:'Moonsilk Thread',lv:30,n:6}};
+  elvwolf:{it:'Elvian Hide',lv:30},elvspider:{it:'Moonsilk Thread',lv:30,n:2},fenraptor:{it:'Elvian Hide',lv:32,x:['Drake Scale',0]},elderstag:{it:'Elvian Hide',lv:34,n:3},oakheart:{it:'Elvian Hide',lv:30,n:5},thornspider:{it:'Moonsilk Thread',lv:30,n:2},silkmother:{it:'Moonsilk Thread',lv:30,n:6},
+  prismraptor:{it:'Void Hide',lv:40},crystalbehemoth:{it:'Void Hide',lv:42,n:2},mirelurker:{it:'Void Hide',lv:40},voidstalker:{it:'Void Hide',lv:44},netherray:{it:'Starsilk Thread',lv:40,n:2},voidspore:{it:'Starsilk Thread',lv:40},voidhorror:{it:'Nether Silk',lv:52,n:2},voiddrake:{it:'Wyrm Scale',lv:52},xalthuun:{it:'Wyrm Scale',lv:50,n:8},colossus:{it:'Void Hide',lv:40,n:4}};
 const BAG=36;

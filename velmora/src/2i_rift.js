@@ -62,6 +62,8 @@ const RIFT_W=riftR(RISLE.hub,Math.PI);
 const RIFT_EXIT={x:RISLE.hub.x-(RIFT_W-8),z:RISLE.hub.z};/* the gate home, on the west rim of Riftwatch */
 const RIFT_ENTRY={x:RIFT_EXIT.x+9,z:RIFT_EXIT.z+2};
 const RIFT_GATE={x:ELV.x+175,z:ELV.z-60};/* in the woods east of WindStorm */
+/* the gate down to the Sanctum of the Silent Song: on the Throne island, on the far side from the long bridge */
+const SANCTUM_GATE=(()=>{const I=RISLE.t1,C=RISLE.c2;const a=Math.atan2(I.z-C.z,I.x-C.x);const d=Math.min(60,riftR(I,a)-16);return{x:I.x+Math.cos(a)*d,z:I.z+Math.sin(a)*d,ry:Math.atan2(-Math.cos(a),-Math.sin(a))}})();
 /* ---- materials: toon with vertex colours and a per-vertex glow (veins of light in the rock, cracks in the crystal fields) ---- */
 function riftGlowMat(o={}){const m=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:RAMP,...o});
   m.onBeforeCompile=sh=>{sh.vertexShader='attribute float glow;\nvarying float vGlow;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGlow=glow;');
@@ -136,7 +138,17 @@ const RW_NPCS=[
   {id:'tessa',n:'Provisioner Tessa',t:'Supplies',look:{skin:0xe2b48e,hair:0x6a2a5a,chest:0x5a3a6a,pants:0x3a2a3a,wt:'none'},hi:'Potions, food, bandages. And I buy anything you bring back from the islands, crystals especially.',shop:1},
   {id:'brom',n:'Innkeeper Brom',t:'The Last Lantern',look:{skin:0xd9a98a,hair:0x4a3020,chest:0x6a3a2a,pants:0x3a2a20,wt:'none',beard:1},hi:'Welcome to the Last Lantern, the only warm hearth this side of the Gate. Rest here and your hearthstone brings you back.',inn:'rw'},
   {id:'lyra',n:'Skymistress Lyra',t:'Drake Roost',look:{skin:0xf0d2b8,hair:0x2a1a3a,chest:0x3a2a4a,pants:0x2a2030,cape:0x6a3aa8,wt:'none'},hi:'Out here a drake is not a luxury, it is how you get home when a bridge falls. The Nether Drakes were born in this light.',stable:1}];
-for(const n of RW_NPCS){const[u,v,ry]=RW_NPC_SPOTS[n.id];NPCS.push({...n,x:RW.x+u,z:RW.z+v,ry})}
+/* field camps of the Rift Wardens, a little way in from the bridge that leads to each region */
+const RIFT_CAMPS=(()=>{const at=(bi,end,d)=>{const B=RIFT_BR[bi];return end?{x:B.x1+B.ux*d,z:B.z1+B.uz*d,ry:Math.atan2(-B.ux,-B.uz)}:{x:B.x0-B.ux*d,z:B.z0-B.uz*d,ry:Math.atan2(B.ux,B.uz)}};
+  return{sela:at(4,1,13),fennick:at(6,1,13),pell:at(8,1,13),ardyn:at(10,0,13)}})();
+RW_NPCS.push(
+  {id:'sela',n:'Warden Sela',t:'Rift Wardens · Crystal Wastes',look:{skin:0xe2b48e,hair:0xd8d8e8,chest:0x3a3a6a,pants:0x22222e,cape:0x4a6ab8,wt:'boog'},hi:'Mind the crystals. Some of them bite.'},
+  {id:'fennick',n:'Druid Fennick',t:'The Twisted Grove',look:{skin:0xd9a98a,hair:0x6a5a3a,chest:0x3a5a4a,pants:0x2a3a2a,cape:0x2a6a5a,wt:'staf',beard:1},hi:'Even here, in the void, trees want to grow. I mean to let them.'},
+  {id:'pell',n:'Archivist Pell',t:'Voidspire Ruins',look:{skin:0xf0d2b8,hair:0x8a8a8a,chest:0x5a4a3a,pants:0x3a3028,wt:'none',beard:1},hi:'Every wall here is a page. Most of them are screaming.'},
+  {id:'ardyn',n:'Captain Ardyn',t:'Rift Wardens · the long bridge',look:{skin:0xc8906a,hair:0x1a1a1a,chest:0x4a2a3a,pants:0x2a2028,cape:0x6a1a3a,wt:'zwaard',helm:1},hi:'Beyond this bridge lies the Throne of the Void. Nothing comes back from there unless we bring it back.'});
+for(const id in RIFT_CAMPS){const c=RIFT_CAMPS[id];RW_NPC_SPOTS[id]=null;addLight(c.x,riftH(c.x,c.z)+2,c.z,0xffb060,24,14);addCol(c.x+Math.sin(c.ry+1.2)*5,c.z+Math.cos(c.ry+1.2)*5,2.2)}
+for(const n of RW_NPCS)if(RIFT_CAMPS[n.id]){const c=RIFT_CAMPS[n.id];NPCS.push({...n,x:c.x,z:c.z,ry:c.ry})}
+for(const n of RW_NPCS){if(RIFT_CAMPS[n.id])continue;const[u,v,ry]=RW_NPC_SPOTS[n.id];NPCS.push({...n,x:RW.x+u,z:RW.z+v,ry})}
 /* the anchor: a great crystal floating above the plaza that holds the island together */
 const RW_ANCHOR={x:RW.x,z:RW.z+4};addCol(RW_ANCHOR.x,RW_ANCHOR.z,2.4);addLight(RW_ANCHOR.x,RW_H+5,RW_ANCHOR.z,0x9a6aff,40,30,false);
 for(const[u,v]of[[-12,-6],[12,-6],[-12,16],[12,16]]){addCol(RW.x+u,RW.z+v,.8);addLight(RW.x+u,RW_H+2.6,RW.z+v,0xb08aff,16,12)}
@@ -180,7 +192,7 @@ async function buildRift(){if(window.__NOGLTF)return;const R=mulberry(8181);cons
   const put=(n,x,z,ry,s,y=0)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],scene,y);
   /* places on an island: away from its rim, the bridge heads and Riftwatch */
   const heads=RIFT_BR.flatMap(b=>[[b.x0,b.z0],[b.x1,b.z1]]);
-  const okI=(I,x,z,clear=3)=>{const s=riftIsle(x,z);if(!s||s.I!==I||s.d>s.R-clear-1.5)return false;if(heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<clear+7))return false;if(riftBridge(x,z))return false;if(I.id==='hub'&&Math.hypot(x-RW.x,z-RW.z)<52)return false;return true};
+  const okI=(I,x,z,clear=3)=>{const s=riftIsle(x,z);if(!s||s.I!==I||s.d>s.R-clear-1.5)return false;if(heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<clear+7))return false;if(riftBridge(x,z))return false;if(I.id==='hub'&&Math.hypot(x-RW.x,z-RW.z)<52)return false;if(Math.hypot(x-SANCTUM_GATE.x,z-SANCTUM_GATE.z)<16)return false;return true};
   const scatter=(I,n,clear,f)=>{const L=[];for(let i=0;i<n*30&&L.length<n;i++){const a=R()*6.28,d=Math.sqrt(R())*I.r*1.15,x=I.x+Math.cos(a)*d,z=I.z+Math.sin(a)*d;if(!okI(I,x,z,clear))continue;if(L.some(t=>Math.hypot(t.x-x,t.z-z)<clear*1.6))continue;L.push(f?f(x,z):{x,z,ry:R()*6.28,s:1})}return L};
   const isles=k=>RIFT_ISLES.filter(I=>I.col===k);
   const crystals=['../rift/Crystal_1','../rift/Crystal_3','../rift/Crystal_6','../rift/Crystal_7','../rift/Crystal_2'],smallC=['../rift/Crystal_4','../rift/Crystal_8','../rift/Crystal_9','../rift/Crystal_5'];
@@ -234,6 +246,10 @@ async function buildRift(){if(window.__NOGLTF)return;const R=mulberry(8181);cons
   {const g=new THREE.Group();g.position.set(RW_ANCHOR.x,RW_H+4.2,RW_ANCHOR.z);g.userData.dyn=1;scene.add(g);RIFT_SPIN.push(g);
     jobs.push(loadEnv('../rift/Crystal_9').then(src=>{if(!src)return;const o=envClone(src);const s=o.userData.size;o.scale.setScalar(5.5/s[1]);o.position.y=-2.4;o.traverse(m=>{if(m.isMesh){m.material=new THREE.MeshToonMaterial({color:0xc8a8ff,gradientMap:RAMP,emissive:new THREE.Color(0x8a4aff),emissiveIntensity:.9})}});g.add(o)}));
     const ring=new THREE.Mesh(new THREE.RingGeometry(3.4,4,64).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xa06aff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));ring.position.set(RW_ANCHOR.x,RW_H+.08,RW_ANCHOR.z);ring.userData.dyn=1;scene.add(ring);RIFT_SPIN.push(ring)}
+  /* the wardens' camps: a tent, a campfire and a crate or two */
+  for(const id in RIFT_CAMPS){const c=RIFT_CAMPS[id],a=c.ry+1.2;const tx=c.x+Math.sin(a)*5,tz=c.z+Math.cos(a)*5;jobs.push(put('S_Tent',tx,tz,c.ry+Math.PI,.24).then(o=>tintObj(o,new THREE.Color(.62,.55,.85))));
+    const fx=c.x+Math.sin(c.ry-1.3)*3.4,fz=c.z+Math.cos(c.ry-1.3)*3.4;jobs.push(put('D_Woodfire',fx,fz,0,1.6));{const f=new THREE.Group();f.position.set(fx,riftH(fx,fz)+.25,fz);scene.add(f);addFlame(f,0,.25,0,2,0xff9a40)}addCol(fx,fz,.9);
+    jobs.push(put('Crate',c.x+Math.sin(a+1.4)*4,c.z+Math.cos(a+1.4)*4,R()*3,1.1));jobs.push(put('T_banner-red',c.x+Math.sin(a-.6)*6,c.z+Math.cos(a-.6)*6,c.ry,3.4).then(o=>tintObj(o,new THREE.Color(.55,.35,1.2))))}
   /* the gates: an arch and two columns, like the gate of Elvia */
   for(const[gx,gz,c]of[[RIFT_GATE.x,RIFT_GATE.z,0x5a4a7a],[RIFT_EXIT.x,RIFT_EXIT.z,0x4a4a6a]]){jobs.push(put('D_Arch',gx,gz,Math.PI/2,2.6).then(o=>tintObj(o,STONE)));for(const sd of[-1,1])jobs.push(envPlace('D_Column',gx,gz+sd*(2.05*2.6+1.4),0,()=>[1.2,1.5,1.2]).then(o=>recolorObj(o,c)))}
   /* a ring of fallen stones and shards around the gate in Elvia */

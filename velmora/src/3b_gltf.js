@@ -93,7 +93,8 @@ const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_S
   bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'},ysolde:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'Spellbook_open'},
   corwin:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},liora:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},sabine:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},aurelia:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
   tomas:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},elinor:{m:'Rogue',props:[],w:null},gerrit:{m:'Barbarian',props:[],w:'Mug'},brannoc:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},wren:{m:'Rogue',props:['Rogue_Cape'],w:null},mabel:{m:'Barbarian',props:[],w:'Mug'},hob:{m:'Barbarian',props:[],w:'Mug'},
-  kaelen:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},nyra:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},oswin:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},tessa:{m:'Rogue',props:[],w:null},brom:{m:'Barbarian',props:[],w:'Mug'},lyra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:null}};
+  kaelen:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},nyra:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},oswin:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},tessa:{m:'Rogue',props:[],w:null},brom:{m:'Barbarian',props:[],w:'Mug'},lyra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:null},
+  sela:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},fennick:{m:'Mage',props:['Mage_Cape'],w:'2H_Staff'},pell:{m:'Mage',props:[],w:'Spellbook_open'},ardyn:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Round_Shield'],w:'1H_Sword'}};
 function buildGltfNpc(id,look){const d=NPC_GLTF[id]||NPC_GLTF.guard;const h=look.dwarf?1.5:1.78;
   return buildGltfRig({model:d.m,h,props:d.props,weaponMesh:d.w,wt:look.wt,...(look.tusks?{skin:look.skin,hair:look.hair,orc:1}:{}),o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:look.dwarf?'dwerg':'mens',...look})})}
 /* monsters */
@@ -171,6 +172,11 @@ const MON_GLTF={
   voidhorror:{m:'rift/M_Hywirl',h:1.8,cm:CM_UFLY,tint:{Hywirl_Main:0x4a0a6a},glow:{Eye_White:0xff4ab0}},
   dreadlord:{m:'rift/M_DemonBiped',h:2.1,cm:CM_UBIP,tint:{Demon_Main:0x5a1424,Black:0x140a10},glow:{Eye_White:0xff6a3a}},
   xalthuun:{m:'rift/M_DragonEvolved',h:2.2,cm:{...CM_UFLY,hit:null},tint:{Dragon_Main:0x1a0a2a,Dragon_Secondary:0x7a2ad8,Dragon_Horn:0xe8d8ff},glow:{Eye_White:0xff3ab0}},
+  voidchanter:{m:'Skeleton_Mage',h:1.78,props:['Skeleton_Mage_Hat'],wt:'staf',wm:'XS_Skeleton_Staff',cm:{...CM_SKEL,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},eye:0xff6ad8},
+  sanctumknight:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'bijl',wr:3,wm:'XS_Skeleton_Axe',cm:{...CM_SKEL,cidle:'2H_Melee_Idle',atk:{def:ATK_2H}},eye:0xc08aff},
+  korvax:{m:'rift/M_YetiBiped',h:1.9,cm:CM_UBIP,tint:{Yeti_Main:0x4a3a8a,Yeti_Secondary:0xd8b8ff},glow:{Eye_White:0xff6ad8}},
+  ilvaya:{m:'Mage',h:1.82,props:['Mage_Hat','Mage_Cape'],wt:'staf',cm:{...CM_KAY,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},skin:0xd8c8f0,hair:0xf0e8ff,tint:{}},
+  nyxathar:{m:'rift/M_DemonBiped',h:2.1,cm:CM_UBIP,tint:{Demon_Main:0x1e0e32,Black:0x8a3ae8},glow:{Eye_White:0xff3ab0}},
   vyraxion:{drk:1,m:'Dragon',h:7.2,cm:{...CM_DRAGON,hit:null},tint:{Main:0x8e1c12,Wings:0x3a0c08,Belly:0xe8a840,Claws:0x161210},glow:{Eyes:0xffc030}}};
 function buildGltfMon(type,lvl,sc){const d=MON_GLTF[type];if(!d)return null;
   return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,noProcW:!!d.wm,wmodel:d.wm,smodel:d.sm,cm:d.cm,quad:d.quad,spider:d.spider,tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair,o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}

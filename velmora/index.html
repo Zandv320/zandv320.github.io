@@ -438,6 +438,7 @@ body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(
 #pTalent h3 .tpts.has{background:#3d7a1a;box-shadow:0 0 8px #9fe060}
 #tTabs{display:none}
 #tTrees{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#tTrees{max-height:calc(100vh - 170px);overflow-y:auto;overscroll-behavior:contain}
 .ttree{background:rgba(30,16,6,.35);border-radius:10px;padding:8px 6px 10px;position:relative}
 .ttree>header{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#fff3d6;font-weight:700}
 .ttree>header canvas{width:30px;height:30px;border-radius:6px}.ttree>header small{margin-left:auto;font-weight:400;opacity:.85}

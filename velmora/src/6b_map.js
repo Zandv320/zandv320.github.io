@@ -152,7 +152,7 @@ function* elvAtlasGen(){const N=isTouch?900:1400,k=N/ESZ,X0=ELV.x-ESZ/2,Z0=ELV.z
   EATLAS.c=c}
 /* which picture the map shows where you are: Velmora, the Dragon Realm or a dungeon (world rectangle in metres) */
 function mapSource(){const x=ME.pos.x;
-  if(x>1250){const D=x>2200?D4:x>1700?D3:D2;return{key:D.name,img:D.img,x0:D.X-D.C/2*D.c,z0:D.Z-D.R/2*D.c,w:D.C*D.c,h:D.R*D.c,title:D.name,dun:1}}
+  if(x>1250){const D=x>2800?D5:x>2200?D4:x>1700?D3:D2;return{key:D.name,img:D.img,x0:D.X-D.C/2*D.c,z0:D.Z-D.R/2*D.c,w:D.C*D.c,h:D.R*D.c,title:D.name,dun:1}}
   if(x>700)return{key:'crypt',img:dunImg,x0:DUN.x-DC/2*DUN.c,z0:DUN.z-DR/2*DUN.c,w:DC*DUN.c,h:DR*DUN.c,title:'Crypt of Kaal-Morath',dun:1};
   if(inRift(x))return{key:'rift',img:riftImg,x0:RIFT.x-RSZ/2,z0:RIFT.z-RSZ/2,w:RSZ,h:RSZ,title:'The Nether Rift'};
   if(inElv(x))return{key:'elv',img:elvAtlasBuild(),x0:ELV.x-ESZ/2,z0:ELV.z-ESZ/2,w:ESZ,h:ESZ,title:'The Woods of Elvia'};
@@ -165,8 +165,8 @@ const MAP_LABELS={vel:[[0,'Twilight Wood',-30,-150],[0,'Ashen Hills',205,-215],[
   elv:[[0,'WindStorm',WS.x,WS.z-WS.R-14],[0,'Elvian Highlands',ELV.x+40,ELV.z-300],[0,'Silverfall Lake',ELV.x-100,ELV.z-100],[0,'Moonmere',ELV.x+250,ELV.z-108],[0,'Lake Elvia',ELV.x+70,ELV.z+262],[0,'Fernwater',ELV.x-300,ELV.z+250],[0,'Whispering Glade',ELV.x-330,ELV.z-60],[0,'Thornwood',ELV.x+330,ELV.z+120],
     [1,'⬅ To the Dragon Realm',ELV_EXIT.x+40,ELV_EXIT.z-12],[1,'Silverfalls',ELV.x-104,ELV.z-178],[1,'Moonfall',ELV.x+256,ELV.z-178],[1,'Harbour',WS.x,WS.z+WS.R+44],[1,'Citadel',WS_CIT.x,WS_CIT.z-WS_CIT.r-6],[1,'Outlaw Camp',ELV_CAMP.x,ELV_CAMP.z-20],[1,'Oakheart\'s Grove',ELV.x-210,ELV.z-336],[1,'Thornroot Hollow',HOLLOW.x,HOLLOW.z-16],
     [2,'Royal Castle',WS_CIT.x,WS_CIT.z+4],[2,'Cathedral',WS.x-55,WS.z-74],[2,'Grand Plaza',WS.x,WS.z-30],[2,'Market',WS.x-36,WS.z-36],[2,'The Gilded Gryphon',WS.x-50,WS.z+76],[2,'Barracks',WS.x+86,WS.z-38],[2,'Waystone',WS.x+15,WS.z+24],[1,'Rift Gate ➜',RIFT_GATE.x,RIFT_GATE.z-12]],
-  rift:[[0,'Riftwatch',RW.x,RW.z-48],[0,'Shattered Approach',RISLE.a3.x+30,RISLE.a3.z-40],[0,'Crystal Wastes',RISLE.c1.x,RISLE.c1.z-70],[0,'The Twisted Grove',RISLE.g1.x+20,RISLE.g1.z-60],[0,'Voidspire Ruins',RISLE.r1.x,RISLE.r1.z+70],[0,'Throne of the Void',RISLE.t1.x,RISLE.t1.z-60],
-    [1,'⬅ Gate to Elvia',RIFT_EXIT.x-6,RIFT_EXIT.z+12],[1,'The Last Lantern',RW.x+25,RW.z+22],[1,'Drake Roost',RW.x-26,RW.z+34],[1,'The Anchor',RW_ANCHOR.x,RW_ANCHOR.z+8]],
+  rift:[[0,'Riftwatch',RW.x,RW.z-48],[0,'Shattered Approach',RISLE.a3.x+30,RISLE.a3.z-40],[0,'Crystal Wastes',RISLE.c1.x,RISLE.c1.z-70],[0,'The Twisted Grove',RISLE.g1.x+20,RISLE.g1.z-60],[0,'Voidspire Ruins',RISLE.r1.x,RISLE.r1.z+70],[0,'Throne of the Void',RISLE.t1.x,RISLE.t1.z-60],[1,'Sanctum of the Silent Song',SANCTUM_GATE.x,SANCTUM_GATE.z+12],
+    [1,'⬅ Gate to Elvia',RIFT_EXIT.x-6,RIFT_EXIT.z+12],[1,'The Last Lantern',RW.x+25,RW.z+22],[1,'Drake Roost',RW.x-26,RW.z+34],[1,'The Anchor',RW_ANCHOR.x,RW_ANCHOR.z+8],[1,"Sela's Camp",RIFT_CAMPS.sela.x,RIFT_CAMPS.sela.z-8],[1,"Fennick's Camp",RIFT_CAMPS.fennick.x,RIFT_CAMPS.fennick.z-8],[1,"Pell's Camp",RIFT_CAMPS.pell.x,RIFT_CAMPS.pell.z+10],[1,"Ardyn's Post",RIFT_CAMPS.ardyn.x,RIFT_CAMPS.ardyn.z-8]],
   drk:[[1,'⬅ To Silverdale',-170,-10],[1,'Volcano door',-50,-12],[0,"Dragonhunters' Camp",-138,48],[0,'Mount Dragonrest',0,-24],[0,'Dragon Nests',10,150],[0,'Shrines',122,-62],[0,'Fire Fields',0,-150],[0,'Ash Plains',-95,-110]]};
 function mapFit(){const S=MAPST.src;return Math.min(MAPST.w/S.w,MAPST.h/S.h)}
 function mapResize(){const c=$('#bigmap');const r=c.getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);const w=Math.max(200,Math.round(r.width)),h=Math.max(200,Math.round(r.height));

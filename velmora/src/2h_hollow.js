@@ -45,7 +45,7 @@ const HOLLOW_PORTAL=portalMesh(0x7aff5a,HOLLOW_S,HOLLOW.x,elvH(HOLLOW.x,HOLLOW.z
 /* ---- travel ---- */
 function enterHollow(){teleport(D4.entry.x,D4.entry.z);ME.ry=Math.PI;cam.yaw=0;log('Damp air, the smell of rot and silk: you descend into the Thornroot Hollow…','sys');if(P.level<23)log('Beware: the Thornroot Hollow is meant for a group of heroes of level 23 or higher.','err')}
 function leaveHollow(){teleport(HOLLOW.x,HOLLOW.z-8);ME.ry=Math.PI;cam.yaw=0}
-const inHollow=x=>x>2200;
+const inHollow=x=>x>2200&&x<2800;
 /* walking through a portal (called from drakePortals) and pressing F (from drakeInteract) */
 function hollowPortals(x,z){if(inElv(x)&&Math.hypot(x-HOLLOW.x,z-HOLLOW.z)<2.3){enterHollow();return true}if(inHollow(x)&&Math.hypot(x-D4.exit.x,z-(D4.exit.z+1.4))<2){leaveHollow();return true}return false}
 function hollowInteract(x,z){if(inElv(x)&&Math.hypot(x-HOLLOW.x,z-HOLLOW.z)<7){enterHollow();return true}if(inHollow(x)&&Math.hypot(x-D4.exit.x,z-D4.exit.z)<6){leaveHollow();return true}return false}

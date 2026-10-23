@@ -20,13 +20,19 @@ const NODES=[];
   const hiE=(x,z)=>(z-ELV.z)<elvCliff(x-ELV.x)-12;
   placeE('erts','Mithril Ore',10,ELV.x+40,ELV.z-310,110,hiE);placeE('erts','Mithril Ore',6,ELV.x+330,ELV.z+150,70);
   placeE('hout','Elderwood',10,ELV.x-260,ELV.z-20,120);placeE('hout','Elderwood',6,ELV.x+300,ELV.z+60,80);
-  for(const l of ELV_LAKES)placeE('kruid','Moonpetal',l.r>60?6:4,l.x,l.z,l.r*1.6)}
+  for(const l of ELV_LAKES)placeE('kruid','Moonpetal',l.r>60?6:4,l.x,l.z,l.r*1.6);
+  /* the Nether Rift: Riftstone and Voidwood on the near islands, Voidcrystal and Starpetal further out and on the islets */
+  const okR=(x,z)=>{const s=riftIsle(x,z);return!!s&&s.d<s.R-4&&!riftBridge(x,z)&&Math.hypot(x-RW.x,z-RW.z)>55&&!Object.values(RIFT_CAMPS).some(c=>Math.hypot(c.x-x,c.z-z)<12)};
+  const placeRi=(type,item,count,ids)=>{for(const id of ids){const I=RISLE[id];for(let i=0,t=0;i<count&&t<600;t++){const a=r()*6.28,d=Math.sqrt(r())*I.r,x=I.x+Math.cos(a)*d,z=I.z+Math.sin(a)*d;if(!okR(x,z))continue;NODES.push({id:'n'+NODES.length,type,item,x,z});i++}}};
+  placeRi('erts','Riftstone Ore',4,['a1','a2','a3','c1','g1']);placeRi('hout','Voidwood',4,['a1','a3','g1','g2']);placeRi('kruid','Voidbloom',4,['a2','a3','g1','g2','c1']);
+  placeRi('erts','Voidcrystal',4,['c2','r2','t1']);placeRi('kruid','Starpetal',3,['r1','r2','t1','c2']);
+  for(const I of RIFT_ISLES)if(I.islet&&r()<.7)NODES.push({id:'n'+NODES.length,type:r()<.5?'erts':'kruid',item:r()<.5?'Voidcrystal':'Starpetal',x:I.x+(r()-.5)*I.r*.6,z:I.z+(r()-.5)*I.r*.6})}
 const NODE_N={hout:'Fallen Trunk',erts:'Ore Vein',kruid:''};
 const NODE_SK={hout:'woodcutting',erts:'mining',kruid:'herbalism'};
-const NODE_REQ={'Silver Ore':10,'Emberstone':20,'Ashwood':20,'Moonbloom':5,'Bloodroot':10,'Fireblossom':20,'Mithril Ore':30,'Elderwood':30,'Moonpetal':30};
-const NODE_COL={'Iron Ore':0xc8783a,'Silver Ore':0xdfe8f2,'Emberstone':0xff5a1a,'Sunleaf':0xffd94a,'Moonbloom':0x7ab8ff,'Bloodroot':0xe04040,'Flax':0xc8e0a0,'Fireblossom':0xff7a20};
+const NODE_REQ={'Riftstone Ore':40,'Voidwood':40,'Voidbloom':40,'Voidcrystal':52,'Starpetal':52,'Silver Ore':10,'Emberstone':20,'Ashwood':20,'Moonbloom':5,'Bloodroot':10,'Fireblossom':20,'Mithril Ore':30,'Elderwood':30,'Moonpetal':30};
+const NODE_COL={'Riftstone Ore':0x9a6aff,'Voidcrystal':0xff4ab8,'Voidbloom':0xc06aff,'Starpetal':0x9af4ff,'Iron Ore':0xc8783a,'Silver Ore':0xdfe8f2,'Emberstone':0xff5a1a,'Sunleaf':0xffd94a,'Moonbloom':0x7ab8ff,'Bloodroot':0xe04040,'Flax':0xc8e0a0,'Fireblossom':0xff7a20};
 for(const n of NODES){const g=new THREE.Group();const y=groundH(n.x,n.z);g.position.set(n.x,y,n.z);g.rotation.y=hash(n.x|0,n.z|0)*6;scene.add(g);n.g=g;n.y=y;n.kind='node';n.rig={h:.8};
-  n.name=n.type==='kruid'?n.item:n.type==='erts'?n.item.replace(/ Ore$/,'')+' Vein':n.item==='Ashwood'?'Ashwood Trunk':NODE_N[n.type];
+  n.name=n.type==='kruid'?n.item:n.type==='erts'?n.item.replace(/ Ore$/,'')+' Vein':n.item==='Ashwood'?'Ashwood Trunk':n.item==='Voidwood'?'Voidwood Trunk':NODE_N[n.type];
   /* eenvoudige vervanging tot de modellen geladen zijn (buildCraftEnv vervangt de inhoud) */
   if(n.type==='hout'){const l=mesh(new THREE.CylinderGeometry(.42,.5,4.2,12),mat(n.item==='Ashwood'?0x3a302c:0x6a4a2c,{flat:false}),0,.42,0,g);l.rotation.z=Math.PI/2;addCol(n.x,n.z,1)}
   else if(n.type==='erts'){mesh(new THREE.DodecahedronGeometry(1.1,1),mat(0x6a6660),0,.5,0,g).scale.set(1.2,.8,1);addCol(n.x,n.z,1.2)}
@@ -60,7 +66,7 @@ function startGather(n){if(ME.mounted)dismount();if(ME.dead||ME.cast||ACT.cur)re
 function finishGather(n,sk){const L=lifeOf(sk);let q=1+(Math.random()<.25+L.lv*.012?1:0);const got=[[n.item,q]];
   if(n.item==='Wood'&&Math.random()<.08+L.lv*.004)got.push(['Sturdy Wood',1]);if(n.item==='Iron Ore'&&L.lv>=10&&Math.random()<.08+L.lv*.003)got.push(['Silver Ore',1]);
   if(n.type==='kruid'&&n.item!=='Flax'&&Math.random()<.06+L.lv*.003)got.push(['Flax',1+(Math.random()<.4?1:0)]);if(n.item==='Sunleaf'&&L.lv>=5&&Math.random()<.05)got.push(['Moonbloom',1]);
-  for(const[it,qq]of got){if(giveMat(it,qq))questEvent('gather',it,qq)}lifeXp(sk,n.type==='erts'&&n.item!=='Iron Ore'||n.item==='Ashwood'||n.item==='Fireblossom'?20:13);
+  for(const[it,qq]of got){if(giveMat(it,qq))questEvent('gather',it,qq)}lifeXp(sk,(NODE_REQ[n.item]||0)>=40?30:n.type==='erts'&&n.item!=='Iron Ore'||n.item==='Ashwood'||n.item==='Fireblossom'?20:13);
   n.down=1;n.downT=50;n.g.visible=false;const col=n.type==='kruid'?0xffe08a:n.type==='erts'?(NODE_COL[n.item]||0xd8c8a0):0xd8b080;burst(n.x,n.y+.6,n.z,col,16,2.8);sfx('loot');refreshBag();saveGame()}
 /* ---- skinning: beasts you looted can be skinned once ---- */
 function skinTarget(rad=5){let b=null,bd=rad;for(const m of MONS){if(!m.dead||m.loot||m.skinned||!SKIN[m.type])continue;const d=Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z);if(d<bd){bd=d;b=m}}return b}
@@ -114,7 +120,7 @@ function craftGear(rc){const G=rc.gear,o=craftOdds(rc);const roll=Math.random();
 function finishCraft(rc){const why=canCraft(rc);if(why){toast(why);return false}for(const[n,q,tag]of rc.in)invTake(n,tag,q);const L=lifeOf(rc.sk);
   if(rc.ench){applyEnchant(rc);return true}
   if(rc.gear){const it=craftGear(rc);addItem(it);log('You craft: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span>','loot',true);floatText('me',it.n,it.r>=3?'gold':'heal');
-    if(it.r>=3){banner('Masterwork!',it.n);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z)}questEvent('craft','gear'+(rc.gear.tier+1),1);questEvent('craft',rc.id,1);lifeXp(rc.sk,[60,110,160,220][rc.gear.tier])}
+    if(it.r>=3){banner('Masterwork!',it.n);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z)}questEvent('craft','gear'+(rc.gear.tier+1),1);questEvent('craft',rc.id,1);lifeXp(rc.sk,[60,110,160,220,290,360][rc.gear.tier]||220)}
   else{const q=rc.q+(Math.random()<L.lv*.012?1:0);if(rc.potion){addItem(potion(rc.potion,q));log('You make: ['+rc.out+'] x'+q,'loot')}else giveMat(rc.out,q);questEvent('craft',rc.id,1);lifeXp(rc.sk,rc.lv>=20?24:rc.lv>=8?20:15)}
   craftDoneFx(rc);sfx('loot');refreshBag();if(!$('#pLife').hidden)refreshLife();saveGame();return true}
 function craftDoneFx(rc){const x=ME.pos.x+Math.sin(ME.ry)*1.1,z=ME.pos.z+Math.cos(ME.ry)*1.1,y=ME.pos.y+1;
@@ -167,14 +173,14 @@ function renderModelIcon(g,tint){const S=96;if(!_micRT){_micRT=new THREE.WebGLRe
 
 /* ---- crafting book (K) ---- */
 let lifeTab='smithing',lifeOpen={};
-const TIER_N=['Tier I · Novice','Tier II · Expert','Tier III · Artisan','Tier IV · Grandmaster'];
+const TIER_N=['Tier I · Novice','Tier II · Expert','Tier III · Artisan','Tier IV · Grandmaster','Tier V · Riftforged','Tier VI · Voidforged'];
 const SLOT_EN={wapen:'Weapon',hoofd:'Head',borst:'Chest',handen:'Hands',benen:'Legs',voeten:'Feet',ring:'Finger'};
 /* ---- the crafting book: a modern, responsive window (skills on the left, recipes as cards; search and a 'can make' filter) ---- */
 let lifeQ='',lifeCan=false;
-const LIFE_HINTS={mining:'Iron veins around the mines and hills · Silver veins (Expert) in the Ashen Hills and Bone Hills · Emberstone (Artisan) in the Dragon Realm · Mithril in the Elvian Highlands.',
-  woodcutting:'Fallen trunks in Twilight Wood and near the lake · Ashwood (Artisan) in the Dragon Realm · Elderwood in the Woods of Elvia. Saw planks at the sawmill.',
-  herbalism:'Sunleaf in the fields · Moonbloom and Bloodroot in the woods · Flax near the farmlands · Fireblossom (Artisan) in the Dragon Realm · Moonpetal in Elvia.',
-  skinning:'Loot a beast first, then press F on its body. Boars and wolves give Rough Hide, spiders Spider Silk, fire bats Thick Hide and drakes Drake Scales.',
+const LIFE_HINTS={mining:'Iron veins around the mines and hills · Silver veins (Expert) in the Ashen Hills and Bone Hills · Emberstone (Artisan) in the Dragon Realm · Mithril in the Elvian Highlands · Riftstone and Voidcrystal (Master) in the Nether Rift.',
+  woodcutting:'Fallen trunks in Twilight Wood and near the lake · Ashwood (Artisan) in the Dragon Realm · Elderwood in the Woods of Elvia · Voidwood in the Nether Rift. Saw planks at the sawmill.',
+  herbalism:'Sunleaf in the fields · Moonbloom and Bloodroot in the woods · Flax near the farmlands · Fireblossom (Artisan) in the Dragon Realm · Moonpetal in Elvia · Voidbloom and Starpetal (Master) in the Nether Rift.',
+  skinning:'Loot a beast first, then press F on its body. Boars and wolves give Rough Hide, spiders Spider Silk, fire bats Thick Hide and drakes Drake Scales. In the Nether Rift: Void Hide, Starsilk, Nether Silk and Wyrm Scales.',
   fishing:'Stand on the shore of a lake and press F. Strike when the marker is inside the green zone.',
   enchanting:'Disenchant gear you don\'t need (bag → item → Disenchant): common and uncommon gear gives Arcane Dust, rare Glimmering Essence, epic and legendary Radiant Shards. One enchantment per item; a new one replaces the old.'};
 function recipeCard(rc){const why=canCraft(rc);const lockedLv=lifeOf(rc.sk).lv<rc.lv;
@@ -202,7 +208,7 @@ function refreshLife(){if(!P)return;energyTick();migrateLife();const b=$('#lifeB
     const groups=[];const proc=list.filter(r=>!r.gear&&!r.ench),gear=list.filter(r=>r.gear),ench=list.filter(r=>r.ench);
     if(proc.length)groups.push({key:lifeTab+'p',lbl:'Recipes',items:proc,open:true});
     for(const[k,lbl,f]of[['w','Weapon enchantments · with aura',r=>ENCH[r.ench].slot==='wapen'],['a','Armour enchantments',r=>ENCH[r.ench].slot!=='wapen']]){const G=ench.filter(f).sort((a,b)=>a.lv-b.lv);if(G.length)groups.push({key:lifeTab+k,lbl,items:G,open:true})}
-    for(let t=0;t<4;t++){const G=gear.filter(r=>r.gear.tier===t);if(G.length)groups.push({key:lifeTab+t,lbl:TIER_N[t],sub:'from '+rankOf(Math.min(...G.map(r=>r.lv))),items:G,open:lifeOf(lifeTab).lv>=G[0].lv-2||t===0})}
+    for(let t=0;t<TIER_N.length;t++){const G=gear.filter(r=>r.gear.tier===t);if(G.length)groups.push({key:lifeTab+t,lbl:TIER_N[t],sub:'from '+rankOf(Math.min(...G.map(r=>r.lv))),items:G,open:lifeOf(lifeTab).lv>=G[0].lv-2||t===0})}
     let shown=0;for(const g of groups){const items=g.items.filter(vis);if(!items.length)continue;shown+=items.length;const open=q||lifeCan?true:(lifeOpen[g.key]??g.open);
       h+='<button class="ltier'+(open?' open':'')+'" data-tier="'+g.key+'"><span>'+g.lbl+'</span>'+(g.sub?'<small>'+g.sub+'</small>':'')+'<em>'+items.length+'</em></button>';if(open)h+='<div class="lgrid">'+items.map(recipeCard).join('')+'</div>'}
     if(!shown)h+='<p class="lhint">'+(lifeCan?'You can\'t make anything here right now: gather materials or level up first.':'No recipes match your search.')+'</p>'}
