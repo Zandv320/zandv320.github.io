@@ -648,6 +648,41 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
 /* scrollbars */
 .panel,.panel *{scrollbar-width:thin;scrollbar-color:rgba(232,192,106,.4) transparent}
 .panel ::-webkit-scrollbar,.panel::-webkit-scrollbar{width:8px;height:8px}.panel ::-webkit-scrollbar-thumb,.panel::-webkit-scrollbar-thumb{background:rgba(232,192,106,.35);border-radius:8px}.panel ::-webkit-scrollbar-track,.panel::-webkit-scrollbar-track{background:transparent}
+
+/* ===== character sheet (6d_charsheet.js) ===== */
+#pChar{width:min(860px,calc(100vw - 20px));max-height:calc(100% - 100px);display:flex;flex-direction:column;overflow:hidden}
+#pChar h3{gap:10px;align-items:baseline}#pChar .csn{font-size:22px}#pChar .cstt{margin-left:10px;font-family:var(--body,inherit);font-size:13px;font-weight:600;color:#e8c06a;opacity:.9;letter-spacing:.04em;text-transform:uppercase}
+.cssub{margin:-4px 0 8px;color:#d8c8a8;font-size:13px}.cssub b{color:#ffe08a;font-weight:700}
+.cstabs{display:flex;gap:6px;margin-bottom:10px}.cstabs button{flex:0 0 auto;font:600 13px var(--body,inherit);padding:6px 14px;border-radius:999px;border:1px solid var(--gline);background:var(--gsoft);color:var(--gtxt);cursor:pointer}.cstabs button.on{background:linear-gradient(180deg,#f2d38a,#c8963e);color:#2a1a08;border-color:#f2d38a}
+#csBody{overflow-y:auto;overscroll-behavior:contain;min-height:0;flex:1}
+.csdoll{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,300px) minmax(0,1fr);gap:12px;align-items:stretch}
+.cscol{display:flex;flex-direction:column;gap:6px;min-width:0}
+.csl{display:flex;align-items:center;gap:8px;padding:5px 8px 5px 5px;border-radius:12px;background:var(--gsoft);border:1px solid rgba(232,192,106,.14);min-width:0}
+.csl .cell{width:46px;height:46px;flex:0 0 46px}.csl .cst{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.csl .cst small{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#bfae8a}.csl .cst b{font-size:13px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15}.csl .cst i{font-style:normal;font-size:11px;color:#cdbf9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csl .cst i,.csl .cst b{max-width:100%}.csl .ce{color:#c8a8ff}.csl .cse{color:#8a7d64}.csl.empty{opacity:.75}
+.csl.r3{border-color:rgba(182,92,255,.35)}.csl.r4{border-color:rgba(255,160,64,.45);box-shadow:0 0 12px rgba(255,140,40,.15)}
+#csR .csl{flex-direction:row-reverse;text-align:right;padding:5px 5px 5px 8px}#csR .csl .cst{align-items:flex-end}
+.csmid{position:relative;display:flex;flex-direction:column;border-radius:16px;background:radial-gradient(ellipse at 50% 38%,rgba(255,226,160,.16),rgba(40,26,14,.55) 62%,rgba(10,7,4,.75));border:1px solid var(--gline);overflow:hidden;min-height:330px}
+.csmid canvas{flex:1;width:100%;min-height:250px;display:block;touch-action:none;cursor:grab}.csmid canvas:active{cursor:grabbing}
+.cshint{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:11px;color:#d8c8a8;opacity:.6;pointer-events:none}
+.csbars{padding:8px 10px 10px;display:flex;flex-direction:column;gap:5px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.45))}
+.csbar{position:relative;height:18px;border-radius:9px;background:rgba(0,0,0,.55);box-shadow:inset 0 0 0 1px rgba(255,230,170,.18);overflow:hidden;font-size:11px;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 8px}
+.csbar i{position:absolute;inset:0 auto 0 0;border-radius:9px}.csbar span,.csbar b{position:relative;text-shadow:0 1px 2px #000}.csbar b{font-weight:700}
+.csbar.hp i{background:linear-gradient(180deg,#6ae06a,#2a8a2a)}.csbar.mp i{background:linear-gradient(180deg,#ffd76a,#c8901a)}.csbar.xp i{background:linear-gradient(180deg,#c39bff,#6a2fd0)}
+.csstats,.csrec{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.csg{background:var(--gsoft);border:1px solid rgba(232,192,106,.16);border-radius:12px;padding:10px 12px;color:var(--gtxt)}
+.csg h5{margin:0 0 6px;font:700 12px var(--body,inherit);letter-spacing:.08em;text-transform:uppercase;color:#e8c06a}
+.csg>div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid rgba(232,192,106,.08);font-size:13px}.csg>div:last-child{border-bottom:0}.csg>div b{color:#fff3d6}
+.csbon{grid-column:1/-1}.csbon p{margin:3px 0;font-size:13px}.csbon .ce{color:#c8a8ff}.csbon .cg{color:#ff9ab8}.csbon .cs{color:#7cc0ff}.csbon .cf{color:#9aff9a}.csbon .tlg{color:#ffab4a}.cse{color:#9a8d74;font-size:12px;margin:4px 0}
+.csprof{display:flex;flex-direction:column;gap:5px}.csprof>div{display:grid;grid-template-columns:1fr auto;gap:0 8px;font-size:13px}.csprof small{color:#cdbf9e;font-size:11px}.csprof i{grid-column:1/-1;height:4px;border-radius:2px;background:rgba(0,0,0,.45);overflow:hidden}.csprof i b{display:block;height:100%;background:linear-gradient(90deg,#c8963e,#f2d38a)}
+.csrec select{width:100%;padding:6px 8px;border-radius:8px;background:#1a120a;color:#fff3d6;border:1px solid var(--gline);font:inherit}
+.csmounts{grid-column:1/-1}.csmounts .mlist{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+@media (max-width:760px){.csdoll{grid-template-columns:1fr 1fr}.csmid{grid-column:1/-1;grid-row:1;min-height:260px}.csmid canvas{min-height:200px}#csR .csl{flex-direction:row;text-align:left;padding:5px 8px 5px 5px}#csR .csl .cst{align-items:flex-start}}
+@media (max-width:440px){.csdoll{grid-template-columns:1fr}.csl .cell{width:40px;height:40px;flex-basis:40px}}
+body.touch #pChar{width:min(860px,calc(100vw - 16px))}
+@media (min-width:1200px){body:not(.touch) #pChar{width:min(860px,calc(100vw - 576px));max-height:calc(100% - 200px)}}
+@media (max-width:480px){.cstabs{overflow-x:auto;scrollbar-width:none}.cstabs button{padding:5px 10px;font-size:12px}}
 </style>
   <script type="module" src="./main.js"></script>
 </head>
@@ -691,7 +726,7 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
   </div>
   <div id="pBag" class="panel frame" hidden><h3>Bag <button class="x" data-close>×</button></h3><div class="grid" id="bagGrid"></div><div class="gold"><span>Gold</span><span id="goldTxt">0</span></div></div>
   <div id="pAdmin" class="panel frame" hidden><h3>Admin <button class="x" data-close>×</button></h3><div id="admTabs"></div><div id="admBody"></div></div>
-  <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div><h4 id="mountHd" class="mhd">Mounts</h4><div class="mlist" id="mountList"></div></div>
+  <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="cssub" id="csSub"></div><div class="cstabs" id="csTabs"><button data-ct="char">Character</button><button data-ct="stats">Statistics</button><button data-ct="rec">Records &amp; mounts</button></div><div id="csBody"></div></div>
   <div id="pTalent" class="panel frame" hidden><h3><span>Talents</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
   <div id="pHouse" class="panel frame" hidden><h3>My house <button class="x" data-close>×</button></h3><div id="hBody"></div></div>
   <div id="pQuest" class="panel frame" hidden><h3>Quest log <button class="x" data-close>×</button></h3><div id="qList"></div></div>
