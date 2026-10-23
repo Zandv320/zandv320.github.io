@@ -1,0 +1,4 @@
+Furniture for player housing (all CC0 / public domain, no attribution required):
+- K_*.glb: "KayKit : Furniture Bits" (free version) by Kay Lousberg — https://kaylousberg.itch.io/furniture-bits — CC0
+- Q_*.glb: "Ultimate House Interior Pack" by Quaternius — https://poly.pizza/bundle/Ultimate-House-Interior-Pack-2SXnFbwFzm — CC0
+Changes: converted to GLB, textures baked into vertex colours.
