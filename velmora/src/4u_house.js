@@ -137,7 +137,7 @@ function intAddItem(it){const[k,lx,lz,ry]=it;const D=furnDef(k);if(!D||!INT.grp)
       const fit=()=>{try{animRig(r,{spd:0,air:false,atk:-1,dead:false},.016)}catch(e){}r.g.traverse(m=>{if(m.isMesh){m.material=bronze;m.castShadow=true}});r.g.scale.setScalar(1);r.g.updateMatrixWorld(true);const b=bb();const h=b.max.y-b.min.y||1;r.g.scale.setScalar(Math.min(1.8/h,2.4/Math.max(b.max.x-b.min.x,b.max.z-b.min.z,1)))};
       fit();let n=0;const iv=setInterval(()=>{fit();if(++n>8)clearInterval(iv)},700)}catch(e){console.warn('statue',e)}return}
   const name=furnLoad(k);if(window.__NOGLTF)return;
-  envPlace(name,0,0,0,()=>[D.s,D.s,D.s]).then(o=>{if(!o)return;scene.remove(o);if(!INT.grp||!INT.items.includes(E))return;o.position.set(lx,y,lz);o.rotation.y=ry;o.userData.dyn=1;o.traverse(m=>{if(m.isMesh){m.castShadow=!D.wall&&y<2;m.receiveShadow=true;if(D.glow&&/light|lamp|bulb|candle|flame|emiss|yellow/i.test(m.material.name||'')){m.material=m.material.clone();m.material.emissive=new THREE.Color(0xffd080);m.material.emissiveIntensity=1.2}}});INT.grp.add(o);E.obj=o})}
+  envPlace(name,0,0,0,()=>[D.s,D.s,D.s]).then(o=>{if(!o)return;scene.remove(o);if(!INT.grp||!INT.items.includes(E))return;o.position.set(lx,y,lz);o.rotation.y=ry;o.userData.dyn=1;if(D.tint)tintObj(o,new THREE.Color(D.tint));o.traverse(m=>{if(m.isMesh){if(D.glowc){m.material=m.material.clone();m.material.emissive=new THREE.Color(D.glowc);m.material.emissiveIntensity=.35}m.castShadow=!D.wall&&y<2;m.receiveShadow=true;if(D.glow&&/light|lamp|bulb|candle|flame|emiss|yellow/i.test(m.material.name||'')){m.material=m.material.clone();m.material.emissive=new THREE.Color(0xffd080);m.material.emissiveIntensity=1.2}}});INT.grp.add(o);E.obj=o})}
 function intRemoveItem(E){const i=INT.items.indexOf(E);if(i<0)return;INT.items.splice(i,1);if(E.col){const j=INT.cols.indexOf(E.col);if(j>=0)INT.cols.splice(j,1)}if(E.obj&&INT.grp)INT.grp.remove(E.obj)}
 function intCollide(p,r){if(!INT.grp){return}const lx=p.x-INT.ox,lz=p.z-INT.oz;let x=clamp(lx,-INT.w/2+r+.1,INT.w/2-r-.1),z=clamp(lz,-INT.d/2+r+.1,INT.d/2-r-.1);
   for(const c of INT.cols){const dx=x-c.x,dz=z-c.z,rr=c.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr&&dd>1e-6){const q=Math.sqrt(dd),k=(rr-q)/q;x+=dx*k;z+=dz*k}}p.x=INT.ox+x;p.z=INT.oz+z}
@@ -177,7 +177,7 @@ const FP={on:false,k:null,ry:0,ghost:null,lx:0,lz:0,ok:false};
 function furnPlaceStart(k){if(!S.house||!S.house.mine)return;const D=furnDef(k);const T=HOUSE_TIERS[P.house.t];
   if(P.house.items.length>=T.max)return toast('Your '+T.n+' holds at most '+T.max+' things. Upgrade it at Master Builder Orla.');
   if(k.startsWith('T:')&&P.house.items.some(i=>i[0]===k))return toast('That statue already stands in your house');
-  if(!k.startsWith('T:')&&!(P.furn[k]>0)&&P.gold<D.p)return toast('Not enough gold');
+  if(!k.startsWith('T:')&&!(P.furn[k]>0)&&!D.p)return toast('Make this one at the Carpenter\'s Bench');if(!k.startsWith('T:')&&!(P.furn[k]>0)&&P.gold<D.p)return toast('Not enough gold');
   furnPlaceEnd();FP.on=true;FP.k=k;FP.ry=0;closePanel('pHouse');houseBar(true,true);
   if(D.trophy){FP.ghost=new THREE.Mesh(new THREE.CylinderGeometry(.7,.8,1.1,16),new THREE.MeshBasicMaterial({color:0xd8b070,transparent:true,opacity:.5}));FP.ghost.userData.dyn=1;INT.grp.add(FP.ghost)}
   else envPlace(furnLoad(k),0,0,0,()=>[D.s,D.s,D.s]).then(o=>{if(!o)return;scene.remove(o);if(!FP.on||FP.k!==k)return;o.traverse(m=>{if(m.isMesh){m.material=m.material.clone();m.material.transparent=true;m.material.opacity=.6;m.castShadow=false}});INT.grp.add(o);FP.ghost=o})}
@@ -192,7 +192,7 @@ function furnPlaceFrame(){if(!FP.on)return;if(!S.house||!INT.grp){furnPlaceEnd()
 function furnPlaceDo(){if(!FP.on||!FP.ok)return toast('You cannot place that here');const k=FP.k,D=furnDef(k);
   if(!k.startsWith('T:')){if(P.furn[k]>0)P.furn[k]--;else{if(P.gold<D.p)return toast('Not enough gold');P.gold-=D.p;refreshBag()}}
   const it=[k,Math.round(FP.lx*100)/100,Math.round(FP.lz*100)/100,Math.round(FP.cur*1000)/1000];P.house.items.push(it);intAddItem(it);sfx('loot');furnPlaceEnd();saveGame();
-  if(!k.startsWith('T:')&&(P.furn[k]>0||P.gold>=D.p))furnPlaceStart(k)}
+  if(!k.startsWith('T:')&&(P.furn[k]>0||(D.p&&P.gold>=D.p)))furnPlaceStart(k)}
 function furnPickUp(){if(!S.house||!S.house.mine)return;let best=null,bd=3.2;const fx=ME.pos.x-INT.ox+Math.sin(ME.ry)*1.2,fz=ME.pos.z-INT.oz+Math.cos(ME.ry)*1.2;
   for(const E of INT.items){const dd=Math.hypot(E.it[1]-fx,E.it[2]-fz);if(dd<bd){bd=dd;best=E}}if(!best)return toast('Stand in front of the thing you want to pick up');
   const k=best.it[0];intRemoveItem(best);const i=P.house.items.indexOf(best.it);if(i>=0)P.house.items.splice(i,1);if(!k.startsWith('T:'))P.furn[k]=(P.furn[k]||0)+1;sfx('swing');toast(furnDef(k).n+' picked up');saveGame();refreshHouse()}
@@ -207,9 +207,9 @@ function refreshHouse(){const b=$('#hBody');if(!b||!P)return;houseInit();const h
     s+='<p style="font-size:13px">'+(h.placed?'Your house stays standing while you are away; other players see it while you are online. Walk to the door and press F to go in.':'Walk to an open, fairly flat spot (not in a town, not in water, not between trees) and press the button.')+'</p>';
     s+='<div class="row"><button class="btn alt" id="hHome"'+(h.placed?'':' disabled')+'>'+(P.home==='house'?'Hearthstone: back to Silverbrook':'Hearthstone: make my house my home')+'</button></div>'}
   else{const cats=['Living','Bedroom','Storage','Decor','Trophies'];s+='<div class="row htabs">'+cats.map(c=>'<button class="btn'+(HCAT===c?'':' alt')+'" data-cat="'+c+'">'+c+'</button>').join('')+'</div><div class="hcat">';
-    const list=HCAT==='Trophies'?P.trophies.map(t=>'T:'+t):Object.keys(FURN).filter(k=>FURN[k].cat===HCAT);
+    const list=HCAT==='Trophies'?P.trophies.map(t=>'T:'+t):Object.keys(FURN).filter(k=>FURN[k].cat===HCAT&&(FURN[k].p||P.furn[k]>0));
     if(!list.length)s+='<p style="font-size:13px">'+(HCAT==='Trophies'?'Defeat great foes (the bosses of dungeons and raids, and the elites of the Rift) to earn a statue of them.':'Nothing here.')+'</p>';
-    for(const k of list){const D=furnDef(k);const own=k.startsWith('T:')?(P.house.items.some(i=>i[0]===k)?'placed':'free'):P.furn[k]>0?P.furn[k]+' owned':D.p+' gold';s+='<button class="hitem" data-k="'+k+'"><b>'+esc(D.n)+'</b><small>'+own+'</small></button>'}
+    for(const k of list){const D=furnDef(k);const own=k.startsWith('T:')?(P.house.items.some(i=>i[0]===k)?'placed':'free'):P.furn[k]>0?P.furn[k]+' owned':D.p?D.p+' gold':'craft it';s+='<button class="hitem" data-k="'+k+'"><b>'+esc(D.n)+'</b><small>'+own+'</small></button>'}
     s+='</div><div class="row"><button class="btn alt" id="hPick">Pick up what is in front of me</button></div><p style="font-size:13px">Click a thing to place it in front of you. Wall things hang on the nearest wall. You have <b>'+P.gold+'</b> gold.</p>'}
   b.innerHTML=s;
   b.querySelectorAll('[data-col]').forEach(x=>x.onclick=()=>{h.c=x.dataset.col;if(h.placed)houseSync('me',houseRecMine());saveGame();lastPres='';refreshHouse()});

@@ -266,7 +266,7 @@ const LIFE={
   cooking:{n:'Cooking',ic:'m:KF_pot-stew',kind:'craft',st:'fire',d:'Cook meals that grant buffs.'},
   alchemy:{n:'Alchemy',ic:'m:Q_Cauldron',kind:'craft',st:'cauldron',d:'Brew potions and elixirs.'}};
 const LIFE_OLD={verzamelen:['mining','woodcutting','herbalism'],vissen:['fishing'],bewerken:['smithing'],koken:['cooking'],alchemie:['alchemy']};
-const lifeNeed=l=>50+l*18;const rankOf=l=>RANKS[Math.min(6,Math.floor(l/10))]+' '+(l%10+1);
+const lifeNeed=l=>50+l*18;const rankOf=l=>RANKS[Math.min(RANKS.length-1,Math.floor(l/10))]+' '+(l%10+1);
 const MATS={
   'Iron Ore':{m:'Q_Mineral',t:'#c87a4a',price:1,tag:'ore'},'Silver Ore':{m:'Q_Mineral',t:'#dfe8f4',price:3,r:1,tag:'ore'},'Emberstone':{m:'Q_Mineral',t:'#ff6a2a',price:6,r:2,tag:'ore'},
   'Iron Bar':{m:'Q_Gold_Ingots',t:'=#8a9098',price:7},'Silver Bar':{m:'Q_Gold_Ingots',t:'=#dfe6ee',price:16,r:1},'Emberstone Bar':{m:'Q_Gold_Ingots',t:'=#e8622a',price:30,r:2},

@@ -50,7 +50,7 @@ function migrateItems(){if(!P)return;handsMigrate();if(!P.ckGiven){P.ckGiven=1;i
   /* stapels die nu dezelfde naam hebben samenvoegen */for(let i=0;i<P.inv.length;i++){const a=P.inv[i];if(!a||a.kind!=='mat')continue;for(let j=i+1;j<P.inv.length;j++){const b=P.inv[j];if(b&&b.kind==='mat'&&b.n===a.n){a.q+=b.q;P.inv[j]=null}}}
   if(P.buffs)for(const k in P.buffs){const b=P.buffs[k];if(b&&MAT_OLD[b.n])b.n=MAT_OLD[b.n]}migrateLife()}
 function lifeOf(k){P.life=P.life||{};return P.life[k]||(P.life[k]={lv:0,xp:0})}
-function lifeXp(k,n){if(!LIFE[k])return;const L=lifeOf(k);L.xp+=Math.round(n);let up=false;while(L.lv<69&&L.xp>=lifeNeed(L.lv)){L.xp-=lifeNeed(L.lv);L.lv++;up=true}if(up){log('✦ '+LIFE[k].n+': you are now '+rankOf(L.lv)+'!','sys');floatText('me',LIFE[k].n+' '+rankOf(L.lv),'xp');sfx('quest');if(L.lv%10===0)banner(LIFE[k].n+': '+RANKS[Math.min(6,L.lv/10)],'New rank reached')}if(!$('#pLife').hidden)refreshLife()}
+function lifeXp(k,n){if(!LIFE[k])return;const L=lifeOf(k);L.xp+=Math.round(n);let up=false;while(L.lv<79&&L.xp>=lifeNeed(L.lv)){L.xp-=lifeNeed(L.lv);L.lv++;up=true}if(up){log('✦ '+LIFE[k].n+': you are now '+rankOf(L.lv)+'!','sys');floatText('me',LIFE[k].n+' '+rankOf(L.lv),'xp');sfx('quest');if(L.lv%10===0)banner(LIFE[k].n+': '+RANKS[Math.min(6,L.lv/10)],'New rank reached')}if(!$('#pLife').hidden)refreshLife()}
 function energyTick(){if(!P)return;const now=Date.now();P.energyT=P.energyT||now;const gain=Math.floor((now-P.energyT)/6000);if(gain>0){P.energy=Math.min(maxEnergy(),(P.energy??100)+gain);P.energyT+=gain*6000}if(P.energy>=maxEnergy())P.energyT=now}
 const maxEnergy=()=>100+Math.floor(Object.values(P.life||{}).reduce((s,l)=>s+l.lv,0)/5);
 function useEnergy(n){energyTick();if((P.energy??100)<n){toast('Not enough energy (it recharges on its own)');return false}P.energy-=n;return true}
@@ -65,8 +65,8 @@ function startGather(n){if(ME.mounted)dismount();if(ME.dead||ME.cast||ACT.cur)re
   const dur=Math.max(1.6,4-L.lv*.035);faceTo(n.x,n.z);ACT.cur={k:'gather',n,sk,t:0,dur,anim:n.type==='hout'?'chop':n.type==='erts'?'mine':'herb',fx:.6,lbl:n.type==='hout'?'Chopping…':n.type==='erts'?'Mining…':'Picking '+n.item+'…'};$('#castbar').hidden=false}
 function finishGather(n,sk){const L=lifeOf(sk);let q=1+(Math.random()<.25+L.lv*.012?1:0);const got=[[n.item,q]];
   if(n.item==='Wood'&&Math.random()<.08+L.lv*.004)got.push(['Sturdy Wood',1]);if(n.item==='Iron Ore'&&L.lv>=10&&Math.random()<.08+L.lv*.003)got.push(['Silver Ore',1]);
-  if(n.type==='kruid'&&n.item!=='Flax'&&Math.random()<.06+L.lv*.003)got.push(['Flax',1+(Math.random()<.4?1:0)]);if(n.item==='Sunleaf'&&L.lv>=5&&Math.random()<.05)got.push(['Moonbloom',1]);
-  for(const[it,qq]of got){if(giveMat(it,qq))questEvent('gather',it,qq)}lifeXp(sk,(NODE_REQ[n.item]||0)>=40?30:n.type==='erts'&&n.item!=='Iron Ore'||n.item==='Ashwood'||n.item==='Fireblossom'?20:13);
+  if(n.type==='kruid'&&n.item!=='Flax'&&Math.random()<.06+L.lv*.003)got.push(['Flax',1+(Math.random()<.4?1:0)]);if(n.item==='Sunleaf'&&L.lv>=5&&Math.random()<.05)got.push(['Moonbloom',1]);lifeBonus(n,got,L);
+  for(const[it,qq]of got){if(giveMat(it,qq))questEvent('gather',it,qq)}lifeXp(sk,(NODE_REQ[n.item]||0)>=60?42:(NODE_REQ[n.item]||0)>=40?30:n.type==='erts'&&n.item!=='Iron Ore'||n.item==='Ashwood'||n.item==='Fireblossom'?20:13);
   n.down=1;n.downT=50;n.g.visible=false;const col=n.type==='kruid'?0xffe08a:n.type==='erts'?(NODE_COL[n.item]||0xd8c8a0):0xd8b080;burst(n.x,n.y+.6,n.z,col,16,2.8);sfx('loot');refreshBag();saveGame()}
 /* ---- skinning: beasts you looted can be skinned once ---- */
 function skinTarget(rad=5){let b=null,bd=rad;for(const m of MONS){if(!m.dead||m.loot||m.skinned||!SKIN[m.type])continue;const d=Math.hypot(m.x-ME.pos.x,m.z-ME.pos.z);if(d<bd){bd=d;b=m}}return b}
@@ -78,11 +78,11 @@ function finishSkin(m){if(m.skinned||!m.dead)return;m.skinned=true;const S=SKIN[
 /* ---- fishing (timing mini-game) ---- */
 /* aan de oever: zelf (bijna) droog staan en een paar meter verderop diep water */
 /* the lake you stand at: Mirror Lake (water at -0.7) or one of the lakes of Elvia */
-function shoreLake(){const all=[{x:LAKE.x,z:LAKE.z,r:LAKE.r,wl:-.7,home:1},...(inElv(ME.pos.x)?ELV_LAKES:[])];
+function shoreLake(){if(inRift(ME.pos.x))return riftShore();const all=[{x:LAKE.x,z:LAKE.z,r:LAKE.r,wl:-.7,home:1},...(inElv(ME.pos.x)?ELV_LAKES:[])];
   for(const L of all){const d=Math.hypot(ME.pos.x-L.x,ME.pos.z-L.z);if(d>L.r*1.45||d<L.r*.45)continue;const a=Math.atan2(L.x-ME.pos.x,L.z-ME.pos.z);if(groundH(ME.pos.x,ME.pos.z)>L.wl-.45&&groundH(ME.pos.x+Math.sin(a)*6,ME.pos.z+Math.cos(a)*6)<L.wl-.25)return L}return null}
 function atShore(){return!!shoreLake()}
 let bobber=null,fishLine=null;
-function startFish(){if(ME.mounted)dismount();if(ME.dead||ACT.cur||ME.cast)return;const LK=shoreLake();if(!LK)return toast(inElv(ME.pos.x)?'Stand on the shore of a lake to fish':'Stand on the shore of Mirror Lake to fish');if(!useEnergy(1))return;needToolClips();
+function startFish(){if(ME.mounted)dismount();if(ME.dead||ACT.cur||ME.cast)return;const LK=shoreLake();if(LK&&LK.rift&&lifeOf('fishing').lv<40)return toast('Fishing '+rankOf(40)+' required to fish in the void');if(!LK)return toast(inRift(ME.pos.x)?'Stand at the rim of an island to fish into the void':inElv(ME.pos.x)?'Stand on the shore of a lake to fish':'Stand on the shore of Mirror Lake to fish');if(!useEnergy(1))return;needToolClips();
   const a=Math.atan2(LK.x-ME.pos.x,LK.z-ME.pos.z);ME.ry=a;const bx=ME.pos.x+Math.sin(a)*7,bz=ME.pos.z+Math.cos(a)*7;
   if(!bobber){bobber=new THREE.Group();scene.add(bobber);loadEnv('Q_Lure_1').then(g=>{if(!g)return;const o=envClone(g);const s=.42/Math.max(...o.userData.size);o.scale.setScalar(s);o.position.y=-.08;bobber.add(o)})}
   if(!fishLine){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));fishLine=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xe8e8e8,transparent:true,opacity:.7}));fishLine.frustumCulled=false;scene.add(fishLine)}
@@ -91,7 +91,7 @@ function fishBite(){const A=ACT.cur;A.phase='bite';A.t=0;A.anim='fishbite';sfx('
   const L=lifeOf('fishing');A.zone=[rand(.2,.6),.2+L.lv*.003];A.m=0;A.dir=1;$('#fishBar').hidden=false;$('#fishZone').style.left=(A.zone[0]*100)+'%';$('#fishZone').style.width=(A.zone[1]*100)+'%';toast('A bite! Press F / Action inside the green zone')}
 function fishHook(){const A=ACT.cur;if(!A||A.k!=='fish'||A.phase!=='bite')return false;const[z0,w]=A.zone;const inZ=A.m>=z0&&A.m<=z0+w;const perfect=Math.abs(A.m-(z0+w/2))<w*.18;const bx=A.bx,bz=A.bz;endFish();
   if(!inZ){log('The fish got away…','err');lifeXp('fishing',4);return true}
-  const L=lifeOf('fishing');const roll=(inElv(ME.pos.x)?ELV_FISH:FISH).map(([n,wt],i)=>[n,wt*(i>=3?(1+L.lv*.04)*(perfect?2:1):1)]);let tot=roll.reduce((s,f)=>s+f[1],0),r=Math.random()*tot,got='Perch';for(const[n,wt]of roll){if((r-=wt)<=0){got=n;break}}
+  const L=lifeOf('fishing');const roll=(inRift(ME.pos.x)?RIFT_FISH:inElv(ME.pos.x)?ELV_FISH:FISH).map(([n,wt],i)=>[n,wt*(i>=3?(1+L.lv*.04)*(perfect?2:1):1)]);let tot=roll.reduce((s,f)=>s+f[1],0),r=Math.random()*tot,got='Perch';for(const[n,wt]of roll){if((r-=wt)<=0){got=n;break}}
   if(giveMat(got,1)){questEvent('fish',got,1);floatText('me',(perfect?'Perfect! ':'')+got,MATS[got].r>=2?'gold':'heal')}lifeXp('fishing',perfect?32:24);sfx('quest');
   ACT.post={anim:'fishcatch',t:1.5};flyFish(got,bx,bz);refreshBag();saveGame();return true}
 function endFish(){ACT.cur=null;$('#fishBar').hidden=true;$('#castbar').hidden=true;if(bobber)bobber.visible=false;if(fishLine)fishLine.visible=false}
@@ -103,7 +103,7 @@ function updFly(dt){for(let i=FLY.length-1;i>=0;i--){const f=FLY[i];f.t+=dt;cons
   if(k>=1){scene.remove(f.o);FLY.splice(i,1);emitP({x:tx,y:ty,z:tz,life:.3,size:1.4,size1:.2,col:0xcfefff,a:1,a1:0,cell:FXC.star,must:1})}}}
 /* ---- crafting ---- */
 const ST_HINT={forge:'the Forge in the Artisans\' Yard (west of town)',tannery:'the Tannery in the Artisans\' Yard',loom:'the Tailor\'s Table in the Artisans\' Yard',sawmill:'the Sawmill in the Artisans\' Yard',fire:'a cooking fire (fountain, Artisans\' Yard, bandit camp or Ashen Hills)',cauldron:'Mirla\'s alchemy cauldron in Silverbrook'};
-const CRAFT_ANIM={smithing:'forge',leatherworking:'tan',tailoring:'sew',cooking:'cook',alchemy:'brew',woodcutting:'saw',herbalism:'grind'};
+const CRAFT_ANIM={carpentry:'saw',jewelcrafting:'grind',smithing:'forge',leatherworking:'tan',tailoring:'sew',cooking:'cook',alchemy:'brew',woodcutting:'saw',herbalism:'grind'};
 function nearStation(k){return STATIONS.some(s=>s.k===k&&Math.hypot(s.x-ME.pos.x,s.z-ME.pos.z)<(s.r||5))}
 function invCount(name,tag){return P.inv.reduce((s,x)=>s+(x&&x.kind==='mat'&&(x.n===name||(tag&&MATS[x.n]&&MATS[x.n].tag===tag))?(x.q||1):0),0)}
 function invTake(name,tag,n){for(let i=0;i<P.inv.length&&n>0;i++){const x=P.inv[i];if(!x||x.kind!=='mat'||!(x.n===name||(tag&&MATS[x.n]&&MATS[x.n].tag===tag)))continue;const k=Math.min(n,x.q||1);x.q=(x.q||1)-k;n-=k;if(x.q<=0)P.inv[i]=null}}
@@ -119,7 +119,8 @@ function craftGear(rc){const G=rc.gear,o=craftOdds(rc);const roll=Math.random();
   it.n=(r>=3?'Masterwork ':'')+rc.out+(r>=2&&sf?' '+sf:'');it.crafted=P.name;it.req=Math.max(1,G.il-1);it.price=Math.round(it.price*1.1);return it}
 function finishCraft(rc){const why=canCraft(rc);if(why){toast(why);return false}for(const[n,q,tag]of rc.in)invTake(n,tag,q);const L=lifeOf(rc.sk);
   if(rc.ench){applyEnchant(rc);return true}
-  if(rc.gear){const it=craftGear(rc);addItem(it);log('You craft: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span>','loot',true);floatText('me',it.n,it.r>=3?'gold':'heal');
+  if(rc.furn){finishFurn(rc);return true}
+  if(rc.gear){const it=craftGear(rc);if(rc.gemIn)it.gem=rc.gemIn;addItem(it);log('You craft: <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span>','loot',true);floatText('me',it.n,it.r>=3?'gold':'heal');
     if(it.r>=3){banner('Masterwork!',it.n);lvlFx(ME.pos.x,ME.pos.y,ME.pos.z)}questEvent('craft','gear'+(rc.gear.tier+1),1);questEvent('craft',rc.id,1);lifeXp(rc.sk,[60,110,160,220,290,360][rc.gear.tier]||220)}
   else{const q=rc.q+(Math.random()<L.lv*.012?1:0);if(rc.potion){addItem(potion(rc.potion,q));log('You make: ['+rc.out+'] x'+q,'loot')}else giveMat(rc.out,q);questEvent('craft',rc.id,1);lifeXp(rc.sk,rc.lv>=20?24:rc.lv>=8?20:15)}
   craftDoneFx(rc);sfx('loot');refreshBag();if(!$('#pLife').hidden)refreshLife();saveGame();return true}
@@ -198,7 +199,7 @@ function refreshLife(){if(!P)return;energyTick();migrateLife();const b=$('#lifeB
   for(const kind of['gather','craft']){h+='<div class="lgrp">'+(kind==='gather'?'Gathering':'Crafting')+'</div>';for(const k in LIFE){if(LIFE[k].kind!==kind)continue;const L=lifeOf(k);const f=clamp(L.xp/lifeNeed(L.lv),0,1);
     h+='<button class="lsk'+(k===lifeTab?' sel':'')+'" data-t="'+k+'"><span class="lring" style="--p:'+(f*100).toFixed(1)+'%"><canvas data-ic="'+LIFE[k].ic+'" width="40" height="40"></canvas></span><span class="lskt"><b>'+LIFE[k].n+'</b><small>'+rankOf(L.lv)+'</small></span></button>'}}
   const T=LIFE[lifeTab],L=lifeOf(lifeTab),need=lifeNeed(L.lv);
-  h+='</nav><section class="lmain"><header class="lhead"><canvas data-ic="'+T.ic+'" width="56" height="56"></canvas><div class="lht"><h4>'+T.n+'</h4><div class="lrank">'+rankOf(L.lv)+' <span>· level '+(L.lv+1)+' / 70</span></div><div class="lxp"><i style="width:'+(clamp(L.xp/need,0,1)*100).toFixed(1)+'%"></i><span>'+L.xp+' / '+need+' xp</span></div></div>'
+  h+='</nav><section class="lmain"><header class="lhead"><canvas data-ic="'+T.ic+'" width="56" height="56"></canvas><div class="lht"><h4>'+T.n+'</h4><div class="lrank">'+rankOf(L.lv)+' <span>· level '+(L.lv+1)+' / '+(RANKS.length*10)+'</span></div><div class="lxp"><i style="width:'+(clamp(L.xp/need,0,1)*100).toFixed(1)+'%"></i><span>'+L.xp+' / '+need+' xp</span></div></div>'
     +'<div class="len" title="Energy recharges on its own"><b>⚡ '+en+'</b><small>/ '+enM+' energy</small><div class="lenb"><i style="width:'+(clamp(en/enM,0,1)*100).toFixed(1)+'%"></i></div></div></header>';
   h+='<p class="lhint">'+T.d+'</p>';if(LIFE_HINTS[lifeTab])h+='<p class="lhint sub">'+LIFE_HINTS[lifeTab]+'</p>';
   if(T.st&&!nearStation(T.st))h+='<p class="lwarn">⚠ Crafting needs '+ST_HINT[T.st]+'.</p>';

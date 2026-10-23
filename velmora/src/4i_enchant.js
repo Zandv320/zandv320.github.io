@@ -51,7 +51,7 @@ function applyEnchant(rc){const E=ENCH[rc.ench];const it=P.eq[E.slot];if(!it)ret
   else runeCircle(ME.pos.x,ME.pos.z,1.2,0xc8a0ff,1);
   sfx('quest');questEvent('craft','ench',1);lifeXp('enchanting',35+E.rank*30+(rc.lv>=20?15:0));saveGame();return true}
 /* ---- disenchanting: gear → arcane materials ---- */
-function disenchantYield(it){const lv=it.il||1,r=it.r|0;if(r>=3)return[['Radiant Shard',r>=4?3:1+(lv>=18?1:0)],['Glimmering Essence',1]];if(r===2)return[['Glimmering Essence',1+(lv>=15?1:0)],['Arcane Dust',2]];return[['Arcane Dust',1+Math.floor(lv/6)+(r?1:0)]]}
+function disenchantYield(it){const lv=it.il||1,r=it.r|0;if(lv>=34){if(r>=3)return[['Rift Shard',r>=4?2:1],['Void Essence',1]];if(r===2)return[['Void Essence',1],['Nether Dust',2]];return[['Nether Dust',1+Math.floor((lv-30)/8)+(r?1:0)]]}if(r>=3)return[['Radiant Shard',r>=4?3:1+(lv>=18?1:0)],['Glimmering Essence',1]];if(r===2)return[['Glimmering Essence',1+(lv>=15?1:0)],['Arcane Dust',2]];return[['Arcane Dust',1+Math.floor(lv/6)+(r?1:0)]]}
 function disenchant(i){const it=P.inv[i];if(!it||it.kind!=='gear')return;if(ME.dead)return;const Y=disenchantYield(it);P.inv[i]=null;
   for(const[n,q]of Y)if(!giveMat(n,q)){P.inv[i]=it;return}
   log('You disenchant ['+esc(it.n)+'] into '+Y.map(([n,q])=>q+'× '+n).join(', ')+'.','loot');const c=it.r>=3?0xffd06a:it.r===2?0x7ad8ff:0xc8b4ff;
@@ -74,7 +74,7 @@ function enchGlow(r,off){if(!r)return null;const key=off?'_eg2':'_eg';const id=r
     const pa=m.geometry.attributes.position;for(let k=0;k<14;k++){const i=Math.floor(Math.random()*pa.count);pts.push([m,pa.getX(i),pa.getY(i),pa.getZ(i)])}});
   return r[key]={w,id,shells,pts,E,T,acc:0}}
 /* particles that belong to each element */
-function enchSpark(type,x,y,z,rank,T){const k=(.7+rank*.3)*1.45;
+function enchSpark(type,x,y,z,rank,T){const k=(.7+rank*.3)*1.45;if(ENCH_TYPES[type]&&ENCH_TYPES[type].nether){enchSparkNether(type,x,y,z,rank,T);return}
   if(type==='flame'){emitP({x,y,z,vx:FRN(-.3,.3),vy:FRN(1.2,2.6),vz:FRN(-.3,.3),life:FRN(.35,.6),size:.32*k,size1:.06,col:0xffd060,col1:0xff3a0a,a:1,a1:0,cell:FXC.fire,vrot:FRN(-3,3)});if(Math.random()<.2)emitP({x,y:y+.2,z,vy:1.4,life:.9,size:.25,size1:.6,col:0x3a2a20,a:.25,a1:0,cell:FXC.smoke2,add:false})}
   else if(type==='frost'){emitP({x,y,z,vx:FRN(-.4,.4),vy:FRN(-.6,.2),vz:FRN(-.4,.4),life:FRN(.6,1),size:.22*k,size1:.04,col:0xe8f8ff,col1:0x6ad0ff,a:1,a1:0,cell:FXC.star,vrot:FRN(-2,2)});if(Math.random()<.3)emitP({x,y,z,vy:-.3,life:.8,size:.3,size1:.7,col:0xbfe8ff,a:.25,a1:0,cell:FXC.soft})}
   else if(type==='storm'){emitP({x:x+FRN(-.08,.08),y:y+FRN(-.08,.08),z:z+FRN(-.08,.08),vx:FRN(-2.5,2.5),vy:FRN(-2.5,2.5),vz:FRN(-2.5,2.5),drag:6,life:FRN(.08,.18),size:.4*k,size1:.1,col:0xffffff,col1:T.col,a:1,a1:0,cell:FXC.zap,rot:Math.random()*6.3})}
@@ -88,4 +88,4 @@ function enchFxHand(r,dt,off){const G=enchGlow(r,off);if(!G)return;G.w.getWorldP
   for(let i=0;i<n;i++){const[m,x,y,z]=G.pts[Math.floor(Math.random()*G.pts.length)];_ev.set(x,y,z);m.localToWorld(_ev);enchSpark(G.E.type,_ev.x,_ev.y,_ev.z,G.E.rank,G.T)}}
 function updEnchant(dt,t){ENCH_U.time.value=t}
 /* small round icon for an enchantment recipe */
-function enchIcon(id){const E=ENCH[id];const c=E.type?'#'+new THREE.Color(ENCH_TYPES[E.type].col).getHexString():'#c8a0ff';return['m:Q_Crystal5|'+c,E.rank>=3?'#6a5a2a':E.rank===2?'#2a4a6a':'#3a2a5a','#0e0a14']}
+function enchIcon(id){const E=ENCH[id];const c=E.type?'#'+new THREE.Color(ENCH_TYPES[E.type].col).getHexString():'#c8a0ff';return['m:Q_Crystal5|'+c,E.rank>=4?'#5a1a4a':E.rank>=3?'#6a5a2a':E.rank===2?'#2a4a6a':'#3a2a5a','#0e0a14']}

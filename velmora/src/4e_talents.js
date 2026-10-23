@@ -9,7 +9,7 @@ function talentFree(){return talentPoints()-talentSpent()}
 function talentNode(id){for(const t of talentTrees())for(const n of t.nodes)if(n.id===id)return{tree:t,node:n};return null}
 function TM(k){if(!TMC){TMC={};for(const t of talentTrees())for(const n of t.nodes){const r=talentRank(n.id);if(!r||!n.mod)continue;for(const key in n.mod)TMC[key]=(TMC[key]||0)+n.mod[key]*r}
   /* legendarische uitrusting: dezelfde sleutels als talenten */if(P&&P.eq){for(const s of SLOTS){const it=P.eq[s];if(it&&it.mods&&typeof it.mods==='object')for(const key in it.mods)if(typeof it.mods[key]==='number')TMC[key]=(TMC[key]||0)+it.mods[key]}
-    /* tier-set bonuses */if(typeof setMods==='function')setMods(TMC);
+    /* tier-set bonuses */if(typeof setMods==='function')setMods(TMC);if(typeof gemMods==='function')gemMods(TMC);
     /* enchantments (once per item: this loop used to sit inside the one above and counted every enchantment once per slot) */for(const s of SLOTS){const it=P.eq[s];const E=it&&it.ench&&typeof ENCH!=='undefined'&&ENCH[it.ench];if(E)for(const key in E.mods)TMC[key]=(TMC[key]||0)+E.mods[key]}}}return TMC[k]||0}
 function canLearn(id){const f=talentNode(id);if(!f)return false;const r=talentRank(id);if(r>=f.node.max)return false;if(talentFree()<=0)return false;return treeSpent(f.tree)>=TIER_REQ[f.node.t]}
 function learnTalent(id){if(!canLearn(id))return false;P.talents=P.talents||{};P.talents[id]=talentRank(id)+1;TMC=null;const f=P.hp/ST.maxhp;calcStats();P.hp=Math.round(ST.maxhp*f);buildBar(true);
