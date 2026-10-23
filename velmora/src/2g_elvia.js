@@ -6,7 +6,7 @@
    Everything is built from the downloaded CC0 packs that Velmora already uses (KayKit Medieval Hexagon, Kenney Fantasy
    Town, Quaternius nature, dungeon and survival packs). Level 20–25 content follows in the next update. */
 const ELV={x:-3400,z:0},ESZ=900,ESEG=300,ECELL=ESZ/ESEG,EHN=ESEG+1;
-const inElv=x=>x<-2600;
+const inElv=x=>x<-2600&&x>-5000;
 const E=(u,v)=>[ELV.x+u,ELV.z+v];/* zone-local (u,v) to world (x,z) */
 /* landmarks in world space */
 const WS={x:ELV.x+60,z:ELV.z+20,R:118,H:3,plaza:26,ring:58};
@@ -222,7 +222,7 @@ async function buildElvia(){if(window.__NOGLTF)return;const R=mulberry(7373);con
   const put=(n,x,z,ry,s,y=0)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],scene,y);
   /* the forest: thousands of trees, bushes, mossy rocks, logs and flowers (instanced, with LOD) */
   const okF=(x,z,clear=6)=>{if(Math.hypot(x-WS.x,z-WS.z)<WS.R+18)return false;if(elvPathDist(x,z)<clear)return false;for(const l of ELV_LAKES)if(Math.hypot(x-l.x,z-l.z)<l.r*1.12)return false;const[rd,,rw]=elvRiver(x,z);if(rd<rw+3)return false;
-    if(Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<24||Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)<24||Math.hypot(x-HOLLOW.x,z-HOLLOW.z)<30)return false;const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>425)return false;
+    if(Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<24||Math.hypot(x-RIFT_GATE.x,z-RIFT_GATE.z)<18||Math.hypot(x-ELV_CAMP.x,z-ELV_CAMP.z)<24||Math.hypot(x-HOLLOW.x,z-HOLLOW.z)<30)return false;const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>425)return false;
     const hx=elvH(x+1.5,z)-elvH(x-1.5,z),hz=elvH(x,z+1.5)-elvH(x,z-1.5);return Math.hypot(hx,hz)/3<.7};
   const common=[],pine=[],bush=[],rock=[],logs=[],flow=[],giant=[];
   for(let i=0;i<26000&&common.length+pine.length<3600;i++){const x=ELV.x-430+R()*860,z=ELV.z-430+R()*860;const dens=fbm((x-ELV.x)*.01+3,(z-ELV.z)*.01+8);if(R()>dens*1.55-.2||!okF(x,z))continue;
@@ -287,5 +287,5 @@ function useWaystone(w){P.disc=P.disc||{};if(w.id==='ws')P.disc.ws=1;const to=WA
   if(to.id==='ws'&&!P.disc.ws)return toast('The waystone is silent: you have not been to WindStorm yet');if(ME.combat>0)return toast('You cannot travel while in combat');if(ME.mounted)dismount();
   ME.cast={a:{n:'Travel to '+to.n,id:'waystone',way:to},t:0,dur:3,tg:null};$('#castbar').hidden=false}
 function waystoneArrive(to){beamFx(ME.pos.x,ME.pos.z,0x7ad8ff,1.4);teleport(to.x+2.5,to.z+2.5);beamFx(ME.pos.x,ME.pos.z,0x7ad8ff,1.4);sfx('frost');log('The waystone carries you to '+to.n+'.','sys')}
-function hearthTarget(){return P&&P.home==='ws'?[WS.x+rand(-3,3),WS.z+WS.plaza+4+rand(0,3)]:[rand(-3,3),rand(5,8)]}
+function hearthTarget(){return P&&P.home==='rw'?[RIFT_ENTRY.x+rand(14,18),RIFT_ENTRY.z+rand(-3,3)]:P&&P.home==='ws'?[WS.x+rand(-3,3),WS.z+WS.plaza+4+rand(0,3)]:[rand(-3,3),rand(5,8)]}
 function elvRespawn(){if(!inElv(ME.pos.x))return false;teleport(WS.x+rand(-3,3),WS.z+WS.plaza+6+rand(-2,2));return true}

@@ -62,7 +62,7 @@ const PL_BIOME={
 const PL={types:{},cells:new Map(),last:{x:1e9,z:1e9,R:0},acc:0};
 /* which biome a spot is (or null: no plants there) */
 function plBiome(x,z){
-  if(x>700)return null;
+  if(x>700||x<-5000)return null;
   if(x<-2600){const u=x-ELV.x,v=z-ELV.z;if(Math.max(Math.abs(u),Math.abs(v))>426)return null;if(Math.hypot(x-WS.x,z-WS.z)<WS.R+12)return null;if(elvPathDist(x,z)<2.3)return null;
     for(const l of ELV_LAKES){const d=Math.hypot(x-l.x,z-l.z);if(d<l.r*1.02)return null;if(d<l.r*1.3&&groundH(x,z)<(l.wl??-1)+.12)return null;if(d<l.r*1.2)return'shore'}
     const[rd,wy,rw]=elvRiver(x,z);if(rd<rw+.9)return null;if(rd<rw+5){if(groundH(x,z)<wy+.12)return null;return'shore'}
@@ -184,7 +184,7 @@ function crPopulate(dt){_crSpawnT-=dt;if(_crSpawnT>0)return;_crSpawnT=1.5;const 
     if(near&&!alive.length&&!_crHome.has('p'+i)){_crHome.set('p'+i,1);const list=[];const n=Math.max(1,Math.round(h.n*[.6,.8,1][q]));Promise.all(Array.from({length:n},(_,k)=>{const a=k/n*6.28+Math.random(),r=Math.random()*(w?w.r*.8:h.r*.7);
       return crSpawn(h.t,hx+Math.cos(a)*r,hz+Math.sin(a)*r,w?{water:w,depth:.45+Math.random()*.7,hr:w.r,size:.8+Math.random()*.5}:{area:h.wild?null:{x:h.x,z:h.z,r:h.r},hr:h.r,fixed:1,size:.92+Math.random()*.16})})).then(L=>{const ok=L.filter(Boolean);if(h.wild&&ok.length){const H={m:ok,lead:ok[0]};for(const c of ok){c.herd=H;c.home={x:h.x,z:h.z}}}_crHome.set(i,ok);_crHome.delete('p'+i)})}
     if(!near&&alive.length){for(const c of alive)crRemove(c);_crHome.set(i,[])}});
-  /* the roaming ones */const inDun=px>700,inElv2=px<-2600,inOver=px>-260&&px<260;const day=DAY.night<.55;
+  /* the roaming ones */const inDun=px>700,inElv2=px<-2600&&px>-5000,inOver=px>-260&&px<260;const day=DAY.night<.55;
   for(const P of CR_POP){if(P.dun?!(inDun&&(px<1250||px>2200)):!(inElv2||inOver))continue;if(P.day&&!day&&P.t==='rabbit'&&Math.random()<.5)continue;
     const have=CR.filter(c=>c.pop===P&&!c.dead).length+(P.pend|0);const want=P.n[q];if(have>=want)continue;
     const near=P.dun?6:TD.on?34:R*.55,far=P.dun?20:R*.9;
@@ -220,7 +220,7 @@ async function bdInit(){const g=await lwRaw('critters');if(!g)return;
   BD.ok=true}
 function bdMesh(kind,tint){const K=BD.kinds[kind];const g=new THREE.Group();for(const p of K.parts){let mat=p.mat;if(tint){const o=mat;mat=o.clone();mat.onBeforeCompile=o.onBeforeCompile;mat.customProgramCacheKey=o.customProgramCacheKey;mat.color=new THREE.Color(tint)}const m=new THREE.Mesh(p.geo,mat);m.castShadow=kind!=='butterfly';g.add(m)}scene.add(g);return g}
 const BF=[];/* butterflies: {x,y,z,ax,az,ph,k} */
-function bdPopulate(){const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR(),day=DAY.night<.5;const inW=(px<260&&px>-260)||px<-2600;
+function bdPopulate(){const px=camTarget.x,pz=camTarget.z,q=lwQ(),R=lwR(),day=DAY.night<.5;const inW=(px<260&&px>-260)||(px<-2600&&px>-5000);
   for(let i=BD.list.length-1;i>=0;i--){const b=BD.list[i];if(Math.hypot(b.x-px,b.z-pz)>R+40||b.gone){scene.remove(b.g);BD.list.splice(i,1)}}
   for(let i=BF.length-1;i>=0;i--){const b=BF[i];if(Math.hypot(b.ax-px,b.az-pz)>R+10||!day)BF.splice(i,1)}
   if(!inW)return;

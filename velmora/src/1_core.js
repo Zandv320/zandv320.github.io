@@ -65,7 +65,7 @@ const ABIL={
 const COMMON_ABIL=[
   {id:'drank',n:'Healing Potion',lvl:1,cd:20,cost:0,item:'heal',ic:['potion','#ff4b4b','#3d0505'],d:'Instantly restores 45% of your health.'},
   {id:'mdrank',n:'Power Potion',lvl:1,cd:20,cost:0,item:'mana',ic:['potion','#4b8bff','#05153d'],d:'Instantly restores 50% of your mana, energy or focus.'},
-  {id:'thuis',n:'Hearthstone',lvl:1,cd:60,cost:0,cast:4,ic:['hearth','#7cf0ff','#0b2a3a'],d:'Return home after 4 seconds: the square of Silverbrook, or WindStorm once you have rested at its inn.'}
+  {id:'thuis',n:'Hearthstone',lvl:1,cd:60,cost:0,cast:4,ic:['hearth','#7cf0ff','#0b2a3a'],d:'Return home after 4 seconds: the square of Silverbrook, or the inn you made your home (WindStorm or Riftwatch).'}
 ];
 const MON={
   ever:{n:'Wild Boar',kind:'boar',col:0x6b4a32,lv:[1,2],aggro:0,spd:5.2,size:1,xpM:1},
@@ -105,6 +105,30 @@ const MON={
   thornwarden:{n:'The Thornwarden',kind:'golem',col:0x3a2a16,lv:[25,25],aggro:16,spd:5.2,size:2.2,elite:1,xpM:1.3,hpM:2.6,dmgM:1.2,respawn:150},
   silkling:{n:'Silkling',kind:'spider',col:0x8aa86a,lv:[24,24],aggro:40,spd:7.2,size:.75,xpM:.3,add:1},
   silkmother:{n:'Veyrith the Silkmother',kind:'spider',col:0x1a2a14,lv:[25,25],aggro:24,spd:5.8,size:3.6,boss:1,elite:1,dmgM:1.5,xpM:1.8,hpM:4.4,respawn:300},
+  /* the Nether Rift (level 25–50) */
+  riftwraith:{n:'Rift Wraith',kind:'imp',col:0x5a3a8a,lv:[25,27],aggro:15,spd:6.2,size:1,xpM:1,ranged:18,proj:'shadow',hover:1.1},
+  voidimp:{n:'Void Imp',kind:'imp',col:0x6a2a9a,lv:[26,28],aggro:15,spd:6.8,size:.95,xpM:1,hover:1.3},
+  voidooze:{n:'Void Ooze',kind:'golem',col:0x7a2a8a,lv:[27,29],aggro:12,spd:4.8,size:1.15,xpM:1.1,hpM:1.4},
+  grimshard:{n:'Grimshard the Hungering',kind:'golem',col:0x4a2a7a,lv:[30,30],aggro:16,spd:5.2,size:2.2,elite:1,xpM:1.2,hpM:2.2,dmgM:1.15,respawn:120},
+  shardgnasher:{n:'Shard Gnasher',kind:'golem',col:0x7ab8e8,lv:[30,32],aggro:13,spd:5,size:1.2,xpM:1.1,hpM:1.4},
+  prismraptor:{n:'Prism Raptor',kind:'raptor',col:0x8ac8ff,lv:[31,33],aggro:16,spd:8,size:1.15,xpM:1},
+  shardling:{n:'Shardling',kind:'imp',col:0x9ad8ff,lv:[32,34],aggro:16,spd:6.4,size:1,xpM:1,ranged:18,proj:'frost',hover:1.4},
+  crystalbehemoth:{n:'Crystal Behemoth',kind:'golem',col:0xa8d0ff,lv:[33,35],aggro:13,spd:5,size:1.5,xpM:1.35,hpM:1.7},
+  colossus:{n:'The Prismatic Colossus',kind:'golem',col:0xc8e8ff,lv:[35,35],aggro:17,spd:5.2,size:2.5,elite:1,xpM:1.3,hpM:2.6,dmgM:1.2,respawn:150},
+  voidspore:{n:'Voidspore',kind:'golem',col:0x5a3a7a,lv:[35,37],aggro:13,spd:5.2,size:1.15,xpM:1.05,hpM:1.2},
+  mirelurker:{n:'Mire Lurker',kind:'human',col:0x2a7a7a,lv:[36,38],aggro:15,spd:6,size:1.15,xpM:1.05},
+  netherray:{n:'Nether Ray',kind:'imp',col:0x9a3aa8,lv:[37,39],aggro:16,spd:6.6,size:1.1,xpM:1.05,ranged:18,proj:'venom',hover:1.6},
+  hollowskull:{n:'Hollow Skull',kind:'imp',col:0xd8c8a8,lv:[38,40],aggro:17,spd:6.4,size:1.05,xpM:1.1,ranged:20,proj:'shadow',hover:1.3},
+  vashk:{n:'Mycelord Vashk',kind:'human',col:0x6a3a8a,lv:[40,40],aggro:17,spd:5.6,size:2,elite:1,xpM:1.3,hpM:2.6,dmgM:1.2,respawn:150},
+  voidstalker:{n:'Void Stalker',kind:'human',col:0x4a2a6a,lv:[40,42],aggro:16,spd:6.8,size:1.1,xpM:1.05},
+  riftwalker:{n:'Riftwalker',kind:'human',col:0x2a4a8a,lv:[41,43],aggro:15,spd:6,size:1.2,xpM:1.15,hpM:1.3},
+  voidassassin:{n:'Void Assassin',kind:'human',col:0x1a1a2a,lv:[42,44],aggro:17,spd:7.4,size:1,xpM:1.05},
+  sentinel:{n:'Voidspire Sentinel',kind:'imp',col:0x8a6a3a,lv:[43,45],aggro:18,spd:6,size:1.15,xpM:1.1,ranged:22,proj:'arcane',hover:1.5},
+  morvane:{n:'High Cultist Morvane',kind:'human',col:0x3a1a5a,lv:[45,45],aggro:18,spd:5.6,size:1.4,elite:1,xpM:1.3,hpM:2.4,dmgM:1.25,ranged:20,proj:'shadow',wt:'staf',respawn:150},
+  voiddrake:{n:'Void Drake',kind:'dragon',col:0x3a1a5a,lv:[45,47],aggro:17,spd:6.6,size:1.4,xpM:1.1,ranged:16,proj:'shadow',hover:1.8},
+  voidhorror:{n:'Voidspawn Horror',kind:'imp',col:0x6a1a8a,lv:[46,48],aggro:16,spd:6.4,size:1.3,xpM:1.15,hpM:1.3,hover:1.4},
+  dreadlord:{n:'Dreadlord',kind:'human',col:0x5a1a2a,lv:[47,49],aggro:16,spd:6,size:1.35,xpM:1.3,hpM:1.6,dmgM:1.1},
+  xalthuun:{n:"Xal'thuun the Void Wyrm",kind:'dragon',col:0x2a0a3a,lv:[50,50],aggro:22,spd:6.4,size:4.2,elite:1,xpM:3,hpM:7,dmgM:1.45,ranged:24,proj:'shadow',hover:2.6,respawn:600},
   vyraxion:{n:'Vyraxion the Ash Queen',kind:'dragon',col:0x8a1a12,lv:[22,22],aggro:26,spd:6,size:4.2,boss:1,elite:1,dragon:1,dmgM:1.6,xpM:1.6,hpM:4,respawn:300,fire:1}
 };
 const QUESTS=[
@@ -167,10 +191,13 @@ const MAT={paladijn:['Blessed','Silvered','Consecrated','Templar'],krijger:['Iro
 const BASE={offhand:{krijger:'Shield',paladijn:'Shield',magier:'Tome',jager:'Quiver'},schouders:{krijger:'Pauldrons',magier:'Mantle',jager:'Spaulders',paladijn:'Spaulders'},rug:{krijger:'Cape',magier:'Cloak',jager:'Cloak',paladijn:'Tabard Cape'},hoofd:{krijger:'Helm',magier:'Pointed Hat',jager:'Hood',paladijn:'Helm'},borst:{krijger:'Breastplate',magier:'Robe',jager:'Tunic',paladijn:'Chestguard'},handen:{krijger:'Gloves',magier:'Gloves',jager:'Gloves',paladijn:'Gauntlets'},benen:{krijger:'Legplates',magier:'Trousers',jager:'Trousers',paladijn:'Legguards'},voeten:{krijger:'Boots',magier:'Sandals',jager:'Boots',paladijn:'Sabatons'}};
 const WEAP={paladijn:[['Warhammer','zwaard'],['Mace','zwaard'],['Greathammer','bijl'],['Greatsword','bijl']],krijger:[['Sword','zwaard'],['Axe','zwaard'],['Battleaxe','bijl'],['Greatsword','bijl']],magier:[['Staff','staf'],['Wand','zwaard']],jager:[['Bow','boog'],['Longbow','boog']]};
 const SUFFIX=[['of the Bear',0,1],['of the Tiger',1,0],['of the Eagle',.6,.6],['of the Owl',.8,.3],['of the Wolf',.5,.7],['of the Light',.7,.5]];
-const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter']};
+const JUNK={ever:['Boar Tusk','Boar Bristles'],wolf:['Tattered Wolf Pelt','Broken Fang'],spin:['Cobweb Clump','Chitin Plate'],rover:['Stolen Handkerchief','Dice'],grisk:['Grisk\'s Earring'],knekel:['Yellowed Bone','Rusty Buckle'],kmagier:['Dusty Parchment'],boss:['Crown Shard'],dienaar:['Bone Splinter'],
+  riftwraith:['Wisp of Shadow','Torn Shroud'],voidimp:['Imp Horn','Void-Singed Tail'],voidooze:['Glob of Void Slime'],grimshard:['Hungering Shard'],shardgnasher:['Cracked Shard','Crystal Tooth'],prismraptor:['Prismatic Scale','Glass Claw'],shardling:['Shardling Wing'],crystalbehemoth:['Crystal Knuckle','Shattered Geode'],colossus:['Heart of the Colossus'],
+  voidspore:['Spore Sac','Rotten Cap'],mirelurker:['Slick Fin','Mire Pearl'],netherray:['Ray Barb','Iridescent Skin'],hollowskull:['Hollow Skull Fragment','Cold Ember'],vashk:["Vashk's Crown of Spores"],voidstalker:['Stalker Tendril','Void-Black Eye'],riftwalker:['Riftwalker Horn','Warped Club'],voidassassin:['Shadowsilk Mask','Notched Blade'],sentinel:['Sentinel Mask Shard','Gilded Feather'],morvane:["Morvane's Codex"],
+  voiddrake:['Void Drake Fang','Night Scale'],voidhorror:['Writhing Tentacle'],dreadlord:['Dreadlord Horn','Infernal Chain'],xalthuun:["Xal'thuun's Eye"]};
 const ARM_SLOT={offhand:0,schouders:.8,rug:.5,hoofd:.9,borst:1.4,handen:.6,benen:1.1,voeten:.7,ring:0,wapen:0};
 const xpNeed=l=>40*l+15*l*l;
-const MAXLVL=25;
+const MAXLVL=50;
 /* ===== life skills: gathering (mining, woodcutting, herbalism, skinning, fishing) and crafting (smithing, leatherworking,
    tailoring, cooking, alchemy). Icons with m: are thumbnails rendered from the downloaded 3D models. ===== */
 const RANKS=['Novice','Apprentice','Journeyman','Expert','Artisan','Master','Grandmaster'];

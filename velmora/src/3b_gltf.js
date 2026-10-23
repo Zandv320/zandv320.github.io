@@ -92,7 +92,8 @@ function buildGltfChar(o){
 const NPC_GLTF={aldren:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},mirla:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},wilma:{m:'Rogue',props:[]},anselm:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
   bram:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},dorrik:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},thorne:{m:'Knight',props:['Knight_Helmet','Round_Shield'],w:'1H_Sword'},vaelra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},guard:{m:'Knight',props:['Knight_Helmet','Rectangle_Shield'],w:'1H_Sword'},hilde:{m:'Barbarian',props:[],w:null,act:'forge'},ysolde:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'Spellbook_open'},
   corwin:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},liora:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:'2H_Crossbow'},sabine:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},aurelia:{m:'Mage',props:['Mage_Cape'],w:'Spellbook_open'},
-  tomas:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},elinor:{m:'Rogue',props:[],w:null},gerrit:{m:'Barbarian',props:[],w:'Mug'},brannoc:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},wren:{m:'Rogue',props:['Rogue_Cape'],w:null},mabel:{m:'Barbarian',props:[],w:'Mug'},hob:{m:'Barbarian',props:[],w:'Mug'}};
+  tomas:{m:'Barbarian',props:['Barbarian_Hat'],w:'Mug'},elinor:{m:'Rogue',props:[],w:null},gerrit:{m:'Barbarian',props:[],w:'Mug'},brannoc:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},wren:{m:'Rogue',props:['Rogue_Cape'],w:null},mabel:{m:'Barbarian',props:[],w:'Mug'},hob:{m:'Barbarian',props:[],w:'Mug'},
+  kaelen:{m:'Knight',props:['Knight_Helmet','Knight_Cape','Badge_Shield'],w:'1H_Sword'},nyra:{m:'Mage',props:['Mage_Hat','Mage_Cape'],w:'2H_Staff'},oswin:{m:'Barbarian',props:['Barbarian_Hat'],w:'1H_Axe'},tessa:{m:'Rogue',props:[],w:null},brom:{m:'Barbarian',props:[],w:'Mug'},lyra:{m:'Rogue_Hooded',props:['Rogue_Cape'],w:null}};
 function buildGltfNpc(id,look){const d=NPC_GLTF[id]||NPC_GLTF.guard;const h=look.dwarf?1.5:1.78;
   return buildGltfRig({model:d.m,h,props:d.props,weaponMesh:d.w,wt:look.wt,...(look.tusks?{skin:look.skin,hair:look.hair,orc:1}:{}),o:{cls:'npc'},fallback:()=>buildHumanoidProc({race:look.dwarf?'dwerg':'mens',...look})})}
 /* monsters */
@@ -105,6 +106,10 @@ const CM_BAT={idle:'Bat_Flying',cidle:'Bat_Flying',walk:'Bat_Flying',run:'Bat_Fl
 const CM_RAPTOR={idle:'Velociraptor_Idle',cidle:'Velociraptor_Idle',walk:'Velociraptor_Walk',run:'Velociraptor_Run',die:'Velociraptor_Death',hit:null,jumpS:'Velociraptor_Jump',atk:{def:['Velociraptor_Attack']}};
 const CM_MON={idle:'Idle',cidle:'Idle',walk:'Walk',run:'Run',die:'Death',hit:'HitReact',jumpS:'Jump',jumpI:'Jump_Idle',land:'Jump_Land',atk:{def:['Punch','Weapon']}};
 const CM_TREX={idle:'TRex_Idle',cidle:'TRex_Idle',walk:'TRex_Walk',run:'TRex_Run',die:'TRex_Death',hit:null,atk:{def:['TRex_Attack']}};
+/* Quaternius Ultimate Monsters (CC0): three rigs, three clip sets */
+const CM_UFLY={idle:'Flying_Idle',cidle:'Flying_Idle',walk:'Fast_Flying',run:'Fast_Flying',die:'Death',hit:'HitReact',atk:{def:['Punch','Headbutt']}};
+const CM_UBIP={idle:'Idle',cidle:'Idle',walk:'Walk',run:'Run',die:'Death',hit:'HitReact',atk:{def:['Punch','Weapon']}};
+const CM_UBLOB={idle:'Idle',cidle:'Idle',walk:'Walk',run:'Walk',die:'Death',hit:'HitRecieve',atk:{def:['Bite_Front']}};
 const MON_GLTF={
   ever:{m:'Bull',h:1.75,cm:{...CM_ANIMAL,atk:{def:['Attack_Headbutt','Attack_Kick']},land:'Jump_toIdle'},tint:{Main:0x8c5e3c,Main_Light:0xb48a64,Horns:0xf0e6d0,Muzzle:0x5a3e2c,Hooves:0x3a2a20},quad:1},
   wolf:{m:'Wolf',h:1.7,cm:CM_ANIMAL,tint:{Main:0x4e5664,Main_Light:0x8a919c},quad:1},
@@ -142,6 +147,30 @@ const MON_GLTF={
   broedling:{drk:1,m:'Dragon',h:1.2,cm:CM_DRAGON,tint:{Main:0xe8641e,Wings:0x8a2a10,Belly:0xffd080,Claws:0x2a1a14},glow:{Eyes:0xffe060}},
   drakonier:{drk:1,m:'Mage',h:1.82,props:['Mage_Hat','Mage_Cape'],wt:'staf',cm:{...CM_KAY,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},skin:0x9a3a24,hair:0x1a0a06,tint:{}},
   lavadrake:{drk:1,m:'Trex',h:4.4,cm:CM_TREX,tint:{Green:0x3a2420,Black:0x120c0a,LightGreen:0x7a4428,Red:0xff5a10,LightYellow:0xffa040},glow:{Red:0xff5a14}},
+  /* the Nether Rift */
+  riftwraith:{m:'rift/M_Ghost',h:1.7,cm:CM_UFLY,tint:{Ghost_Main:0x4a2a7a},glow:{Eye_White:0xc89aff}},
+  voidimp:{m:'rift/M_DemonFly',h:1.35,cm:CM_UFLY,tint:{Demon_Main:0x6a2aa8,Black:0x1a0a2a},glow:{Eye_White:0x8affe8}},
+  voidooze:{m:'rift/M_PinkBlob',h:1.25,cm:CM_UBLOB,tint:{Pink_Main:0x6a1a8a,Pink_Secondary:0x2a0a3a},glow:{Eye_White:0xd8a0ff}},
+  grimshard:{m:'rift/M_SpikyBlob',h:1.35,cm:CM_UBLOB,tint:{Green_Main:0x3a1a5a},glow:{Eye_White:0xff6ad8}},
+  shardgnasher:{m:'rift/M_SpikyBlob',h:1.2,cm:CM_UBLOB,tint:{Green_Main:0x6a9ad8},glow:{Eye_White:0xc8f4ff}},
+  prismraptor:{m:'rift/M_Dino',h:1.7,cm:CM_UBIP,tint:{Dino_Main:0x7ab8f0,Dino_Secondary:0xd8f0ff,Dino_Teeth:0xffffff,Dino_Tongue:0x4a6ab8},glow:{Eye_White:0xaef8ff}},
+  shardling:{m:'rift/M_Goleling',h:1.5,cm:CM_UFLY,tint:{Goleling_Main:0x5a8ad0,Goleling_Secondary:0xc8e8ff,Gold:0xe8f8ff},glow:{Eye_White:0x9af0ff}},
+  crystalbehemoth:{m:'rift/M_YetiBiped',h:1.9,cm:CM_UBIP,tint:{Yeti_Main:0xa8c8f0,Yeti_Secondary:0x4a6aa8},glow:{Eye_White:0x9af0ff}},
+  colossus:{m:'rift/M_YetiBiped',h:1.9,cm:CM_UBIP,tint:{Yeti_Main:0xd8ecff,Yeti_Secondary:0x7a9ad8},glow:{Eye_White:0xffffff}},
+  voidspore:{m:'rift/M_Mushnub',h:1.45,cm:CM_UBLOB,tint:{MushroomKing_Main:0x5a2a7a,MushroomKing_Secondary:0xc8b8d8,Spikes:0x2ad8a8},glow:{Eye_White:0x7affd0}},
+  mirelurker:{m:'rift/M_FishBiped',h:1.8,cm:CM_UBIP,tint:{Fish_Main:0x1a6a6a,Fish_Secondary:0x8ad8c8,Fish_Flaps:0x5a2a8a},glow:{Eye_White:0x9affe8}},
+  netherray:{m:'rift/M_Squidle',h:1.6,cm:CM_UFLY,tint:{Squidle_Main:0x7a2a9a,Squidle_Secondary:0x2ab8c8,Squidle_Horn:0xe8d8ff},glow:{Eye_White:0xff8ae8}},
+  hollowskull:{m:'rift/M_GhostSkull',h:1.7,cm:CM_UFLY,tint:{Ghost_Main:0x2a1a3a,Ghost_Secondary:0xe8dcc8}},
+  vashk:{m:'rift/M_MushroomKing',h:1.9,cm:CM_UBIP,tint:{MushroomKing_Main:0x6a2a9a,MushroomKing_Secondary:0xd8c8e8,Orc_Main:0x5a7a6a},glow:{Eye_White:0x7affd0}},
+  voidstalker:{m:'rift/M_AlienBiped',h:1.85,cm:CM_UBIP,tint:{Alien_Main:0x3a1a5a,Alien_Secondary:0x7a3aa8},glow:{Eye_White:0xff5ac8}},
+  riftwalker:{m:'rift/M_BlueDemon',h:2,cm:CM_UBIP,tint:{BlueDemon_Main:0x2a3a8a,BlueDemon_Secondary:0x8ad8ff,Wood:0x3a2a4a},glow:{Eye_White:0xaef4ff}},
+  voidassassin:{m:'rift/M_NinjaBiped',h:1.75,cm:CM_UBIP,tint:{Ninja_Main:0x1a1428,Ninja_Secondary:0x5a2a8a,Gold:0xb08aff},glow:{Eye_White:0xd8a0ff}},
+  sentinel:{m:'rift/M_Tribal',h:1.8,cm:CM_UFLY,tint:{Tribal_Main:0x3a2a5a,Tribal_Secondary:0x8a5ad8,Tribal_Gold:0xe8c87a},glow:{Eye_White:0xffe08a}},
+  morvane:{m:'Mage',h:1.82,props:['Mage_Hat','Mage_Cape'],wt:'staf',cm:{...CM_KAY,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},skin:0x8a7aa8,hair:0x1a1028,tint:{}},
+  voiddrake:{m:'rift/M_Dragon',h:1.8,cm:CM_UFLY,tint:{Dragon_Main:0x2a1a4a,Dragon_Secondary:0x8a4ad8,Dragon_Horn:0xd8c8ff},glow:{Eye_White:0xb07aff}},
+  voidhorror:{m:'rift/M_Hywirl',h:1.8,cm:CM_UFLY,tint:{Hywirl_Main:0x4a0a6a},glow:{Eye_White:0xff4ab0}},
+  dreadlord:{m:'rift/M_DemonBiped',h:2.1,cm:CM_UBIP,tint:{Demon_Main:0x5a1424,Black:0x140a10},glow:{Eye_White:0xff6a3a}},
+  xalthuun:{m:'rift/M_DragonEvolved',h:2.2,cm:{...CM_UFLY,hit:null},tint:{Dragon_Main:0x1a0a2a,Dragon_Secondary:0x7a2ad8,Dragon_Horn:0xe8d8ff},glow:{Eye_White:0xff3ab0}},
   vyraxion:{drk:1,m:'Dragon',h:7.2,cm:{...CM_DRAGON,hit:null},tint:{Main:0x8e1c12,Wings:0x3a0c08,Belly:0xe8a840,Claws:0x161210},glow:{Eyes:0xffc030}}};
 function buildGltfMon(type,lvl,sc){const d=MON_GLTF[type];if(!d)return null;
   return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,noProcW:!!d.wm,wmodel:d.wm,smodel:d.sm,cm:d.cm,quad:d.quad,spider:d.spider,tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair,o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}

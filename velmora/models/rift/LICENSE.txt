@@ -1,0 +1,8 @@
+Models used for the Nether Rift (models/rift/)
+
+All CC0 1.0 Universal (Public Domain), downloaded from poly.pizza:
+- M_*.glb: "Ultimate Monsters Bundle" by Quaternius (https://quaternius.com)
+- TwistedTrees.glb (5 trees), Plant_1-4, PlantBig_1-2, Mineral, GemPink: Quaternius
+- Crystal_1-9: "Crystal" models by iPoly3D
+Changes: textures resized or baked into vertex colours, tree meshes simplified, the five trees combined into one file.
+In the game they are recoloured to fit the void.

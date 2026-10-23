@@ -9,12 +9,12 @@
      out of its crown. Butterflies flutter away when you walk into them. */
 const RX={acc:0,gatherId:null,stand:0};
 /* the water surface under a spot, or null */
-function waterAt(x,z){
+function waterAt(x,z){if(x<-5000)return null;
   if(x<700&&x>-260){const d=Math.hypot(x-LAKE.x,z-LAKE.z);if(d<LAKE.r*1.3){const wy=water.position.y;return groundH(x,z)<wy-.03?wy:null}return null}
   if(x<-2600){for(const l of ELV_LAKES){if(Math.hypot(x-l.x,z-l.z)<l.r*1.3){const wy=l.wl??-1;return groundH(x,z)<wy-.03?wy:null}}const[rd,wy,rw]=elvRiver(x,z);if(rd<rw+.5&&groundH(x,z)<wy-.03)return wy}
   return null}
 /* what the ground is like: 'water', 'path' (roads, streets, sand), 'grass' */
-function groundKind(x,z){if(waterAt(x,z)!=null)return'water';if(x>700)return'stone';
+function groundKind(x,z){if(x<-5000)return riftBridge(x,z)?'stone':'grass';if(waterAt(x,z)!=null)return'water';if(x>700)return'stone';
   if(x<-2600){if(elvPathDist(x,z)<2.6||Math.hypot(x-WS.x,z-WS.z)<WS.R)return'path';return plBiome(x,z)==='shore'?'path':'grass'}
   if(x<-1000)return'path';if(Math.hypot(x,z)<TOWN.wall||pathDist(x,z)<2.6)return'path';const b=plBiome(x,z);return b==='shore'?'path':'grass'}
 function splashFx(x,y,z,big){decal(x,z,{y:y-.03,cell:FXC.ring,size:big?.5:.3,size1:big?2.2:1.3,life:big?1.1:.8,col:0xe8f6ff,a:big?.7:.5});

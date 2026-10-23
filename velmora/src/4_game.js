@@ -73,9 +73,18 @@ function genSpawns(){const r=mulberry(4242),L=[];let n=0;
   area('fenraptor',12,ELV.x+320,ELV.z-40,60,(x,z)=>ev(x,z)&&lo(x,z));area('mossbrute',11,ELV.x+70,ELV.z-310,90,(x,z)=>ev(x,z)&&hi(x,z));
   area('elvwisp',11,ELV.x-100,ELV.z-100,78,(x,z)=>ev(x,z)&&lo(x,z)&&Math.hypot(x-ELV_LAKES[0].x,z-ELV_LAKES[0].z)>50);
   area('elderstag',4,ELV.x-140,ELV.z+170,60,(x,z)=>ev(x,z));L.push({id:'m'+(n++),type:'oakheart',lvl:25,x:ELV.x-210,z:ELV.z-320});
+  /* the Nether Rift: each island its own creatures, an elite in the middle of each region, the Void Wyrm on the Throne */
+  const heads=RIFT_BR.flatMap(b=>[[b.x0,b.z0],[b.x1,b.z1]]);
+  const ri=id=>(x,z)=>{const s=riftIsle(x,z);return!!s&&s.I.id===id&&s.d<s.R-6&&!riftBridge(x,z)&&!heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<14)};
+  const ra=(type,count,id)=>{const I=RISLE[id];area(type,count,I.x,I.z,I.r*1.05,ri(id))};const boss=(type,id,du=0,dv=0)=>{const I=RISLE[id],t=MON[type];L.push({id:'m'+(n++),type,lvl:t.lv[0],x:I.x+du,z:I.z+dv})};
+  ra('riftwraith',8,'a1');ra('voidimp',7,'a1');ra('voidimp',6,'a2');ra('voidooze',8,'a2');ra('riftwraith',5,'a3');ra('voidooze',5,'a3');boss('grimshard','a3');
+  ra('shardgnasher',10,'c1');ra('prismraptor',10,'c1');ra('shardling',8,'c1');ra('crystalbehemoth',8,'c2');ra('shardling',4,'c2');boss('colossus','c2');
+  ra('voidspore',10,'g1');ra('mirelurker',9,'g1');ra('netherray',6,'g1');ra('hollowskull',8,'g2');ra('netherray',4,'g2');boss('vashk','g2');
+  ra('voidstalker',10,'r1');ra('riftwalker',9,'r1');ra('sentinel',6,'r1');ra('voidassassin',8,'r2');ra('sentinel',4,'r2');boss('morvane','r2');
+  ra('voiddrake',9,'t1');ra('voidhorror',8,'t1');ra('dreadlord',7,'t1');boss('xalthuun','t1');
   return L}
 function makeMon(sp){const t=MON[sp.type];const m={kind:'mon',id:sp.id,type:sp.type,t,lvl:sp.lvl,sx:sp.x,sz:sp.z,x:sp.x,z:sp.z,y:groundH(sp.x,sp.z),ry:Math.random()*6.28,nx:sp.x,nz:sp.z,nry:0,mhp:monHp(t,sp.lvl),hp:1,tgt:null,threat:{},atkT:1,ac:0,mv:0,slow:0,stun:0,root:0,dead:false,deadT:0,taps:new Set(),wan:{x:sp.x,z:sp.z,t:rand(1,8)},evade:false,atk:-1,loot:null,add:!!t.add,predUntil:0,bt:{stomp:9,bolt:5,sum:0,enr:0},sent:null};
-  m.hp=m.mhp;m.nry=m.ry;m.lodk=MONS.length%3;m.rig=buildMonster(sp.type,sp.lvl);m.rig.g.position.set(m.x,m.y,m.z);m.rig.g.userData.ent=m;scene.add(m.rig.g);m.size=(t.size||1);MONS.push(m);MONMAP.set(m.id,m);return m}
+  m.hp=m.mhp;m.nry=m.ry;m.lodk=MONS.length%3;/* the Rift's monsters get their model the first time you come near (no need to load them all at the start) */m.rig=inRift(sp.x)&&!window.__EAGER?{g:new THREE.Group(),lazy:1,h:1.6*(t.size||1)}:buildMonster(sp.type,sp.lvl);m.rig.g.position.set(m.x,m.y,m.z);m.rig.g.userData.ent=m;scene.add(m.rig.g);m.size=(t.size||1);MONS.push(m);MONMAP.set(m.id,m);return m}
 function removeMon(m){scene.remove(m.rig.g);const i=MONS.indexOf(m);if(i>=0)MONS.splice(i,1);MONMAP.delete(m.id);if(ME.target===m)setTarget(null);if(m.plate)m.plate.remove();if(m.spark){scene.remove(m.spark);m.spark=null}}
 for(const sp of genSpawns())makeMon(sp);
 for(const n of NPCS){const o={race:n.look.dwarf?'dwerg':'mens',...n.look};const rig=window.__NOGLTF?buildHumanoid(o):buildGltfNpc(n.id,n.look);const y=groundH(n.x,n.z);rig.g.position.set(n.x,y,n.z);rig.g.rotation.y=n.ry;scene.add(rig.g);const e={kind:'npc',...n,y,rig,def:n};rig.g.userData.ent=e;NPCOBJ.push(e);addCol(n.x,n.z,.6)}
@@ -221,7 +230,7 @@ function takeHit(dmg,src){if(ME.dead||S.mode!=='play'||S.god)return;if(tbuff('im
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
 function die(){if(ME.mounted)dismount();if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('You were defeated by '+esc(r?r.n:'another player')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('You have died.','err');saveGame()}
-function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(hollowRespawn()){}else if(elvRespawn()){}else if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
+function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(hollowRespawn()){}else if(riftRespawn()){}else if(elvRespawn()){}else if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
 
 /* ---------- monster AI (runs on the lobby host, or locally when offline) ---------- */
 function players(){const L=[];if(P&&S.mode==='play')L.push({id:myId(),x:ME.pos.x,z:ME.pos.z,dead:ME.dead,lvl:P.level,me:1});for(const r of REMOTES.values())if(r.inW)L.push({id:r.id,x:r.x,z:r.z,dead:r.dead,lvl:r.lvl});return L}

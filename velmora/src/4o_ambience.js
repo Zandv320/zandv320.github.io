@@ -33,7 +33,7 @@ function wxBolt(ang){const a=ang??Math.random()*6.283,r=50+Math.random()*55;cons
   if(WX.bolt){scene.remove(WX.bolt.m);WX.bolt.m.geometry.dispose()}WX.bolt={m,t:.32};WX.flash=1;
   const d=Math.hypot(x-camTarget.x,z-camTarget.z);setTimeout(()=>ambShot('thunder',x,y0+30,z,1,600,.85+Math.random()*.3),300+d/340*1000*.6)}
 let _wxAcc=0;
-function wxUpdate(dt){const outdoor=camTarget.x<700;const slot=Math.floor(Date.now()/1000/420);if(slot!==WX.slot){WX.slot=slot;WX.type=wxPick(slot)}
+function wxUpdate(dt){const outdoor=camTarget.x<700&&camTarget.x>-5000;const slot=Math.floor(Date.now()/1000/420);if(slot!==WX.slot){WX.slot=slot;WX.type=wxPick(slot)}
   let tgt=WX_T[WX.force||WX.type];if(!outdoor)tgt=WX_T.clear;else if(camTarget.x<-1000&&camTarget.x>-2600&&tgt.rain)tgt=WX_T.windy;
   const C=WX.cur,k=WX.snap?1:clamp(dt/18,0,1);WX.snap=0;for(const n in C)C[n]+=(tgt[n]-C[n])*k*(n==='fog'?.6:1);if(!outdoor){for(const n in C)C[n]=0}
   /* light and fog */const cl=C.cloud,fg=C.fog,rn=C.rain;sun.intensity*=1-.8*cl;fill.intensity*=1-.5*cl;hemi.intensity*=1-.3*cl;
@@ -68,11 +68,11 @@ function ambShot(n,x,y,z,vol=1,maxD=40,rate=1){const a=AC,b=AMB.buf[n];if(!a||!b
 const AMB_FORGES=[];
 function ambUpdate(dt){const a=AC;if(!a||!S.sound&&!AMB.out)return;if(!AMB.load){if(S.sound)ambLoad();return}if(!AMB.out)return;
   const now=a.currentTime;AMB.out.gain.setTargetAtTime(S.sound&&!document.hidden?1:0,now,.3);
-  const x=camTarget.x,z=camTarget.z,out=x<700,day=1-DAY.night,C=WX.cur;const inElv2=x<-2600,inDrk2=x<-1000&&!inElv2,green=out&&!inDrk2;
+  const x=camTarget.x,z=camTarget.z,inR=x<-5000,out=x<700&&!inR,day=1-DAY.night,C=WX.cur;const inElv2=x<-2600&&!inR,inDrk2=x<-1000&&!inElv2,green=out&&!inDrk2;
   const forest=green&&(inForest(x,z)||inElv2);
   /* nearest river or waterfall in Elvia */let riv=0,fall=0;if(inElv2){const[rd,,rw]=elvRiver(x,z);riv=clamp(1-(rd-rw)/22,0,1);for(const f of ELV_FALLS){const d=Math.hypot(f.x-x,f.z-z);fall=Math.max(fall,clamp(1-d/55,0,1))}}
   const want={amb_birds:green?.5*day*(1-C.rain*.9)*(1-C.storm):0,amb_birds2:forest?.4*day*(1-C.rain):0,amb_crickets:green?.42*DAY.night*(1-C.rain*.8):0,
-    amb_rain:out?C.rain*.75:0,amb_wind:out?Math.max(C.wind*.45-.08,inDrk2?.3:0,C.storm*.55):0,amb_stream:riv*.55*(1-fall*.5),amb_waterfall:fall*.8};
+    amb_rain:out?C.rain*.75:0,amb_wind:inR?.4:out?Math.max(C.wind*.45-.08,inDrk2?.3:0,C.storm*.55):0,amb_stream:riv*.55*(1-fall*.5),amb_waterfall:fall*.8};
   for(const n in want){const L=want[n]>.002||AMB.loops[n]?ambLoop(n):null;if(!L)continue;if(Math.abs(L.v-want[n])>.005){L.v=want[n];L.g.gain.setTargetAtTime(want[n],now,1.2)}}
   if(!out)return;const T=AMB.t;
   /* forges: the smith at the Artisans' Yard and the smithies in the towns */if(!AMB_FORGES.length){AMB_FORGES.push({x:-113.2,z:-10.4});for(const b of TOWN_B)if(/blacksmith/.test(b.m))AMB_FORGES.push({x:b.x,z:b.z});for(const b of WS_B)if(/blacksmith/.test(b.m))AMB_FORGES.push({x:b.x,z:b.z})}
