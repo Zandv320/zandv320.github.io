@@ -287,5 +287,5 @@ function useWaystone(w){P.disc=P.disc||{};if(w.id==='ws')P.disc.ws=1;const to=WA
   if(to.id==='ws'&&!P.disc.ws)return toast('The waystone is silent: you have not been to WindStorm yet');if(ME.combat>0)return toast('You cannot travel while in combat');if(ME.mounted)dismount();
   ME.cast={a:{n:'Travel to '+to.n,id:'waystone',way:to},t:0,dur:3,tg:null};$('#castbar').hidden=false}
 function waystoneArrive(to){beamFx(ME.pos.x,ME.pos.z,0x7ad8ff,1.4);teleport(to.x+2.5,to.z+2.5);beamFx(ME.pos.x,ME.pos.z,0x7ad8ff,1.4);sfx('frost');log('The waystone carries you to '+to.n+'.','sys')}
-function hearthTarget(){return P&&P.home==='rw'?[RIFT_ENTRY.x+rand(14,18),RIFT_ENTRY.z+rand(-3,3)]:P&&P.home==='ws'?[WS.x+rand(-3,3),WS.z+WS.plaza+4+rand(0,3)]:[rand(-3,3),rand(5,8)]}
+function hearthTarget(){if(P&&P.home==='house'){const d=houseDoorOut();if(d)return d}return P&&P.home==='rw'?[RIFT_ENTRY.x+rand(14,18),RIFT_ENTRY.z+rand(-3,3)]:P&&P.home==='ws'?[WS.x+rand(-3,3),WS.z+WS.plaza+4+rand(0,3)]:[rand(-3,3),rand(5,8)]}
 function elvRespawn(){if(!inElv(ME.pos.x))return false;teleport(WS.x+rand(-3,3),WS.z+WS.plaza+6+rand(-2,2));return true}

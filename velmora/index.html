@@ -439,6 +439,11 @@ body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(
 #tTabs{display:none}
 #tTrees{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 #tTrees{max-height:calc(100vh - 170px);overflow-y:auto;overscroll-behavior:contain}
+#pHouse{left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,96vw);max-height:86vh;overflow-y:auto}
+#pHouse .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}#pHouse .htabs .btn{padding:4px 10px;min-height:32px;font-size:13px}
+.hcat{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:46vh;overflow-y:auto}
+.hitem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border-radius:8px;border:2px solid #6b4a26;background:#f3e3c0;color:#3b2a14;cursor:pointer;text-align:left;font:inherit}.hitem small{opacity:.8}.hitem:hover{background:#ffeccc}
+#houseBar{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;background:rgba(30,18,8,.86);border:2px solid #b08a4a;border-radius:12px;padding:8px 12px;color:#fff3d6}#houseBar #hbMsg{min-width:140px;font-size:14px}#houseBar .btn{min-height:38px;padding:4px 14px}
 .ttree{background:rgba(30,16,6,.35);border-radius:10px;padding:8px 6px 10px;position:relative}
 .ttree>header{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#fff3d6;font-weight:700}
 .ttree>header canvas{width:30px;height:30px;border-radius:6px}.ttree>header small{margin-left:auto;font-weight:400;opacity:.85}
@@ -681,6 +686,7 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
   <div id="pAdmin" class="panel frame" hidden><h3>Admin <button class="x" data-close>×</button></h3><div id="admTabs"></div><div id="admBody"></div></div>
   <div id="pChar" class="panel frame" hidden><h3><span id="cTitle">Hero</span><button class="x" data-close>×</button></h3><div class="eq" id="eqGrid"></div><div class="stats" id="statList"></div><h4 id="mountHd" class="mhd">Mounts</h4><div class="mlist" id="mountList"></div></div>
   <div id="pTalent" class="panel frame" hidden><h3><span>Talents</span><span class="tpts" id="tPts"></span><button class="x" data-close>×</button></h3><div id="tTabs"></div><div id="tTrees"></div><p class="tfoot" id="tFoot"></p></div>
+  <div id="pHouse" class="panel frame" hidden><h3>My house <button class="x" data-close>×</button></h3><div id="hBody"></div></div>
   <div id="pQuest" class="panel frame" hidden><h3>Quest log <button class="x" data-close>×</button></h3><div id="qList"></div></div>
   <div id="pMap" class="panel frame" hidden><h3><span id="mapTitle">Map of Velmora</span><span class="mapbtns"><button class="btn alt" id="mapFollow" title="Keep me in the middle">◎<span class="lbl"> Follow</span></button><button class="btn alt" id="mapAll" title="Show the whole map">⤢<span class="lbl"> World</span></button><button class="btn alt" id="mapOut" aria-label="Zoom out">−</button><button class="btn alt" id="mapIn" aria-label="Zoom in">+</button></span><button class="x" data-close>×</button></h3><canvas id="bigmap" width="720" height="560"></canvas><div class="maplg"><span><b style="color:#ffd100">!</b> quest</span><span><i style="background:#ffd34d"></i>person</span><span><i style="background:#40e090"></i>group</span><span><i style="background:#4aa0ff"></i>player</span><span><i class="qa"></i>quest area</span><span><i style="background:#d23a2a"></i>monster</span><span class="hint">Drag to move · scroll or pinch to zoom</span></div></div>
   <div id="pLife" class="panel frame" hidden><h3>Crafting <button class="x" data-close>×</button></h3><div id="lifeBody"></div></div>
@@ -689,6 +695,7 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
   <div id="pMenu" class="panel frame" hidden><h3>Menu <button class="x" data-close>×</button></h3>
     <button class="btn alt" data-close>Resume</button>
     <button class="btn alt" id="bSave">Save</button>
+    <button class="btn alt" data-open="pHouse">My house</button>
     <div class="row touchonly"><button class="btn alt" data-open="pMap">Map</button><button class="btn alt" data-open="pLife">Crafting</button></div>
     <button class="btn" id="bPvp">PvP: off</button>
     <p class="mhelp" style="margin:0">With PvP on you can fight other players outside Silverbrook who also have PvP on. Winning earns honour and gold.</p>

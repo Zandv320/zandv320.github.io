@@ -209,6 +209,7 @@ function reward(m){
   if(t.dragon){L.items.length=0;L.items.push(makeLegendary(P.cls));L.items.push(makeGear(randSlot(),22,3,P.cls));L.items.push(potion('heal',3))}
   else if(t.boss){L.items.push(makeGear('wapen',11,3,P.cls));L.items.push(makeGear(randSlot(),11,2,P.cls))}
   {const hm=helmDrop(m.type);if(hm){L.items.push(hm);log('✦ '+t.n+' dropped <span style="color:'+rarCol(hm)+'">['+esc(hm.n)+']</span>!','loot',true)}}
+  if(m.t.boss||m.t.elite)houseTrophy(m);
   for(const it of riftDrops(m)){L.items.push(it);log('✦ '+t.n+' dropped <span style="color:'+rarCol(it)+'">['+esc(it.n)+']</span>!','loot',true)}
   {const ck=cloakDrop(m.type);if(ck){L.items.push(ck);log('✦ '+t.n+' dropped <span style="color:'+rarCol(ck)+'">['+esc(ck.n)+']</span>!','loot',true)}}
   {const sp=shoulderDrop(m.type);if(sp){L.items.push(sp);log('✦ '+t.n+' dropped <span style="color:'+rarCol(sp)+'">['+esc(sp.n)+']</span>!','loot',true)}}

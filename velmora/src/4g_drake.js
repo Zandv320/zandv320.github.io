@@ -41,7 +41,7 @@ function drakePortals(){const x=ME.pos.x,z=ME.pos.z;if(hollowPortals(x,z)||riftP
   if(x>1700&&Math.hypot(x-D3.exit.x,z-(D3.exit.z+1.4))<2){leaveVolcano();return true}
   return false}
 /* met F (of Actie) */
-function drakeInteract(){const x=ME.pos.x,z=ME.pos.z;if(hollowInteract(x,z)||riftInteract(x,z)||sanctumInteract(x,z)||citadelInteract(x,z))return true;
+function drakeInteract(){const x=ME.pos.x,z=ME.pos.z;if(hollowInteract(x,z)||riftInteract(x,z)||sanctumInteract(x,z)||citadelInteract(x,z)||houseInteract(x,z))return true;
   {const w=nearWaystone();if(w){useWaystone(w);return true}}if(inDrk(x)&&Math.hypot(x-DRK_ARCH.elvia.x,z-DRK_ARCH.elvia.z)<7){enterElvia();return true}if(inElv(x)&&Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<7){leaveElvia();return true}
   if(x<700&&x>-1000&&Math.hypot(x-DRK_GATE.x,z-DRK_GATE.z)<7){enterDrake();return true}
   if(inDrk(x)){if(Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)<7){leaveDrake();return true}if(Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<7){enterVolcano();return true}}

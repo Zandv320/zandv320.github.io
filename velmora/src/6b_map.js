@@ -152,6 +152,7 @@ function* elvAtlasGen(){const N=isTouch?900:1400,k=N/ESZ,X0=ELV.x-ESZ/2,Z0=ELV.z
   EATLAS.c=c}
 /* which picture the map shows where you are: Velmora, the Dragon Realm or a dungeon (world rectangle in metres) */
 function mapSource(){const x=ME.pos.x;
+  if(x>4200&&INT.img)return{key:'house',img:INT.img,x0:INT.ox-INT.w/2,z0:INT.oz-INT.d/2,w:INT.w,h:INT.d,title:zoneAt(x,ME.pos.z),dun:1};
   if(x>1250){const D=x>3300?D6:x>2800?D5:x>2200?D4:x>1700?D3:D2;return{key:D.name,img:D.img,x0:D.X-D.C/2*D.c,z0:D.Z-D.R/2*D.c,w:D.C*D.c,h:D.R*D.c,title:D.name,dun:1}}
   if(x>700)return{key:'crypt',img:dunImg,x0:DUN.x-DC/2*DUN.c,z0:DUN.z-DR/2*DUN.c,w:DC*DUN.c,h:DR*DUN.c,title:'Crypt of Kaal-Morath',dun:1};
   if(inRift(x))return{key:'rift',img:riftImg,x0:RIFT.x-RSZ/2,z0:RIFT.z-RSZ/2,w:RSZ,h:RSZ,title:'The Nether Rift'};
