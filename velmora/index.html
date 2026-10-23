@@ -250,7 +250,7 @@ body.touch.portrait #pframe{width:min(260px,calc(100vw - 128px))}
 body.touch.portrait .port{width:40px;height:40px}
 body.touch.portrait #mini{width:100px}body.touch.portrait #mmc{width:92px;height:92px}
 body.touch.portrait #mbtn{top:calc(max(10px,env(safe-area-inset-top)) + 90px);left:max(10px,env(safe-area-inset-left));right:auto;bottom:auto;width:auto;flex-direction:row;flex-wrap:nowrap;gap:4px;padding:0}
-body.touch.portrait .mb{width:min(38px,calc((100vw - 150px) / 6));height:min(38px,calc((100vw - 150px) / 6))}
+body.touch.portrait .mb{width:min(38px,calc((100vw - 150px) / 7));height:min(38px,calc((100vw - 150px) / 7))}
 body.touch.portrait #tframe{left:max(10px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 132px);width:min(250px,calc(100vw - 130px))}
 body.touch.portrait #chat{top:calc(max(10px,env(safe-area-inset-top)) + 132px);width:calc(100vw - 20px)}
 body.touch.portrait #party{top:calc(max(10px,env(safe-area-inset-top)) + 200px);width:44vw}
@@ -430,6 +430,12 @@ body.touch #pBag,body.touch #pChar,body.touch #pQuest,body.touch #pLife,body.tou
 @keyframes drawerUp{from{transform:translate(-50%,40px);opacity:0}}
 body.touch .grid{grid-template-columns:repeat(6,1fr)}body.touch #pBag{width:min(400px,62vw)}body.touch #pChar{width:min(420px,66vw)}
 @media (max-height:500px){body.touch #tframe{left:50%;top:max(8px,env(safe-area-inset-top));width:min(260px,36vw)}#joy{width:132px;height:132px}#tJump{left:calc(max(18px,env(safe-area-inset-left)) + 142px)}body.touch #tracker.show{top:calc(max(8px,env(safe-area-inset-top)) + 64px)}body.touch #feed{top:calc(max(8px,env(safe-area-inset-top)) + 90px)}}
+/* the House button makes seven round buttons: two columns of four, a little smaller on a short (landscape) phone, so they stay clear of the ability wheel; the target frame sits just right of the middle so it clears your own frame */
+@media (max-height:500px){body.touch #mbtn{width:88px;gap:4px}body.touch .mb{width:42px;height:42px}body.touch #tframe{left:calc(max(10px,env(safe-area-inset-left)) + 228px);transform:none;width:min(240px,calc(100vw - 460px))}}
+body.touch.portrait #tframe{transform:none}
+@media (max-height:380px){body.touch #mbtn{width:80px}body.touch .mb{width:38px;height:38px}}
+/* landscape phone: the experience bar moves up under your own frame, out of the way of the buttons at the bottom */
+@media (max-height:500px){body.touch:not(.portrait) #bottom{left:calc(max(10px,env(safe-area-inset-left)) + 8px);top:calc(max(10px,env(safe-area-inset-top)) + 80px);bottom:auto;transform:none;align-items:flex-start}body.touch:not(.portrait) #xpbar{width:190px;height:8px}body.touch:not(.portrait) #party{top:calc(max(10px,env(safe-area-inset-top)) + 96px)}}
 
 
 /* talenten */
@@ -678,6 +684,7 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
     <button class="mb" data-p="pBag"><img src="ui/pouch.png" alt=""><i>B</i><small>Bag</small></button>
     <button class="mb" data-p="pQuest"><img src="ui/book_open.png" alt=""><i>L</i><small>Quests</small></button>
     <button class="mb" data-p="pLife"><img src="ui/campfire.png" alt=""><i>K</i><small>Crafting</small></button>
+    <button class="mb" data-p="pHouse"><img src="ui/house.png" alt=""><i>H</i><small>House</small></button>
     <button class="mb" data-p="pMap"><img src="ui/flag_triangle.png" alt=""><i>M</i><small>Map</small></button>
     <button class="mb" id="bChat"><img src="ui/icon_talk.png" alt=""><i>↵</i><small>Chat</small></button>
     <button class="mb" data-p="pMenu"><img src="ui/icon_menu.png" alt=""><i>Esc</i><small>Menu</small></button>
@@ -695,7 +702,6 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
   <div id="pMenu" class="panel frame" hidden><h3>Menu <button class="x" data-close>×</button></h3>
     <button class="btn alt" data-close>Resume</button>
     <button class="btn alt" id="bSave">Save</button>
-    <button class="btn alt" data-open="pHouse">My house</button>
     <div class="row touchonly"><button class="btn alt" data-open="pMap">Map</button><button class="btn alt" data-open="pLife">Crafting</button></div>
     <button class="btn" id="bPvp">PvP: off</button>
     <p class="mhelp" style="margin:0">With PvP on you can fight other players outside Silverbrook who also have PvP on. Winning earns honour and gold.</p>
@@ -704,7 +710,7 @@ body.touch #feed div{border:1px solid var(--gline);border-image:none;border-radi
     <button class="btn alt" id="bCam">Camera: Third-person</button>
     <button class="btn alt" id="bFull">Fullscreen: off</button>
     <button class="btn" id="bQuit">Save and return to title screen</button>
-    <p class="mhelp keyh"><kbd>WASD</kbd> move · <kbd>drag mouse</kbd> camera · <kbd>scroll</kbd> zoom · <kbd>click</kbd> target · <kbd>Tab</kbd> nearest enemy · <kbd>1</kbd>–<kbd>7</kbd> abilities · <kbd>F</kbd> talk/loot/door · <kbd>Space</kbd> jump · <kbd>Enter</kbd> chat · <kbd>B</kbd> <kbd>C</kbd> <kbd>L</kbd> <kbd>M</kbd> windows</p>
+    <p class="mhelp keyh"><kbd>WASD</kbd> move · <kbd>drag mouse</kbd> camera · <kbd>scroll</kbd> zoom · <kbd>click</kbd> target · <kbd>Tab</kbd> nearest enemy · <kbd>1</kbd>–<kbd>7</kbd> abilities · <kbd>F</kbd> talk/loot/door · <kbd>Space</kbd> jump · <kbd>Enter</kbd> chat · <kbd>B</kbd> <kbd>C</kbd> <kbd>L</kbd> <kbd>M</kbd> <kbd>H</kbd> windows</p>
   </div>
 </div>
 <div id="tip" class="frame" hidden></div>

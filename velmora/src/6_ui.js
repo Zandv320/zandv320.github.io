@@ -102,7 +102,7 @@ function buildBar(){const ab=$('#abar');const B=bar();refreshTalent();
 
 /* touch buttons: landscape keeps the wheel; portrait (phone held upright) gets a compact cluster, measured from the
    bottom-right corner [right,bottom,size]; target and action sit above the joystick on the left */
-const TB_PORT={big:[0,0,88],a0:[96,0,58],a1:[92,74,56],a2:[16,104,56],a3:[162,40,50],t0:[160,100,46],t1:[100,140,46],dr:[20,172,38]};
+const TB_PORT={big:[0,0,88],a0:[96,0,58],a1:[92,74,56],a2:[16,92,56],a3:[162,40,50],t0:[160,100,46],t1:[100,140,46],dr:[20,206,38]};
 function layoutTB(){const tb=$('#tbtns');if(!tb)return;const port=document.body.classList.contains('portrait');
   for(const b of tb.querySelectorAll(':scope>.tb')){const r=b.dataset.role;if(!r)continue;if(!b._land)b._land=[b.style.right,b.style.bottom,b.style.width,b.style.left];
     if(port&&TB_PORT[r]){const[x,y,z]=TB_PORT[r];Object.assign(b.style,{right:x+'px',bottom:y+'px',width:z+'px',height:z+'px',left:''})}
