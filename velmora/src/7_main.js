@@ -171,7 +171,7 @@ function updCamera(dt){if(tdCamera(dt))return;
   cam.dist=lerp(cam.dist,cam.tdist,clamp(dt*8,0,1));cam.drag=Math.max(0,cam.drag-dt);
   const tx=ME.pos.x,ty=ME.pos.y+1.7+(ME.mounted&&MOUNTS[ME.mounted]?(MOUNTS[ME.mounted].fly?1.6:.5):0),tz=ME.pos.z;if(snapCam){camTarget.set(tx,ty,tz);snapCam=false}else camTarget.lerp(_v.set(tx,ty,tz),clamp(dt*14,0,1));
   const inD=camTarget.x>700;let dist=inD?Math.min(cam.dist,camTarget.x>1700&&camTarget.x<2200?20:camTarget.x>2200?16:14):cam.dist;const cp=Math.cos(cam.pitch);
-  /* a drake is big: the camera stays a little further back while riding one */if(ME.mounted&&MOUNTS[ME.mounted]&&MOUNTS[ME.mounted].dk&&!inD)dist+=3.5;
+  /* a drake is big: the camera stays a little further back while riding one */if(ME.mounted&&MOUNTS[ME.mounted]&&MOUNTS[ME.mounted].dk&&!inD)dist+=5.5;
   {const ox=Math.sin(cam.yaw)*cp,oy=Math.sin(cam.pitch),oz=Math.cos(cam.yaw)*cp;let lim=dist;for(let f=.3;f<=1.001;f+=.1){const d=dist*f;if(camBlocked(camTarget.x+ox*d,camTarget.y+oy*d,camTarget.z+oz*d)){lim=Math.max(2.5,d-1.2);break}}cam.cdist=lerp(cam.cdist||lim,lim,clamp(dt*(lim<(cam.cdist||lim)?12:3),0,1));dist=Math.min(dist,cam.cdist)}
   camera.position.set(camTarget.x+Math.sin(cam.yaw)*cp*dist,camTarget.y+Math.sin(cam.pitch)*dist,camTarget.z+Math.cos(cam.yaw)*cp*dist);
   /* camera nooit onder het wateroppervlak of de grond */{const cx=camera.position.x,cz=camera.position.z;let minY=groundH(cx,cz)+.5;if(Math.hypot(cx-LAKE.x,cz-LAKE.z)<LAKE.r*1.3)minY=Math.max(minY,water.position.y+.7);if(camera.position.y<minY)camera.position.y=minY}

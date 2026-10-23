@@ -9,7 +9,7 @@
    stand still in the air, dives with raised wings, banks into turns and leaves a faint trail of light from its tail.
    On the ground it walks on its four limbs (the wings are its forelegs) and breathes and looks around when idle.
    The rider sits on a fixed seat at the base of the neck, leaning with the drake. */
-const DK_S=2.4,DK_LIFT=36.5*.01*7.3188*DK_S;
+const DK_S=3.25,DK_LIFT=36.5*.01*7.3188*DK_S;
 const DK_PAL={
   nether:{c0:0x05011a,c1:0x3a0e90,m0:0x0e0328,m1:0x4c1cbc,v:0x5ff0e0,vi:1.5,mi:.85,star:1,trail:0x7ff8ff},
   ember: {c0:0x2a0a04,c1:0xd2582c,m0:0x3a0a04,m1:0xe2562a,v:0xffa030,vi:1.3,mi:.45,star:0,trail:0xffa040},
@@ -97,7 +97,7 @@ function dkFrame(D,x,y,z,ry,spd,air,dt){const g=D.g;D.spd=spd;g.position.set(x,y
   const tp=air?(hover?-.32:climb?-.22*clamp(D.vy/6,0,1)-.05:dive?.42:-.04):0,tr=air&&!hover?clamp(-yr*.42,-.6,.6):0;
   D.pitch=lerp(D.pitch,tp,clamp(dt*2.5,0,1));D.roll=lerp(D.roll,tr,clamp(dt*2.5,0,1));
   /* the flight clip carries the body ~36 units up in its own space: take that out so the drake flies where the rider is */
-  D.piv.position.y=A*1.2;D.m.position.y=-A*DK_LIFT;D.piv.rotation.x=D.pitch;D.piv.rotation.z=D.roll;
+  D.piv.position.y=A*1.2*DK_S/2.4;D.m.position.y=-A*DK_LIFT;D.piv.rotation.x=D.pitch;D.piv.rotation.z=D.roll;
   /* a faint trail of light from the tail */
   if(A>.6&&D.tail&&(spd>.3||dive)){D.fs-=dt;if(D.fs<=0){D.fs=.03;D.tail.getWorldPosition(_dkV);emitP({x:_dkV.x,y:_dkV.y,z:_dkV.z,vy:.1,life:.9,size:.55,size1:.05,col:DK_PAL[MOUNTS[D.id].dk].trail,a:.55,a1:0,cell:FXC.glint})}}
   if(!D.seat)return null;D.seat.getWorldPosition(_dkV);return _dkV}
