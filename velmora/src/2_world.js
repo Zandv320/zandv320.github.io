@@ -105,7 +105,7 @@ function groundH(x,z){
   return u+v<1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v)}
 function inForest(x,z){return z<-52&&z>-262&&x<112&&x>-250}
 function zoneAt(x,z){
-  if(x>2800)return D5.name;if(x>2200)return'Thornroot Hollow';if(x>1700)return'Heart of the Volcano';if(x<-5000)return riftZone(x,z);if(x<-2600)return elvZone(x,z);if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
+  if(x>3300)return D6.name;if(x>2800)return D5.name;if(x>2200)return'Thornroot Hollow';if(x>1700)return'Heart of the Volcano';if(x<-5000)return riftZone(x,z);if(x<-2600)return elvZone(x,z);if(x<-1000)return drkZone(x,z);if(x>1250)return'Ignaroth\'s Fire Cave';if(x>700)return'Crypt of Kaal-Morath';
   if(Math.hypot(x-CAVE.x,z-CAVE.z)<60)return'Ashen Hills';if(x>196&&Math.abs(z-100)<26)return'Dragon Pass';
   if(Math.hypot((x-ARENA.x)/1.0,(z-ARENA.z)/1.09)<ARENA.r+14)return'Arena of Silverbrook';
   if(Math.hypot(x-CRAFT.x,z-CRAFT.z)<CRAFT.r+4)return"Artisans' Yard";
@@ -206,7 +206,7 @@ function addCol(x,z,r,tree,cam){const k=Math.floor(x/10)+','+Math.floor(z/10);le
 function camBlocked(x,y,z){if(x>700)return false;const cx=Math.floor(x/10),cz=Math.floor(z/10);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){if(c.cam){if((x-c.x)**2+(z-c.z)**2<(c.r+.4)**2&&y<groundH(c.x,c.z)+c.cam)return true;continue}if(!c.tree)continue;const R=c.tree*c.r;if((x-c.x)**2+(z-c.z)**2<R*R&&y<groundH(c.x,c.z)+c.r*17)return true}}if(typeof ARENA_RX!=='undefined'){const u=(x-ARENA.x)/ARENA_RX,v=(z-ARENA.z)/ARENA_RZ,rn=Math.hypot(u,v);if(rn>1.06&&rn<1.75&&y<ARENA_H+3+(rn-1)*16)return true}for(const b of BOXES)if(x>b.x0-.3&&x<b.x1+.3&&z>b.z0-.3&&z<b.z1+.3&&y<groundH(x,z)+11)return true;return false}
 function addBox(x,z,w,d){BOXES.push({x0:x-w/2,x1:x+w/2,z0:z-d/2,z1:z+d/2})}
 function collide(p,r){
-  if(p.x>2800){D5.collide(p,r);return}if(p.x>2200){D4.collide(p,r);return}if(p.x>1700){D3.collide(p,r);return}if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
+  if(p.x>3300){D6.collide(p,r);return}if(p.x>2800){D5.collide(p,r);return}if(p.x>2200){D4.collide(p,r);return}if(p.x>1700){D3.collide(p,r);return}if(p.x>1250){D2.collide(p,r);return}if(p.x>700){dunCollide(p,r);return}
   const cx=Math.floor(p.x/10),cz=Math.floor(p.z/10);
   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=CG.get((cx+a)+','+(cz+b));if(!arr)continue;for(const c of arr){const dx=p.x-c.x,dz=p.z-c.z,rr=c.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr&&dd>1e-6){const d=Math.sqrt(dd),k=(rr-d)/d;p.x+=dx*k;p.z+=dz*k}}}
   for(const b of BOXES){if(p.x<b.x0-r||p.x>b.x1+r||p.z<b.z0-r||p.z>b.z1+r)continue;const qx=clamp(p.x,b.x0,b.x1),qz=clamp(p.z,b.z0,b.z1),dx=p.x-qx,dz=p.z-qz,dd=dx*dx+dz*dz;

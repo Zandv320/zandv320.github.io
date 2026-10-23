@@ -64,6 +64,8 @@ const RIFT_ENTRY={x:RIFT_EXIT.x+9,z:RIFT_EXIT.z+2};
 const RIFT_GATE={x:ELV.x+175,z:ELV.z-60};/* in the woods east of WindStorm */
 /* the gate down to the Sanctum of the Silent Song: on the Throne island, on the far side from the long bridge */
 const SANCTUM_GATE=(()=>{const I=RISLE.t1,C=RISLE.c2;const a=Math.atan2(I.z-C.z,I.x-C.x);const d=Math.min(60,riftR(I,a)-16);return{x:I.x+Math.cos(a)*d,z:I.z+Math.sin(a)*d,ry:Math.atan2(-Math.cos(a),-Math.sin(a))}})();
+/* the gate to the Void Citadel (the raid): also on the Throne island, a quarter turn further round */
+const CITADEL_GATE=(()=>{const I=RISLE.t1,C=RISLE.c2;const a=Math.atan2(I.z-C.z,I.x-C.x)+1.6;const d=Math.min(60,riftR(I,a)-16);return{x:I.x+Math.cos(a)*d,z:I.z+Math.sin(a)*d,ry:Math.atan2(-Math.cos(a),-Math.sin(a))}})();
 /* ---- materials: toon with vertex colours and a per-vertex glow (veins of light in the rock, cracks in the crystal fields) ---- */
 function riftGlowMat(o={}){const m=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:RAMP,...o});
   m.onBeforeCompile=sh=>{sh.vertexShader='attribute float glow;\nvarying float vGlow;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGlow=glow;');
@@ -192,7 +194,7 @@ async function buildRift(){if(window.__NOGLTF)return;const R=mulberry(8181);cons
   const put=(n,x,z,ry,s,y=0)=>envPlace(n,x,z,ry,()=>Array.isArray(s)?s:[s,s,s],scene,y);
   /* places on an island: away from its rim, the bridge heads and Riftwatch */
   const heads=RIFT_BR.flatMap(b=>[[b.x0,b.z0],[b.x1,b.z1]]);
-  const okI=(I,x,z,clear=3)=>{const s=riftIsle(x,z);if(!s||s.I!==I||s.d>s.R-clear-1.5)return false;if(heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<clear+7))return false;if(riftBridge(x,z))return false;if(I.id==='hub'&&Math.hypot(x-RW.x,z-RW.z)<52)return false;if(Math.hypot(x-SANCTUM_GATE.x,z-SANCTUM_GATE.z)<16)return false;return true};
+  const okI=(I,x,z,clear=3)=>{const s=riftIsle(x,z);if(!s||s.I!==I||s.d>s.R-clear-1.5)return false;if(heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<clear+7))return false;if(riftBridge(x,z))return false;if(I.id==='hub'&&Math.hypot(x-RW.x,z-RW.z)<52)return false;if(Math.hypot(x-SANCTUM_GATE.x,z-SANCTUM_GATE.z)<16||Math.hypot(x-CITADEL_GATE.x,z-CITADEL_GATE.z)<18)return false;return true};
   const scatter=(I,n,clear,f)=>{const L=[];for(let i=0;i<n*30&&L.length<n;i++){const a=R()*6.28,d=Math.sqrt(R())*I.r*1.15,x=I.x+Math.cos(a)*d,z=I.z+Math.sin(a)*d;if(!okI(I,x,z,clear))continue;if(L.some(t=>Math.hypot(t.x-x,t.z-z)<clear*1.6))continue;L.push(f?f(x,z):{x,z,ry:R()*6.28,s:1})}return L};
   const isles=k=>RIFT_ISLES.filter(I=>I.col===k);
   const crystals=['../rift/Crystal_1','../rift/Crystal_3','../rift/Crystal_6','../rift/Crystal_7','../rift/Crystal_2'],smallC=['../rift/Crystal_4','../rift/Crystal_8','../rift/Crystal_9','../rift/Crystal_5'];

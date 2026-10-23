@@ -1,0 +1,4 @@
+cragle.glb — "Cragle" by ChamberSu (https://sketchfab.com/chambersu1996)
+Source: https://sketchfab.com/3d-models/cragle-595defc6c81e40ddbca435b78e0ae9f7
+License: Creative Commons Attribution 4.0 (CC BY 4.0) — https://creativecommons.org/licenses/by/4.0/
+Changes: animations other than the idle loops removed, textures converted to WebP and reduced; brightened and animated in code (Velmora's Riftwing mount).

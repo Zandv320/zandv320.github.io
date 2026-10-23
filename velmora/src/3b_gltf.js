@@ -177,6 +177,11 @@ const MON_GLTF={
   korvax:{m:'rift/M_YetiBiped',h:1.9,cm:CM_UBIP,tint:{Yeti_Main:0x4a3a8a,Yeti_Secondary:0xd8b8ff},glow:{Eye_White:0xff6ad8}},
   ilvaya:{m:'Mage',h:1.82,props:['Mage_Hat','Mage_Cape'],wt:'staf',cm:{...CM_KAY,atk:{def:['Spellcast_Shoot']},cidle:'Spellcasting'},skin:0xd8c8f0,hair:0xf0e8ff,tint:{}},
   nyxathar:{m:'rift/M_DemonBiped',h:2.1,cm:CM_UBIP,tint:{Demon_Main:0x1e0e32,Black:0x8a3ae8},glow:{Eye_White:0xff3ab0}},
+  citadelwarden:{m:'Skeleton_Warrior',h:1.78,props:['Skeleton_Warrior_Helmet'],wt:'zwaard',wm:'XS_Skeleton_Blade',sm:'XS_Skeleton_Shield_Small_A',cm:{...CM_SKEL,atk:{def:ATK_1H}},eye:0x7ad8ff},
+  grakkus:{m:'rift/M_BlueDemon',h:2,cm:CM_UBIP,tint:{BlueDemon_Main:0x1a2a5a,BlueDemon_Secondary:0xc8e8ff,Wood:0x2a3a5a},glow:{Eye_White:0x7ad8ff}},
+  sareth:{m:'rift/M_Ghost',h:1.7,cm:CM_UFLY,tint:{Ghost_Main:0xa898e8},glow:{Eye_White:0xff6ad8}},
+  ghorzul:{m:'rift/M_PinkBlob',h:1.25,cm:CM_UBLOB,tint:{Pink_Main:0x3a0a5a,Pink_Secondary:0xd88aff},glow:{Eye_White:0xff4ab0}},
+  vorthax:{m:'rift/M_Dragon',h:1.8,cm:CM_UFLY,tint:{Dragon_Main:0x0e1a34,Dragon_Secondary:0x5ab8ff,Dragon_Horn:0xe8f4ff},glow:{Eye_White:0x7ad8ff}},
   vyraxion:{drk:1,m:'Dragon',h:7.2,cm:{...CM_DRAGON,hit:null},tint:{Main:0x8e1c12,Wings:0x3a0c08,Belly:0xe8a840,Claws:0x161210},glow:{Eyes:0xffc030}}};
 function buildGltfMon(type,lvl,sc){const d=MON_GLTF[type];if(!d)return null;
   return buildGltfRig({model:d.m,h:d.h*sc,props:d.props,wt:d.wt,wr:d.wr,noProcW:!!d.wm,wmodel:d.wm,smodel:d.sm,cm:d.cm,quad:d.quad,spider:d.spider,tint:d.tint,glow:d.glow,skin:d.skin,hair:d.hair,o:{cls:'mon'},fallback:()=>buildMonsterProc(type,lvl)})}

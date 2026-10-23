@@ -47,7 +47,7 @@ const D5=buildDun({x:3000,z:0,c:6,map:D5MAP,floor:0x2a2238,wall:0x1c1428,crystal
   spawn:{v:['voidchanter',46,47],k:['sanctumknight',47,48],c:['crystalbehemoth',46,47],h:['voidhorror',48,49],d:['dreadlord',48,49],K:'korvax',S:'ilvaya',B:'nyxathar'},name:'Sanctum of the Silent Song'});
 const D5_AT=ch=>{for(let r=0;r<D5.R;r++){const k=D5.map[r].indexOf(ch);if(k>=0){const[x,z]=D5.pos(k,r);return{x,z}}}return{x:D5.X,z:D5.Z}};
 const D5_KORVAX=D5_AT('K'),D5_ILVAYA=D5_AT('S'),D5_NYX=D5_AT('B');
-const inSanctum=x=>x>2800;
+const inSanctum=x=>x>2800&&x<3300;
 /* ---- the gate on the Throne island ---- */
 const SANCTUM_S=2.6;
 const SANCTUM_PORTAL=portalMesh(0xff6ad8,SANCTUM_S,SANCTUM_GATE.x,riftH(SANCTUM_GATE.x,SANCTUM_GATE.z),SANCTUM_GATE.z,SANCTUM_GATE.ry);

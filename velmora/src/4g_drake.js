@@ -34,14 +34,14 @@ function leaveDrake(){teleport(DRK_GATE.x-9,DRK_GATE.z);ME.ry=-Math.PI/2;cam.yaw
 function enterVolcano(){teleport(D3.entry.x,D3.entry.z);ME.ry=Math.PI;cam.yaw=0;log('The heat is suffocating. Deep in the volcano, Vyraxion the Ash Queen slumbers…','sys');if(P.level<18)log('Beware: the Heart of the Volcano is meant for heroes of level 18 or higher.','err')}
 function leaveVolcano(){teleport(VOLC_DOOR.x-7,VOLC_DOOR.z);ME.ry=-Math.PI/2;cam.yaw=Math.PI/2}
 /* automatisch door een poort lopen (aangeroepen vanuit de lus) */
-function drakePortals(){const x=ME.pos.x,z=ME.pos.z;if(hollowPortals(x,z)||riftPortals(x,z)||sanctumPortals(x,z))return true;
+function drakePortals(){const x=ME.pos.x,z=ME.pos.z;if(hollowPortals(x,z)||riftPortals(x,z)||sanctumPortals(x,z)||citadelPortals(x,z))return true;
   if(inDrk(x)&&Math.hypot(x-DRK_ARCH.elvia.x,z-DRK_ARCH.elvia.z)<2.4){enterElvia();return true}if(inElv(x)&&Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<2.4){leaveElvia();return true}
   if(x<700&&x>-1000&&Math.hypot(x-DRK_GATE.x,z-DRK_GATE.z)<2.4){enterDrake();return true}
   if(inDrk(x)){if(Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)<2.4){leaveDrake();return true}if(Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<2.2){enterVolcano();return true}}
   if(x>1700&&Math.hypot(x-D3.exit.x,z-(D3.exit.z+1.4))<2){leaveVolcano();return true}
   return false}
 /* met F (of Actie) */
-function drakeInteract(){const x=ME.pos.x,z=ME.pos.z;if(hollowInteract(x,z)||riftInteract(x,z)||sanctumInteract(x,z))return true;
+function drakeInteract(){const x=ME.pos.x,z=ME.pos.z;if(hollowInteract(x,z)||riftInteract(x,z)||sanctumInteract(x,z)||citadelInteract(x,z))return true;
   {const w=nearWaystone();if(w){useWaystone(w);return true}}if(inDrk(x)&&Math.hypot(x-DRK_ARCH.elvia.x,z-DRK_ARCH.elvia.z)<7){enterElvia();return true}if(inElv(x)&&Math.hypot(x-ELV_EXIT.x,z-ELV_EXIT.z)<7){leaveElvia();return true}
   if(x<700&&x>-1000&&Math.hypot(x-DRK_GATE.x,z-DRK_GATE.z)<7){enterDrake();return true}
   if(inDrk(x)){if(Math.hypot(x-DRK_EXIT.x,z-DRK_EXIT.z)<7){leaveDrake();return true}if(Math.hypot(x-VOLC_DOOR.x,z-VOLC_DOOR.z)<7){enterVolcano();return true}}

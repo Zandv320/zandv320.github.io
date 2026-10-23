@@ -23,7 +23,8 @@ function makeWyrmWeapon(cls){const d=WYRM_WEAPONS[cls]||WYRM_WEAPONS.krijger;let
   it.wt=d.wt;it.gs=d.gs?1:0;weaponStats(it,52,4,cls);it.r=4;it.n=d.n;it.mods={...d.mods};it.leg=d.leg;it.vis={c:d.c};it.req=49;it.pow=Math.round((it.pow||0)*1.25+12);it.sta=Math.round((it.sta||0)*1.25+12);it.price*=3;return it}
 /* what the Rift's elites drop on top of their normal loot */
 const RIFT_DROPS={colossus:{set:.12},vashk:{set:.15},morvane:{set:.22},xalthuun:{set:2,weapon:.25,epic:52},
-  /* the Sanctum of the Silent Song */korvax:{set:1,epic:50},ilvaya:{set:1,epic:51},nyxathar:{set:2,weapon:.4,epic:52},sanctumknight:{set:.03},voidchanter:{set:.03}};
+  /* the Sanctum of the Silent Song */korvax:{set:1,epic:50},ilvaya:{set:1,epic:51},nyxathar:{set:2,weapon:.4,epic:52},sanctumknight:{set:.03},voidchanter:{set:.03},
+  /* the Void Citadel (raid): every master drops two set pieces; the Riftlord also the legendary weapon, more often */grakkus:{set:2,epic:54},sareth:{set:2,epic:55},ghorzul:{set:2,epic:56},vorthax:{set:2,weapon:.6,epic:58},citadelwarden:{set:.04}};
 function riftDrops(m){const D=RIFT_DROPS[m.type];const out=[];if(!D||!P)return out;
   if(D.set>=1){const slots=[...SET_SLOTS].sort(()=>Math.random()-.5);for(let i=0;i<D.set;i++)out.push(makeRiftPiece(P.cls,slots[i]))}else if(Math.random()<D.set)out.push(makeRiftPiece(P.cls));
   if(D.weapon&&Math.random()<D.weapon)out.push(makeWyrmWeapon(P.cls));if(D.epic)out.push(makeGear(randSlot(),D.epic,3,P.cls));return out}

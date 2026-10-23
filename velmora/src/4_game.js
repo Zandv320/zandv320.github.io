@@ -60,7 +60,7 @@ function genSpawns(){const r=mulberry(4242),L=[];let n=0;
   area('spin',11,-100,-196,38,(x,z)=>z<-152&&pathDist(x,z)>4&&Math.hypot(x-CRYPT.x,z-CRYPT.z)>45);
   area('rover',9,CAMP.x,CAMP.z,19,(x,z)=>Math.hypot(x-CAMP.x,z-CAMP.z)>4);
   L.push({id:'m'+(n++),type:'grisk',lvl:8,x:CAMP.x+3,z:CAMP.z+4});
-  for(const s of[...DSPAWN,...D2.spawns,...D3.spawns,...D4.spawns,...D5.spawns]){const t=MON[s.t],lv=s.lv||t.lv;L.push({id:'m'+(n++),type:s.t,lvl:lv[0]+Math.floor(r()*(lv[1]-lv[0]+1)),x:s.x,z:s.z})}
+  for(const s of[...DSPAWN,...D2.spawns,...D3.spawns,...D4.spawns,...D5.spawns,...D6.spawns]){const t=MON[s.t],lv=s.lv||t.lv;L.push({id:'m'+(n++),type:s.t,lvl:lv[0]+Math.floor(r()*(lv[1]-lv[0]+1)),x:s.x,z:s.z})}
   /* Drakenrijk */
   const dk=(x,z)=>!drkLava(x,z)&&riverDist(x,z)[0]>4&&Math.hypot(x-DRK_CAMP.x,z-DRK_CAMP.z)>40&&Math.hypot(x-VOLC.x,z-VOLC.z)>VOLC.r*.7;
   area('raptor',12,DRK.x-95,DRK.z-95,36,dk);area('vleer',10,DRK.x+5,DRK.z-128,34,dk);area('welp',12,DRK.x+5,DRK.z+122,38,dk);area('drakonier',9,DRK.x+118,DRK.z,40,dk);
@@ -75,7 +75,7 @@ function genSpawns(){const r=mulberry(4242),L=[];let n=0;
   area('elderstag',4,ELV.x-140,ELV.z+170,60,(x,z)=>ev(x,z));L.push({id:'m'+(n++),type:'oakheart',lvl:25,x:ELV.x-210,z:ELV.z-320});
   /* the Nether Rift: each island its own creatures, an elite in the middle of each region, the Void Wyrm on the Throne */
   const heads=RIFT_BR.flatMap(b=>[[b.x0,b.z0],[b.x1,b.z1]]);
-  const ri=id=>(x,z)=>{const s=riftIsle(x,z);return!!s&&s.I.id===id&&s.d<s.R-6&&!riftBridge(x,z)&&!heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<14)&&!Object.values(RIFT_CAMPS).some(c=>Math.hypot(c.x-x,c.z-z)<30)&&Math.hypot(SANCTUM_GATE.x-x,SANCTUM_GATE.z-z)>24};
+  const ri=id=>(x,z)=>{const s=riftIsle(x,z);return!!s&&s.I.id===id&&s.d<s.R-6&&!riftBridge(x,z)&&!heads.some(h=>Math.hypot(h[0]-x,h[1]-z)<14)&&!Object.values(RIFT_CAMPS).some(c=>Math.hypot(c.x-x,c.z-z)<30)&&Math.hypot(SANCTUM_GATE.x-x,SANCTUM_GATE.z-z)>24&&Math.hypot(CITADEL_GATE.x-x,CITADEL_GATE.z-z)>26};
   const ra=(type,count,id)=>{const I=RISLE[id];area(type,count,I.x,I.z,I.r*1.05,ri(id))};const boss=(type,id,du=0,dv=0)=>{const I=RISLE[id],t=MON[type];L.push({id:'m'+(n++),type,lvl:t.lv[0],x:I.x+du,z:I.z+dv})};
   ra('riftwraith',8,'a1');ra('voidimp',7,'a1');ra('voidimp',6,'a2');ra('voidooze',8,'a2');ra('riftwraith',5,'a3');ra('voidooze',5,'a3');boss('grimshard','a3');
   ra('shardgnasher',10,'c1');ra('prismraptor',10,'c1');ra('shardling',8,'c1');ra('crystalbehemoth',8,'c2');ra('shardling',4,'c2');boss('colossus','c2');
@@ -231,7 +231,7 @@ function takeHit(dmg,src){if(ME.dead||S.mode!=='play'||S.god)return;if(tbuff('im
   if(!ME.target&&src&&src.kind==='mon'){setTarget(src)}if(ME.target===src)ME.auto=true;
   if(P.hp<=0){P.hp=0;die()}}
 function die(){if(ME.mounted)dismount();if(ME.lastPvp&&performance.now()-ME.lastPvp.t<12000){netEmit('pkill',{by:ME.lastPvp.by,n:P.name});const r=REMOTES.get(ME.lastPvp.by);log('You were defeated by '+esc(r?r.n:'another player')+'.','err',true);P.pvpDeaths=(P.pvpDeaths||0)+1}ME.lastPvp=null;ME.dead=true;ME.cast=null;$('#castbar').hidden=true;ME.auto=false;$('#death').hidden=false;log('You have died.','err');saveGame()}
-function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(sanctumRespawn()){}else if(hollowRespawn()){}else if(riftRespawn()){}else if(elvRespawn()){}else if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
+function resurrect(){if(!ME.dead)return;ME.dead=false;ME.stun=ME.root=0;$('#death').hidden=true;calcStats();P.hp=Math.round(ST.maxhp*.6);P.mp=Math.round(ST.maxmp*.6);if(citadelRespawn()){}else if(sanctumRespawn()){}else if(hollowRespawn()){}else if(riftRespawn()){}else if(elvRespawn()){}else if(drakeRespawn()){}else if(ME.pos.x>1250)teleport(D2.entry.x,D2.entry.z);else if(ME.pos.x>700)teleport(DUN_ENTRY.x,DUN_ENTRY.z);else if(Math.hypot(ME.pos.x-CAVE.x,ME.pos.z-CAVE.z)<120)teleport(CAVE.x-6,CAVE.z+16);else teleport(rand(-3,3),rand(5,9));beamFx(ME.pos.x,ME.pos.z,0xfff0b0,1.2);setTarget(null)}
 
 /* ---------- monster AI (runs on the lobby host, or locally when offline) ---------- */
 function players(){const L=[];if(P&&S.mode==='play')L.push({id:myId(),x:ME.pos.x,z:ME.pos.z,dead:ME.dead,lvl:P.level,me:1});for(const r of REMOTES.values())if(r.inW)L.push({id:r.id,x:r.x,z:r.z,dead:r.dead,lvl:r.lvl});return L}
@@ -266,7 +266,7 @@ function aiUpdate(m,dt,pl){
     if(!m.tgt){m.wan.t-=dt;if(m.wan.t<=0){m.wan.t=rand(4,10);const a=rand(0,6.28),r=rand(0,t.boss?0:7);m.wan.x=m.sx+Math.cos(a)*r;m.wan.z=m.sz+Math.sin(a)*r}
       if(Math.hypot(m.wan.x-m.x,m.wan.z-m.z)>.6){moveMon(m,m.wan.x,m.wan.z,t.spd*.32,dt);m.mv=.5}else m.mv=0}}}
 function moveMon(m,tx,tz,spd,dt){const dx=tx-m.x,dz=tz-m.z,L=Math.hypot(dx,dz);if(L<.01||spd<=0){m.cs=lerp(m.cs||0,0,clamp(dt*8,0,1));return}m.cs=lerp(m.cs||0,spd,clamp(dt*5,0,1));const st=Math.min(L,m.cs*dt);m.x+=dx/L*st;m.z+=dz/L*st;if(m.sx>700){const p={x:m.x,z:m.z};dunOf(m.sx).collide(p,.5*m.size);m.x=p.x;m.z=p.z}m.ry=Math.atan2(dx,dz);m.nx=m.x;m.nz=m.z;m.nry=m.ry}
-function dunOf(x){return x>2800?D5:x>2200?D4:x>1700?D3:x>1250?D2:x>700?{collide:dunCollide}:null}
+function dunOf(x){return x>3300?D6:x>2800?D5:x>2200?D4:x>1700?D3:x>1250?D2:x>700?{collide:dunCollide}:null}
 function bossReset(m){if(m.t.dragon)dragonReset(m);for(const a of MONS.filter(x=>x.add&&Math.abs(x.x-m.x)<90))removeMon(a);m.bt={stomp:9,bolt:5,sum:0,enr:0};m.mhp=monHp(m.t,m.lvl)}
 function bossAbilities(m,dt,pl){const B=m.bt;const SB=SANCTUM_BOSS[m.type];const silk=m.type==='silkmother';const L=bossLines(m);const alive=pl.filter(p=>!p.dead&&p.x>700&&Math.hypot(p.x-m.x,p.z-m.z)<40);if(!alive.length)return;
   B.stomp-=dt;B.bolt-=dt;

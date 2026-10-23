@@ -18,6 +18,7 @@ const MOUNTS={
   frostdrake:{n:'Frost Drake',  m:'mount/drake',fly:1,h:3.8,dk:'frost',drop:'vyraxion',chance:.2,src:'Rare drop: Vyraxion, the Ash Queen'},
   shadowdrake:{n:'Shadow Drake',m:'mount/drake',fly:1,h:3.8,dk:'shadow',drop:'lavadrake',chance:.04,src:'Rare drop: Lava Drakes, Dragon Realm'},
   netherdrake:{n:'Nether Drake',m:'mount/drake',fly:1,h:3.8,dk:'nether',price:4000,lvl:20,src:'Stablemaster Hob (level 20)'},
+  riftwing:  {n:'Riftwing',     m:'mount/cragle',fly:1,cr:1,h:3.6,drop:'vorthax',chance:.12,src:'Rare drop: Vorthax the Riftlord, the Void Citadel'},
   emberstag: {n:'Ember Stag',   m:'mount/M_Stag',       h:2.5, tint:{Material:0x7a2a14,'Material.003':0xe0702e,'Material.010':0xffb040},glow:{'Material.010':0xff8a20},drop:'vyraxion',chance:.25,src:'Rare drop: Vyraxion, the Ash Queen'}};
 const MOUNT_SEAT={dy:-.16,fwd:.26};
 function ensureMounts(){if(!P)return;if(!Array.isArray(P.mounts))P.mounts=[];P.mounts=P.mounts.filter(id=>MOUNTS[id]);if(!P.mounts.includes('horse'))P.mounts.unshift('horse');if(!P.mounts.includes(P.mountSel))P.mountSel=P.mounts[0]}
@@ -56,8 +57,8 @@ const _seat=new THREE.Vector3();
 function riderFrame(ent,rig,id,x,y,z,ry,spd,air,dt){let M=ent._mnt;
   if(!id||!MOUNTS[id]){if(M){dropRider(ent)}riderTilt(rig,0,0);return false}
   if(!M||M.id!==id){if(M)dropRider(ent);const d=MOUNTS[id];
-    if(d.dk){const D=dkBuild(id);scene.add(D.g);M=ent._mnt={id,dk:D,rig:D}}else{const r=buildGltfRig({model:d.m,h:d.h,cm:d.cm==='drake'?CM_DRAGON:CM_ANIMAL,quad:1,o:{cls:'mon'},tint:d.tint,glow:d.glow});r.g.userData.dyn=1;scene.add(r.g);M=ent._mnt={id,rig:r,bone:null}}}
-  if(M.dk){const D=M.dk,s=dkFrame(D,x,y,z,ry,spd,air,dt);
+    if(d.dk){const D=dkBuild(id);scene.add(D.g);M=ent._mnt={id,dk:D,rig:D}}else if(d.cr){const D=crBuild(id);scene.add(D.g);M=ent._mnt={id,cr:D,rig:D}}else{const r=buildGltfRig({model:d.m,h:d.h,cm:d.cm==='drake'?CM_DRAGON:CM_ANIMAL,quad:1,o:{cls:'mon'},tint:d.tint,glow:d.glow});r.g.userData.dyn=1;scene.add(r.g);M=ent._mnt={id,rig:r,bone:null}}}
+  if(M.dk||M.cr){const D=M.dk||M.cr,s=M.dk?dkFrame(D,x,y,z,ry,spd,air,dt):crFrame(D,x,y,z,ry,spd,air,dt);
     if(s){D.piv.getWorldQuaternion(_dkQ);_seatUp.set(0,1,0).applyQuaternion(_dkQ);_seatFw.set(0,0,1).applyQuaternion(_dkQ);rig.g.position.copy(s).addScaledVector(_seatUp,DK_SEAT.up).addScaledVector(_seatFw,DK_SEAT.fw)}else rig.g.position.set(x,y+2.6,z);
     riderTilt(rig,D.pitch,D.roll);return true}
   riderTilt(rig,0,0);
@@ -68,7 +69,7 @@ function riderFrame(ent,rig,id,x,y,z,ry,spd,air,dt){let M=ent._mnt;
 const _seatUp=new THREE.Vector3(),_seatFw=new THREE.Vector3();const DK_SEAT={up:.05,fw:0};
 /* the rider leans with a flying drake */
 function riderTilt(rig,px,rz){const r=rig.g.rotation;if(r.order!=='YXZ')r.order='YXZ';r.x=px;r.z=rz}
-function dropRider(ent){const M=ent._mnt;if(M){if(M.dk)dkDrop(M.dk);else scene.remove(M.rig.g);ent._mnt=null}}
+function dropRider(ent){const M=ent._mnt;if(M){if(M.dk)dkDrop(M.dk);else if(M.cr)crDrop(M.cr);else scene.remove(M.rig.g);ent._mnt=null}}
 /* the stablemaster's animals idling in front of the stable */
 function stablePets(dt){if(window.__NOGLTF||Math.hypot(camTarget.x-STABLE.x,camTarget.z-STABLE.z)>90)return;
   for(const p of STABLE_PETS){if(!p.rig){const d=MOUNTS[p.id],x=STABLE.x+p.dx,z=STABLE.z+p.dz;p.rig=buildGltfRig({model:d.m,h:d.h,cm:CM_ANIMAL,quad:1,o:{cls:'mon'},tint:d.tint,glow:d.glow});p.rig.g.position.set(x,groundH(x,z),z);p.rig.g.rotation.y=p.ry;scene.add(p.rig.g)}
