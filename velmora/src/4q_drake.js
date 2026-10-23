@@ -52,13 +52,18 @@ function dkMat(src,key){let m=DK.mats[key];if(m)return m;const P=DK_PAL[key];m=s
   m.customProgramCacheKey=function(){return THREE.Material.prototype.customProgramCacheKey.call(this)+'|dk'};DK.mats[key]=m;return m}
 const _dkV=new THREE.Vector3(),_dkQ=new THREE.Quaternion();
 /* the frames used as poses: wings spread wide (glide), wings raised (dive), and a standing step of the run */
-const DK_T={spread:1.42,up:.8,stand:.62};
+const DK_T={spread:.9,up:1.6,stand:.62};
 function dkBuild(id){const d=MOUNTS[id];const g=new THREE.Group();const piv=new THREE.Group();piv.rotation.order='YXZ';g.add(piv);
   const D={id,g,piv,ready:false,pitch:0,roll:0,vy:0,py:null,pry:null,airK:0,gl:0,gt:0,dv:0,tk:0,fs:0,t:Math.random()*10};
   dkLoad().then(src=>{if(!src||D.gone)return;const m=SkeletonUtils.clone(src.scene);m.scale.setScalar(DK_S);piv.add(m);D.m=m;
     m.traverse(o=>{if(o.isMesh){o.material=dkMat(o.material,d.dk);o.castShadow=true;o.frustumCulled=false}});
     const find=p=>{let b=null;m.traverse(o=>{if(!b&&o.isBone&&o.name.startsWith(p))b=o});return b};
-    D.seat=find('spine_07');D.tail=find('tail_26');D.sp=find('spine_04');D.neck=find('neck_03');D.head=find('head');
+    D.seat=find('spine_07');D.tail=find('tail_26');
+    /* bones moved by hand on top of the clips (see dkProc) */
+    const grp=(pre,from,to)=>{const L=[];for(let i=from;i<=to;i++){const b=find(pre+String(i).padStart(2,'0'));if(b)L.push(b)}return L};
+    D.pb={spine:grp('spine_',3,5),neck:grp('neck_',2,7),head:[find('head')].filter(Boolean),tail:grp('tail_',3,24)};
+    D.pbAll=[...D.pb.spine,...D.pb.neck,...D.pb.head,...D.pb.tail].map(b=>({b,q:b.quaternion.clone()}));
+    D.look={y:0,p:0,ty:0,tp:0,next:2};
     const cl=n=>src.animations.find(a=>a.name===n);const fly=cl('Fly'),run=cl('Run');D.mixer=new THREE.AnimationMixer(m);
     const act=(c,t,ts)=>{const a=D.mixer.clipAction(c);a.play();a.time=t;a.timeScale=ts;a.setEffectiveWeight(0);return a};
     D.aFly=act(fly,0,1);D.aGlide=act(fly.clone(),DK_T.spread,0);D.aDive=act(fly.clone(),DK_T.up,0);D.aRun=act(run,0,1);D.aIdle=act(run.clone(),DK_T.stand,0);D.aIdle.setEffectiveWeight(1);D.mixer.update(0);
@@ -72,16 +77,22 @@ function dkFrame(D,x,y,z,ry,spd,air,dt){const g=D.g;D.spd=spd;g.position.set(x,y
   /* take-off: a couple of fast, deep beats; landing: a thump of dust */
   if(air&&!wasAir&&A>.5){D.tk=.9}if(!air&&wasAir&&A<.5){dustFx(x,z,12)}D.tk=Math.max(0,D.tk-dt);
   const hover=air&&spd<.12,climb=D.vy>1.2,dive=D.vy<-4.5;
-  /* glide while cruising: a few beats, then a few seconds on spread wings */
-  if(air&&!hover&&!climb&&!dive&&!D.tk){D.gt+=dt;const c=D.gt%7.5;D.gl=lerp(D.gl,c>3.2?1:0,clamp(dt*2.2,0,1))}else{D.gt=0;D.gl=lerp(D.gl,0,clamp(dt*4,0,1))}
+  /* glide while cruising: two full wingbeats, then a stretch on spread wings */
+  const beat=3.3/1.55;
+  if(air&&!hover&&!climb&&!dive&&!D.tk){D.gt+=dt;const c=D.gt%(beat*2+2.6);D.gl=lerp(D.gl,c>beat*2?1:0,clamp(dt*2.4,0,1))}else{D.gt=0;D.gl=lerp(D.gl,0,clamp(dt*4,0,1))}
   D.dv=lerp(D.dv,dive?1:0,clamp(dt*3,0,1));
   const fts=D.tk?3:hover?2.5:climb?2.2:1.55;D.aFly.timeScale=lerp(D.aFly.timeScale,fts,clamp(dt*3,0,1));
-  const wFlyAll=A,wGl=D.gl*(1-D.dv),wDv=D.dv;
-  D.aFly.setEffectiveWeight(wFlyAll*(1-wGl-wDv*(1-wGl)));D.aGlide.setEffectiveWeight(wFlyAll*wGl);D.aDive.setEffectiveWeight(wFlyAll*wDv*(1-wGl));
-  const run=clamp((spd-.05)*1.3,0,1)*(1-A);D.aRun.timeScale=.45+spd*.55;D.aRun.setEffectiveWeight(run);D.aIdle.setEffectiveWeight((1-A)*(1-clamp((spd-.05)*1.3,0,1)));
+  /* held poses still move a little: the wings flex on the air while gliding and flutter in a dive */
+  D.aGlide.time=DK_T.spread+Math.sin(D.t*2.1)*.07;D.aDive.time=DK_T.up+Math.sin(D.t*10)*.03;
+  const wGl=D.gl*(1-D.dv),wDv=D.dv*(1-wGl);
+  D.aFly.setEffectiveWeight(A*(1-wGl-wDv));D.aGlide.setEffectiveWeight(A*wGl);D.aDive.setEffectiveWeight(A*wDv);
+  const rk=clamp((spd-.05)*1.3,0,1);D.aRun.timeScale=.45+spd*.55;D.aRun.setEffectiveWeight(rk*(1-A));D.aIdle.setEffectiveWeight((1-A)*(1-rk));
+  /* the mixer only writes a bone when its blended value changes, so on a held pose the hand-made offsets below would
+     pile up frame after frame (that made the head spin): undo them first, let the mixer pose, then add them again */
+  for(const e of D.pbAll)e.b.quaternion.copy(e.q);
   D.mixer.update(dt);
-  /* idle on the ground: slow breathing and a look around */
-  if(A<.5&&spd<.1){const b=Math.sin(D.t*1.5);if(D.sp)D.sp.rotateX(b*.025);if(D.neck)D.neck.rotateY(Math.sin(D.t*.37)*.18);if(D.head)D.head.rotateX(Math.sin(D.t*.6)*.06)}
+  for(const e of D.pbAll)e.q.copy(e.b.quaternion);
+  dkProc(D,dt,A,rk,wGl);
   /* body attitude: nose up when climbing or hovering, down in a dive, banking into turns */
   const tp=air?(hover?-.32:climb?-.22*clamp(D.vy/6,0,1)-.05:dive?.42:-.04):0,tr=air&&!hover?clamp(-yr*.42,-.6,.6):0;
   D.pitch=lerp(D.pitch,tp,clamp(dt*2.5,0,1));D.roll=lerp(D.roll,tr,clamp(dt*2.5,0,1));
@@ -90,4 +101,20 @@ function dkFrame(D,x,y,z,ry,spd,air,dt){const g=D.g;D.spd=spd;g.position.set(x,y
   /* a faint trail of light from the tail */
   if(A>.6&&D.tail&&(spd>.3||dive)){D.fs-=dt;if(D.fs<=0){D.fs=.03;D.tail.getWorldPosition(_dkV);emitP({x:_dkV.x,y:_dkV.y,z:_dkV.z,vy:.1,life:.9,size:.55,size1:.05,col:DK_PAL[MOUNTS[D.id].dk].trail,a:.55,a1:0,cell:FXC.glint})}}
   if(!D.seat)return null;D.seat.getWorldPosition(_dkV);return _dkV}
+/* hand-made motion on top of the clips, as rotations about the drake's own axes (up = turn, side = nod), spread over
+   a chain of bones so the neck and tail bend smoothly */
+const _pAx=new THREE.Vector3(),_pQ=new THREE.Quaternion(),_pP=new THREE.Quaternion(),_pUp=new THREE.Vector3(),_pSide=new THREE.Vector3();
+function dkTurn(b,axisW,ang){if(!ang)return;b.parent.getWorldQuaternion(_pP);_pAx.copy(axisW).applyQuaternion(_pP.invert());_pQ.setFromAxisAngle(_pAx,ang);b.quaternion.premultiply(_pQ)}
+function dkProc(D,dt,A,rk,wGl){const t=D.t,P=D.pb;D.piv.getWorldQuaternion(_pQ);_pUp.set(0,1,0).applyQuaternion(_pQ);_pSide.set(1,0,0).applyQuaternion(_pQ);
+  const idle=(1-A)*(1-rk);
+  /* standing: slow breaths and an unhurried look around (a new spot every few seconds, sometimes straight ahead) */
+  const L=D.look;L.next-=dt;if(L.next<=0){L.next=2.5+Math.random()*4;const r=Math.random();L.ty=r<.3?0:(Math.random()*2-1)*.75;L.tp=(Math.random()*2-1)*.18}
+  const k=1-Math.exp(-dt*1.6);L.y+=(L.ty-L.y)*k;L.p+=(L.tp-L.p)*k;
+  if(idle>.01){const br=Math.sin(t*1.35)*.016*idle;for(const b of P.spine)dkTurn(b,_pSide,br);
+    const n=P.neck.length||1;for(const b of P.neck){dkTurn(b,_pUp,L.y*idle/n);dkTurn(b,_pSide,L.p*idle*.5/n)}
+    for(const b of P.head){dkTurn(b,_pUp,L.y*idle*.25);dkTurn(b,_pSide,(L.p*.5-br*2)*idle)}}
+  /* gliding: the neck sways a touch and the head keeps looking ahead */
+  const g=wGl*A;if(g>.01){const n=P.neck.length||1;for(const b of P.neck)dkTurn(b,_pUp,Math.sin(t*.55)*.16*g/n)}
+  /* the tail always swings in a slow wave running down its length: bigger when standing or gliding */
+  const amp=.022*idle+.016*g+.006*A*(1-wGl)+.01*rk*(1-A);if(amp>.0005)P.tail.forEach((b,i)=>dkTurn(b,_pUp,Math.sin(t*1.15-i*.33)*amp))}
 function dkDrop(D){if(!D)return;D.gone=true;scene.remove(D.g);if(D.mixer)D.mixer.stopAllAction()}
