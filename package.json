@@ -2,7 +2,7 @@
   "name": "zandv320-speelhal",
   "private": true,
   "version": "1.0.0",
-  "description": "Speelhal van Zandv320 – met Velmora, een fantasy-MMORPG in de browser",
+  "description": "Speelhal van Zandv320 – met Velmora (fantasy-MMORPG) en Monsterjacht (monsters vangen in 3D)",
   "type": "module",
   "scripts": {
     "dev": "vite",
