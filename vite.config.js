@@ -14,7 +14,9 @@ function velmoraGame(){
     load(i){if(i!==rid)return;const files=PARTS.map(p=>path.join(dir,p+'.js'));for(const f of files)this.addWatchFile(f);
       return files.map(f=>fs.readFileSync(f,'utf8')).join('\n')},
     /* de glTF-modellen worden als statische bestanden naast de pagina gezet */
-    closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}}
+    closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}
+      /* Monsterjacht: de glTF-modellen (monsters, trainer, natuur, draco-decoder) gaan ongewijzigd mee */
+      fs.cpSync(path.resolve(__dirname,'monsterjacht/models'),path.resolve(__dirname,'dist/monsterjacht/models'),{recursive:true})}
   }}
 
 export default defineConfig({
@@ -23,7 +25,7 @@ export default defineConfig({
   plugins:[velmoraGame()],
   build:{
     target:'es2022',
-    rollupOptions:{input:{velmora:path.resolve(__dirname,'velmora/index.html')}},
+    rollupOptions:{input:{velmora:path.resolve(__dirname,'velmora/index.html'),monsterjacht:path.resolve(__dirname,'monsterjacht/index.html'),vuistvechter:path.resolve(__dirname,'vuistvechter/index.html')}},
     chunkSizeWarningLimit:1500
   },
   server:{port:5173,open:'/velmora/'}
