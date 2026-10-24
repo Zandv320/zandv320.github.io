@@ -224,7 +224,7 @@ function animGltf(r,a,dt){
   if(a.hurt&&!S.hurtOn){S.hurtOn=true;const h=gAct(r,cm.hit,true);if(h&&a.atk<0){h.reset();h.setEffectiveWeight(.8);h.play()}}else if(!a.hurt)S.hurtOn=false;
   /* --- basislus --- */
   if(r.o.cls!=='mon'&&(a.act||r.toolName!==undefined)){if((a.act||null)!==(r.actKey||null)){r.actKey=a.act||null;setTool(r,a.act||null)}}
-  let name;if(a.mounted&&TOOL_CLIPS&&TOOL_CLIPS.Sit_Chair_Idle)name='Sit_Chair_Idle';else if(a.act&&ACT_ANIM[a.act]&&TOOL_CLIPS&&!a.air&&am<.3)name=ACT_ANIM[a.act][0];else if(a.air&&cm.jumpI)name=(a.vy||0)>1&&cm.jumpS?cm.jumpS:cm.jumpI;else if(a.cast&&cm.cast)name=cm.cast;else if(am>.62)name=cm.run;else if(am>.05)name=cm.walk;else name=a.combat&&cm.cidle?cm.cidle:cm.idle;
+  let name;if(r.rpg&&a.mounted)name=cm.idle;else if(r.rpg&&a.act&&!a.air&&am<.3)name=cm.work;else if(a.mounted&&TOOL_CLIPS&&TOOL_CLIPS.Sit_Chair_Idle)name='Sit_Chair_Idle';else if(a.act&&ACT_ANIM[a.act]&&TOOL_CLIPS&&!a.air&&am<.3)name=ACT_ANIM[a.act][0];else if(a.air&&cm.jumpI)name=(a.vy||0)>1&&cm.jumpS?cm.jumpS:cm.jumpI;else if(a.cast&&cm.cast)name=cm.cast;else if(am>.62)name=cm.run;else if(am>.05)name=cm.walk;else name=a.combat&&cm.cidle?cm.cidle:cm.idle;
   /* landen: korte landingsclip die daarna weer wegfadet (anders blijft de laatste pose hangen over de looplus) */
   if(a.mounted){S.prevAir=false}else if(S.prevAir&&!a.air){const l=gAct(r,cm.land,true);if(l){l.stop();l.reset();l.setEffectiveWeight(am>.3?.45:.9);l.play();S.landAct=l}S.land=am>.3?.12:.22}S.prevAir=!!a.air;
   if(S.land>0){S.land-=dt;if(S.land<=0&&S.landAct){S.landAct.fadeOut(.12);S.landAct=null}}

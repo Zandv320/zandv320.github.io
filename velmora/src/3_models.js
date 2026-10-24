@@ -128,7 +128,7 @@ function buildWarrior(o){
   const s=o.scale||1;g.scale.setScalar(s);
   return{g,body,legL,legR,kneeL,kneeR,ankleL,ankleR,armL,armR,elbowL,elbowR,handL,handR,torso,head,cape:capeG,weapon,shield:shieldG,wings:[],wt,warrior:true,h:H*1.85*s,ph:Math.random()*6}}
 
-function buildHumanoid(o){if(o.cls&&GLTF_MODELS[o.cls]&&!o.noGltf&&!window.__NOGLTF)return buildGltfChar(o);return buildHumanoidProc(o)}
+function buildHumanoid(o){if(o.bd==='rpg'&&o.cls&&!window.__NOGLTF&&typeof buildRpgChar==='function')return buildRpgChar(o);if(o.cls&&GLTF_MODELS[o.cls]&&!o.noGltf&&!window.__NOGLTF)return buildGltfChar(o);return buildHumanoidProc(o)}
 function buildHumanoidProc(o){
   if(o.warrior)return buildWarrior(o);
   const R=RACES[o.race]||RACES.mens;const H=o.h??R.h,W=o.w??R.w;
@@ -348,6 +348,7 @@ function playerLook(p){/* p: {race,cls,hair,eq}; every equipped slot changes the
   if(cls==='paladijn'){o.warrior=true;o.pt=paladinTier(eq);if(!o.cape)o.cape=0xe8e2cc}
   if(cls==='magier'){o.robe=gearCol(ch,cls)??0x3a2a6a;if(ch)o.pads=gearCol(ch,cls);if(hd)o.hat=gearCol(hd,cls)}
   if(cls==='jager'){if(hd)o.hood=gearCol(hd,cls);o.pads=ch?gearCol(ch,cls):null}
+  /* heroic body (beta, 3j_rpgchar.js) */if(p.bd==='rpg'&&typeof rpgModelFor==='function'){o.bd='rpg';o.rm=rpgModelFor(p)}
   return o}
 /* icon painter (2D canvas) */
 const iconCache=new Map();

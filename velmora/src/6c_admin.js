@@ -40,7 +40,7 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
     ensureMounts();h+=admRow('Mounts','<small>'+P.mounts.length+' / '+Object.keys(MOUNTS).length+' owned</small>'+admBtn('aMntAll','Unlock all')+admBtn('aMntNone','Back to horse only',1));
     h+=admRow('Bag','<small>'+P.inv.filter(Boolean).length+' / '+P.inv.length+' slots used</small>'+admBtn('aBagJ','Remove junk',1)+admBtn('aBagC','Empty bag',1))}
   else if(ADM_TAB==='life'){h+='<div class="agrid">'+Object.keys(LIFE).map(k=>'<label>'+LIFE[k].n+'<small>'+rankOf(lifeOf(k).lv)+'</small>'+admIn('aL_'+k,lifeOf(k).lv,0,LIFE_MAXLV())+'</label>').join('')+'</div>';
-    h+='<div class="row">'+admBtn('aLifeB','Save skill levels')+admBtn('aLifeMax','All to '+RANKS[RANKS.length-1]+' (max)',1)+'</div><h4>House</h4><div class="row">'+admBtn('aHouse',P.house?'Upgrade house to Manor':'Give a house deed (Manor)')+admBtn('aFurn','All furniture ×5',1)+admBtn('aTroph','All trophy statues',1)+'</div><h4>Quests</h4><div class="aq">';
+    h+='<div class="row">'+admBtn('aLifeB','Save skill levels')+admBtn('aLifeMax','All to '+RANKS[RANKS.length-1]+' (max)',1)+'</div><h4>House</h4><div class="row">'+admBtn('aHouse',P.house?'Upgrade house to Manor':'Give a house deed (Manor)')+admBtn('aFurn','All furniture ×5',1)+admBtn('aTroph','All trophy statues',1)+'</div><h4>Body (beta)</h4><div class="row">'+admBtn('aBody',P.bd==='rpg'?'Back to classic body':'Heroic body')+(P.bd==='rpg'?admBtn('aBodyM','Other model ('+(RPG_CLS[P.cls]||RPG_CLS.krijger).find(m=>m!==rpgModelFor(P))+')',1):'')+'</div><h4>Quests</h4><div class="aq">';
     for(const q of QUESTS){const s=qState(q);h+='<div><span><b>'+esc(q.n)+'</b> <small>lvl '+q.lvl+' · '+esc(npcName(q.giver))+' · '+s+'</small></span>'+(s==='done'?'<button class="btn alt" data-qr="'+q.id+'">Reset</button>':'<button class="btn" data-qc="'+q.id+'">Complete</button>')+'</div>'}
     h+='</div><div class="row">'+admBtn('aQAll','Complete all',1)+admBtn('aQNone','Reset all',1)+'</div>'}
   else{h+=admRow('God mode',admBtn('aGod',S.god?'On':'Off',!S.god)+'<small>no damage, endless health and resource</small>');
@@ -73,6 +73,8 @@ function renderAdmin(){const b=$('#admBody');if(!b||!P)return;
   on('aLifeB',()=>{for(const k in LIFE){const L=lifeOf(k);L.lv=admNum('aL_'+k,0,LIFE_MAXLV());L.xp=0}admDone('skill levels saved.')});
   on('aLifeMax',()=>{for(const k in LIFE){const L=lifeOf(k);L.lv=LIFE_MAXLV();L.xp=0}admDone('every skill is '+RANKS[RANKS.length-1]+' 10.')});
   on('aHouse',()=>{houseInit();if(P.house){P.house.t=2;if(P.house.placed){houseRemove('me');houseSync('me',houseRecMine())}}else P.house={t:2,c:'blue',placed:0,x:0,z:0,ry:0,items:[]};lastPres='';admDone(P.house.placed?'your house is now a Manor.':'you own a Manor deed: press H to build it.')});
+  on('aBody',()=>{if(P.bd==='rpg')delete P.bd;else{P.bd='rpg';P.rm=rpgModelFor(P)}rebuildMe();renderAdmin();admDone(P.bd?'you now have the heroic body ('+rpgModelFor(P)+').':'back to the classic body.')});
+  on('aBodyM',()=>{const L=RPG_CLS[P.cls]||RPG_CLS.krijger;P.rm=L.find(m=>m!==rpgModelFor(P));rebuildMe();renderAdmin();admDone('model: '+P.rm+'.')});
   on('aFurn',()=>{houseInit();for(const k in FURN)P.furn[k]=(P.furn[k]||0)+5;admDone('5 of every piece of furniture added to your house store.')});
   on('aTroph',()=>{houseInit();for(const t of TROPHIES)if(!P.trophies.includes(t))P.trophies.push(t);admDone('every trophy statue unlocked.')});
   const qDone=id=>{delete P.quests[id];if(!P.done.includes(id))P.done.push(id)},qReset=id=>{delete P.quests[id];P.done=P.done.filter(x=>x!==id)};
