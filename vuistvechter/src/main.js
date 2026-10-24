@@ -1,230 +1,213 @@
 import * as THREE from 'three';
+import { Input } from './input.js';
+import { Audio } from './audio.js';
+import { buildLevel } from './level.js';
+import { Player, P } from './player.js';
+import { Viewmodel } from './viewmodel.js';
 
-(() => {
-  // ---------- Config ----------
-  const ROOM = 20;          // room is ROOM x ROOM metres
-  const WALL_H = 4;
-  const EYE = 1.7;
-  const RADIUS = 0.35;      // player collision radius
-  const WALK = 4.2, SPRINT = 7, JUMP = 5, GRAVITY = 14;
+// ---------- Renderer ----------
+const host = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.autoClear = false;
+host.appendChild(renderer.domElement);
 
-  // ---------- Renderer / scene ----------
-  const host = document.getElementById('game');
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0f12);
+scene.fog = new THREE.Fog(0x0d0f12, 25, 55);
 
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0d0f12);
-  scene.fog = new THREE.Fog(0x0d0f12, 18, 40);
+const BASE_FOV = 78, SPRINT_FOV = 86;
+const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.05, 120);
+camera.rotation.order = 'YXZ';
 
-  const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 100);
-  camera.rotation.order = 'YXZ';
-  camera.position.set(0, EYE, 0);
-  scene.add(camera);
+const level = buildLevel(scene, renderer);
+const player = new Player(level.spawn, level.colliders);
+const input = new Input(renderer.domElement);
+const audio = new Audio();
+audio.volume = input.settings.volume;
+const vm = new Viewmodel();
+vm.load().catch(err => console.error('Armen laden mislukt', err));
 
-  // ---------- Textures (canvas, so no external files) ----------
-  function gridTexture(base, line, cells, repeat) {
-    const c = document.createElement('canvas'); c.width = c.height = 256;
-    const g = c.getContext('2d');
-    g.fillStyle = base; g.fillRect(0, 0, 256, 256);
-    // subtle noise
-    for (let i = 0; i < 2500; i++) {
-      g.fillStyle = `rgba(255,255,255,${Math.random() * 0.035})`;
-      g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
-    }
-    g.strokeStyle = line; g.lineWidth = 3;
-    const s = 256 / cells;
-    for (let i = 0; i <= cells; i++) {
-      g.beginPath(); g.moveTo(i * s, 0); g.lineTo(i * s, 256); g.stroke();
-      g.beginPath(); g.moveTo(0, i * s); g.lineTo(256, i * s); g.stroke();
-    }
-    const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(repeat[0], repeat[1]);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    return t;
+let yaw = 0, pitch = 0;
+
+// ---------- UI ----------
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('start');
+const sens = document.getElementById('sens');
+const vol = document.getElementById('vol');
+const sensOut = document.getElementById('sens-out');
+const volOut = document.getElementById('vol-out');
+const hitmarker = document.getElementById('hitmarker');
+const speedo = document.getElementById('speed');
+sens.value = input.settings.gevoeligheid;
+vol.value = input.settings.volume;
+const showSettings = () => {
+  sensOut.textContent = Number(sens.value).toFixed(2) + '×';
+  volOut.textContent = Math.round(vol.value * 100) + '%';
+};
+showSettings();
+sens.addEventListener('input', () => { input.settings.gevoeligheid = Number(sens.value); input.save(); showSettings(); });
+vol.addEventListener('input', () => { input.settings.volume = Number(vol.value); audio.setVolume(input.settings.volume); input.save(); showSettings(); });
+for (const el of [sens, vol]) el.addEventListener('click', e => e.stopPropagation());
+document.querySelector('.settings').addEventListener('click', e => e.stopPropagation());
+
+const go = () => { audio.start(); input.lock(); };
+overlay.addEventListener('click', go);
+startBtn.addEventListener('click', e => { e.stopPropagation(); go(); });
+input.onLockChange = locked => {
+  overlay.hidden = locked;
+  startBtn.textContent = 'Verder spelen';
+};
+
+// ---------- Effecten ----------
+let trauma = 0;              // camera-schok 0..1
+let landDip = 0, landVel = 0; // veer voor de landing
+let fov = BASE_FOV;
+let hitTimer = 0;
+const shakeSeed = Math.random() * 100;
+
+const ray = new THREE.Raycaster();
+ray.far = 1.7;
+const center = new THREE.Vector2(0, 0);
+
+vm.onImpact = side => {
+  ray.setFromCamera(center, camera);
+  const hit = ray.intersectObjects(level.hittables, false)[0];
+  if (!hit) { audio.whoosh(0.22); trauma = Math.min(1, trauma + 0.08); return; }
+  const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+  if (hit.object.userData.bag) {
+    level.bag.hit(dir.x, dir.z, 2.6);
+    audio.play('hit', { gain: 0.9 });
+    trauma = Math.min(1, trauma + 0.32);
+    vm.doHitstop(0.07);
+  } else {
+    audio.play('hit', { gain: 0.45, rate: 0.75 });
+    trauma = Math.min(1, trauma + 0.42);
+    vm.doHitstop(0.09);
   }
+  hitTimer = 0.16;
+};
 
-  // ---------- Room ----------
-  const floorMat = new THREE.MeshStandardMaterial({ map: gridTexture('#3b3f45', '#2a2d31', 2, [ROOM / 2, ROOM / 2]), roughness: 0.9 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), floorMat);
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+// ---------- Lus ----------
+const DT = 1 / 120;
+let acc = 0, last = performance.now();
+let lastStep = 0;
+let mouseFrame = [0, 0];
+const camPos = new THREE.Vector3();
 
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x1c1e22, roughness: 1 });
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), ceilMat);
-  ceil.rotation.x = Math.PI / 2; ceil.position.y = WALL_H; scene.add(ceil);
+function resize() {
+  const w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  vm.resize(w / h);
+}
+addEventListener('resize', resize); resize();
 
-  const wallMat = new THREE.MeshStandardMaterial({ map: gridTexture('#6b6e72', '#585b5f', 1, [ROOM / 2, WALL_H / 2]), roughness: 0.85 });
-  const walls = [
-    [0, -ROOM / 2, 0], [0, ROOM / 2, Math.PI], [-ROOM / 2, 0, Math.PI / 2], [ROOM / 2, 0, -Math.PI / 2],
-  ];
-  for (const [x, z, ry] of walls) {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, WALL_H), wallMat);
-    w.position.set(x, WALL_H / 2, z); w.rotation.y = ry; w.receiveShadow = true; scene.add(w);
-  }
-  // baseboard strip, so the walls read as walls
-  const trimMat = new THREE.MeshStandardMaterial({ color: 0xe8b04a, roughness: 0.6 });
-  for (const [x, z, ry] of walls) {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(ROOM, 0.15, 0.04), trimMat);
-    t.position.set(x, 0.075, z); t.rotation.y = ry;
-    t.translateZ(0.02); scene.add(t);
-  }
-
-  // ---------- Lights ----------
-  scene.add(new THREE.HemisphereLight(0xdfe6ee, 0x2a2622, 0.55));
-  const lamp = new THREE.PointLight(0xfff1d6, 60, 30, 1.6);
-  lamp.position.set(0, WALL_H - 0.3, 0); lamp.castShadow = true;
-  lamp.shadow.mapSize.set(1024, 1024);
-  scene.add(lamp);
-  const bulb = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 1.4), new THREE.MeshBasicMaterial({ color: 0xfff1d6 }));
-  bulb.position.set(0, WALL_H - 0.03, 0); scene.add(bulb);
-
-  // ---------- Fists (attached to camera) ----------
-  const skin = new THREE.MeshStandardMaterial({ color: 0xc98f6b, roughness: 0.7 });
-  const sleeve = new THREE.MeshStandardMaterial({ color: 0x2f3a46, roughness: 0.9 });
-
-  function makeFist(side) {
-    const arm = new THREE.Group();
-    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.55, 12), sleeve);
-    forearm.rotation.x = Math.PI / 2; forearm.position.z = 0.3; arm.add(forearm);
-    const wrist = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.052, 0.08, 12), skin);
-    wrist.rotation.x = Math.PI / 2; wrist.position.z = 0.0; arm.add(wrist);
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.13), skin);
-    hand.position.z = -0.08; arm.add(hand);
-    // four knuckles
-    for (let i = 0; i < 4; i++) {
-      const k = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), skin);
-      k.position.set(-0.045 + i * 0.03, 0.035, -0.145); arm.add(k);
-    }
-    // thumb tucked over the front
-    const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 0.035), skin);
-    thumb.position.set(side * 0.02, -0.035, -0.13); arm.add(thumb);
-    arm.traverse(o => { if (o.isMesh) o.castShadow = false; });
-    return arm;
-  }
-  const fists = [-1, 1].map(side => {
-    const f = makeFist(side);
-    const rest = new THREE.Vector3(side * 0.24, -0.26, -0.42);
-    f.position.copy(rest);
-    f.rotation.set(0.15, side * -0.12, side * 0.2);
-    camera.add(f);
-    return { mesh: f, side, rest, t: 1 }; // t: punch progress 0..1 (1 = idle)
-  });
-
-  // ---------- Input ----------
-  const keys = {};
-  addEventListener('keydown', e => { keys[e.code] = true; });
-  addEventListener('keyup', e => { keys[e.code] = false; });
-
-  let yaw = 0, pitch = 0, locked = false;
-  const overlay = document.getElementById('overlay');
-  const startBtn = document.getElementById('start');
-
-  function requestLock() {
-    try {
-      const p = renderer.domElement.requestPointerLock();
-      if (p && p.catch) p.catch(() => {});
-    } catch (_) {}
-  }
-  overlay.addEventListener('click', requestLock);
-  startBtn.addEventListener('click', e => { e.stopPropagation(); requestLock(); });
-  document.addEventListener('pointerlockchange', () => {
-    locked = document.pointerLockElement === renderer.domElement;
-    overlay.hidden = locked;
-    if (!locked) for (const k in keys) keys[k] = false;
-  });
-  addEventListener('mousemove', e => {
-    if (!locked) return;
-    yaw -= e.movementX * 0.0022;
-    pitch -= e.movementY * 0.0022;
-    pitch = Math.max(-1.5, Math.min(1.5, pitch));
-  });
-
-  let nextFist = 0, punchCooldown = 0;
-  addEventListener('mousedown', e => {
-    if (!locked || e.button !== 0 || punchCooldown > 0) return;
-    const f = fists[nextFist];
-    if (f.t < 1) return;
-    f.t = 0; nextFist = 1 - nextFist; punchCooldown = 0.18;
-  });
-
-  // ---------- Player ----------
-  const vel = new THREE.Vector3();
-  let onGround = true, bob = 0;
-
-  function update(dt) {
-    camera.rotation.set(pitch, yaw, 0);
-
-    // movement on the XZ plane relative to view yaw
-    const fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
-    const str = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-    const speed = keys.ShiftLeft || keys.ShiftRight ? SPRINT : WALK;
-    const dir = new THREE.Vector3(
-      str * Math.cos(yaw) - fwd * Math.sin(yaw), 0,
-      -str * Math.sin(yaw) - fwd * Math.cos(yaw)
-    );
-    if (dir.lengthSq() > 0) dir.normalize().multiplyScalar(speed);
-    const accel = onGround ? 12 : 3;
-    vel.x += (dir.x - vel.x) * Math.min(1, accel * dt);
-    vel.z += (dir.z - vel.z) * Math.min(1, accel * dt);
-
-    if (keys.Space && onGround) { vel.y = JUMP; onGround = false; }
-    vel.y -= GRAVITY * dt;
-
-    const p = camera.position;
-    p.x += vel.x * dt; p.z += vel.z * dt; p.y += vel.y * dt;
-
-    // walls
-    const lim = ROOM / 2 - RADIUS;
-    p.x = Math.max(-lim, Math.min(lim, p.x));
-    p.z = Math.max(-lim, Math.min(lim, p.z));
-    // floor / ceiling
-    if (p.y <= EYE) { p.y = EYE; vel.y = 0; onGround = true; }
-    if (p.y > WALL_H - 0.15) { p.y = WALL_H - 0.15; vel.y = Math.min(0, vel.y); }
-
-    // head bob + fist sway
-    const hSpeed = Math.hypot(vel.x, vel.z);
-    if (onGround && hSpeed > 0.5) bob += dt * hSpeed * 2.2; else bob *= 0.9;
-    const bobY = Math.sin(bob * 2) * 0.012 * Math.min(1, hSpeed / WALK);
-    const bobX = Math.cos(bob) * 0.012 * Math.min(1, hSpeed / WALK);
-
-    punchCooldown = Math.max(0, punchCooldown - dt);
-    for (const f of fists) {
-      let ext = 0;
-      if (f.t < 1) {
-        f.t = Math.min(1, f.t + dt / 0.28);
-        // fast out, slower back
-        ext = f.t < 0.35 ? Math.sin((f.t / 0.35) * Math.PI / 2) : Math.cos(((f.t - 0.35) / 0.65) * Math.PI / 2);
-      }
-      f.mesh.position.set(
-        f.rest.x - f.side * 0.16 * ext + bobX,
-        f.rest.y + 0.1 * ext + bobY * (f.side > 0 ? 1 : -1) + bobY,
-        f.rest.z - 0.38 * ext
-      );
-      f.mesh.rotation.z = f.side * 0.2 * (1 - ext) + f.side * -0.6 * ext;
-      f.mesh.rotation.y = f.side * -0.12 * (1 - ext);
-    }
-  }
-
-  // ---------- Loop ----------
-  function resize() {
-    const w = host.clientWidth, h = host.clientHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h; camera.updateProjectionMatrix();
-  }
-  addEventListener('resize', resize); resize();
-
-  let last = performance.now();
-  function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (locked) update(dt); else camera.rotation.set(pitch, yaw, 0);
-    renderer.render(scene, camera);
-    requestAnimationFrame(frame);
-  }
+function frame(now) {
   requestAnimationFrame(frame);
-})();
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const active = input.locked;
+
+  // kijken
+  mouseFrame = input.takeMouse();
+  const s = 0.0021 * input.settings.gevoeligheid;
+  yaw -= mouseFrame[0] * s;
+  pitch = THREE.MathUtils.clamp(pitch - mouseFrame[1] * s, -1.55, 1.55);
+
+  // stoten (ingedrukt houden = blijven stoten)
+  if (active && (input.punchPressed || (input.mouseDown && !vm.busy))) vm.punch();
+  input.punchPressed = false;
+
+  // natuurkunde met vaste stap
+  if (active) {
+    acc += dt;
+    const wish = {
+      forward: (input.down('KeyW', 'ArrowUp') ? 1 : 0) - (input.down('KeyS', 'ArrowDown') ? 1 : 0),
+      right: (input.down('KeyD', 'ArrowRight') ? 1 : 0) - (input.down('KeyA', 'ArrowLeft') ? 1 : 0),
+      sprint: input.down('ShiftLeft', 'ShiftRight'),
+      jump: false,
+    };
+    let jumpEdge = input.jumpPressed; input.jumpPressed = false;
+    while (acc >= DT) {
+      wish.jump = jumpEdge; jumpEdge = false;
+      player.step(DT, wish, yaw);
+      acc -= DT;
+    }
+    level.bag.update(dt);
+  } else {
+    input.jumpPressed = false;
+  }
+
+  // gebeurtenissen van de speler
+  for (const e of player.events) {
+    if (e === 'jump') audio.play('jump', { gain: 0.35 });
+    else if (e.startsWith('land:')) {
+      const v = Number(e.slice(5));
+      if (v > 2) {
+        audio.play('land', { gain: Math.min(1, 0.3 + v * 0.07) });
+        audio.play('step', { gain: 1.4 });
+        landVel -= Math.min(0.6, v * 0.045);
+        if (v > 9) trauma = Math.min(1, trauma + 0.15);
+      }
+    }
+  }
+  player.events.length = 0;
+
+  // voetstappen gekoppeld aan afgelegde afstand
+  const speed = player.horizontalSpeed();
+  const stride = speed > P.WALK + 0.5 ? 2.5 : 2.0;
+  if (player.onGround && player.distance - lastStep > stride) {
+    lastStep = player.distance;
+    audio.play('step', { gain: 2.2 * Math.min(1, speed / P.WALK) });
+  }
+  if (!player.onGround) lastStep = player.distance - stride * 0.5;
+
+  // veer voor de landing
+  landVel += (-landDip * 120 - landVel * 14) * dt;
+  landDip += landVel * dt;
+
+  // camera
+  const alpha = active ? acc / DT : 1;
+  player.lerpPos(alpha, camPos);
+  const bobAmt = player.onGround ? Math.min(1, speed / P.WALK) : 0;
+  const phase = (player.distance / stride) * Math.PI * 2;
+  camera.position.set(camPos.x, camPos.y + P.EYE + player.stepSmooth + landDip + Math.abs(Math.sin(phase / 2)) * 0.035 * bobAmt - 0.017 * bobAmt, camPos.z);
+
+  trauma = Math.max(0, trauma - dt * 1.6);
+  const sh = trauma * trauma;
+  const t = now / 1000;
+  const n = (o) => Math.sin(t * 37 + o + shakeSeed) * 0.6 + Math.sin(t * 23.3 + o * 2.1) * 0.4;
+  camera.rotation.set(
+    pitch + sh * 0.035 * n(1),
+    yaw + sh * 0.035 * n(7),
+    sh * 0.05 * n(13) + Math.sin(phase / 2) * 0.004 * bobAmt
+  );
+  const wantFov = (input.down('ShiftLeft', 'ShiftRight') && speed > P.WALK + 0.3) ? SPRINT_FOV : BASE_FOV;
+  fov += (wantFov - fov) * (1 - Math.exp(-dt * 6));
+  if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+
+  vm.update(dt, {
+    mouseDX: mouseFrame[0] * input.settings.gevoeligheid,
+    mouseDY: mouseFrame[1] * input.settings.gevoeligheid,
+    bobPhase: phase / 2, bobAmount: bobAmt,
+    sprint: wantFov === SPRINT_FOV, land: landDip,
+  });
+
+  // HUD
+  hitTimer = Math.max(0, hitTimer - dt);
+  hitmarker.style.opacity = hitTimer > 0 ? String(hitTimer / 0.16) : '0';
+  speedo.textContent = speed.toFixed(1) + ' m/s';
+
+  renderer.clear();
+  renderer.render(scene, camera);
+  vm.render(renderer);
+}
+requestAnimationFrame(frame);
+
+// voor testen vanaf de console
+window.__vv = { player, camera, vm, level, input };

@@ -1,0 +1,7 @@
+Gebruikte assets in Vuistvechter (allemaal CC0 / publiek domein)
+
+models/arms.glb        PSX First Person Arms door Drillimpact (drillimpact.itch.io) - CC0
+sounds/hit*.mp3        "37 hits/punches" door Independent.nu (opengameart.org) - CC0
+sounds/step*, jump, land  Kenney Starter Kit FPS (kenney.nl) - geluiden CC0
+textures/concrete_*    Concrete031 van ambientCG.com - CC0
+textures/planks_*      Planks012 van ambientCG.com - CC0

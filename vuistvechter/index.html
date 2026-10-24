@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vuistvechter</title>
-<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Loop rond in een lege ruimte en stoot met je vuisten.">
+<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Train je bewegingen in de testhal en stoot op de bokszak.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Oswald:wght@600&display=swap">
 <style>
   /* Layout: full-screen WebGL canvas with a thin HUD layer on top. Single dark look by choice. */
@@ -48,21 +48,40 @@
   kbd { font-family: var(--font-body); font-size: 12px; color: var(--fg); border: 1px solid #3a3d42; border-bottom-width: 2px; border-radius: 4px; padding: 2px 7px; white-space: nowrap; }
   .go { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .12em; font-size: 16px; color: var(--bg); background: var(--accent); border: 0; padding: 12px 18px; border-radius: 3px; cursor: pointer; justify-self: start; }
   .go:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+  #crosshair { width: 14px; height: 14px; }
+  #crosshair::before { left: 6px; top: 0; width: 2px; height: 14px; }
+  #crosshair::after { top: 6px; left: 0; height: 2px; width: 14px; }
+  #hitmarker { position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%) rotate(45deg); pointer-events: none; opacity: 0; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; background: #fff; }
+  #hitmarker::before { left: 14px; top: 0; width: 2px; height: 30px; }
+  #hitmarker::after { top: 14px; left: 0; height: 2px; width: 30px; }
+  #hitmarker { -webkit-mask: radial-gradient(circle, transparent 6px, #000 7px); mask: radial-gradient(circle, transparent 6px, #000 7px); }
+  #speed { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
+  .settings { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid #2a2d32; cursor: default; }
+  .settings label { display: grid; grid-template-columns: 9.5em 1fr 3.4em; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+  .settings output { color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; }
+  input[type=range] { accent-color: var(--accent); width: 100%; min-width: 0; }
 </style>
 </head>
 <body>
 <div id="game"></div>
 <div id="crosshair"></div>
-<div id="hint">Esc = pauze</div>
+<div id="hitmarker"></div>
+<div id="hint">Esc = pauze en instellingen</div>
+<div id="speed"></div>
 <div id="overlay">
   <div class="card">
     <h1>Vuist<span>vechter</span></h1>
     <div class="keys">
       <kbd>W A S D</kbd><span>Lopen</span>
       <kbd>Muis</kbd><span>Rondkijken</span>
-      <kbd>Linkerklik</kbd><span>Stoten (links/rechts om en om)</span>
+      <kbd>Linkerklik</kbd><span>Stoten, links en rechts om en om (ingedrukt houden kan ook)</span>
       <kbd>Shift</kbd><span>Sprinten</span>
       <kbd>Spatie</kbd><span>Springen</span>
+    </div>
+    <div class="settings">
+      <label for="sens">Muisgevoeligheid <input id="sens" type="range" min="0.2" max="3" step="0.05"> <output id="sens-out"></output></label>
+      <label for="vol">Volume <input id="vol" type="range" min="0" max="1" step="0.05"> <output id="vol-out"></output></label>
     </div>
     <button class="go" id="start">Klik om te spelen</button>
   </div>

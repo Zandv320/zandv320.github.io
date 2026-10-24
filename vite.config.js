@@ -16,7 +16,9 @@ function velmoraGame(){
     /* de glTF-modellen worden als statische bestanden naast de pagina gezet */
     closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}
       /* Monsterjacht: de glTF-modellen (monsters, trainer, natuur, draco-decoder) gaan ongewijzigd mee */
-      fs.cpSync(path.resolve(__dirname,'monsterjacht/models'),path.resolve(__dirname,'dist/monsterjacht/models'),{recursive:true})}
+      fs.cpSync(path.resolve(__dirname,'monsterjacht/models'),path.resolve(__dirname,'dist/monsterjacht/models'),{recursive:true})
+      /* Vuistvechter: model, geluiden en texturen gaan ongewijzigd mee */
+      for(const d of ['models','sounds','textures'])fs.cpSync(path.resolve(__dirname,'vuistvechter/'+d),path.resolve(__dirname,'dist/vuistvechter/'+d),{recursive:true})}
   }}
 
 export default defineConfig({
