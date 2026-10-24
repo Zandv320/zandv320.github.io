@@ -21,7 +21,8 @@ export class Audio {
     this.master.connect(this.ctx.destination);
 
     const names = ['hit1', 'hit2', 'hit3', 'hit4', 'hit5', 'jump', 'land',
-      'step1', 'step2', 'step3', 'step4', 'step5', 'step6', 'step7', 'step8'];
+      'step1', 'step2', 'step3', 'step4', 'step5', 'step6', 'step7', 'step8',
+      'shot1', 'shot2', 'shot3', 'shot4', 'shot5', 'magout', 'magin', 'slide', 'dry'];
     await Promise.all(names.map(async n => {
       try {
         const res = await fetch(BASE + n + '.mp3');
@@ -49,6 +50,19 @@ export class Audio {
     g.gain.value = gain;
     src.connect(g).connect(this.master);
     src.start();
+  }
+
+  // metalen "ping" als je een doelwit raakt
+  ping(gain = 0.25) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    for (const [f, d] of [[1650, 0.5], [2480, 0.3], [3900, 0.18]]) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * (0.98 + Math.random() * 0.04);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g).connect(this.master); o.start(t); o.stop(t + d);
+    }
   }
 
   // korte luchtverplaatsing bij een stoot die niets raakt

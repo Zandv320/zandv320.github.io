@@ -1,7 +1,17 @@
-Gebruikte assets in Vuistvechter (allemaal CC0 / publiek domein)
+Gebruikte assets in Vuistvechter
 
-models/arms.glb        PSX First Person Arms door Drillimpact (drillimpact.itch.io) - CC0
-sounds/hit*.mp3        "37 hits/punches" door Independent.nu (opengameart.org) - CC0
-sounds/step*, jump, land  Kenney Starter Kit FPS (kenney.nl) - geluiden CC0
-textures/concrete_*    Concrete031 van ambientCG.com - CC0
-textures/planks_*      Planks012 van ambientCG.com - CC0
+Naamsvermelding verplicht (CC BY 4.0):
+models/pistol.glb      "animated pistol" door DJMaesen (sketchfab.com/bumstrum), wapenmodel door TORI106
+                       https://sketchfab.com/3d-models/animated-pistol-bd896167e7ca44f19597d3afe6a8d83f
+                       Licentie: https://creativecommons.org/licenses/by/4.0/
+                       Aangepast: texturen verkleind naar 1024 px en omgezet naar WebP.
+
+CC0 / publiek domein:
+models/arms.glb        PSX First Person Arms door Drillimpact (drillimpact.itch.io)
+textures/arms_gloves.jpg  afgeleid van de handschoenentextuur uit hetzelfde pakket
+sounds/hit*.mp3        "37 hits/punches" door Independent.nu (opengameart.org)
+sounds/shot*.mp3       The Free Firearm Sound Library (Walther PPQ en 1911), Ben Jaszczak e.a. (opengameart.org)
+sounds/magout, magin, slide, dry   "Gun reload sounds" (opengameart.org)
+sounds/step*, jump, land  Kenney Starter Kit FPS (kenney.nl)
+textures/concrete_*    Concrete031 van ambientCG.com
+textures/planks_*      Planks012 van ambientCG.com

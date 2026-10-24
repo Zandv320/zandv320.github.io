@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vuistvechter</title>
-<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Train je bewegingen in de testhal en stoot op de bokszak.">
+<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Pak het pistool, schiet op de schietbaan en stoot op de bokszak.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Oswald:wght@600&display=swap">
 <style>
   /* Layout: full-screen WebGL canvas with a thin HUD layer on top. Single dark look by choice. */
@@ -60,6 +60,16 @@
   .settings { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid #2a2d32; cursor: default; }
   .settings label { display: grid; grid-template-columns: 9.5em 1fr 3.4em; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
   .settings output { color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; }
+  #hud-right { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); display: grid; justify-items: end; gap: 2px; pointer-events: none; }
+  #weapon { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--muted); }
+  #ammo { font-family: var(--font-display); font-variant-numeric: tabular-nums; color: var(--fg); display: flex; align-items: baseline; gap: 6px; }
+  #ammo-mag { font-size: 44px; line-height: 1; }
+  #ammo-sep, #ammo-res { font-size: 20px; color: var(--muted); }
+  #ammo.low #ammo-mag { color: #e0533f; }
+  #ammo.reloading #ammo-mag { opacity: .4; }
+  #toast { position: fixed; left: 50%; bottom: calc(22% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: min(560px, calc(100% - 32px)); text-align: center; font-size: 15px; color: var(--fg); background: rgba(13,15,18,.72); padding: 8px 14px; border-radius: 3px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #score { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); font-size: 13px; color: var(--muted); letter-spacing: .04em; pointer-events: none; }
+  #credits { position: fixed; left: 50%; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 10px; color: var(--muted); opacity: .6; pointer-events: none; white-space: nowrap; }
   input[type=range] { accent-color: var(--accent); width: 100%; min-width: 0; }
 </style>
 </head>
@@ -69,13 +79,19 @@
 <div id="hitmarker"></div>
 <div id="hint">Esc = pauze en instellingen</div>
 <div id="speed"></div>
+<div id="hud-right"><div id="weapon"></div><div id="ammo" hidden><span id="ammo-mag">12</span><span id="ammo-sep">/</span><span id="ammo-res">48</span></div></div>
+<div id="toast"></div>
+<div id="score"></div>
+<div id="credits">Pistool: "animated pistol" door DJMaesen, CC BY 4.0</div>
 <div id="overlay">
   <div class="card">
     <h1>Vuist<span>vechter</span></h1>
     <div class="keys">
       <kbd>W A S D</kbd><span>Lopen</span>
       <kbd>Muis</kbd><span>Rondkijken</span>
-      <kbd>Linkerklik</kbd><span>Stoten, links en rechts om en om (ingedrukt houden kan ook)</span>
+      <kbd>Linkerklik</kbd><span>Stoten of schieten</span>
+      <kbd>R</kbd><span>Herladen</span>
+      <kbd>1 2 Q</kbd><span>Wapen wisselen (of het muiswiel)</span>
       <kbd>Shift</kbd><span>Sprinten</span>
       <kbd>Spatie</kbd><span>Springen</span>
     </div>

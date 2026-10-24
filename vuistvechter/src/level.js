@@ -131,7 +131,21 @@ export function buildLevel(scene, renderer) {
     fix.position.set(x, ROOM_H - 0.04, z); scene.add(fix);
   });
 
-  return { colliders, hittables, bag, spawn: new THREE.Vector3(0, 0, 9) };
+  // --- tafel met pistool en munitie bij het startpunt ---
+  block(2.4, 0, 6.6, 1.6, 0.9, 0.8, darkWood);
+  const pickupSpot = new THREE.Vector3(2.05, 0.93, 6.6);
+  const ammoSpot = new THREE.Vector3(2.85, 0.9, 6.6);
+  const ammo = buildAmmoBox(scene, ammoSpot);
+
+  // --- schietbaan langs de rechtermuur ---
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xe8b04a });
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 12), lineMat);
+  line.rotation.x = -Math.PI / 2; line.position.set(4.5, 0.005, 8.5); scene.add(line);
+  const targets = buildTargets(scene, hittables, colliders, [
+    [14, 3], [14, 6.5], [14, 10], [14, 13.5], [10.5, 12.5], [9, 4],
+  ]);
+
+  return { colliders, hittables, bag, targets, ammo, pickupSpot, spawn: new THREE.Vector3(0, 0, 9) };
 }
 
 // Stootzak als slinger: verplaatsing s (x,z) van het zwaartepunt met demping
@@ -181,6 +195,84 @@ function buildBag(scene, woodMat, colliders, hittables) {
       if (len < 1e-5) { pivot.quaternion.identity(); return; }
       axis.set(-s.y, 0, s.x).normalize();
       pivot.quaternion.setFromAxisAngle(axis, Math.min(len / L, 1.2));
+    },
+  };
+}
+
+// Munitiekist: blijft staan, vult je reservemunitie aan (opnieuw te gebruiken na 8 s)
+function buildAmmoBox(scene, pos) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#3f4a2e'; g.fillRect(0, 0, 256, 128);
+  g.fillStyle = '#e8d9a0'; g.font = 'bold 54px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('9 MM', 128, 66);
+  g.strokeStyle = '#2a3120'; g.lineWidth = 8; g.strokeRect(6, 6, 244, 116);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const side = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 });
+  const plain = new THREE.MeshStandardMaterial({ color: 0x3f4a2e, roughness: 0.7 });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.24), [plain, plain, plain, plain, side, side]);
+  box.position.copy(pos).add(new THREE.Vector3(0, 0.11, 0));
+  box.rotation.y = 0.35;
+  box.castShadow = true;
+  scene.add(box);
+  return { mesh: box, pos: box.position.clone(), cooldown: 0 };
+}
+
+// Doelwitten: schijf op een paal die achterover valt als je hem raakt en na 3 s weer opstaat
+function buildTargets(scene, hittables, colliders, spots) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const rings = ['#f4efe6', '#b3261e', '#f4efe6', '#b3261e', '#f4efe6', '#b3261e'];
+  rings.forEach((col, i) => { g.fillStyle = col; g.beginPath(); g.arc(128, 128, 128 - i * 21, 0, Math.PI * 2); g.fill(); });
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 });
+  const back = new THREE.MeshStandardMaterial({ color: 0x55585c, metalness: 0.6, roughness: 0.45 });
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x3a3c3f, metalness: 0.5, roughness: 0.5 });
+
+  const list = spots.map(([x, z]) => {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), postMat);
+    base.position.set(x, 0.04, z); scene.add(base);
+    const pivot = new THREE.Group();
+    pivot.position.set(x, 0.08, z);
+    pivot.rotation.order = 'YXZ';                 // eerst kantelen (lokaal), dan draaien
+    pivot.rotation.y = -Math.PI / 2;             // schijf kijkt naar -x (naar het midden van de hal)
+    scene.add(pivot);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.1, 8), postMat);
+    post.position.y = 0.55; pivot.add(post);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 32), [back, face, back]);
+    plate.rotation.x = Math.PI / 2;               // platte kant naar +z (lokaal)
+    plate.position.y = 1.35;
+    plate.castShadow = true;
+    pivot.add(plate);
+    const t = { pivot, plate, down: false, angle: 0, vel: 0, timer: 0 };
+    plate.userData.target = t;
+    hittables.push(plate);
+    colliders.push({ minX: x - 0.25, maxX: x + 0.25, minZ: z - 0.25, maxZ: z + 0.25, bottom: 0, top: 0.08 });
+    return t;
+  });
+
+  return {
+    list,
+    hits: 0,
+    hit(t) {
+      if (t.down) return false;
+      t.down = true; t.timer = 3; t.vel = -9;
+      this.hits++;
+      return true;
+    },
+    update(dt) {
+      for (const t of list) {
+        if (t.down) {
+          t.timer -= dt;
+          if (t.timer <= 0) { t.down = false; t.vel = 3.5; }
+        }
+        const goal = t.down ? -Math.PI / 2 : 0;
+        // val met zwaartekracht-achtige versnelling en een klein stuitertje
+        t.vel += (goal - t.angle) * 60 * dt - t.vel * 6 * dt;
+        t.angle += t.vel * dt;
+        if (t.down && t.angle < goal) { t.angle = goal; t.vel = -t.vel * 0.25; }
+        t.pivot.rotation.x = t.angle;
+      }
     },
   };
 }

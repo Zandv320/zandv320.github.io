@@ -12,6 +12,8 @@ export class Input {
     this.mouseDown = false;
     this.jumpPressed = false;   // wordt door de game "geconsumeerd"
     this.punchPressed = false;
+    this.edges = new Set();     // toetsen die deze frame zijn ingedrukt
+    this.wheel = 0;
     this.settings = { gevoeligheid: 1, volume: 0.8 };
     try {
       const s = JSON.parse(localStorage.getItem(OPSLAG) || '{}');
@@ -20,6 +22,7 @@ export class Input {
 
     addEventListener('keydown', e => {
       if (e.code === 'Space') { if (!e.repeat) this.jumpPressed = true; e.preventDefault(); }
+      if (!e.repeat && this.locked) this.edges.add(e.code);
       this.keys.add(e.code);
     });
     addEventListener('keyup', e => this.keys.delete(e.code));
@@ -36,6 +39,7 @@ export class Input {
       if (!this.locked || e.button !== 0) return;
       this.mouseDown = true; this.punchPressed = true;
     });
+    addEventListener('wheel', e => { if (this.locked) this.wheel += Math.sign(e.deltaY); }, { passive: true });
     addEventListener('mouseup', e => { if (e.button === 0) this.mouseDown = false; });
 
     document.addEventListener('pointerlockchange', () => {
@@ -59,6 +63,9 @@ export class Input {
   }
 
   down(...codes) { return codes.some(c => this.keys.has(c)); }
+
+  pressed(code) { return this.edges.has(code); }
+  endFrame() { this.edges.clear(); this.wheel = 0; }
 
   takeMouse() {
     const d = [this.mouseDX, this.mouseDY];
