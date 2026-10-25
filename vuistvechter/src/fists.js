@@ -12,7 +12,6 @@ const PUNCH_SPEED = 1.75;
 export class Fists {
   constructor() {
     this.name = 'Vuisten';
-    this.reach = 0.04;
     this.fov = 66;
     this.root = new THREE.Group();
     this.ready = false;
@@ -48,15 +47,6 @@ export class Fists {
     model.rotation.y = Math.PI;
     this.root.add(model);
     this.model = model;
-    // naar ware grootte schalen rond het oog (hand ~9,5 cm van pols tot knokkel)
-    {
-      model.updateMatrixWorld(true);
-      const w = model.getObjectByName('handR').getWorldPosition(new THREE.Vector3());
-      const kn = model.getObjectByName('f_middle01R').getWorldPosition(new THREE.Vector3());
-      const k = 0.095 / w.distanceTo(kn);
-      model.scale.multiplyScalar(k); model.position.multiplyScalar(k);
-      this.realScale = k;
-    }
 
     this.mixer = new THREE.AnimationMixer(model);
     const clip = n => gltf.animations.find(a => a.name === n);
@@ -84,7 +74,6 @@ export class Fists {
     this.idle = this.mixer.clipAction(this.clips.idle);
     // echte first person: de armen van dit model zijn alleen nog een "regisseur" voor de handen
     // van je eigen lichaam; zelf worden ze niet getekend
-    model.traverse(o => { if (o.isMesh) o.visible = false; });
     this.handR = model.getObjectByName('handR');
     this.handL = model.getObjectByName('handL');
     this.knuckleR = model.getObjectByName('f_middle01R');

@@ -315,7 +315,8 @@ export class FPBody {
 function removeHead(mesh) {
   const g = mesh.geometry, idx = g.index, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
   const bones = mesh.skeleton.bones;
-  const headIds = new Set(bones.map((b, i) => /Head(Top_End)?$/.test(b.name) ? i : -1).filter(i => i >= 0));
+  // hoofd én armen: de armen komen uit het viewmodel (professioneel geanimeerd met het wapen)
+  const headIds = new Set(bones.map((b, i) => /Head(Top_End)?$|(Left|Right)(Arm|ForeArm|Hand)/.test(b.name) ? i : -1).filter(i => i >= 0));
   const onHead = new Uint8Array(si.count);
   for (let v = 0; v < si.count; v++) {
     let w = 0;

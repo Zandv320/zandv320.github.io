@@ -29,7 +29,6 @@ export const PISTOL_STATS = {
 export class Pistol {
   constructor(audio) {
     this.name = 'Pistool';
-    this.reach = 0.09;       // meter verder naar voren dan het viewmodel: armen bijna gestrekt
     this.fov = 56;
     this.audio = audio;
     this.root = new THREE.Group();
@@ -57,19 +56,6 @@ export class Pistol {
     model.position.set(0.04, -0.2, -0.12);
     this.root.add(model);
     this.model = model;
-    // Het model is groter dan echt (zo zag het er goed uit met een eigen, smalle camera). Nu het in
-    // de wereld hangt, schalen we het rond het oog naar ware grootte: op het scherm blijft het gelijk,
-    // maar het wapen is ~21 cm en de handen van je lichaam kunnen het echt vastpakken.
-    {
-      this.root.updateMatrixWorld(true);
-      const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert();
-      const sb = new THREE.Box3().setFromObject(model.getObjectByName('slide_beretta_0'), true).applyMatrix4(inv);
-      const size = sb.getSize(new THREE.Vector3());
-      const k = 0.2 / Math.max(size.x, size.y, size.z);       // slede van een Beretta 92 is ~20 cm
-      model.scale.multiplyScalar(k); model.position.multiplyScalar(k);
-      this.realScale = k;
-    }
-
     // vuurmond: voorkant van de slede, opgezocht in rustpose
     this.mixer = new THREE.AnimationMixer(model);
     const full = gltf.animations[0];
@@ -117,13 +103,10 @@ export class Pistol {
     this.ready = true;
   }
 
-  // ---------- Echte first person ----------
-  // De armen van dit model worden niet getekend: je eigen lichaam pakt het pistool vast.
-  // Hier bepalen we het "geweerframe" (z = loop, y = boven), de greep van de linkerhand en
-  // de houding om over het vizier te richten.
+  // ---------- Richten ----------
+  // Geweerframe (z = loop, y = boven) en de houding om over het vizier te richten.
   buildFirstPerson() {
     const model = this.model;
-    model.traverse(o => { if (o.isMesh && o.material.name === 'arms') o.visible = false; });
     this.actions.ambient.reset().play(); this.mixer.update(0);
     this.root.updateMatrixWorld(true);
     const rootInv = new THREE.Matrix4().copy(this.root.matrixWorld).invert();
@@ -197,7 +180,7 @@ export class Pistol {
     const tiltInv = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.04, 0, 0));
     const want = tiltInv.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
     const q = want.multiply(gunRootQ.clone().invert());
-    const target = new THREE.Vector3(0, 0, -0.45).applyQuaternion(tiltInv);
+    const target = new THREE.Vector3(0, 0, -0.36).applyQuaternion(tiltInv);
     this.adsPose = { quat: q, pos: target.sub(sight.clone().applyQuaternion(q)) };
   }
 

@@ -62,7 +62,7 @@ const enemies = new Enemies({
 enemies.load().catch(e => console.error('Vijanden laden mislukt', e));
 
 // ---------- Wapens ----------
-const vm = new Viewmodel(scene);
+const vm = new Viewmodel(renderer);
 const fists = new Fists();
 const pistol = new Pistol(audio);
 vm.add(fists); vm.add(pistol);
@@ -277,12 +277,22 @@ pistol.onFire = () => {
   vmKick = 1;
   bloom = Math.min(0.03, bloom + 0.009);
   trauma = Math.min(1, trauma + 0.1);
-  effects.muzzleLight(pistol.muzzle.getWorldPosition(new THREE.Vector3()));
+  effects.muzzleLight(muzzleWorld(new THREE.Vector3()));
+  vm.muzzleFlash(pistol);
 };
 
 // ---------- Rook uit de loop ----------
+// De loop staat in de viewmodel-scène (eigen camera en beeldhoek). We zoeken het punt in de wereld
+// dat op hetzelfde plekje op het scherm ligt, zodat rook en licht daar uit lijken te komen.
+const _mz = new THREE.Vector3(), _dir = new THREE.Vector3();
 let smokeAcc = 0, lastHeatShots = 0;
-const muzzleWorld = out => pistol.muzzle.getWorldPosition(out);
+function muzzleWorld(out) {
+  pistol.muzzle.getWorldPosition(_mz);
+  const depth = _mz.distanceTo(vm.camera.position);
+  _mz.project(vm.camera);
+  _dir.set(_mz.x, _mz.y, 0.5).unproject(camera).sub(camera.position).normalize();
+  return out.copy(camera.position).addScaledVector(_dir, depth * 0.9);
+}
 function updateSmoke(dt) {
   if (vm.current !== pistol || !pistol.ready) { lastHeatShots = pistol.heat; return; }
   const fwd = camera.getWorldDirection(new THREE.Vector3());
@@ -314,6 +324,7 @@ function resize() {
   const w = host.clientWidth, h = host.clientHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
+  vm.resize(w / h);
   post.setSize(w, h);
 }
 addEventListener('resize', resize); resize(); applyQuality();
@@ -495,14 +506,12 @@ function frame(now) {
   const wall = vm.current === pistol && wallHit ? THREE.MathUtils.clamp((0.95 - wallHit.distance) / 0.55, 0, 1) : 0;
 
   vm.update(dt, {
-    camera,
     mouseDX: mouse[0] * input.settings.gevoeligheid,
     mouseDY: mouse[1] * input.settings.gevoeligheid,
     bobPhase: phase / 2, bobAmount: bobAmt,
     sprint: sprinting, land: landDip, kick: vmKick * 0.02,
     aim: aimNow && wall < 0.3, wall, lean,
   });
-  body.arms(vm, camera);
   body.finish(!dead);
   updateSmoke(dt);
   effects.update(dt);
@@ -545,6 +554,7 @@ function frame(now) {
   input.endFrame();
   renderer.clear();
   post.render(dt, Math.min(0.35, lowHpVignette));
+  vm.render(renderer);
 }
 requestAnimationFrame(frame);
 
