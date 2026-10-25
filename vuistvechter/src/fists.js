@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { smooth } from './inspect.js';
 
 // Vuisten: armenmodel met jabs, links en rechts om en om.
 // Krijgen handschoenen en mouwen zodat ze bij de armen van het pistool passen.
@@ -75,7 +76,7 @@ export class Fists {
   }
 
   equip() {
-    this.current = null; this.queued = false;
+    this.current = null; this.queued = false; this.inspectT = -1;
     this.mixer.stopAllAction();
     this.drawAction = this.mixer.clipAction(this.clips.draw);
     this.drawAction.reset().setLoop(THREE.LoopOnce, 1);
@@ -84,10 +85,32 @@ export class Fists {
   }
 
   get busy() { return !!this.current; }
+
+  // inspecteren (J): handen omdraaien en de handschoenen bekijken
+  inspect() {
+    if (!this.ready || this.current || this.inspectT >= 0) return;
+    this.inspectT = 0;
+  }
+
+  applyInspect(dt) {
+    const r = this.root;
+    if (!(this.inspectT >= 0)) { r.position.set(0, 0, 0); r.quaternion.identity(); return; }
+    this.inspectT += dt;
+    const t = this.inspectT;
+    const c = smooth(t, 0, 0.45) * (1 - smooth(t, 1.5, 1.95));
+    const turn = smooth(t, 0.55, 1.1) * (1 - smooth(t, 1.4, 1.8));  // halverwege nog even verder draaien
+    const wob = Math.sin(t * 6.1) * 0.006;
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.35 * c + wob, 0.12 * turn, -0.5 * c - 0.35 * turn, 'YXZ'));
+    const pivot = new THREE.Vector3(0, -0.16, -0.32);
+    r.quaternion.copy(q);
+    r.position.copy(pivot).sub(pivot.clone().applyQuaternion(q)).add(new THREE.Vector3(0, 0.05 * c, 0.04 * c));
+    if (t > 2) this.inspectT = -1;
+  }
   get canSwitch() { return true; }
 
   // primaire actie = stoten
   primary(pressed) {
+    this.inspectT = -1;
     if (!pressed && this.busy) return;   // ingedrukt houden: pas na afloop opnieuw
     if (this.current) {
       const c = this.current;
@@ -121,6 +144,7 @@ export class Fists {
     let mdt = dt;
     if (this.hitstop > 0) { this.hitstop -= dt; mdt = dt * 0.12; }
     this.mixer.update(mdt);
+    this.applyInspect(dt);
 
     const d = this.drawAction;
     if (d && d.time >= this.clips.draw.duration - 0.2) {

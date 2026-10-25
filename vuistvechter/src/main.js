@@ -7,7 +7,7 @@ import { buildLevel } from './level.js';
 import { Player, P } from './player.js';
 import { Viewmodel } from './viewmodel.js';
 import { Fists } from './fists.js';
-import { Pistol, PISTOL_STATS } from './pistol.js';
+import { Pistol, PISTOL_STATS, CANT } from './pistol.js';
 import { Effects } from './effects.js';
 
 // ---------- Renderer ----------
@@ -207,18 +207,15 @@ function updateSmoke(dt) {
   if (vm.current !== pistol || !pistol.ready) { lastHeatShots = pistol.heat; return; }
   const fwd = camera.getWorldDirection(new THREE.Vector3());
   // elk schot: klein wolkje
-  if (pistol.heat > lastHeatShots + 0.5) {
-    const p = muzzleWorld(new THREE.Vector3());
-    for (let i = 0; i < 2; i++) effects.puff(p, 0.75, fwd);
-  }
+  if (pistol.heat > lastHeatShots + 0.5) effects.puff(muzzleWorld(new THREE.Vector3()), 0.6, fwd);
   lastHeatShots = pistol.heat;
-  // na veel schieten: de loop blijft nog een tijd roken
-  const over = pistol.heat - 3;
+  // na snel achter elkaar schieten: dun sliertje uit de loop, dat snel weer stopt
+  const over = pistol.heat - 4;
   if (over > 0) {
-    smokeAcc += dt * Math.min(10, 2 + over * 1.5);
+    smokeAcc += dt * Math.min(6, 1.5 + over * 1.2);
     while (smokeAcc >= 1) {
       smokeAcc -= 1;
-      effects.puff(muzzleWorld(new THREE.Vector3()), Math.min(1, 0.5 + over / 5));
+      effects.puff(muzzleWorld(new THREE.Vector3()), Math.min(1, 0.4 + over / 6), null, true);
     }
   }
 }
@@ -259,6 +256,7 @@ function frame(now) {
       selectWeapon(owned[(i + (input.wheel > 0 ? 1 : -1) + owned.length) % owned.length]);
     }
     if (input.pressed('KeyR') && vm.current === pistol && !vm.switching) pistol.reload();
+    if (input.pressed('KeyJ') && vm.current && !vm.switching) vm.current.inspect?.();
     // vuren / stoten
     const w = vm.current;
     if (w && !vm.switching) {
@@ -401,4 +399,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-window.__vv = { player, camera, vm, level, input, fists, pistol, owned, get pickup() { return pickup; } };
+window.__vv = { player, camera, vm, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };

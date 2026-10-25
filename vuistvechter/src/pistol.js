@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MuzzleFlash } from './flash.js';
+import { buildPoseBlendClip, smooth } from './inspect.js';
 
 // Pistool (Beretta) met armen in handschoenen. Het model heeft één lange animatie;
 // die knippen we op in losse clips (frames op 30 fps, volgens de maker):
@@ -11,6 +13,9 @@ const RANGES = {
   fire: [0, 11], reloadA: [12, 82], firelast: [83, 94], reloadB: [95, 175],
   hide: [176, 187], ready: [187, 233], ambient: [234, 264],
 };
+
+// kanteling en verschuiving tijdens het inspecteren (radialen / meters in viewmodel-ruimte)
+export const CANT = { pitch: 0.12, yaw: 0.12, roll: 0.5, x: 0.05, y: 0.035, z: -0.03 };
 
 export const PISTOL_STATS = {
   magSize: 12,
@@ -83,13 +88,96 @@ export class Pistol {
     this.muzzle.updateMatrixWorld(true);
     this.muzzle.getWorldScale(ws);
     this.muzzleScale = 1 / ws.x;
-    this.flash = makeFlash();
-    this.muzzle.add(this.flash);
+    // looprichting (model +z) uitgedrukt in de ruimte van het frame
+    const fq = new THREE.Quaternion(); frame.getWorldQuaternion(fq);
+    const mq = new THREE.Quaternion(); model.getWorldQuaternion(mq);
+    const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(mq).applyQuaternion(fq.invert());
+    this.flash = new MuzzleFlash(axis, this.muzzleScale);
+    this.muzzle.add(this.flash.group);
     // lichtje bij de flits, zodat hand en wapen even oplichten
     this.flashLight = new THREE.PointLight(0xffb060, 0, 1.2, 2);
     this.root.add(this.flashLight);
     this.heat = 0;           // loopt op bij snel schieten; boven een drempel gaat de loop roken
+
+    this.buildInspect(full);
     this.ready = true;
+  }
+
+  // ---------- Inspecteren (J): slede een stukje naar achter om te zien of er een patroon in de kamer zit ----------
+  buildInspect(full) {
+    const model = this.model;
+    const SLIDE_REST = model.getObjectByName('slide').position.z;    // vooraan (cm)
+    const SLIDE_BACK = -1.217;                                       // helemaal open (uit de animatie)
+    const PEEK = SLIDE_REST - 1.7;                                   // ~1,7 cm open: net genoeg om de kamer te zien
+    const D = 2.1;
+    this.inspectDur = D;
+    // pose B = linkerhand over de slede (frame 145 uit de herlaadanimatie)
+    const handOnSlide = (t) => smooth(t, 0.08, 0.42) * (1 - smooth(t, 1.62, 2.0));
+    // slede: rustig naar achter trekken, even vasthouden, dan loslaten (veer duwt hem snel terug)
+    this.slideAt = (t, locked) => {
+      if (locked) return SLIDE_BACK;
+      const pull = smooth(t, 0.42, 0.72) * 0.92 + smooth(t, 0.72, 1.3) * 0.08;
+      const release = smooth(t, 1.42, 1.5);
+      return SLIDE_REST + (PEEK - SLIDE_REST) * pull * (1 - release);
+    };
+    const make = locked => buildPoseBlendClip({
+      source: full, tA: 240 / FPS, tB: 145 / FPS, duration: D, fps: FPS, name: locked ? 'inspectLocked' : 'inspect',
+      weight: handOnSlide,
+      useB: n => n.startsWith('L_') || n.startsWith('R_') || n === 'pistol' || n === 'Root',
+      overrides: { 'slide.position': (t, v) => [v[0], v[1], this.slideAt(t, locked)] },
+    });
+    for (const locked of [false, true]) {
+      const clip = make(locked);
+      const act = this.mixer.clipAction(clip);
+      act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true;
+      this.actions[clip.name] = act; this.clips[clip.name] = clip;
+    }
+    // draaipunt voor het kantelen: de greep van het pistool
+    model.updateMatrixWorld(true);
+    this.pivot = new THREE.Vector3();
+    model.getObjectByName('base').getWorldPosition(this.pivot);
+    this.root.worldToLocal(this.pivot);
+    this.chamber = ['shell', 'bullet_2_2'].map(n => model.getObjectByName(n)).filter(Boolean);
+    this.inspectT = -1;
+  }
+
+  inspect() {
+    if (!this.ready || this.state !== 'idle' || this.cooldown > 0) return;
+    const locked = this.mag === 0;                  // slede staat al open na het laatste schot
+    this.state = 'inspect';
+    this.inspectT = 0;
+    this.play(locked ? 'inspectLocked' : 'inspect', 0.2);
+    // patroon in de kamer alleen als er nog munitie is
+    for (const o of this.chamber) o.visible = this.mag > 0;
+    if (!locked) {
+      this.at(0.5, () => this.audio.play('slide', { gain: 0.32, rate: 1.3, jitter: 0.02 }));
+      this.at(1.43, () => this.audio.play('slide', { gain: 0.55, rate: 1.05, jitter: 0.02 }));
+    }
+  }
+
+  endInspect(fade = 0.12) {
+    if (this.state !== 'inspect') return;
+    this.clearTimers();
+    for (const o of this.chamber) o.visible = true;
+    this.inspectT = -1;
+    this.state = 'idle';
+    if (this.mag === 0) { this.play('firelast', fade); this.actions.firelast.time = this.clips.firelast.duration; }
+    else this.play('ambient', fade);
+  }
+
+  // kantelen rond de greep: loop iets naar binnen, bovenkant naar links zodat je de uitwerppoort ziet
+  applyCant(dt) {
+    const r = this.root;
+    if (this.inspectT < 0) { r.position.set(0, 0, 0); r.quaternion.identity(); return; }
+    this.inspectT += dt;
+    const t = this.inspectT;
+    const c = smooth(t, 0.05, 0.55) * (1 - smooth(t, 1.55, 2.05));
+    // kleine trilling van de handen tijdens het vasthouden
+    const wob = Math.sin(t * 7.3) * 0.004 + Math.sin(t * 4.1 + 1) * 0.003;
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(CANT.pitch * c + wob, CANT.yaw * c, CANT.roll * c + wob * 0.5, 'YXZ'));
+    r.quaternion.copy(q);
+    const rp = this.pivot.clone().applyQuaternion(q);
+    r.position.copy(this.pivot).sub(rp).add(new THREE.Vector3(CANT.x * c, CANT.y * c, CANT.z * c));
   }
 
   play(name, fade = 0.05) {
@@ -103,6 +191,8 @@ export class Pistol {
 
   equip() {
     this.clearTimers();
+    this.inspectT = -1;
+    for (const o of this.chamber || []) o.visible = true;
     this.mixer.stopAllAction();
     this.currentAction = null;
     this.state = 'ready';
@@ -115,6 +205,7 @@ export class Pistol {
 
   primary(pressed) {
     if (!pressed) return;                          // halfautomaat: elke klik één schot
+    if (this.state === 'inspect') this.endInspect(0.05);
     if (!this.ready || this.state === 'reload' || this.state === 'ready') return;
     if (this.cooldown > 0) return;
     if (this.mag <= 0) {
@@ -129,11 +220,7 @@ export class Pistol {
     this.play(this.mag === 0 ? 'firelast' : 'fire', 0.02);
     this.audio.play('shot', { gain: 0.9, jitter: 0.03 });
     this.flashTime = 0.055;
-    this.flash.visible = true;
-    this.flash.sprite.material.rotation = Math.random() * Math.PI;
-    this.flash.core.material.rotation = Math.random() * Math.PI;
-    const s = (0.85 + Math.random() * 0.45) * this.muzzleScale;
-    this.flash.scale.set(s, s, s);
+    this.flash.fire();
     this.muzzle.getWorldPosition(this.flashLight.position);
     this.root.worldToLocal(this.flashLight.position);
     this.flashLight.intensity = 1.4;
@@ -142,6 +229,7 @@ export class Pistol {
   }
 
   reload() {
+    if (this.state === 'inspect') this.endInspect(0.1);
     if (this.state === 'reload' || this.mag >= PISTOL_STATS.magSize || this.reserve <= 0) return;
     const empty = this.mag === 0;
     const clip = empty ? 'reloadB' : 'reloadA';
@@ -167,16 +255,19 @@ export class Pistol {
     for (const tm of this.timers) { tm.t -= dt; if (tm.t <= 0 && !tm.done) { tm.done = true; tm.fn(); } }
     this.timers = this.timers.filter(t => !t.done);
 
+    this.flash.update(dt);
     if (this.flashTime > 0) {
       this.flashTime -= dt;
       this.flashLight.intensity = Math.max(0, this.flashTime / 0.055) * 1.4;
-      if (this.flashTime <= 0) { this.flash.visible = false; this.flashLight.intensity = 0; }
+      if (this.flashTime <= 0) this.flashLight.intensity = 0;
     }
-    this.heat = Math.max(0, this.heat - dt * 0.45);
+    this.heat = Math.max(0, this.heat - dt * 0.9);
+    this.applyCant(dt);
+    if (this.state === 'inspect' && this.inspectT >= this.inspectDur) this.endInspect(0.15);
 
     // klaar met een eenmalige animatie? terug naar stilstaan
     const a = this.currentAction;
-    if (a && a !== this.actions.ambient && a.time >= a.getClip().duration - 0.001) {
+    if (this.state !== 'inspect' && a && a !== this.actions.ambient && a.time >= a.getClip().duration - 0.001) {
       if (a === this.actions.firelast) { this.state = 'idle'; return; }  // slede blijft open tot herladen
       this.state = 'idle';
       this.play('ambient', 0.15);
@@ -185,41 +276,3 @@ export class Pistol {
   }
 }
 
-// mondingsflits: felle kern + stervormige uitbarsting, additief en altijd zichtbaar
-function sprite(tex, size) {
-  const m = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, toneMapped: false });
-  const s = new THREE.Sprite(m);
-  s.scale.set(size, size, size);
-  s.renderOrder = 10;
-  return s;
-}
-function makeFlash() {
-  const star = document.createElement('canvas'); star.width = star.height = 256;
-  let g = star.getContext('2d');
-  g.translate(128, 128);
-  for (let i = 0; i < 7; i++) {
-    g.save(); g.rotate(i * Math.PI * 2 / 7 + Math.random() * 0.3);
-    const len = 80 + Math.random() * 45;
-    const grd = g.createLinearGradient(0, 0, len, 0);
-    grd.addColorStop(0, 'rgba(255,235,170,1)'); grd.addColorStop(0.5, 'rgba(255,160,50,0.7)'); grd.addColorStop(1, 'rgba(255,90,10,0)');
-    g.fillStyle = grd;
-    g.beginPath(); g.moveTo(0, -12); g.quadraticCurveTo(len * 0.5, -6, len, 0); g.quadraticCurveTo(len * 0.5, 6, 0, 12); g.fill();
-    g.restore();
-  }
-  const glow = g.createRadialGradient(0, 0, 0, 0, 0, 90);
-  glow.addColorStop(0, 'rgba(255,200,110,0.9)'); glow.addColorStop(0.4, 'rgba(255,130,40,0.35)'); glow.addColorStop(1, 'rgba(255,90,20,0)');
-  g.fillStyle = glow; g.beginPath(); g.arc(0, 0, 90, 0, Math.PI * 2); g.fill();
-  const core = document.createElement('canvas'); core.width = core.height = 64;
-  g = core.getContext('2d');
-  const cg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  cg.addColorStop(0, 'rgba(255,255,245,1)'); cg.addColorStop(0.35, 'rgba(255,240,190,0.9)'); cg.addColorStop(1, 'rgba(255,200,120,0)');
-  g.fillStyle = cg; g.fillRect(0, 0, 64, 64);
-  const t1 = new THREE.CanvasTexture(star), t2 = new THREE.CanvasTexture(core);
-  t1.colorSpace = t2.colorSpace = THREE.SRGBColorSpace;
-  const grp = new THREE.Group();
-  grp.sprite = sprite(t1, 0.16);
-  grp.core = sprite(t2, 0.06);
-  grp.add(grp.sprite, grp.core);
-  grp.visible = false;
-  return grp;
-}

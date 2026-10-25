@@ -18,20 +18,6 @@ function holeTexture() {
   return t;
 }
 
-function smokeTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d');
-  // een paar zachte vlekken over elkaar voor een onregelmatige wolk
-  for (let i = 0; i < 9; i++) {
-    const x = 64 + (Math.random() - 0.5) * 40, y = 64 + (Math.random() - 0.5) * 40, r = 22 + Math.random() * 26;
-    const grd = g.createRadialGradient(x, y, 0, x, y, r);
-    grd.addColorStop(0, 'rgba(255,255,255,0.35)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
-  }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -46,7 +32,8 @@ export class Effects {
     scene.add(this.light);
     this.lightTime = 0;
     this._n = new THREE.Vector3();
-    this.smokeTex = smokeTexture();
+    // rooktexturen uit Kenney's Particle Pack (CC0)
+    this.smokeTex = [1, 2, 3, 4].map(i => { const t = new THREE.TextureLoader().load(`textures/fx/smoke${i}.png`); t.colorSpace = THREE.SRGBColorSpace; return t; });
     this.smoke = [];
   }
 
@@ -81,18 +68,22 @@ export class Effects {
   }
 
   // rookpluim uit de loop; strength 0..1
-  puff(pos, strength = 1, forward = null) {
-    const m = new THREE.SpriteMaterial({ map: this.smokeTex, color: 0xd9d6d0, transparent: true, depthWrite: false, opacity: 0 });
+  puff(pos, strength = 1, forward = null, wisp = false) {
+    const tex = this.smokeTex[(Math.random() * this.smokeTex.length) | 0];
+    const m = new THREE.SpriteMaterial({ map: tex, color: 0xcfccc6, transparent: true, depthWrite: false, opacity: 0 });
     m.rotation = Math.random() * Math.PI * 2;
     const sp = new THREE.Sprite(m);
     sp.position.copy(pos);
-    const s0 = 0.03 + Math.random() * 0.02;
+    const s0 = wisp ? 0.015 + Math.random() * 0.01 : 0.025 + Math.random() * 0.015;
     sp.scale.set(s0, s0, s0);
     this.scene.add(sp);
-    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.06, 0.12 + Math.random() * 0.1, (Math.random() - 0.5) * 0.06);
-    if (forward) vel.addScaledVector(forward, 0.15 + Math.random() * 0.1);
-    this.smoke.push({ sp, vel, age: 0, life: 1.4 + Math.random() * 0.9, s0, grow: 0.16 + Math.random() * 0.14, peak: 0.36 * strength, spin: (Math.random() - 0.5) * 0.8 });
-    if (this.smoke.length > 90) { const o = this.smoke.shift(); this.scene.remove(o.sp); o.sp.material.dispose(); }
+    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.04, (wisp ? 0.16 : 0.08) + Math.random() * 0.06, (Math.random() - 0.5) * 0.04);
+    if (forward) vel.addScaledVector(forward, 0.25 + Math.random() * 0.15);
+    // kort en licht: een schotwolkje is na ~0,5 s weg, een sliertje na ~0,8 s
+    const life = wisp ? 0.6 + Math.random() * 0.3 : 0.35 + Math.random() * 0.25;
+    const grow = wisp ? 0.05 + Math.random() * 0.03 : 0.08 + Math.random() * 0.05;
+    this.smoke.push({ sp, vel, age: 0, life, s0, grow, peak: (wisp ? 0.13 : 0.16) * strength, spin: (Math.random() - 0.5) * 1.2 });
+    if (this.smoke.length > 60) { const o = this.smoke.shift(); this.scene.remove(o.sp); o.sp.material.dispose(); }
   }
 
   muzzleLight(pos) {
@@ -114,7 +105,7 @@ export class Effects {
       p.sp.scale.set(sc, sc, sc);
       p.sp.material.rotation += p.spin * dt;
       // snel opkomen, langzaam vervagen
-      p.sp.material.opacity = p.peak * Math.min(1, k * 8) * Math.pow(1 - k, 1.5);
+      p.sp.material.opacity = p.peak * Math.min(1, k * 10) * Math.pow(1 - k, 2);
     }
     for (const p of this.smoke.filter(p => p.age >= p.life)) { this.scene.remove(p.sp); p.sp.material.dispose(); }
     this.smoke = this.smoke.filter(p => p.age < p.life);

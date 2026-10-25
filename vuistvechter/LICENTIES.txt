@@ -10,8 +10,10 @@ CC0 / publiek domein:
 models/arms.glb        PSX First Person Arms door Drillimpact (drillimpact.itch.io)
 textures/arms_gloves.jpg  afgeleid van de handschoenentextuur uit hetzelfde pakket
 sounds/hit*.mp3        "37 hits/punches" door Independent.nu (opengameart.org)
-sounds/shot*.mp3       The Free Firearm Sound Library (Walther PPQ en 1911), Ben Jaszczak e.a. (opengameart.org)
+sounds/shot*.mp3       knal uit The Free Firearm Sound Library (Walther PPQ en 1911), Ben Jaszczak e.a. (opengameart.org),
+                       aangevuld met eigen dreun, mechaniek en galm
 sounds/magout, magin, slide, dry   "Gun reload sounds" (opengameart.org)
 sounds/step*, jump, land  Kenney Starter Kit FPS (kenney.nl)
 textures/concrete_*    Concrete031 van ambientCG.com
 textures/planks_*      Planks012 van ambientCG.com
+textures/fx/*          mondingsflits en rook: Kenney Particle Pack (kenney.nl / opengameart.org), ingekleurd
