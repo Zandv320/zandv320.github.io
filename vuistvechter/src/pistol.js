@@ -13,7 +13,7 @@ const RANGES = {
   fire: [0, 11], reloadA: [12, 82], firelast: [83, 94], reloadB: [95, 175],
   hide: [176, 187], ready: [187, 233],
   // stilstaan: de originele 'ambient' (234-264) pompt het wapen elke seconde ~2 cm heen en weer;
-  // we houden één rustige pose vast en laten de viewmodel er langzaam bij ademen
+  // we houden één pose vast zonder te bewegen
   ambient: [239, 242],
 };
 
@@ -69,6 +69,7 @@ export class Pistol {
       const act = this.mixer.clipAction(this.clips[k]);
       if (k !== 'ambient') { act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; }
       this.actions[k] = act;
+      if (k === 'ambient') act.timeScale = 0;      // één vaste pose: helemaal stil
     }
 
     // vastgemaakt aan het frame (niet de slede, die schiet naar achter bij elk schot)
