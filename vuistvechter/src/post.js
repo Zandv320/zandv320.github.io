@@ -1,16 +1,15 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Nabewerking voor een realistischer beeld:
-// - ambient occlusion (GTAO): contactschaduw in hoeken, onder kisten en tussen je vingers
 // - bloom: felle lampen en de mondingsflits stralen een beetje uit
 // - lens: lichte vignettering, een beetje kleurschifting aan de randen en filmkorrel
-// Drie standen (instelling): hoog = alles, gemiddeld = zonder AO, laag = direct tekenen.
+// Alleen bij gemiddeld en hoog; laag tekent direct (snelst). Ambient occlusion is eruit gehaald:
+// te zwaar en gaf strepen in beeld.
 
 const LensShader = {
   uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.32 }, grain: { value: 0.035 }, aberration: { value: 0.0015 } },
@@ -45,14 +44,6 @@ export class Post {
     c.setPixelRatio(this.renderer.getPixelRatio());
     c.setSize(w, h);
     c.addPass(new RenderPass(this.scene, this.camera));
-    if (this.quality === 'hoog') {
-      const ao = new GTAOPass(this.scene, this.camera, w, h);
-      ao.blendIntensity = 0.85;
-      ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.2, scale: 1, samples: 12 });
-      ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
-      c.addPass(ao);
-      this.ao = ao;
-    }
     this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.32, 0.45, 0.9);
     c.addPass(this.bloom);
     c.addPass(new OutputPass());

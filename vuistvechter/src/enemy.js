@@ -161,8 +161,6 @@ class Enemy {
     this.muzzle = gun.muzzle;
     this.flash = new MuzzleFlash(new THREE.Vector3(0, 0, 1), 1, { length: 0.2, width: 0.12 });
     this.muzzle.add(this.flash.group);
-    this.light = new THREE.PointLight(0xffc27a, 0, 7, 2);
-    scene.add(this.light);
     this.hitboxes = addHitboxes(model, bones, this);
     this.body = new Player(this.spawnPt, level.colliders);
     this.respawn(true);
@@ -246,7 +244,6 @@ class Enemy {
     const ctx = this.mgr.ctx;
     const body = this.body;
     this.flash.update(dt);
-    if (this.lightT > 0) { this.lightT -= dt; if (this.lightT <= 0) this.light.intensity = 0; }
 
     if (this.dead) {
       this.deadT += dt;
@@ -449,7 +446,7 @@ class Enemy {
     const ctx = this.mgr.ctx;
     const from = new THREE.Vector3(); this.muzzle.getWorldPosition(from);
     this.flash.fire();
-    this.light.position.copy(from); this.light.intensity = 3; this.lightT = 0.05;
+    ctx.effects.muzzleLight(from, 3);
     this.recoil = 0.35;
     // geluid: zachter, doffer en in stereo op afstand
     const cam = ctx.camera;

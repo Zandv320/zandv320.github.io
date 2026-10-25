@@ -126,8 +126,11 @@ export function buildLevel(scene, renderer) {
   lamps.forEach(([x, z], i) => {
     let l;
     if (i === 0) {
-      l = new THREE.PointLight(0xfff0d8, 70, 22, 1.6);
-      l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -0.002;
+      // middelste lamp: spot recht omlaag (één schaduwkaart i.p.v. zes voor een puntlamp)
+      l = new THREE.SpotLight(0xfff0d8, 80, 26, 1.35, 0.8, 1.6);
+      l.target.position.set(x, 0, z); scene.add(l.target);
+      l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -0.0015; l.shadow.radius = 3;
+      l.shadow.camera.near = 0.5; l.shadow.camera.far = 14;
     } else {
       // hoeklampen: brede spots recht naar beneden, met eigen (zachte) schaduw
       l = new THREE.SpotLight(0xfff0d8, 46, 24, 1.2, 0.75, 1.6);

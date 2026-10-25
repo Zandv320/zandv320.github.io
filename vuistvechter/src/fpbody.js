@@ -51,7 +51,9 @@ export class FPBody {
     // ---- kalibratie: hoe houdt dit personage een pistool vast, en hoe een vuist? ----
     const mixer = new THREE.AnimationMixer(model);
     const sample = (name, t) => {
-      mixer.stopAllAction(); const a = mixer.clipAction(clip(name)); a.reset().play(); mixer.setTime(t);
+      mixer.stopAllAction();
+      const c = clip(name) || clip('idle');               // oud model zonder deze clip: toch doorgaan
+      const a = mixer.clipAction(c); a.reset().play(); mixer.setTime(t);
       this.root.position.set(0, 0, 0); this.root.rotation.set(0, 0, 0); this.root.updateMatrixWorld(true);
     };
     const wp = b => b.getWorldPosition(new THREE.Vector3()), wq = b => b.getWorldQuaternion(new THREE.Quaternion());

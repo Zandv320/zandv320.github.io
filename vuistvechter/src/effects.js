@@ -86,9 +86,9 @@ export class Effects {
     if (this.smoke.length > 60) { const o = this.smoke.shift(); this.scene.remove(o.sp); o.sp.material.dispose(); }
   }
 
-  muzzleLight(pos) {
+  muzzleLight(pos, intensity = 6) {
     this.light.position.copy(pos);
-    this.light.intensity = 6;
+    this.light.intensity = intensity;
     this.lightTime = 0.05;
   }
 

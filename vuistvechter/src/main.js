@@ -87,9 +87,6 @@ new GLTFLoader().loadAsync('models/pistol.glb').then(gltf => {
   const spin = new THREE.Group(); spin.add(holder);
   spin.position.copy(level.pickupSpot);
   scene.add(spin);
-  // zacht lichtje zodat je hem ziet liggen
-  const glow = new THREE.PointLight(0xffd28a, 1.2, 1.6, 2);
-  glow.position.set(0, 0.25, 0); spin.add(glow);
   pickup = spin;
 }).catch(() => {});
 
@@ -112,10 +109,15 @@ function updateScore() {
 }
 const qualityEl = $('quality');
 const applyQuality = () => {
-  const q = input.settings.kwaliteit || 'hoog';
+  // Snelheid gaat voor plaatjes (multiplayer!). Laag = standaard.
+  //  laag:      halve resolutie op retina (pixelratio 1), alleen de middelste lamp werpt schaduw, geen nabewerking
+  //  gemiddeld: pixelratio tot 1,5, plus bloom en lenslook
+  //  hoog:      pixelratio tot 2, plus schaduw van alle lampen
+  let q = input.settings.kwaliteit || 'laag';
+  if (!['laag', 'gemiddeld', 'hoog'].includes(q)) q = 'laag';
   qualityEl.value = q;
-  renderer.setPixelRatio(q === 'laag' ? 1 : Math.min(devicePixelRatio, 2));
-  level.setShadows(q !== 'laag');
+  renderer.setPixelRatio(q === 'laag' ? 1 : Math.min(devicePixelRatio, q === 'hoog' ? 2 : 1.5));
+  level.setShadows(q === 'hoog');
   post.setQuality(q, host.clientWidth, host.clientHeight);
 };
 qualityEl.addEventListener('change', () => { input.settings.kwaliteit = qualityEl.value; input.save(); applyQuality(); resize(); });
@@ -153,6 +155,7 @@ const center = new THREE.Vector2(0, 0);
 const tmpDir = new THREE.Vector3();
 
 let killTimer = 0, lowHpVignette = 0;
+let fpsFrames = 0, fpsTime = 0, fpsShown = 0;
 function showHit() { hitTimer = 0.16; }
 
 // geraakt door een vijand
@@ -507,7 +510,9 @@ function frame(now) {
   // HUD
   hitTimer = Math.max(0, hitTimer - dt);
   hitmarker.style.opacity = hitTimer > 0 ? String(hitTimer / 0.16) : '0';
-  speedo.textContent = speed.toFixed(1) + ' m/s';
+  fpsFrames++; fpsTime += dt;
+  if (fpsTime >= 0.5) { fpsShown = Math.round(fpsFrames / fpsTime); fpsFrames = 0; fpsTime = 0; }
+  speedo.textContent = `${fpsShown} fps · ${speed.toFixed(1)} m/s`;
   const shown = vm.pending || vm.current;
   weaponEl.textContent = shown ? shown.name : '';
   const gun = shown === pistol;

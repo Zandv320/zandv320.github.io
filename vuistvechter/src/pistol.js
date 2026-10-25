@@ -107,8 +107,8 @@ export class Pistol {
     this.flash = new MuzzleFlash(axis, this.muzzleScale);
     this.muzzle.add(this.flash.group);
     // lichtje bij de flits, zodat hand en wapen even oplichten
-    this.flashLight = new THREE.PointLight(0xffb060, 0, 1.2, 2);
-    this.root.add(this.flashLight);
+    // geen eigen lamp: elke extra lichtbron maakt álle pixels duurder; de flits gebruikt het
+    // gedeelde flitslicht uit effects.js
     this.heat = 0;           // loopt op bij snel schieten; boven een drempel gaat de loop roken
 
     this.buildInspect(full);
@@ -300,9 +300,6 @@ export class Pistol {
     this.audio.play('shot', { gain: 0.9, jitter: 0.03 });
     this.flashTime = 0.055;
     this.flash.fire();
-    this.muzzle.getWorldPosition(this.flashLight.position);
-    this.root.worldToLocal(this.flashLight.position);
-    this.flashLight.intensity = 1.4;
     this.heat = Math.min(14, this.heat + 1);
     this.onFire?.();
   }
@@ -337,8 +334,6 @@ export class Pistol {
     this.flash.update(dt);
     if (this.flashTime > 0) {
       this.flashTime -= dt;
-      this.flashLight.intensity = Math.max(0, this.flashTime / 0.055) * 1.4;
-      if (this.flashTime <= 0) this.flashLight.intensity = 0;
     }
     this.heat = Math.max(0, this.heat - dt * 0.9);
     this.applyCant(dt);
