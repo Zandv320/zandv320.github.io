@@ -190,6 +190,39 @@ pistol.onFire = () => {
   effects.muzzleLight(camera.position.clone().addScaledVector(tmpDir, 0.7));
 };
 
+// ---------- Rook uit de loop ----------
+// De loop staat in de viewmodel-scène (eigen camera en FOV). We zoeken het punt in de wereld
+// dat op hetzelfde plekje op het scherm ligt, zodat de rook daar uit lijkt te komen en daarna
+// gewoon in de wereld blijft hangen als je beweegt of draait.
+const _mz = new THREE.Vector3(), _dir = new THREE.Vector3();
+let smokeAcc = 0, lastHeatShots = 0;
+function muzzleWorld(out) {
+  pistol.muzzle.getWorldPosition(_mz);                 // positie in de viewmodel-scène
+  const depth = _mz.distanceTo(vm.camera.position);
+  _mz.project(vm.camera);                              // naar schermcoördinaten
+  _dir.set(_mz.x, _mz.y, 0.5).unproject(camera).sub(camera.position).normalize();
+  return out.copy(camera.position).addScaledVector(_dir, depth * 0.9);
+}
+function updateSmoke(dt) {
+  if (vm.current !== pistol || !pistol.ready) { lastHeatShots = pistol.heat; return; }
+  const fwd = camera.getWorldDirection(new THREE.Vector3());
+  // elk schot: klein wolkje
+  if (pistol.heat > lastHeatShots + 0.5) {
+    const p = muzzleWorld(new THREE.Vector3());
+    for (let i = 0; i < 2; i++) effects.puff(p, 0.75, fwd);
+  }
+  lastHeatShots = pistol.heat;
+  // na veel schieten: de loop blijft nog een tijd roken
+  const over = pistol.heat - 3;
+  if (over > 0) {
+    smokeAcc += dt * Math.min(10, 2 + over * 1.5);
+    while (smokeAcc >= 1) {
+      smokeAcc -= 1;
+      effects.puff(muzzleWorld(new THREE.Vector3()), Math.min(1, 0.5 + over / 5));
+    }
+  }
+}
+
 // ---------- Lus ----------
 const DT = 1 / 120;
 let acc = 0, last = performance.now();
@@ -340,6 +373,7 @@ function frame(now) {
     bobPhase: phase / 2, bobAmount: bobAmt,
     sprint: sprinting, land: landDip, kick: vmKick * 0.02,
   });
+  updateSmoke(dt);
   effects.update(dt);
 
   // HUD

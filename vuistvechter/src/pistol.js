@@ -64,7 +64,8 @@ export class Pistol {
       this.actions[k] = act;
     }
 
-    const slide = model.getObjectByName('slide');
+    // vastgemaakt aan het frame (niet de slede, die schiet naar achter bij elk schot)
+    const frame = model.getObjectByName('base');
     this.actions.ambient.play();
     this.mixer.update(0);
     model.updateMatrixWorld(true);
@@ -75,10 +76,19 @@ export class Pistol {
     const muzzleModel = new THREE.Vector3((local.min.x + local.max.x) / 2, (local.min.y + local.max.y) / 2 + 0.006, local.max.z + 0.01);
     const muzzleWorld = muzzleModel.clone().applyMatrix4(model.matrixWorld);
     this.muzzle = new THREE.Object3D();
-    slide.add(this.muzzle);
-    slide.worldToLocal(this.muzzle.position.copy(muzzleWorld));
+    frame.add(this.muzzle);
+    frame.worldToLocal(this.muzzle.position.copy(muzzleWorld));
+    // het model is in centimeters geschaald; de flits moet in meters, dus terugschalen
+    const ws = new THREE.Vector3();
+    this.muzzle.updateMatrixWorld(true);
+    this.muzzle.getWorldScale(ws);
+    this.muzzleScale = 1 / ws.x;
     this.flash = makeFlash();
     this.muzzle.add(this.flash);
+    // lichtje bij de flits, zodat hand en wapen even oplichten
+    this.flashLight = new THREE.PointLight(0xffb060, 0, 1.2, 2);
+    this.root.add(this.flashLight);
+    this.heat = 0;           // loopt op bij snel schieten; boven een drempel gaat de loop roken
     this.ready = true;
   }
 
@@ -117,12 +127,17 @@ export class Pistol {
     this.cooldown = PISTOL_STATS.fireDelay;
     this.state = 'fire';
     this.play(this.mag === 0 ? 'firelast' : 'fire', 0.02);
-    this.audio.play('shot', { gain: 0.75, jitter: 0.04 });
-    this.flashTime = 0.05;
+    this.audio.play('shot', { gain: 0.9, jitter: 0.03 });
+    this.flashTime = 0.055;
     this.flash.visible = true;
     this.flash.sprite.material.rotation = Math.random() * Math.PI;
-    const s = 0.8 + Math.random() * 0.5;
+    this.flash.core.material.rotation = Math.random() * Math.PI;
+    const s = (0.85 + Math.random() * 0.45) * this.muzzleScale;
     this.flash.scale.set(s, s, s);
+    this.muzzle.getWorldPosition(this.flashLight.position);
+    this.root.worldToLocal(this.flashLight.position);
+    this.flashLight.intensity = 1.4;
+    this.heat = Math.min(14, this.heat + 1);
     this.onFire?.();
   }
 
@@ -152,7 +167,12 @@ export class Pistol {
     for (const tm of this.timers) { tm.t -= dt; if (tm.t <= 0 && !tm.done) { tm.done = true; tm.fn(); } }
     this.timers = this.timers.filter(t => !t.done);
 
-    if (this.flashTime > 0) { this.flashTime -= dt; if (this.flashTime <= 0) this.flash.visible = false; }
+    if (this.flashTime > 0) {
+      this.flashTime -= dt;
+      this.flashLight.intensity = Math.max(0, this.flashTime / 0.055) * 1.4;
+      if (this.flashTime <= 0) { this.flash.visible = false; this.flashLight.intensity = 0; }
+    }
+    this.heat = Math.max(0, this.heat - dt * 0.45);
 
     // klaar met een eenmalige animatie? terug naar stilstaan
     const a = this.currentAction;
@@ -165,31 +185,41 @@ export class Pistol {
   }
 }
 
-// ster-vormige mondingsflits als sprite (additief)
-function makeFlash() {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d');
-  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grd.addColorStop(0, 'rgba(255,250,220,1)');
-  grd.addColorStop(0.18, 'rgba(255,210,120,0.95)');
-  grd.addColorStop(0.45, 'rgba(255,140,40,0.35)');
-  grd.addColorStop(1, 'rgba(255,100,20,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
-  g.globalCompositeOperation = 'lighter';
-  g.fillStyle = 'rgba(255,220,150,0.7)';
-  for (let i = 0; i < 6; i++) {
-    g.save(); g.translate(64, 64); g.rotate(i * Math.PI / 3 + 0.3);
-    g.beginPath(); g.moveTo(0, -5); g.lineTo(60, 0); g.lineTo(0, 5); g.fill(); g.restore();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const m = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true });
+// mondingsflits: felle kern + stervormige uitbarsting, additief en altijd zichtbaar
+function sprite(tex, size) {
+  const m = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, toneMapped: false });
   const s = new THREE.Sprite(m);
-  s.scale.set(0.09, 0.09, 0.09);
+  s.scale.set(size, size, size);
   s.renderOrder = 10;
-  // in een groep, zodat we de groep kunnen schalen en aan/uit zetten
-  const grp = new THREE.Group(); grp.add(s);
+  return s;
+}
+function makeFlash() {
+  const star = document.createElement('canvas'); star.width = star.height = 256;
+  let g = star.getContext('2d');
+  g.translate(128, 128);
+  for (let i = 0; i < 7; i++) {
+    g.save(); g.rotate(i * Math.PI * 2 / 7 + Math.random() * 0.3);
+    const len = 80 + Math.random() * 45;
+    const grd = g.createLinearGradient(0, 0, len, 0);
+    grd.addColorStop(0, 'rgba(255,235,170,1)'); grd.addColorStop(0.5, 'rgba(255,160,50,0.7)'); grd.addColorStop(1, 'rgba(255,90,10,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.moveTo(0, -12); g.quadraticCurveTo(len * 0.5, -6, len, 0); g.quadraticCurveTo(len * 0.5, 6, 0, 12); g.fill();
+    g.restore();
+  }
+  const glow = g.createRadialGradient(0, 0, 0, 0, 0, 90);
+  glow.addColorStop(0, 'rgba(255,200,110,0.9)'); glow.addColorStop(0.4, 'rgba(255,130,40,0.35)'); glow.addColorStop(1, 'rgba(255,90,20,0)');
+  g.fillStyle = glow; g.beginPath(); g.arc(0, 0, 90, 0, Math.PI * 2); g.fill();
+  const core = document.createElement('canvas'); core.width = core.height = 64;
+  g = core.getContext('2d');
+  const cg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  cg.addColorStop(0, 'rgba(255,255,245,1)'); cg.addColorStop(0.35, 'rgba(255,240,190,0.9)'); cg.addColorStop(1, 'rgba(255,200,120,0)');
+  g.fillStyle = cg; g.fillRect(0, 0, 64, 64);
+  const t1 = new THREE.CanvasTexture(star), t2 = new THREE.CanvasTexture(core);
+  t1.colorSpace = t2.colorSpace = THREE.SRGBColorSpace;
+  const grp = new THREE.Group();
+  grp.sprite = sprite(t1, 0.16);
+  grp.core = sprite(t2, 0.06);
+  grp.add(grp.sprite, grp.core);
   grp.visible = false;
-  grp.sprite = s;
   return grp;
 }

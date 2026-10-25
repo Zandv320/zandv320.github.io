@@ -18,6 +18,20 @@ function holeTexture() {
   return t;
 }
 
+function smokeTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  // een paar zachte vlekken over elkaar voor een onregelmatige wolk
+  for (let i = 0; i < 9; i++) {
+    const x = 64 + (Math.random() - 0.5) * 40, y = 64 + (Math.random() - 0.5) * 40, r = 22 + Math.random() * 26;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, 'rgba(255,255,255,0.35)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -32,6 +46,8 @@ export class Effects {
     scene.add(this.light);
     this.lightTime = 0;
     this._n = new THREE.Vector3();
+    this.smokeTex = smokeTexture();
+    this.smoke = [];
   }
 
   // kogelgat op een oppervlak (niet op bewegende dingen)
@@ -64,6 +80,21 @@ export class Effects {
     this.bursts.push({ pts, vel, life: 0.45, max: 0.45 });
   }
 
+  // rookpluim uit de loop; strength 0..1
+  puff(pos, strength = 1, forward = null) {
+    const m = new THREE.SpriteMaterial({ map: this.smokeTex, color: 0xd9d6d0, transparent: true, depthWrite: false, opacity: 0 });
+    m.rotation = Math.random() * Math.PI * 2;
+    const sp = new THREE.Sprite(m);
+    sp.position.copy(pos);
+    const s0 = 0.03 + Math.random() * 0.02;
+    sp.scale.set(s0, s0, s0);
+    this.scene.add(sp);
+    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.06, 0.12 + Math.random() * 0.1, (Math.random() - 0.5) * 0.06);
+    if (forward) vel.addScaledVector(forward, 0.15 + Math.random() * 0.1);
+    this.smoke.push({ sp, vel, age: 0, life: 1.4 + Math.random() * 0.9, s0, grow: 0.16 + Math.random() * 0.14, peak: 0.36 * strength, spin: (Math.random() - 0.5) * 0.8 });
+    if (this.smoke.length > 90) { const o = this.smoke.shift(); this.scene.remove(o.sp); o.sp.material.dispose(); }
+  }
+
   muzzleLight(pos) {
     this.light.position.copy(pos);
     this.light.intensity = 6;
@@ -72,6 +103,21 @@ export class Effects {
 
   update(dt) {
     if (this.lightTime > 0) { this.lightTime -= dt; if (this.lightTime <= 0) this.light.intensity = 0; }
+    for (const p of this.smoke) {
+      p.age += dt;
+      const k = p.age / p.life;
+      p.vel.y += 0.05 * dt;                       // warme lucht stijgt iets sneller
+      p.vel.multiplyScalar(1 - 0.6 * dt);
+      p.vel.y = Math.max(p.vel.y, 0.08);
+      p.sp.position.addScaledVector(p.vel, dt);
+      const sc = p.s0 + p.grow * Math.sqrt(k);
+      p.sp.scale.set(sc, sc, sc);
+      p.sp.material.rotation += p.spin * dt;
+      // snel opkomen, langzaam vervagen
+      p.sp.material.opacity = p.peak * Math.min(1, k * 8) * Math.pow(1 - k, 1.5);
+    }
+    for (const p of this.smoke.filter(p => p.age >= p.life)) { this.scene.remove(p.sp); p.sp.material.dispose(); }
+    this.smoke = this.smoke.filter(p => p.age < p.life);
     for (const b of this.bursts) {
       b.life -= dt;
       const p = b.pts.geometry.attributes.position;
