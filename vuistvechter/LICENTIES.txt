@@ -6,6 +6,12 @@ models/pistol.glb      "animated pistol" door DJMaesen (sketchfab.com/bumstrum),
                        Licentie: https://creativecommons.org/licenses/by/4.0/
                        Aangepast: texturen verkleind naar 1024 px en omgezet naar WebP.
 
+Adobe Mixamo (gratis te gebruiken in games, ook commercieel; zie mixamo.com en de Adobe-voorwaarden):
+models/enemy.glb       personage "SWAT" (Ch15) met animaties van Mixamo
+models/player.glb      personage Ch35 met animaties van Mixamo
+                       Beide omgezet van FBX naar glTF, texturen verkleind naar 1024 px (WebP),
+                       mesh vereenvoudigd en gecomprimeerd met meshopt.
+
 CC0 / publiek domein:
 models/arms.glb        PSX First Person Arms door Drillimpact (drillimpact.itch.io)
 textures/arms_gloves.jpg  afgeleid van de handschoenentextuur uit hetzelfde pakket
@@ -17,3 +23,4 @@ sounds/step*, jump, land  Kenney Starter Kit FPS (kenney.nl)
 textures/concrete_*    Concrete031 van ambientCG.com
 textures/planks_*      Planks012 van ambientCG.com
 textures/fx/*          mondingsflits en rook: Kenney Particle Pack (kenney.nl / opengameart.org), ingekleurd
+sounds: kogelfluit en treffer bij de speler zijn in de browser gesynthetiseerd

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vuistvechter</title>
-<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Pak het pistool, schiet op de schietbaan en stoot op de bokszak.">
+<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Pak het pistool en schakel de twee bewakers in de hal uit.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Oswald:wght@600&display=swap">
 <style>
   /* Layout: full-screen WebGL canvas with a thin HUD layer on top. Single dark look by choice. */
@@ -33,7 +33,7 @@
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; height: 2px; width: 18px; }
   #hint {
-    position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(14px + env(safe-area-inset-top, 0px));
     font-size: 12px; color: var(--muted); letter-spacing: .04em; pointer-events: none;
   }
   #overlay {
@@ -70,19 +70,37 @@
   #toast { position: fixed; left: 50%; bottom: calc(22% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: min(560px, calc(100% - 32px)); text-align: center; font-size: 15px; color: var(--fg); background: rgba(13,15,18,.72); padding: 8px 14px; border-radius: 3px; opacity: 0; transition: opacity .25s; pointer-events: none; }
   #score { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); font-size: 13px; color: var(--muted); letter-spacing: .04em; pointer-events: none; }
   #credits { position: fixed; left: 50%; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 10px; color: var(--muted); opacity: .6; pointer-events: none; white-space: nowrap; }
+  #hitmarker.kill::before, #hitmarker.kill::after { background: #e0533f; }
+  #health { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 6px; pointer-events: none; font-family: var(--font-display); }
+  #health-label { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  #health-num { font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+  #health-track { width: 160px; height: 4px; background: rgba(232,230,225,.18); }
+  #health-bar { height: 100%; background: var(--fg); transform-origin: left; }
+  #health.low #health-num { color: #e0533f; }
+  #health.low #health-bar { background: #e0533f; }
+  #dmg { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(140, 10, 6, .55) 85%, rgba(110, 0, 0, .8)); }
+  #hitdir { position: fixed; left: 50%; top: 50%; width: 220px; height: 220px; pointer-events: none; opacity: 0; transform: translate(-50%, -50%); }
+  #hitdir::before { content: ""; position: absolute; left: 50%; top: 0; width: 64px; height: 14px; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 100%, rgba(224, 60, 40, .95), rgba(224, 60, 40, 0) 70%); border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
+  #dead { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; background: rgba(60, 0, 0, .35); }
+  #dead div { font-family: var(--font-display); font-size: clamp(28px, 6vw, 48px); text-transform: uppercase; letter-spacing: .06em; color: var(--fg); text-align: center; }
+  #dead small { display: block; font-family: var(--font-body); font-size: 14px; letter-spacing: .02em; text-transform: none; color: var(--muted); margin-top: 8px; }
   input[type=range] { accent-color: var(--accent); width: 100%; min-width: 0; }
 </style>
 </head>
 <body>
 <div id="game"></div>
+<div id="dmg"></div>
+<div id="hitdir"></div>
 <div id="crosshair"></div>
 <div id="hitmarker"></div>
 <div id="hint">Esc = pauze en instellingen</div>
 <div id="speed"></div>
 <div id="hud-right"><div id="weapon"></div><div id="ammo" hidden><span id="ammo-mag">12</span><span id="ammo-sep">/</span><span id="ammo-res">48</span></div></div>
+<div id="health"><span id="health-label">Gezondheid</span><span id="health-num">100</span><div id="health-track"><div id="health-bar"></div></div></div>
+<div id="dead" hidden><div>Uitgeschakeld<small>Je komt zo terug bij het startpunt</small></div></div>
 <div id="toast"></div>
 <div id="score"></div>
-<div id="credits">Pistool: "animated pistol" door DJMaesen, CC BY 4.0</div>
+<div id="credits">Pistool: "animated pistol" door DJMaesen, CC BY 4.0 · Personages en animaties: Mixamo</div>
 <div id="overlay">
   <div class="card">
     <h1>Vuist<span>vechter</span></h1>

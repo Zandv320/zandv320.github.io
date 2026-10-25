@@ -26,6 +26,7 @@ export const P = {
 export class Player {
   constructor(spawn, colliders) {
     this.pos = spawn.clone();
+    this.spawn = spawn.clone();
     this.prevPos = spawn.clone();
     this.vel = new THREE.Vector3();
     this.colliders = colliders;
@@ -48,7 +49,7 @@ export class Player {
     const wz = -wish.right * sin - wish.forward * cos;
     const wl = Math.hypot(wx, wz);
     const dirX = wl > 0 ? wx / wl : 0, dirZ = wl > 0 ? wz / wl : 0;
-    const wishSpeed = wl > 0 ? (wish.sprint && wish.forward > 0 ? P.SPRINT : P.WALK) : 0;
+    const wishSpeed = wl > 0 ? (wish.speed ?? (wish.sprint && wish.forward > 0 ? P.SPRINT : P.WALK)) : 0;
 
     if (wish.jump) this.jumpBuffer = P.BUFFER;
     else this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
@@ -167,7 +168,7 @@ export class Player {
     } else {
       p.y = newY; this.onGround = false;
     }
-    if (p.y < -5) { p.set(0, 0, 9); v.set(0, 0, 0); }   // vangnet
+    if (p.y < -5) { p.copy(this.spawn); v.set(0, 0, 0); }   // vangnet
   }
 
   // geïnterpoleerde positie voor de camera

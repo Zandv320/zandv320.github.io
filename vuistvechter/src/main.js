@@ -9,6 +9,8 @@ import { Viewmodel } from './viewmodel.js';
 import { Fists } from './fists.js';
 import { Pistol, PISTOL_STATS, CANT } from './pistol.js';
 import { Effects } from './effects.js';
+import { PlayerBody } from './playerbody.js';
+import { Enemies } from './enemy.js';
 
 // ---------- Renderer ----------
 const host = document.getElementById('game');
@@ -40,6 +42,20 @@ const input = new Input(renderer.domElement);
 const audio = new Audio();
 audio.volume = input.settings.volume;
 const effects = new Effects(scene);
+
+// ---------- Personages ----------
+const body = new PlayerBody(scene);
+body.load().catch(e => console.error('Lichaam laden mislukt', e));
+const HEALTH = { MAX: 100, REGEN_DELAY: 4, REGEN: 15, RESPAWN: 3.5 };
+let health = HEALTH.MAX, sinceHurt = 99, dead = false, deadT = 0, hurtFlash = 0, deaths = 0;
+const enemies = new Enemies({
+  scene, level, audio, effects, camera, player,
+  get playerDead() { return dead; },
+  get hostile() { return owned.includes(pistol); },   // pas vechten als je een wapen hebt
+  onPlayerHit: (dmg, from) => hurt(dmg, from),
+  onKill: (e, part) => { updateScore(); killTimer = 0.35; },
+});
+enemies.load().catch(e => console.error('Vijanden laden mislukt', e));
 
 // ---------- Wapens ----------
 const vm = new Viewmodel(renderer);
@@ -86,6 +102,11 @@ const sens = $('sens'), vol = $('vol');
 const hitmarker = $('hitmarker'), speedo = $('speed');
 const ammoEl = $('ammo'), ammoMag = $('ammo-mag'), ammoRes = $('ammo-res'), weaponEl = $('weapon');
 const toastEl = $('toast'), crosshair = $('crosshair'), scoreEl = $('score');
+const healthEl = $('health'), healthNum = $('health-num'), healthBar = $('health-bar');
+const dmgEl = $('dmg'), hitdirEl = $('hitdir'), deadEl = $('dead');
+function updateScore() {
+  scoreEl.textContent = `Uitgeschakeld: ${enemies.kills}` + (level.targets.hits ? ` · Doelwitten: ${level.targets.hits}` : '');
+}
 sens.value = input.settings.gevoeligheid;
 vol.value = input.settings.volume;
 const showSettings = () => {
@@ -119,16 +140,63 @@ const ray = new THREE.Raycaster();
 const center = new THREE.Vector2(0, 0);
 const tmpDir = new THREE.Vector3();
 
+let killTimer = 0;
 function showHit() { hitTimer = 0.16; }
+
+// geraakt door een vijand
+let hitdirAngle = 0, hitdirT = 0;
+function hurt(dmg, from) {
+  if (dead) return;
+  health -= dmg; sinceHurt = 0;
+  hurtFlash = Math.min(1, hurtFlash + 0.55);
+  trauma = Math.min(1, trauma + 0.28);
+  audio.hurt(0.5);
+  // richting van de schutter t.o.v. de kijkrichting (0 = recht vooruit)
+  const dx = from.x - camera.position.x, dz = from.z - camera.position.z;
+  hitdirAngle = Math.atan2(dx, dz);   // wereldrichting; op het scherm t.o.v. de huidige kijkrichting
+  hitdirT = 1.2;
+  if (health <= 0) die();
+}
+function die() {
+  health = 0; dead = true; deadT = 0; deaths++;
+  deadEl.hidden = false;
+  vm.sway.visible = false;
+}
+function respawn() {
+  dead = false; health = HEALTH.MAX; sinceHurt = 99; hurtFlash = 0;
+  player.pos.copy(level.spawn); player.prevPos.copy(level.spawn); player.vel.set(0, 0, 0);
+  yaw = 0; pitch = 0;
+  deadEl.hidden = true;
+  vm.sway.visible = true;
+  enemies.reset();
+}
+
+// alles wat een schot of stoot kan raken
+const shootables = () => level.hittables.concat(enemies.live());
+function hitEnemy(hit, dmg, dir) {
+  const r = enemies.damage(hit.object, dmg, dir);
+  if (!r) return false;
+  const n = dir.clone().negate();
+  effects.burst(hit.point, n, 0x6e1410, r.head ? 14 : 9);
+  audio.play('hit', { gain: r.head ? 0.55 : 0.4, rate: r.head ? 1.45 : 1.2 });
+  showHit();
+  if (r.killed) killTimer = 0.35;
+  return true;
+}
 
 // stoot: korte straal vanuit de camera
 fists.onImpact = () => {
   ray.far = 1.7;
   ray.setFromCamera(center, camera);
-  const hit = ray.intersectObjects(level.hittables, false)[0];
+  const hit = ray.intersectObjects(shootables(), false)[0];
   if (!hit) { audio.whoosh(0.22); trauma = Math.min(1, trauma + 0.08); return; }
   camera.getWorldDirection(tmpDir);
-  if (hit.object.userData.bag) {
+  if (hit.object.userData.owner) {
+    hitEnemy(hit, 25, tmpDir);
+    trauma = Math.min(1, trauma + 0.25);
+    fists.doHitstop(0.08);
+    return;
+  } else if (hit.object.userData.bag) {
     level.bag.hit(tmpDir.x, tmpDir.z, 2.6);
     audio.play('hit', { gain: 0.9 });
     trauma = Math.min(1, trauma + 0.32);
@@ -160,10 +228,12 @@ pistol.onFire = () => {
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   ray.ray.direction.addScaledVector(right, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r).normalize();
 
-  const hit = ray.intersectObjects(level.hittables, false)[0];
+  const hit = ray.intersectObjects(shootables(), false)[0];
   if (hit) {
     const n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : ray.ray.direction.clone().negate();
-    if (hit.object.userData.bag) {
+    if (hit.object.userData.owner) {
+      hitEnemy(hit, PISTOL_STATS.damage, ray.ray.direction);
+    } else if (hit.object.userData.bag) {
       level.bag.hit(ray.ray.direction.x, ray.ray.direction.z, 0.9);
       audio.play('hit', { gain: 0.35, rate: 1.1 });
       effects.burst(hit.point, n, 0x5a1612, 8);
@@ -171,7 +241,7 @@ pistol.onFire = () => {
     } else if (hit.object.userData.target) {
       if (level.targets.hit(hit.object.userData.target)) {
         audio.ping(0.28);
-        scoreEl.textContent = 'Doelwitten geraakt: ' + level.targets.hits;
+        updateScore();
       }
       effects.burst(hit.point, n, 0xd8d2c4, 10);
       showHit();
@@ -225,7 +295,7 @@ const DT = 1 / 120;
 let acc = 0, last = performance.now();
 let lastStep = 0;
 let yaw = 0, pitch = 0;
-const camPos = new THREE.Vector3();
+const camPos = new THREE.Vector3(), _feet = new THREE.Vector3();
 
 function resize() {
   const w = host.clientWidth, h = host.clientHeight;
@@ -238,7 +308,7 @@ addEventListener('resize', resize); resize();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  const active = input.locked;
+  const active = input.locked && !dead;
 
   // kijken
   const mouse = input.takeMouse();
@@ -281,9 +351,16 @@ function frame(now) {
       player.step(DT, wish, yaw);
       acc -= DT;
     }
+  } else input.jumpPressed = false;
+  if (input.locked) {
     level.bag.update(dt);
     level.targets.update(dt);
-  } else input.jumpPressed = false;
+    enemies.update(dt);
+  }
+  // gezondheid: na een paar seconden zonder treffer weer aanvullen
+  sinceHurt += dt;
+  if (!dead && sinceHurt > HEALTH.REGEN_DELAY && health < HEALTH.MAX) health = Math.min(HEALTH.MAX, health + HEALTH.REGEN * dt);
+  if (dead && input.locked) { deadT += dt; if (deadT > HEALTH.RESPAWN) respawn(); }
 
   // oppakken
   const feet = player.pos;
@@ -294,7 +371,7 @@ function frame(now) {
       owned.push(pistol);
       scene.remove(pickup); pickup = null;
       selectWeapon(pistol);
-      toast('Pistool opgepakt. Wisselen met 1 en 2, Q of het muiswiel. Herladen met R.', 4);
+      toast('Pistool opgepakt. Pas op: twee bewakers achterin de hal hebben je nu door. Herladen met R.', 4.5);
     }
   }
   const ammo = level.ammo;
@@ -351,6 +428,10 @@ function frame(now) {
   const bobAmt = player.onGround ? Math.min(1, speed / P.WALK) : 0;
   const phase = (player.distance / stride) * Math.PI * 2;
   camera.position.set(camPos.x, camPos.y + P.EYE + player.stepSmooth + landDip + Math.abs(Math.sin(phase / 2)) * 0.035 * bobAmt - 0.017 * bobAmt, camPos.z);
+  // dood: camera zakt naar de grond en kantelt
+  const fall = dead ? THREE.MathUtils.smoothstep(deadT, 0, 0.7) : 0;
+  camera.position.y -= fall * (P.EYE - 0.3);
+  body.update(dt, _feet.set(camPos.x, camPos.y + player.stepSmooth, camPos.z), player.vel, yaw, !player.onGround, !dead);
 
   trauma = Math.max(0, trauma - dt * 1.6);
   const sh = trauma * trauma;
@@ -359,7 +440,7 @@ function frame(now) {
   camera.rotation.set(
     pitch + recoil + sh * 0.035 * n(1),
     yaw + sh * 0.035 * n(7),
-    sh * 0.05 * n(13) + Math.sin(phase / 2) * 0.004 * bobAmt
+    sh * 0.05 * n(13) + Math.sin(phase / 2) * 0.004 * bobAmt + fall * 1.1
   );
   const sprinting = input.down('ShiftLeft', 'ShiftRight') && speed > P.WALK + 0.3;
   fov += ((sprinting ? SPRINT_FOV : BASE_FOV) - fov) * (1 - Math.exp(-dt * 6));
@@ -369,7 +450,7 @@ function frame(now) {
     mouseDX: mouse[0] * input.settings.gevoeligheid,
     mouseDY: mouse[1] * input.settings.gevoeligheid,
     bobPhase: phase / 2, bobAmount: bobAmt,
-    sprint: sprinting, land: landDip, kick: vmKick * 0.02,
+    sprint: sprinting, land: landDip, kick: vmKick * 0.02, lookDown: -pitch,
   });
   updateSmoke(dt);
   effects.update(dt);
@@ -390,6 +471,19 @@ function frame(now) {
   }
   const cs = gun ? 1 + currentSpread() * 45 : 1;
   crosshair.style.transform = `translate(-50%, -50%) scale(${cs.toFixed(3)})`;
+  killTimer = Math.max(0, killTimer - dt);
+  hitmarker.classList.toggle('kill', killTimer > 0);
+  if (killTimer > 0) hitmarker.style.opacity = '1';
+  const hp = Math.ceil(health);
+  healthNum.textContent = hp;
+  healthBar.style.transform = `scaleX(${(health / HEALTH.MAX).toFixed(3)})`;
+  healthEl.classList.toggle('low', hp <= 35);
+  hurtFlash = Math.max(0, hurtFlash - dt * 1.6);
+  const lowHp = 1 - health / HEALTH.MAX;
+  dmgEl.style.opacity = Math.min(1, hurtFlash * 0.9 + lowHp * lowHp * 0.7).toFixed(3);
+  hitdirT = Math.max(0, hitdirT - dt);
+  hitdirEl.style.opacity = Math.min(1, hitdirT * 1.5).toFixed(3);
+  hitdirEl.style.transform = `translate(-50%, -50%) rotate(${(-(hitdirAngle - (yaw + Math.PI))).toFixed(3)}rad)`;
   if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toastEl.style.opacity = '0'; }
 
   input.endFrame();
@@ -399,4 +493,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-window.__vv = { player, camera, vm, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };
+window.__vv = { scene, renderer, look: (y, p) => { yaw = y; pitch = p; }, enemies, body, get health() { return health; }, hurt, player, camera, vm, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };
