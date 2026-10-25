@@ -11,7 +11,10 @@ const MODEL = 'models/pistol.glb';
 const FPS = 30;
 const RANGES = {
   fire: [0, 11], reloadA: [12, 82], firelast: [83, 94], reloadB: [95, 175],
-  hide: [176, 187], ready: [187, 233], ambient: [234, 264],
+  hide: [176, 187], ready: [187, 233],
+  // stilstaan: de originele 'ambient' (234-264) pompt het wapen elke seconde ~2 cm heen en weer;
+  // we houden één rustige pose vast en laten de viewmodel er langzaam bij ademen
+  ambient: [239, 242],
 };
 
 // kanteling en verschuiving tijdens het inspecteren (radialen / meters in viewmodel-ruimte)

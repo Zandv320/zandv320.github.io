@@ -114,13 +114,18 @@ export class Viewmodel {
     this.sprintLerp = (this.sprintLerp || 0) + ((s.sprint && !busy ? 1 : 0) - (this.sprintLerp || 0)) * (1 - Math.exp(-dt * 8));
     const sp = this.sprintLerp;
     const kick = s.kick || 0;
+    // rustige ademhaling (≈ 15x per minuut), minder bij richten en tijdens animaties
+    this.breathT = (this.breathT || 0) + dt;
+    const br = (busy ? 0.3 : 1) * calm * (1 - sp);
+    const bry = Math.sin(this.breathT * 1.6) * 0.0016 * br;
+    const brx = Math.sin(this.breathT * 1.6 + 0.7) * 0.0022 * br;
     this.sway.position.set(
       bx + this.swayPos.x - sp * 0.02,
-      by + this.swayPos.y + s.land * 0.5 - sp * 0.05 - drop * 0.25 - w * 0.03,
+      by + this.swayPos.y + s.land * 0.5 - sp * 0.05 - drop * 0.25 - w * 0.03 + bry,
       sp * 0.02 + kick * 0.6 * (1 - a * 0.5) + w * 0.08
     );
     this.sway.rotation.set(
-      this.swayRot.x - sp * 0.16 + s.land * 0.4 - drop * 0.6 + kick * 2.2 * (1 - a * 0.6) + w * 0.6,
+      this.swayRot.x - sp * 0.16 + s.land * 0.4 - drop * 0.6 + kick * 2.2 * (1 - a * 0.6) + w * 0.6 + brx,
       this.swayRot.y,
       this.swayRot.y * 0.8 + bx * 2 + sp * 0.08 + (s.lean || 0) * 0.12
     );
