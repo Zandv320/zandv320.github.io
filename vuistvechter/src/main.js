@@ -110,7 +110,12 @@ const mp = new Multiplayer({
     if (!a?.ready) return;
     if (fx.k === 'shot') a.shot(fx.to, fx.s); else if (fx.k === 'punch') a.punch(); else if (fx.k === 'reload') a.reload();
   },
-  onFlinch: (id, dir) => remote.map.get(id)?.hurt(dir),
+  onFlinch: (id, dir, by) => {
+    const a = remote.map.get(id);
+    if (!a?.ready) return;
+    a.hurt(dir);
+    if (by !== mp.id) a.bleed(dir, effects);     // de schutter zag zijn eigen treffer al
+  },
   onJoined: (id, name) => { toast(`${name} doet mee`, 2.5); mpUi(); },
   onLeft: (id, name) => { remote.remove(id); toast(`${name || 'Een speler'} heeft de kamer verlaten`, 2.5); mpUi(); },
   onStatus: t => setMpStatus(t),
@@ -721,6 +726,7 @@ function frame(now) {
 
   input.endFrame();
   renderer.clear();
+  if (window.__dbgCam) { renderer.render(scene, window.__dbgCam); return; }   // alleen voor testen
   post.render(dt, Math.min(0.35, lowHpVignette));
   vm.render(renderer);
 }

@@ -11,7 +11,7 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
 // versienummer achter de modellen: na een update haalt de browser zeker de nieuwe versie op
 // (GitHub Pages laat bestanden 10 minuten in de cache staan)
-export const ASSET_VERSION = 70;
+export const ASSET_VERSION = 74;
 export function loadGLTF(url) {
   if (!cache[url]) cache[url] = loader.loadAsync(`${url}?v=${ASSET_VERSION}`);
   return cache[url];
@@ -112,47 +112,100 @@ export class Locomotion {
 }
 
 // pistool (uit het pistoolmodel) in de rechterhand, uitgelijnd in de richhouding
+// Pistool in de rechterhand. De greep van het wapen wordt opgemeten (hoekpunten van het frame
+// onder de slede, achteraan) en precies in het "gat" van de gekromde vingers gezet, met de
+// knokkels rechts-voor de greep zoals bij een echte grip. (Vroeger: midden van de bounding box,
+// maar daar telden losse hulzen en kogels in mee, waardoor het pistool naast de hand zweefde.)
 export async function attachPistol(model, bones, clipIdle) {
   const gltf = await loadGLTF('models/pistol.glb');
   const gun = gltf.scene.getObjectByName('pistol').clone(true);
   gun.position.set(0, 0, 0); gun.rotation.set(0, 0, 0); gun.scale.set(1, 1, 1);
   gun.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-  // kogels/hulzen die in het model los zitten niet tonen
   for (const n of ['shell', 'shell_1', 'shell_1_2', 'bullet', 'bullet_2', 'bullet_2_2']) { const o = gun.getObjectByName(n); if (o) o.visible = false; }
   gun.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(gun);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-  const inner = new THREE.Group();
-  gun.position.sub(center);
-  inner.add(gun);
-  inner.scale.setScalar(0.21 / size.z);          // ca. 21 cm lang, loop langs +z
+  const g = measureGun(gun);
 
-  // richhouding inladen om de hand te meten
+  // richthouding inladen om de hand te meten
   const mixer = new THREE.AnimationMixer(model);
   mixer.clipAction(clipIdle).play(); mixer.update(0.3);
   model.updateMatrixWorld(true);
   const hand = bones.RightHand;
-  const hq = new THREE.Quaternion(); hand.getWorldQuaternion(hq);
-  const mq = new THREE.Quaternion(); model.getWorldQuaternion(mq);
-  // gewenst: loop naar voren (+z van het model), bovenkant omhoog
-  const holder = new THREE.Group();
-  holder.quaternion.copy(hq.clone().invert().multiply(mq));
-  // positie: in de handpalm, iets naar voren en omhoog
-  const hp = new THREE.Vector3(); hand.getWorldPosition(hp);
-  const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(mq), up = new THREE.Vector3(0, 1, 0).applyQuaternion(mq);
-  const target = hp.clone().addScaledVector(fwd, 0.06).addScaledVector(up, 0.045);
-  hand.add(holder);
-  holder.position.copy(hand.worldToLocal(target.clone()));
+  const hp = hand.getWorldPosition(new THREE.Vector3()), hqi = hand.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const loc = b => b.getWorldPosition(new THREE.Vector3()).sub(hp).applyQuaternion(hqi);
+  const c = new THREE.Vector3(); let n = 0;
+  for (const f of ['Middle', 'Ring', 'Pinky']) for (let i = 1; i <= 3; i++) { const b = bones[`RightHand${f}${i}`]; if (b) { c.add(loc(b)); n++; } }
+  c.divideScalar(Math.max(1, n));
+  mixer.stopAllAction(); mixer.uncacheRoot(model);
+
+  // richting: in de richthouding wijst de loop recht naar voren (+z van het model) en de bovenkant
+  // omhoog; de greep valt dan vanzelf schuin door de hand zoals bij een echte pistoolgreep
+  const mqHand = hqi.clone().multiply(model.getWorldQuaternion(new THREE.Quaternion()));
+  const fwdH = new THREE.Vector3(0, 0, 1).applyQuaternion(mqHand), upH = new THREE.Vector3(0, 1, 0).applyQuaternion(mqHand);
+  const R = new THREE.Quaternion().setFromRotationMatrix(basis(fwdH, upH).multiply(basis(g.fwd, g.up).invert()));
+  const k = g.scale;                                         // naar ware grootte (slede 20 cm)
+  const t = c.clone().sub(g.gripCenter.clone().multiplyScalar(k).applyQuaternion(R));
+
+  const holder = new THREE.Group();                          // in de hand, in meters
   const ws = new THREE.Vector3(); hand.getWorldScale(ws);
   holder.scale.setScalar(1 / ws.x);
+  hand.add(holder);
+  const inner = new THREE.Group();
+  inner.quaternion.copy(R); inner.position.copy(t); inner.scale.setScalar(k);
+  inner.add(gun);
   holder.add(inner);
-  mixer.stopAllAction(); mixer.uncacheRoot(model);
-  // vuurmond: voorkant van het pistool
+  // vuurmond: lokale +z = looprichting, schaal 1 (meters)
   const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, size.y * 0.25 / size.z * 0.21, 0.11);
+  muzzle.position.copy(g.muzzle.clone().multiplyScalar(k).applyQuaternion(R).add(t));
+  muzzle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), g.fwd.clone().applyQuaternion(R));
   holder.add(muzzle);
-  return { holder, muzzle };
+  // punten voor herladen: onderkant greep (magazijn) en achterkant slede (doorladen)
+  const point = v => { const o = new THREE.Object3D(); o.position.copy(v.clone().multiplyScalar(k).applyQuaternion(R).add(t)); holder.add(o); return o; };
+  return { holder, muzzle, magWell: point(g.gripBottom), slideRear: point(g.slideRear) };
+}
+
+// orthonormale basis (a, k, a×k) als rotatiematrix
+function basis(a, k) {
+  const z = new THREE.Vector3().crossVectors(a, k).normalize();
+  return new THREE.Matrix4().makeBasis(a.clone().normalize(), k.clone().normalize(), z);
+}
+
+// wapen opmeten in zijn eigen ruimte: loop, boven, greep, vuurmond en schaal naar ware grootte
+function measureGun(gun) {
+  const verts = name => {
+    const m = gun.getObjectByName(name), pos = m.geometry.attributes.position, out = [];
+    for (let i = 0; i < pos.count; i++) out.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld));
+    return out;
+  };
+  const mean = pts => pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(Math.max(1, pts.length));
+  const pca = (pts, c, seed) => {
+    let ax = seed.clone().normalize();
+    for (let it = 0; it < 16; it++) { const n = new THREE.Vector3(); for (const p of pts) { const d = p.clone().sub(c); n.addScaledVector(d, d.dot(ax)); } ax = n.normalize(); }
+    return ax;
+  };
+  const slide = verts('slide_beretta_0'), frame = verts('base_beretta_0');
+  const sc = mean(slide), fc = mean(frame);
+  const box = new THREE.Box3().setFromPoints(slide), sz = box.getSize(new THREE.Vector3());
+  const seed = sz.x >= sz.y && sz.x >= sz.z ? new THREE.Vector3(1, 0, 0) : sz.y >= sz.z ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+  let fwd = pca(slide, sc, seed);
+  const up = sc.clone().sub(fc); up.addScaledVector(fwd, -up.dot(fwd)).normalize();
+  let lo = Infinity, hi = -Infinity;
+  for (const p of slide) { const d = p.clone().sub(sc).dot(fwd); lo = Math.min(lo, d); hi = Math.max(hi, d); }
+  const slideLen = hi - lo;
+  // de greep zit achteraan: als de onderste framepunten gemiddeld vóór liggen, loop omdraaien
+  let sMin = Infinity, sMax = -Infinity; for (const p of slide) { const y = p.clone().sub(sc).dot(up); sMin = Math.min(sMin, y); sMax = Math.max(sMax, y); }
+  const below = frame.filter(p => p.clone().sub(sc).dot(up) < sMin - 0.1 * slideLen);
+  if (mean(below).sub(sc).dot(fwd) > 0) { fwd.negate(); [lo, hi] = [-hi, -lo]; }
+  const left = new THREE.Vector3().crossVectors(up, fwd).normalize();
+  let fLo = Infinity, yMin = Infinity;
+  for (const p of frame) { fLo = Math.min(fLo, p.clone().sub(sc).dot(fwd)); yMin = Math.min(yMin, p.clone().sub(sc).dot(up)); }
+  const grip = frame.filter(p => { const d = p.clone().sub(sc); const y = d.dot(up); return y < sMin - 0.12 * slideLen && y > yMin + 0.05 * slideLen && d.dot(fwd) < fLo + 0.37 * slideLen; });
+  const gripCenter = mean(grip.length ? grip : below);
+  let gripAxis = pca(grip.length ? grip : below, gripCenter, up.clone().negate().addScaledVector(fwd, -0.2));
+  if (gripAxis.dot(up) > 0) gripAxis.negate();
+  const muzzle = sc.clone().addScaledVector(fwd, hi + 0.01 * slideLen);
+  const slideRear = sc.clone().addScaledVector(fwd, lo + 0.08 * slideLen).addScaledVector(up, sMax);
+  const gripBottom = gripCenter.clone().addScaledVector(gripAxis, 0.32 * slideLen);
+  return { fwd, up, left, gripCenter, gripAxis, muzzle, slideRear, gripBottom, scale: 0.2 / slideLen };
 }
 
 // onzichtbare hitboxen aan de botten; userData.part bepaalt de schade

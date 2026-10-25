@@ -7,7 +7,7 @@ models/pistol.glb      "animated pistol" door DJMaesen (sketchfab.com/bumstrum),
                        Aangepast: texturen verkleind naar 1024 px en omgezet naar WebP.
 
 Adobe Mixamo (gratis te gebruiken in games, ook commercieel; zie mixamo.com en de Adobe-voorwaarden):
-models/enemy.glb       personage "SWAT" (Ch15) met animaties van Mixamo (o.a. pistool-loopset, hurken)
+models/enemy.glb       personage "SWAT" (Ch15) met animaties van Mixamo (o.a. pistool-loopset, hurken, springen, stoten)
 models/player.glb      personage Ch35 met animaties van Mixamo (o.a. pistool-loopset, hurken, boksen)
                        Beide omgezet van FBX naar glTF, texturen verkleind naar 1024 px (WebP),
                        mesh vereenvoudigd en gecomprimeerd met meshopt.

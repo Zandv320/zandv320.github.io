@@ -147,8 +147,8 @@ export class Multiplayer {
     v.health -= dmg; v.sinceHurt = 0;
     const from = a.s ? a.s.p : null;
     this.send(d.target, { t: 'hurt', hp: Math.max(0, v.health), from, dir: d.dir });
-    this.broadcast({ t: 'flinch', id: d.target, dir: d.dir }, d.target);
-    if (d.target !== 'host') this.game.onFlinch?.(d.target, d.dir);
+    this.broadcast({ t: 'flinch', id: d.target, dir: d.dir, by: shooter }, d.target);
+    if (d.target !== 'host') this.game.onFlinch?.(d.target, d.dir, shooter);
     if (v.health <= 0) {
       v.dead = true; v.deadT = RESPAWN; v.deaths++; a.kills++;
       const msg = { t: 'kill', killer: shooter, victim: d.target, kn: a.name, vn: v.name, head: d.part === 'head', front: !!d.front };
@@ -232,7 +232,7 @@ export class Multiplayer {
       case 'welcome': g.onRespawn?.(d.spawn); break;
       case 'snap': g.onSnapshot?.(d.list); break;
       case 'hurt': g.onHurt?.(d.hp, d.from); break;
-      case 'flinch': g.onFlinch?.(d.id, d.dir); break;
+      case 'flinch': g.onFlinch?.(d.id, d.dir, d.by); break;
       case 'kill': g.onKill?.(d); break;
       case 'respawn': if (d.id === this.id) g.onRespawn?.(d.pos); else g.onRemoteRespawn?.(d.id); break;
       case 'fx': g.onFx?.(d.id, d.fx); break;
