@@ -29,6 +29,7 @@ export const PISTOL_STATS = {
 export class Pistol {
   constructor(audio) {
     this.name = 'Pistool';
+    this.reach = 0.09;       // meter verder naar voren dan het viewmodel: armen bijna gestrekt
     this.fov = 56;
     this.audio = audio;
     this.root = new THREE.Group();
@@ -158,6 +159,32 @@ export class Pistol {
     const gqi = gf.quat.clone().invert();
     this.leftRel = { pos: lp.sub(gf.pos).applyQuaternion(gqi), quat: gqi.clone().multiply(lq) };
     this.rightRel = { quat: gqi.clone().multiply(this.handR.getWorldQuaternion(new THREE.Quaternion())) };
+    // de greep zelf opmeten: alle hoekpunten van het frame onder de slede en achteraan
+    // (de trekkerbeugel zit voorin). Midden = waar de hand omheen sluit, as = richting van de greep.
+    {
+      const mesh = model.getObjectByName('base_beretta_0');
+      const pos = mesh.geometry.attributes.position, gi = gunRootQ.clone().invert();
+      const m = rel(mesh), v = new THREE.Vector3(), pts = [];
+      const slideBottom = new THREE.Vector3().subVectors(slideBox.min, gunC).applyQuaternion(gi).y;
+      let zMin = Infinity;
+      const all = [];
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m).sub(gunC).applyQuaternion(gi);
+        all.push(v.clone()); zMin = Math.min(zMin, v.z);
+      }
+      let yMin = Infinity; for (const p of all) yMin = Math.min(yMin, p.y);
+      for (const p of all) if (p.y < slideBottom - 0.025 && p.y > yMin + 0.01 && p.z < zMin + 0.075) pts.push(p);
+      const c = new THREE.Vector3(); pts.forEach(p => c.add(p)); c.divideScalar(Math.max(1, pts.length));
+      // hoofdrichting (eenvoudige PCA via machtsiteratie)
+      let ax = new THREE.Vector3(0, -1, -0.2).normalize();
+      for (let it = 0; it < 12; it++) {
+        const n = new THREE.Vector3();
+        for (const p of pts) { const d = p.clone().sub(c); n.addScaledVector(d, d.dot(ax)); }
+        ax = n.normalize();
+      }
+      if (ax.y > 0) ax.negate();                       // van boven naar onder
+      this.grip = { center: c, axis: ax, count: pts.length };   // in geweerframe (oorsprong = midden frame)
+    }
     // knokkel van de middelvinger: daaromheen sluit de hand om de greep
     this.knuckleR = model.getObjectByName('R_middle1_037');
     this.knuckleL = model.getObjectByName('L_middle1_012');
@@ -170,7 +197,7 @@ export class Pistol {
     const tiltInv = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.04, 0, 0));
     const want = tiltInv.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
     const q = want.multiply(gunRootQ.clone().invert());
-    const target = new THREE.Vector3(0, 0, -0.38).applyQuaternion(tiltInv);
+    const target = new THREE.Vector3(0, 0, -0.45).applyQuaternion(tiltInv);
     this.adsPose = { quat: q, pos: target.sub(sight.clone().applyQuaternion(q)) };
   }
 

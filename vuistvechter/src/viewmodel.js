@@ -72,10 +72,13 @@ export class Viewmodel {
     const wantAds = s.aim && rig?.adsPose && !drop && !s.sprint ? 1 : 0;
     this.adsT += (wantAds - this.adsT) * (1 - Math.exp(-dt * 13));
     const a = THREE.MathUtils.smootherstep(this.adsT, 0, 1);
+    // reach: wapen verder van het oog dan het oude viewmodel, zodat je armen bijna gestrekt zijn
+    const reach = rig?.reach || 0;
     if (rig?.adsPose) {
       this.ads.position.copy(rig.adsPose.pos).multiplyScalar(a);
+      this.ads.position.z -= reach * (1 - a);
       this.ads.quaternion.identity().slerp(rig.adsPose.quat, a);
-    } else { this.ads.position.set(0, 0, 0); this.ads.quaternion.identity(); }
+    } else { this.ads.position.set(0, 0, -reach); this.ads.quaternion.identity(); }
 
     // traagheid: het wapen heeft gewicht en loopt achter de muis aan (minder bij richten)
     const calm = 1 - a * 0.75;

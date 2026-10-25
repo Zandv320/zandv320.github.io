@@ -396,7 +396,7 @@ function frame(now) {
       owned.push(pistol);
       scene.remove(pickup); pickup = null;
       selectWeapon(pistol);
-      toast('Pistool opgepakt. Pas op: twee bewakers achterin de hal hebben je nu door. Herladen met R.', 4.5);
+      toast('Pistool opgepakt. Achterin de hal staan twee bewakers om op te oefenen. Richten met de rechtermuisknop, herladen met R.', 4.5);
     }
   }
   const ammo = level.ammo;
@@ -502,7 +502,7 @@ function frame(now) {
     sprint: sprinting, land: landDip, kick: vmKick * 0.02,
     aim: aimNow && wall < 0.3, wall, lean,
   });
-  body.arms(vm.current, camera);
+  body.arms(vm, camera);
   body.finish(!dead);
   updateSmoke(dt);
   effects.update(dt);

@@ -9,6 +9,7 @@ import { MuzzleFlash } from './flash.js';
 // het laatst zag, kijkt rond en gaat terug naar zijn ronde.
 
 export const ENEMY = {
+  PASSIVE: true,          // voorlopig: vijanden staan stil (idle) en schieten niet terug
   HEALTH: 100,
   WALK: 1.7, COMBAT: 2.3, RUN: 4.6,
   VIEW: 45, FOV: Math.cos(THREE.MathUtils.degToRad(65)),   // 130 graden gezichtsveld
@@ -179,7 +180,8 @@ class Enemy {
     this.dead = false; this.deadT = 0;
     this.state = 'patrol';
     this.wp = 1; this.wpDir = 1; this.wait = 0;
-    this.heading = Math.PI;                        // kijkt naar -z (het midden van de hal)
+    // kijkt naar het startpunt van de speler, midden in de hal
+    this.heading = Math.atan2(0 - pt.x, 9 - pt.z);
     this.aware = 0; this.seen = false; this.lastSeen = new THREE.Vector3(); this.lostT = 0;
     this.cooldown = 1; this.burst = 0; this.firstShot = true;
     this.strafe = 0; this.strafeT = 0;
@@ -197,7 +199,7 @@ class Enemy {
     const { audio } = this.mgr.ctx;
     // geraakt: meteen alert en draai naar waar het vandaan kwam
     if (dir) this.lastSeen.copy(this.body.pos).addScaledVector(_v.copy(dir).setY(0).normalize(), -6);
-    if (this.state === 'patrol' || this.state === 'search') {
+    if (!ENEMY.PASSIVE && (this.state === 'patrol' || this.state === 'search')) {
       this.state = 'search'; this.searchT = 4; this.aware = Math.max(this.aware, ENEMY.REACT * 0.6);
     }
     if (this.health <= 0) {
@@ -218,7 +220,7 @@ class Enemy {
     this.stagger = 0.3;
     this.cooldown = Math.max(this.cooldown, 0.4);
     // gewond: dekking zoeken
-    if (this.state === 'combat' && this.health < 70 && Math.random() < 0.75) this.takeCover();
+    if (!ENEMY.PASSIVE && this.state === 'combat' && this.health < 70 && Math.random() < 0.75) this.takeCover();
   }
 
   eye(out) { return out.copy(this.body.pos).setY(this.body.pos.y + (this.crouch ? 1.0 : EYE)); }
@@ -251,6 +253,14 @@ class Enemy {
       body.step(dt, { forward: 0, right: 0, jump: false, speed: 0 }, this.heading + Math.PI);
       this.place(dt, 0, 0);
       if (this.deadT > ENEMY.RESPAWN) this.respawn(false);
+      return;
+    }
+
+    // passief: gewoon stil blijven staan (wel geraakt kunnen worden en schrikken/omvallen)
+    if (ENEMY.PASSIVE) {
+      for (let left = dt; left > 1e-6; left -= 1 / 120) body.step(Math.min(1 / 120, left), { forward: 0, right: 0, jump: false, speed: 0 }, 0);
+      body.events.length = 0;
+      this.place(dt, 0, 0);
       return;
     }
 

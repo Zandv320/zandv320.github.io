@@ -75,6 +75,19 @@ export class FPBody {
     const toCam = new THREE.Quaternion().setFromAxisAngle(Y, Math.PI).invert();
     this.boxQ = { R: toCam.clone().multiply(wq(bones.RightHand)), L: toCam.clone().multiply(wq(bones.LeftHand)) };
     this.fistFingers = this.snapFingers();
+    // het "gat" van de vuist (waar een greep in past), in de ruimte van de hand:
+    // midden = zwaartepunt van de gekromde vingers, as = wijsvinger→pink, knokkelrichting = gat→middelvinger
+    this.hole = {};
+    for (const side of ['Right', 'Left']) {
+      const h = bones[side + 'Hand'], hp = wp(h), hqi = wq(h).invert();
+      const loc = b => wp(b).sub(hp).applyQuaternion(hqi);
+      const c = new THREE.Vector3(); let n = 0;
+      for (const f of ['Middle', 'Ring', 'Pinky']) for (let i = 1; i <= 3; i++) { const b = bones[`${side}Hand${f}${i}`]; if (b) { c.add(loc(b)); n++; } }
+      c.divideScalar(n);
+      const axis = loc(bones[side + 'HandPinky1']).sub(loc(bones[side + 'HandIndex1'])).normalize();
+      const kn = loc(bones[side + 'HandMiddle1']).sub(c); kn.addScaledVector(axis, -kn.dot(axis)).normalize();
+      this.hole[side] = { c, basisInv: basis(axis, kn).invert() };
+    }
     // pistoolgreep: vuist om de greep, maar de rechterwijsvinger blijft gestrekt langs de trekker
     const pf = new Map(this.pistolFingers.map(([b, q]) => [b, q]));
     this.gripFingers = this.fistFingers.map(([b, q]) => [b, b.name.includes('RightHandIndex') ? pf.get(b) : q]);
@@ -140,9 +153,11 @@ export class FPBody {
   }
 
   // stap 2: armen naar het wapen (na het bijwerken van de wapens)
-  arms(rig, camera) {
+  arms(vm, camera) {
+    const rig = vm.current;
     if (!this.ready || !rig?.ready) return;
     const camQ = camera.getWorldQuaternion(new THREE.Quaternion());
+    this.vm = vm;
     if (rig.gunFrame) {
       // beide handen volgen de handen van het wapenmodel. Positie: rond de middelste knokkel,
       // geschaald naar de (kleinere) hand van dit personage, zodat de handpalm om de greep sluit.
@@ -153,8 +168,21 @@ export class FPBody {
           L: rig.leftRel.quat.clone().invert().multiply(this.pistolGrip.L.quat),
         };
       }
-      this.follow('Right', rig.handR, rig.knuckleR, this.gripOff.R, camQ, 1, null);
-      this.follow('Left', rig.handL, rig.knuckleL, this.gripOff.L, camQ, -1, null);
+      let gf = rig.gunFrame(new THREE.Vector3(), new THREE.Quaternion());
+      // rechterhand: vuist precies om de greep (gemeten aan het wapen zelf), zonder speling
+      let R = this.gripPose('Right', rig, gf, new THREE.Vector3(0, 0, 0), new THREE.Vector3(-0.62, -0.05, 0.78));
+      // kan de arm er niet bij? dan komt het wapen naar je toe (langs de kijklijn, het vizier blijft goed)
+      if (this.pullIn('Right', R.pos, camQ)) {
+        gf = rig.gunFrame(new THREE.Vector3(), new THREE.Quaternion());
+        R = this.gripPose('Right', rig, gf, new THREE.Vector3(0, 0, 0), new THREE.Vector3(-0.62, -0.05, 0.78));
+      }
+      this.solve('Right', R.pos, R.quat, camQ, 1);
+      // linkerhand: om de rechterhand heen als steun; tijdens herladen/inspecteren volgt hij het wapenmodel
+      const F = this.follow('Left', rig.handL, rig.knuckleL, this.gripOff.L, camQ, null);
+      const L = this.gripPose('Left', rig, gf, new THREE.Vector3(0.032, -0.012, 0.012), new THREE.Vector3(0.6, -0.1, 0.78));
+      const lh = rig.handL.getWorldPosition(new THREE.Vector3()).sub(gf.pos).applyQuaternion(gf.quat.clone().invert());
+      const wgt = 1 - THREE.MathUtils.smoothstep(lh.distanceTo(rig.leftRel.pos), 0.025, 0.075);
+      this.solve('Left', F.pos.lerp(L.pos, wgt), F.quat.slerp(L.quat, wgt), camQ, -1);
       this.applyFingers(this.gripFingers);
     } else if (rig.handR) {
       // vuisten: handen waar het vuistenmodel ze heeft, met de oriëntatie van een echte bokshouding
@@ -165,14 +193,59 @@ export class FPBody {
         };
       }
       // iets verder naar voren en omlaag dan de (lange) armen van het vuistenmodel
-      this.follow('Right', rig.handR, rig.knuckleR, this.fistOff.R, camQ, 1, new THREE.Vector3(0.03, -0.05, -0.1));
-      this.follow('Left', rig.handL, rig.knuckleL, this.fistOff.L, camQ, -1, new THREE.Vector3(-0.03, -0.05, -0.1));
+      let fr = this.follow('Right', rig.handR, rig.knuckleR, this.fistOff.R, camQ, new THREE.Vector3(0.03, -0.05, -0.1));
+      if (this.pullIn('Right', fr.pos, camQ)) fr = this.follow('Right', rig.handR, rig.knuckleR, this.fistOff.R, camQ, new THREE.Vector3(0.03, -0.05, -0.1));
+      this.solve('Right', fr.pos, fr.quat, camQ, 1);
+      const fl = this.follow('Left', rig.handL, rig.knuckleL, this.fistOff.L, camQ, new THREE.Vector3(-0.03, -0.05, -0.1));
+      this.solve('Left', fl.pos, fl.quat, camQ, -1);
       this.applyFingers(this.fistFingers);
     }
   }
 
+  // sleutelbeen een stukje naar het doel draaien (schouders naar voren, zoals bij echt richten)
+  reachShoulder(side, target, amount = 0.3) {
+    const sh = this.bones[side + 'Shoulder'], arm = this.armData[side].arm;
+    const s = sh.getWorldPosition(new THREE.Vector3()), a = arm.getWorldPosition(new THREE.Vector3());
+    const cur = a.clone().sub(s).normalize();
+    const want = target.clone().sub(s).normalize();
+    const to = cur.clone().lerp(want, amount).normalize();
+    aimBone(sh, cur, to);
+    sh.updateMatrixWorld(true);
+  }
+
+  // doel buiten bereik van de schouder: het hele wapen langs de kijkrichting naar je toe schuiven
+  pullIn(side, target, camQ) {
+    this.pulled = 0;
+    this.reachShoulder('Right', target); this.reachShoulder('Left', target);
+    const A = this.armData[side];
+    const S = A.arm.getWorldPosition(new THREE.Vector3());
+    const m = (A.l1 + A.l2) * 0.97;
+    const D = target.clone().sub(S);
+    if (D.length() <= m) return false;
+    const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camQ);
+    const b = D.dot(f), disc = b * b - D.lengthSq() + m * m;
+    const s = disc > 0 ? b - Math.sqrt(disc) : b;
+    if (s <= 0) return false;
+    this.vm.ads.position.z += s;
+    this.pulled = s;
+    this.vm.anchor.updateMatrixWorld(true);
+    return true;
+  }
+
+  // handpositie zodat het vuistgat om de greep valt. offset en knokkelrichting in het geweerframe
+  // (x = links, y = boven, z = loop)
+  gripPose(side, rig, gf, offset, knuckleDir) {
+    const g = rig.grip, H = this.hole[side];
+    const axis = g.axis.clone().applyQuaternion(gf.quat);
+    const kn = knuckleDir.clone().normalize().applyQuaternion(gf.quat);
+    kn.addScaledVector(axis, -kn.dot(axis)).normalize();
+    const rot = new THREE.Quaternion().setFromRotationMatrix(basis(axis, kn).multiply(H.basisInv));
+    const center = g.center.clone().add(offset).applyQuaternion(gf.quat).add(gf.pos);
+    return { pos: center.sub(H.c.clone().applyQuaternion(rot)), quat: rot };
+  }
+
   // hand van dit lichaam naar een hand van het wapenmodel
-  follow(side, rigHand, rigKnuckle, offQ, camQ, sign, extra) {
+  follow(side, rigHand, rigKnuckle, offQ, camQ, extra) {
     const w = rigHand.getWorldPosition(new THREE.Vector3());
     const k = rigKnuckle.getWorldPosition(new THREE.Vector3());
     const A = this.armData[side];
@@ -180,7 +253,7 @@ export class FPBody {
     const pos = k.clone().add(w.sub(k).multiplyScalar(ratio));
     if (extra) pos.add(extra.clone().applyQuaternion(camQ));
     const q = rigHand.getWorldQuaternion(new THREE.Quaternion()).multiply(offQ);
-    this.solve(side, pos, q, camQ, sign);
+    return { pos, quat: q };
   }
 
   applyFingers(list) { for (const [b, q] of list) b.quaternion.copy(q); }
@@ -197,7 +270,7 @@ export class FPBody {
     if (d > max) { toT.multiplyScalar(max / d); d = max; }
     const dir = toT.clone().normalize();
     // hint voor de elleboog: omlaag, naar buiten en iets naar achter (in cameraruimte)
-    const pole = new THREE.Vector3(0.55 * sideSign, -1, 0.15).applyQuaternion(camQ);
+    const pole = new THREE.Vector3(0.35 * sideSign, -1, 0.05).applyQuaternion(camQ);
     const perp = pole.addScaledVector(dir, -pole.dot(dir)).normalize();
     const cosA = THREE.MathUtils.clamp((A.l1 * A.l1 + d * d - A.l2 * A.l2) / (2 * A.l1 * d), -1, 1);
     const sinA = Math.sqrt(1 - cosA * cosA);
@@ -269,6 +342,12 @@ function removeHead(mesh) {
   const ng = g.clone();
   ng.setIndex(keep);
   mesh.geometry = ng;
+}
+
+// orthonormale basis (as, knokkel, as×knokkel) als rotatiematrix
+function basis(a, k) {
+  const z = new THREE.Vector3().crossVectors(a, k).normalize();
+  return new THREE.Matrix4().makeBasis(a.clone().normalize(), k.clone().normalize(), z);
 }
 
 // bot zo draaien dat wereldrichting `from` op `to` komt

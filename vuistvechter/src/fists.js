@@ -12,6 +12,7 @@ const PUNCH_SPEED = 1.75;
 export class Fists {
   constructor() {
     this.name = 'Vuisten';
+    this.reach = 0.04;
     this.fov = 66;
     this.root = new THREE.Group();
     this.ready = false;
