@@ -61,6 +61,8 @@ export class FPBody {
     // pistool: in de richthouding wijst de loop naar voren (+z van het model), bovenkant omhoog;
     // midden van het wapen ligt ~6 cm voor en 4,5 cm boven de rechterpols (zoals bij de vijanden)
     sample('idle', 0.3);
+    // hoe ver het hoofd voor de voeten zit in de stahouding (het lichaam leunt iets naar voren)
+    this.headFwd = wp(bones.Head).z + 0.1;
     const rp = wp(bones.RightHand), rq = wq(bones.RightHand), lp = wp(bones.LeftHand), lq = wq(bones.LeftHand);
     const C = rp.clone().add(new THREE.Vector3(0, 0.045, 0.06));
     this.pistolGrip = {
@@ -120,7 +122,8 @@ export class FPBody {
     const h = o.yaw + Math.PI;
     const fx = Math.sin(h), fz = Math.cos(h);
     const vz = o.vel.x * fx + o.vel.z * fz, vx = o.vel.x * -fz + o.vel.z * fx;
-    this.root.position.copy(o.feet);
+    // lichaam zo neerzetten dat het hoofd net achter de camera zit (camera = voeten + ooghoogte)
+    this.root.position.set(o.feet.x - fx * (this.headFwd || 0), o.feet.y, o.feet.z - fz * (this.headFwd || 0));
     this.root.rotation.set(0, h, 0);
     this.loco.update(dt, vx, vz, { airborne: o.airborne, crouch: o.crouch });
     this.root.updateMatrixWorld(true);
@@ -132,23 +135,14 @@ export class FPBody {
     for (const [n, k] of BEND) rotateWorld(this.bones[n], right, pitch * k);
     for (const [n, k] of LEAN) rotateWorld(this.bones[n], fwd, -(o.lean || 0) * 0.32 * k);
 
-    // oog: iets voor en boven het hoofdgewricht, in de kijkrichting
-    const head = this.bones.Head;
-    head.getWorldPosition(_v3);
-    // ogen zitten ~10 cm voor en 8 cm boven het hoofdgewricht en draaien mee met het hoofd
-    const cp = Math.cos(o.pitch), sp = Math.sin(o.pitch);
-    _v3.addScaledVector(fwd, 0.1 * cp - 0.08 * sp).y += 0.08 * cp + 0.1 * sp;
-    // gedempt t.o.v. de voeten, zodat de camera niet elke stap meeschokt
-    const lx = _v3.x - o.feet.x, ly = _v3.y - o.feet.y, lz = _v3.z - o.feet.z;
-    const bx = lx * -fz + lz * fx, bz = lx * fx + lz * fz;      // lichaamsruimte
-    if (!this.eyeOff) this.eyeOff = new THREE.Vector3(bx, ly, bz);
-    const k = 1 - Math.exp(-dt * 9);
-    this.eyeOff.x += (bx - this.eyeOff.x) * k; this.eyeOff.y += (ly - this.eyeOff.y) * k; this.eyeOff.z += (bz - this.eyeOff.z) * k;
-    this.eye.set(
-      o.feet.x + this.eyeOff.x * -fz + this.eyeOff.z * fx,
-      o.feet.y + this.eyeOff.y,
-      o.feet.z + this.eyeOff.x * fx + this.eyeOff.z * fz,
-    );
+    // oog: vaste hoogte boven de voeten (zacht naar hurkhoogte), zodat het beeld en het wapen
+    // stil blijven staan. De ademhaling van de animatie mag de camera niet laten wiegen.
+    const want = o.crouch ? 1.15 : 1.63;
+    if (this.eyeH == null) this.eyeH = want;
+    this.eyeH += (want - this.eyeH) * (1 - Math.exp(-dt * 10));
+    // omlaag kijken: het hoofd buigt mee naar voren, dus de ogen ook een klein stukje
+    const down = Math.max(0, -o.pitch);
+    this.eye.set(o.feet.x + fx * 0.12 * Math.sin(down), o.feet.y + this.eyeH - 0.06 * (1 - Math.cos(down)), o.feet.z + fz * 0.12 * Math.sin(down));
     return this.eye;
   }
 
