@@ -11,7 +11,7 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
 // versienummer achter de modellen: na een update haalt de browser zeker de nieuwe versie op
 // (GitHub Pages laat bestanden 10 minuten in de cache staan)
-export const ASSET_VERSION = 67;
+export const ASSET_VERSION = 70;
 export function loadGLTF(url) {
   if (!cache[url]) cache[url] = loader.loadAsync(`${url}?v=${ASSET_VERSION}`);
   return cache[url];

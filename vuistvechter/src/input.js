@@ -23,6 +23,7 @@ export class Input {
 
     addEventListener('keydown', e => {
       if (e.code === 'Space') { if (!e.repeat) this.jumpPressed = true; e.preventDefault(); }
+      if (e.code === 'Tab' && this.locked) e.preventDefault();      // Tab = scorebord
       if (!e.repeat && this.locked) this.edges.add(e.code);
       this.keys.add(e.code);
     });

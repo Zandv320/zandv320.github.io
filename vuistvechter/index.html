@@ -39,7 +39,7 @@
   #overlay {
     position: fixed; inset: 0; display: grid; place-items: center; background: var(--panel);
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-    cursor: pointer;
+    cursor: pointer; overflow-y: auto; padding-top: 16px; padding-bottom: 16px;
   }
   .card { max-width: 420px; display: grid; gap: 18px; text-align: left; }
   h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(40px, 9vw, 64px); line-height: .95; margin: 0; text-transform: uppercase; letter-spacing: .02em; }
@@ -85,6 +85,27 @@
   #dead div { font-family: var(--font-display); font-size: clamp(28px, 6vw, 48px); text-transform: uppercase; letter-spacing: .06em; color: var(--fg); text-align: center; }
   #dead small { display: block; font-family: var(--font-body); font-size: 14px; letter-spacing: .02em; text-transform: none; color: var(--muted); margin-top: 8px; }
   input[type=range] { accent-color: var(--accent); width: 100%; min-width: 0; }
+  .mp { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid #2a2d32; cursor: default; font-size: 13px; color: var(--muted); }
+  .mp-title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .1em; color: var(--fg); font-size: 14px; }
+  .mp-title span { font-family: var(--font-body); text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .mp-row { display: grid; grid-template-columns: 9.5em 1fr; align-items: center; gap: 10px; }
+  .mp input { font: inherit; color: var(--fg); background: #1a1d21; border: 1px solid #3a3d42; border-radius: 3px; padding: 6px 8px; min-width: 0; }
+  #mp-code { text-transform: uppercase; letter-spacing: .2em; text-align: center; }
+  .mp-grid { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; }
+  .mp-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .mp-btn { font: inherit; color: var(--fg); background: #24282d; border: 1px solid #3a3d42; border-radius: 3px; padding: 6px 12px; cursor: pointer; }
+  .mp-btn:hover { border-color: var(--accent); }
+  #mp-room { color: var(--fg); }
+  #mp-status { min-height: 1.2em; color: var(--accent); }
+  #killfeed { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(14px + env(safe-area-inset-top, 0px)); display: grid; gap: 4px; justify-items: end; pointer-events: none; font-size: 13px; }
+  #killfeed div { background: rgba(13,15,18,.7); padding: 4px 10px; border-radius: 3px; transition: opacity .4s; }
+  #killfeed span { color: var(--accent); }
+  #scoreboard { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); background: var(--panel); padding: 14px 18px; border-radius: 4px; pointer-events: none; min-width: min(360px, calc(100% - 32px)); }
+  #scoreboard table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  #scoreboard th { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .1em; font-size: 12px; color: var(--muted); text-align: left; padding: 4px 8px; }
+  #scoreboard td { padding: 6px 8px; border-top: 1px solid #2a2d32; }
+  #scoreboard th:not(:first-child), #scoreboard td:not(:first-child) { text-align: right; }
+  #scoreboard tr.me td { color: var(--accent); }
   select { font: inherit; font-size: 13px; color: var(--fg); background: #1a1d21; border: 1px solid #3a3d42; border-radius: 3px; padding: 4px 6px; }
 </style>
 </head>
@@ -100,6 +121,8 @@
 <div id="health"><span id="health-label">Gezondheid</span><span id="health-num">100</span><div id="health-track"><div id="health-bar"></div></div></div>
 <div id="dead" hidden><div>Uitgeschakeld<small>Je komt zo terug bij het startpunt</small></div></div>
 <div id="toast"></div>
+<div id="killfeed"></div>
+<div id="scoreboard" hidden><table><thead><tr><th>Speler</th><th>Kills</th><th>Doden</th></tr></thead><tbody></tbody></table></div>
 <div id="score"></div>
 <div id="credits">Pistool: "animated pistol" door DJMaesen, CC BY 4.0 · Personages en animaties: Mixamo</div>
 <div id="overlay">
@@ -115,6 +138,7 @@
       <kbd>R</kbd><span>Herladen</span>
       <kbd>J</kbd><span>Wapen inspecteren</span>
       <kbd>1 2</kbd><span>Wapen wisselen (of het muiswiel)</span>
+      <kbd>Tab</kbd><span>Scorebord (multiplayer)</span>
       <kbd>Shift</kbd><span>Sprinten (zolang je adem hebt)</span>
       <kbd>Spatie</kbd><span>Springen</span>
     </div>
@@ -122,6 +146,20 @@
       <label for="sens">Muisgevoeligheid <input id="sens" type="range" min="0.2" max="3" step="0.05"> <output id="sens-out"></output></label>
       <label for="vol">Volume <input id="vol" type="range" min="0" max="1" step="0.05"> <output id="vol-out"></output></label>
       <label for="quality">Graphics <select id="quality"><option value="hoog">Hoog</option><option value="gemiddeld">Gemiddeld</option><option value="laag">Laag</option></select> <output></output></label>
+    </div>
+    <div class="mp">
+      <div class="mp-title">Multiplayer <span>deathmatch, tot 4 spelers</span></div>
+      <label for="mp-name" class="mp-row">Jouw naam <input id="mp-name" maxlength="16" autocomplete="off"></label>
+      <div id="mp-offline" class="mp-grid">
+        <button class="mp-btn" id="mp-host" type="button">Kamer maken</button>
+        <input id="mp-code" maxlength="5" placeholder="CODE" autocomplete="off" aria-label="Kamercode">
+        <button class="mp-btn" id="mp-join" type="button">Meedoen</button>
+      </div>
+      <div id="mp-online" hidden>
+        <div id="mp-room"></div>
+        <div class="mp-grid2"><button class="mp-btn" id="mp-copy" type="button">Code kopiëren</button><button class="mp-btn" id="mp-leave" type="button">Kamer verlaten</button></div>
+      </div>
+      <div id="mp-status" aria-live="polite"></div>
     </div>
     <button class="go" id="start">Klik om te spelen</button>
   </div>

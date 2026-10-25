@@ -12,6 +12,8 @@ import { Effects } from './effects.js';
 import { FPBody } from './fpbody.js';
 import { Enemies } from './enemy.js';
 import { Post } from './post.js';
+import { Multiplayer } from './mp.js';
+import { RemotePlayers } from './remote.js';
 
 // ---------- Renderer ----------
 const host = document.getElementById('game');
@@ -61,6 +63,79 @@ const enemies = new Enemies({
 });
 enemies.load().catch(e => console.error('Vijanden laden mislukt', e));
 
+// ---------- Multiplayer ----------
+const remote = new RemotePlayers({ scene, camera, audio, effects, level });
+const r3 = v => Math.round(v * 1000) / 1000;
+let scoreList = [];
+const mp = new Multiplayer({
+  name: () => playerName(),
+  localState: () => ({
+    p: [r3(player.pos.x), r3(player.pos.y), r3(player.pos.z)], y: r3(yaw), x: r3(pitch),
+    c: crouch ? 1 : 0, l: Math.round(lean * 100) / 100, w: vm.current === pistol ? 'p' : 'f', a: player.onGround ? 0 : 1,
+  }),
+  onSnapshot: list => {
+    scoreList = list;
+    const ids = new Set();
+    for (const e of list) {
+      ids.add(e.id);
+      if (e.id === mp.id) {
+        if (!dead && !e.x && e.h > health) health = e.h;          // herstel komt van de host
+        continue;
+      }
+      if (!e.s) continue;
+      const a = remote.get(e.id, e.n);
+      a.push(e.s, performance.now() / 1000);
+      if (a.ready) { if (e.x && !a.dead) a.die(true); else if (!e.x && a.dead) a.revive(); }
+    }
+    for (const id of [...remote.map.keys()]) if (!ids.has(id)) remote.remove(id);
+    updateScore();
+  },
+  onHurt: (hp, from) => {
+    if (dead) return;
+    const was = health;
+    health = hp; sinceHurt = 0;
+    if (hp < was) hurtFx(from ? new THREE.Vector3(from[0], from[1] + 1.5, from[2]) : null);
+    if (hp <= 0) die();
+  },
+  onKill: d => {
+    addFeed(`${d.kn} <span>${d.head ? 'kopschot' : 'schakelt uit'}</span> ${d.vn}`);
+    if (d.victim === mp.id) { die(); deadEl.querySelector('small').textContent = `Uitgeschakeld door ${d.kn}. Je komt zo terug.`; }
+    else remote.map.get(d.victim)?.ready && remote.map.get(d.victim).die(d.front);
+    if (d.killer === mp.id) { killTimer = 0.4; audio.ping(0.25); }
+  },
+  onRespawn: pos => respawn(pos),
+  onRemoteRespawn: id => remote.map.get(id)?.revive(),
+  onFx: (id, fx) => {
+    const a = remote.map.get(id);
+    if (!a?.ready) return;
+    if (fx.k === 'shot') a.shot(fx.to, fx.s); else if (fx.k === 'punch') a.punch(); else if (fx.k === 'reload') a.reload();
+  },
+  onFlinch: (id, dir) => remote.map.get(id)?.hurt(dir),
+  onJoined: (id, name) => { toast(`${name} doet mee`, 2.5); mpUi(); },
+  onLeft: (id, name) => { remote.remove(id); toast(`${name || 'Een speler'} heeft de kamer verlaten`, 2.5); mpUi(); },
+  onStatus: t => setMpStatus(t),
+  onClosed: reason => leaveToSolo(reason),
+});
+
+function enterMultiplayer() {
+  // iedereen begint met vuisten en pistool, NPC's gaan weg
+  if (!owned.includes(pistol)) { owned.push(pistol); if (pickup) { scene.remove(pickup); pickup = null; } }
+  if (pistol.ready) selectWeapon(pistol);
+  for (const e of enemies.list) e.root.visible = false;
+  health = HEALTH.MAX; dead = false; deadEl.hidden = true; vm.sway.visible = true;
+  level.targets.hits = 0;
+  mpUi();
+  updateScore();
+}
+function leaveToSolo(reason) {
+  remote.clear(); scoreList = [];
+  for (const e of enemies.list) e.root.visible = true;
+  respawn();
+  mpUi();
+  updateScore();
+  if (reason) toast(reason, 3.5);
+}
+
 // ---------- Wapens ----------
 const vm = new Viewmodel(renderer);
 const fists = new Fists();
@@ -105,8 +180,68 @@ const toastEl = $('toast'), crosshair = $('crosshair'), scoreEl = $('score');
 const healthEl = $('health'), healthNum = $('health-num'), healthBar = $('health-bar');
 const dmgEl = $('dmg'), hitdirEl = $('hitdir'), deadEl = $('dead');
 function updateScore() {
+  if (mp?.active) {
+    const me = scoreList.find(e => e.id === mp.id);
+    scoreEl.textContent = `Kamer ${mp.code} · ${scoreList.length || 1}/4 spelers` + (me ? ` · Kills ${me.k} · Doden ${me.d}` : '');
+    return;
+  }
   scoreEl.textContent = `Uitgeschakeld: ${enemies.kills}` + (level.targets.hits ? ` · Doelwitten: ${level.targets.hits}` : '');
 }
+// killfeed rechtsboven
+const feedEl = $('killfeed');
+function addFeed(html) {
+  const d = document.createElement('div'); d.innerHTML = html;
+  feedEl.prepend(d);
+  while (feedEl.children.length > 5) feedEl.lastChild.remove();
+  setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 400); }, 5000);
+}
+// scorebord (Tab)
+const boardEl = $('scoreboard');
+function renderBoard() {
+  const rows = [...scoreList].sort((a, b) => b.k - a.k || a.d - b.d)
+    .map(e => `<tr${e.id === mp.id ? ' class="me"' : ''}><td>${escapeHtml(e.n)}</td><td>${e.k}</td><td>${e.d}</td></tr>`).join('');
+  boardEl.querySelector('tbody').innerHTML = rows;
+}
+const escapeHtml = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// lobby in het pauzemenu
+const mpName = $('mp-name'), mpCode = $('mp-code'), mpStatus = $('mp-status');
+const playerName = () => (input.settings.naam || '').trim() || 'Speler';
+if (!input.settings.naam) input.settings.naam = 'Speler ' + (10 + ((Math.random() * 90) | 0));
+mpName.value = input.settings.naam;
+mpName.addEventListener('input', () => { input.settings.naam = mpName.value.slice(0, 16); input.save(); });
+function setMpStatus(t) { mpStatus.textContent = t; }
+function mpUi() {
+  $('mp-offline').hidden = mp.active;
+  $('mp-online').hidden = !mp.active;
+  if (mp.active) $('mp-room').textContent = `Kamer ${mp.code}` + (mp.isHost ? ' (jij bent host)' : '') + ` · ${Math.max(1, scoreList.length)}/4 spelers`;
+}
+for (const el of [mpName, mpCode]) { el.addEventListener('click', e => e.stopPropagation()); el.addEventListener('keydown', e => e.stopPropagation()); }
+document.querySelector('.mp').addEventListener('click', e => e.stopPropagation());
+$('mp-host').addEventListener('click', async () => {
+  setMpStatus('Kamer maken…');
+  try {
+    const code = await mp.host();
+    enterMultiplayer();
+    respawn(mp.freeSpawn('host'));
+    setMpStatus(`Deel deze code met je vrienden: ${code}`);
+  } catch (e) { setMpStatus('Kamer maken lukte niet (' + (e.type || e.message) + ').'); }
+});
+$('mp-join').addEventListener('click', async () => {
+  const code = mpCode.value.trim();
+  if (code.length < 5) { setMpStatus('Vul de code van 5 tekens in.'); return; }
+  setMpStatus('Verbinden…');
+  try {
+    await mp.join(code);
+    enterMultiplayer();
+    setMpStatus('Verbonden.');
+  } catch (e) {
+    const why = e.message === 'full' ? 'de kamer is vol (4 spelers)' : e.type === 'peer-unavailable' || e.message === 'timeout' ? 'kamer niet gevonden' : (e.type || e.message);
+    setMpStatus('Meedoen lukte niet: ' + why + '.');
+  }
+});
+$('mp-leave').addEventListener('click', () => { mp.close('Je hebt de kamer verlaten.'); setMpStatus(''); });
+$('mp-copy').addEventListener('click', () => { navigator.clipboard?.writeText(mp.code).then(() => setMpStatus('Code gekopieerd.')).catch(() => {}); });
 const qualityEl = $('quality');
 const applyQuality = () => {
   // Snelheid gaat voor plaatjes (multiplayer!). Laag = standaard.
@@ -162,33 +297,53 @@ function showHit() { hitTimer = 0.16; }
 let hitdirAngle = 0, hitdirT = 0;
 function hurt(dmg, from) {
   if (dead) return;
+  if (mp.active) return;            // in multiplayer bepaalt de host je gezondheid
   health -= dmg; sinceHurt = 0;
+  hurtFx(from);
+  if (health <= 0) die();
+}
+function hurtFx(from) {
   hurtFlash = Math.min(1, hurtFlash + 0.55);
   trauma = Math.min(1, trauma + 0.28);
   audio.hurt(0.5);
   // richting van de schutter t.o.v. de kijkrichting (0 = recht vooruit)
+  if (!from) return;
   const dx = from.x - camera.position.x, dz = from.z - camera.position.z;
   hitdirAngle = Math.atan2(dx, dz);   // wereldrichting; op het scherm t.o.v. de huidige kijkrichting
   hitdirT = 1.2;
-  if (health <= 0) die();
 }
 function die() {
   health = 0; dead = true; deadT = 0; deaths++;
   deadEl.hidden = false;
   vm.sway.visible = false;
 }
-function respawn() {
+function respawn(at) {
   dead = false; health = HEALTH.MAX; sinceHurt = 99; hurtFlash = 0;
-  player.pos.copy(level.spawn); player.prevPos.copy(level.spawn); player.vel.set(0, 0, 0);
-  yaw = 0; pitch = 0;
+  const sp = at ? new THREE.Vector3(at[0], at[1], at[2]) : level.spawn;
+  player.pos.copy(sp); player.prevPos.copy(sp); player.vel.set(0, 0, 0);
+  yaw = at ? Math.atan2(sp.x, sp.z) : 0; pitch = 0;      // in multiplayer: kijk naar het midden
+  if (mp.active) { pistol.mag = PISTOL_STATS.magSize; pistol.reserve = Math.max(pistol.reserve, 48); }
   deadEl.hidden = true;
   vm.sway.visible = true;
-  enemies.reset();
+  if (!mp.active) enemies.reset();
 }
 
 // alles wat een schot of stoot kan raken
-const shootables = () => level.hittables.concat(enemies.live());
-function hitEnemy(hit, dmg, dir) {
+const PARTS = { head: 2.5, torso: 1, limb: 0.75 };
+const shootables = () => mp.active ? level.hittables.concat(remote.live()) : level.hittables.concat(enemies.live());
+function hitEnemy(hit, dmg, dir, melee = false) {
+  const owner = hit.object.userData.owner;
+  if (owner?.isRemote) {
+    // andere speler: zelf zien we het raak, de host deelt de schade uit
+    const part = hit.object.userData.part;
+    const fx = Math.sin(owner.heading), fz = Math.cos(owner.heading);
+    mp.hit(owner.id, dmg * (PARTS[part] ?? 1), part, [dir.x, dir.y, dir.z], melee, dir.x * fx + dir.z * fz < 0);
+    owner.hurt([dir.x, dir.y, dir.z]);
+    effects.burst(hit.point, dir.clone().negate(), 0x6e1410, part === 'head' ? 14 : 9);
+    audio.play('hit', { gain: part === 'head' ? 0.55 : 0.4, rate: part === 'head' ? 1.45 : 1.2 });
+    showHit();
+    return true;
+  }
   const r = enemies.damage(hit.object, dmg, dir);
   if (!r) return false;
   const n = dir.clone().negate();
@@ -204,10 +359,11 @@ fists.onImpact = () => {
   ray.far = 1.7;
   ray.setFromCamera(center, camera);
   const hit = ray.intersectObjects(shootables(), false)[0];
+  mp.fx({ k: 'punch' });
   if (!hit) { audio.whoosh(0.22); trauma = Math.min(1, trauma + 0.08); return; }
   camera.getWorldDirection(tmpDir);
   if (hit.object.userData.owner) {
-    hitEnemy(hit, 25, tmpDir);
+    hitEnemy(hit, 25, tmpDir, true);
     trauma = Math.min(1, trauma + 0.25);
     fists.doHitstop(0.08);
     return;
@@ -247,6 +403,9 @@ pistol.onFire = () => {
   ray.ray.direction.addScaledVector(right, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r).normalize();
 
   const hit = ray.intersectObjects(shootables(), false)[0];
+  // voor de anderen: waar het schot heen ging (en of het een muur/vloer raakte)
+  const end = hit ? hit.point : ray.ray.origin.clone().addScaledVector(ray.ray.direction, 60);
+  mp.fx({ k: 'shot', to: [+end.x.toFixed(2), +end.y.toFixed(2), +end.z.toFixed(2)], s: hit && !hit.object.userData.owner ? 1 : 0 });
   if (hit) {
     const n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : ray.ray.direction.clone().negate();
     if (hit.object.userData.owner) {
@@ -352,7 +511,10 @@ function frame(now) {
       const i = owned.indexOf(vm.pending || vm.current);
       selectWeapon(owned[(i + (input.wheel > 0 ? 1 : -1) + owned.length) % owned.length]);
     }
-    if (input.pressed('KeyR') && vm.current === pistol && !vm.switching) pistol.reload();
+    if (input.pressed('KeyR') && vm.current === pistol && !vm.switching) {
+      const before = pistol.state; pistol.reload();
+      if (pistol.state === 'reload' && before !== 'reload') mp.fx({ k: 'reload' });
+    }
     if (input.pressed('KeyJ') && vm.current && !vm.switching) vm.current.inspect?.();
     // vuren / stoten
     const w = vm.current;
@@ -391,12 +553,15 @@ function frame(now) {
   if (input.locked) {
     level.bag.update(dt);
     level.targets.update(dt);
-    enemies.update(dt);
+    if (!mp.active) enemies.update(dt);
   }
+  remote.update(dt, now / 1000);
+  mp.update(dt);
   // gezondheid: na een paar seconden zonder treffer weer aanvullen
   sinceHurt += dt;
-  if (!dead && sinceHurt > HEALTH.REGEN_DELAY && health < HEALTH.MAX) health = Math.min(HEALTH.MAX, health + HEALTH.REGEN * dt);
-  if (dead && input.locked) { deadT += dt; if (deadT > HEALTH.RESPAWN) respawn(); }
+  if (!mp.active && !dead && sinceHurt > HEALTH.REGEN_DELAY && health < HEALTH.MAX) health = Math.min(HEALTH.MAX, health + HEALTH.REGEN * dt);
+  if (dead) deadT += dt;
+  if (!mp.active && dead && input.locked && deadT > HEALTH.RESPAWN) respawn();
 
   // oppakken
   const feet = player.pos;
@@ -535,6 +700,9 @@ function frame(now) {
   const cs = gun ? 1 + currentSpread() * 45 : 1;
   crosshair.style.transform = `translate(-50%, -50%) scale(${cs.toFixed(3)})`;
   crosshair.style.opacity = (1 - aimA * 1.4).toFixed(2);     // over het vizier geen kruisje
+  const showBoard = mp.active && input.down('Tab');
+  boardEl.hidden = !showBoard;
+  if (showBoard) renderBoard();
   killTimer = Math.max(0, killTimer - dt);
   hitmarker.classList.toggle('kill', killTimer > 0);
   if (killTimer > 0) hitmarker.style.opacity = '1';
@@ -558,4 +726,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-window.__vv = { scene, renderer, look: (y, p) => { yaw = y; pitch = p; }, enemies, body, get health() { return health; }, hurt, player, camera, vm, get crouch() { return crouch; }, setCrouch: c => { crouch = c; }, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };
+window.__vv = { mp, remote, scene, renderer, look: (y, p) => { yaw = y; pitch = p; }, enemies, body, get health() { return health; }, hurt, player, camera, vm, get crouch() { return crouch; }, setCrouch: c => { crouch = c; }, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };
