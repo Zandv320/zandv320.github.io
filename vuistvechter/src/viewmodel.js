@@ -1,44 +1,37 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-// Viewmodel: wat je in je handen hebt. Eigen scène en camera, over de wereld heen getekend,
-// zodat wapens nooit door een muur steken en een eigen FOV hebben.
-// Houdt de wapens ("rigs") bij en regelt wisselen, traagheid, loop-bob en landing.
+// Wapens in de wereld (echte first person): de wapens hangen aan een anker dat de camera volgt.
+// Ze worden niet meer apart over de wereld heen getekend: ze botsen dus echt met muren, krijgen
+// hetzelfde licht en dezelfde schaduwen, en de armen van je eigen lichaam pakken ze vast (IK).
+// Deze klasse regelt wisselen, traagheid, loop-bob, landing, richten (ADS) en terugduwen bij muren.
+
+const _q = new THREE.Quaternion(), _v = new THREE.Vector3();
+const TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.04, 0, 0));   // de oude viewmodel-camera keek 0,04 rad omlaag
 
 export class Viewmodel {
-  constructor(renderer) {
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(66, 1, 0.01, 10);
-    this.camera.rotation.x = -0.04;
-    this.scene.add(new THREE.HemisphereLight(0xf2efe9, 0x4a4038, 1.2));
-    const key = new THREE.DirectionalLight(0xfff1dc, 1.8);
-    key.position.set(0.6, 1.5, 0.8); this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0xbcd0ff, 0.8);
-    rim.position.set(-1, 0.5, -0.5); this.scene.add(rim);
-    // zachte omgevingsreflectie voor het metaal van wapens
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.6;
-
+  constructor(scene) {
+    this.anchor = new THREE.Group();        // = camera
     this.sway = new THREE.Group();
-    this.scene.add(this.sway);
+    this.ads = new THREE.Group();           // richten over het vizier
+    this.anchor.add(this.sway); this.sway.add(this.ads);
+    scene.add(this.anchor);
     this.rigs = [];
     this.current = null;
-    this.pending = null;      // wapen waar we naartoe wisselen
-    this.switchT = 0;         // 0..1 omlaag, daarna weer omhoog
+    this.pending = null;
+    this.switchT = 0;
     this.switchPhase = 'none';
     this.swayRot = new THREE.Vector2();
     this.swayPos = new THREE.Vector2();
-    this.fov = 66;
+    this.adsT = 0;
+    this.push = 0;
   }
 
   add(rig) {
     rig.root.visible = false;
-    this.sway.add(rig.root);
+    this.ads.add(rig.root);
     this.rigs.push(rig);
   }
 
-  // direct een wapen pakken (bij het starten)
   set(rig) {
     if (this.current) this.current.root.visible = false;
     this.current = rig;
@@ -47,7 +40,6 @@ export class Viewmodel {
     this.switchPhase = 'none';
   }
 
-  // wisselen: huidig wapen gaat omlaag, nieuw komt omhoog
   switchTo(rig) {
     if (!rig || !rig.ready || rig === this.current || rig === this.pending) return false;
     this.pending = rig;
@@ -57,65 +49,67 @@ export class Viewmodel {
 
   get switching() { return this.switchPhase !== 'none'; }
 
+  // s: { camera, mouseDX, mouseDY, bobPhase, bobAmount, sprint, land, kick, aim (0/1), wall (0..1), lean }
   update(dt, s) {
-    // wissel-animatie: 0,14 s omlaag, wapen wisselen, dan de equip-animatie van het nieuwe wapen
     let drop = 0;
     if (this.switchPhase === 'down') {
-      this.switchT = Math.min(1, this.switchT + dt / 0.14);
+      this.switchT = Math.min(1, this.switchT + dt / 0.16);
       drop = this.switchT;
-      if (this.switchT >= 1) {
-        this.set(this.pending);
-        this.pending = null;
-        this.switchPhase = 'up';
-      }
+      if (this.switchT >= 1) { this.set(this.pending); this.pending = null; this.switchPhase = 'up'; }
     } else if (this.switchPhase === 'up') {
-      this.switchT = Math.max(0, this.switchT - dt / 0.18);
+      this.switchT = Math.max(0, this.switchT - dt / 0.22);
       drop = this.switchT;
       if (this.switchT <= 0) this.switchPhase = 'none';
     }
+    const rig = this.current;
+    if (rig) rig.update(dt);
 
-    if (this.current) this.current.update(dt);
+    // anker = camera
+    s.camera.getWorldPosition(this.anchor.position);
+    s.camera.getWorldQuaternion(this.anchor.quaternion).multiply(TILT);
 
-    // FOV per wapen, zacht overvloeien
-    const want = this.current ? this.current.fov : 66;
-    this.fov += (want - this.fov) * (1 - Math.exp(-dt * 10));
-    if (Math.abs(this.camera.fov - this.fov) > 0.01) { this.camera.fov = this.fov; this.camera.updateProjectionMatrix(); }
+    // richten: zacht in en uit (ca. 0,22 s), niet tijdens wisselen of sprinten
+    const wantAds = s.aim && rig?.adsPose && !drop && !s.sprint ? 1 : 0;
+    this.adsT += (wantAds - this.adsT) * (1 - Math.exp(-dt * 13));
+    const a = THREE.MathUtils.smootherstep(this.adsT, 0, 1);
+    if (rig?.adsPose) {
+      this.ads.position.copy(rig.adsPose.pos).multiplyScalar(a);
+      this.ads.quaternion.identity().slerp(rig.adsPose.quat, a);
+    } else { this.ads.position.set(0, 0, 0); this.ads.quaternion.identity(); }
 
-    // traagheid
-    const k = 1 - Math.exp(-dt * 14);
-    const tx = THREE.MathUtils.clamp(-s.mouseDX * 0.0009, -0.09, 0.09);
-    const ty = THREE.MathUtils.clamp(-s.mouseDY * 0.0009, -0.07, 0.07);
+    // traagheid: het wapen heeft gewicht en loopt achter de muis aan (minder bij richten)
+    const calm = 1 - a * 0.75;
+    const k = 1 - Math.exp(-dt * 10);
+    const tx = THREE.MathUtils.clamp(-s.mouseDX * 0.0011, -0.11, 0.11) * calm;
+    const ty = THREE.MathUtils.clamp(-s.mouseDY * 0.0011, -0.08, 0.08) * calm;
     this.swayRot.x += (ty - this.swayRot.x) * k;
     this.swayRot.y += (tx - this.swayRot.y) * k;
-    this.swayPos.x += (tx * 0.25 - this.swayPos.x) * k;
-    this.swayPos.y += (ty * 0.25 - this.swayPos.y) * k;
+    this.swayPos.x += (tx * 0.22 - this.swayPos.x) * k;
+    this.swayPos.y += (ty * 0.22 - this.swayPos.y) * k;
 
-    // loop-bob, sprinthouding, landing, terugslag en wisselen
-    const busy = this.current?.busy;
-    const amt = s.bobAmount;
-    const bx = Math.sin(s.bobPhase) * 0.011 * amt;
-    const by = -Math.abs(Math.cos(s.bobPhase)) * 0.013 * amt;
-    this.sprintLerp = (this.sprintLerp || 0) + ((s.sprint && !busy ? 1 : 0) - (this.sprintLerp || 0)) * (1 - Math.exp(-dt * 8));
+    // muur vlak voor je: wapen terugtrekken en omhoog kantelen
+    this.push += ((s.wall || 0) - this.push) * (1 - Math.exp(-dt * 12));
+    const w = this.push;
+
+    const busy = rig?.busy;
+    const amt = s.bobAmount * calm;
+    const bx = Math.sin(s.bobPhase) * 0.012 * amt;
+    const by = -Math.abs(Math.cos(s.bobPhase)) * 0.014 * amt;
+    this.sprintLerp = (this.sprintLerp || 0) + ((s.sprint && !busy ? 1 : 0) - (this.sprintLerp || 0)) * (1 - Math.exp(-dt * 7));
     const sp = this.sprintLerp;
     const kick = s.kick || 0;
-    // steil omlaag kijken: wapen iets omhoog en naar voren, zodat je je benen ziet
-    const ld = THREE.MathUtils.smoothstep(s.lookDown || 0, 0.75, 1.4);
     this.sway.position.set(
-      bx + this.swayPos.x - sp * 0.02 + ld * 0.05,
-      by + this.swayPos.y + s.land * 0.5 - sp * 0.05 - drop * 0.25 + ld * 0.04,
-      sp * 0.02 + kick * 0.6 - ld * 0.03
+      bx + this.swayPos.x - sp * 0.03,
+      by + this.swayPos.y + s.land * 0.5 - sp * 0.06 - drop * 0.3 - w * 0.06,
+      sp * 0.03 + kick * 0.9 + w * 0.16
     );
     this.sway.rotation.set(
-      this.swayRot.x - sp * 0.16 + s.land * 0.4 - drop * 0.6 + kick * 2.2 + ld * 0.12,
-      this.swayRot.y,
-      this.swayRot.y * 0.8 + bx * 2 + sp * 0.08
+      this.swayRot.x - sp * 0.3 + s.land * 0.4 - drop * 0.7 + kick * 2.6 + w * 0.9,
+      this.swayRot.y + sp * 0.35,
+      this.swayRot.y * 0.8 + bx * 2 + sp * 0.12 + (s.lean || 0) * 0.15
     );
+    this.anchor.updateMatrixWorld(true);
   }
 
-  resize(aspect) { this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); }
-
-  render(renderer) {
-    renderer.clearDepth();
-    renderer.render(this.scene, this.camera);
-  }
+  get aimAmount() { return this.adsT; }
 }

@@ -43,6 +43,7 @@ export class Enemies {
   }
 
   async load() {
+    this.buildCover();
     const gltf = await loadGLTF('models/enemy.glb');
     for (let i = 0; i < ROUTES.length; i++) {
       const e = new Enemy(this, gltf, ROUTES[i], i);
@@ -51,6 +52,38 @@ export class Enemies {
       this.hitboxes.push(...e.hitboxes);
     }
     this.ready = true;
+  }
+
+  // dekkingsplekken: naast elk los obstakel van minstens heuphoogte (kisten, tafel, richel, plateau)
+  buildCover() {
+    const cols = this.ctx.level.colliders;
+    const free = (x, z) => Math.abs(x) < 14.3 && Math.abs(z) < 14.3 && !cols.some(c => c.bottom < 1 && x > c.minX - 0.4 && x < c.maxX + 0.4 && z > c.minZ - 0.4 && z < c.maxZ + 0.4);
+    this.cover = [];
+    for (const c of cols) {
+      if (c.heightAt || c.bottom > 0.05 || c.top < 0.9 || c.top > 4) continue;
+      const cx = (c.minX + c.maxX) / 2, cz = (c.minZ + c.maxZ) / 2;
+      for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const span = nx ? c.maxZ - c.minZ : c.maxX - c.minX;
+        for (const t of span > 2.5 ? [-0.3, 0.3] : [0]) {
+          const x = nx ? (nx > 0 ? c.maxX + 0.55 : c.minX - 0.55) : cx + t * span;
+          const z = nz ? (nz > 0 ? c.maxZ + 0.55 : c.minZ - 0.55) : cz + t * span;
+          if (free(x, z)) this.cover.push({ pos: new THREE.Vector3(x, 0, z), by: null });
+        }
+      }
+    }
+  }
+
+  // geluid van een vijand: zachter op afstand, in stereo, doffer achter een muur, met galm
+  sound(name, at, { gain = 1, rate = 1, falloff = 0.3 } = {}) {
+    const { camera, audio } = this.ctx;
+    const d = at.distanceTo(camera.position);
+    const right = _v.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    const pan = _v2.subVectors(at, camera.position).normalize().dot(right) * 0.85;
+    const blocked = !this.clear(at, camera.position);
+    audio.play(name, {
+      gain: gain / (1 + d * falloff) * (blocked ? 0.55 : 1), rate, pan,
+      lowpass: (blocked ? 1400 : 11000) / (1 + d * 0.05), wet: Math.min(0.8, 0.12 + d * 0.025),
+    });
   }
 
   // hitboxen van levende vijanden (de raycaster kijkt niet naar .visible)
@@ -154,6 +187,8 @@ class Enemy {
     this.strafe = 0; this.strafeT = 0;
     this.searchT = 0; this.stuckT = 0;
     this.recoil = 0; this.aimPitch = 0;
+    this.crouch = false; this.coverT = 0; this.releaseCover();
+    this.flinch = 0; this.flinchAxis = new THREE.Vector3(1, 0, 0); this.stagger = 0; this.stepDist = 0;
     this.thinkT = Math.random() * 0.1;
     this.root.visible = true;
     this.loco.reset();
@@ -168,7 +203,7 @@ class Enemy {
       this.state = 'search'; this.searchT = 4; this.aware = Math.max(this.aware, ENEMY.REACT * 0.6);
     }
     if (this.health <= 0) {
-      this.dead = true; this.deadT = 0; this.state = 'dead';
+      this.dead = true; this.deadT = 0; this.state = 'dead'; this.releaseCover();
       // van voren geraakt: achterover vallen
       const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
       const front = dir ? dir.x * fx + dir.z * fz < 0 : true;
@@ -179,11 +214,16 @@ class Enemy {
       setTimeout(() => audio.play('land', { gain: 0.5, rate: 0.7 }), 650);
       return;
     }
-    if (part !== 'limb' || Math.random() < 0.5) this.loco.once('hit', 0.08, 1.4);
-    this.cooldown = Math.max(this.cooldown, 0.35);
+    // procedurele schrikreactie: bovenlijf klapt weg in de richting van de kogel, hij loopt door
+    if (dir) this.flinchAxis.set(dir.z, 0, -dir.x).normalize();
+    this.flinch = part === 'head' ? 1.3 : part === 'torso' ? 1 : 0.6;
+    this.stagger = 0.3;
+    this.cooldown = Math.max(this.cooldown, 0.4);
+    // gewond: dekking zoeken
+    if (this.state === 'combat' && this.health < 70 && Math.random() < 0.75) this.takeCover();
   }
 
-  eye(out) { return out.copy(this.body.pos).setY(this.body.pos.y + EYE); }
+  eye(out) { return out.copy(this.body.pos).setY(this.body.pos.y + (this.crouch ? 1.0 : EYE)); }
 
   // kan ik de speler zien?
   look() {
@@ -196,7 +236,7 @@ class Enemy {
     const fwd = _v2.set(Math.sin(this.heading), 0, Math.cos(this.heading));
     const cos = (to.x * fwd.x + to.z * fwd.z) / Math.max(1e-4, Math.hypot(to.x, to.z));
     // binnen het gezichtsveld, of zo dichtbij dat hij je hoort; alert = breder
-    const wide = this.state === 'combat' || this.state === 'search';
+    const wide = this.state === 'combat' || this.state === 'search' || this.state === 'cover';
     if (cos < (wide ? -0.2 : ENEMY.FOV) && dist > 3) return false;
     const chest = camera.position.clone(); chest.y -= 0.5;
     return this.mgr.clear(eye, camera.position) || this.mgr.clear(eye, chest);
@@ -225,7 +265,7 @@ class Enemy {
       if (this.seen) {
         this.lastSeen.copy(ctx.player.pos);
         this.lostT = 0;
-        if (this.state !== 'combat') { this.state = 'combat'; this.firstShot = true; this.cooldown = Math.max(this.cooldown, 0.15); }
+        if (this.state !== 'combat' && this.state !== 'cover') { this.state = 'combat'; this.firstShot = true; this.cooldown = Math.max(this.cooldown, 0.15); }
       }
     }
     if (this.seen) this.aware = Math.min(ENEMY.REACT + 0.5, this.aware + dt);
@@ -258,6 +298,17 @@ class Enemy {
         if (this.burst <= 0) this.burst = 2 + ((Math.random() * 3) | 0);
         this.burst--;
         this.cooldown = this.burst > 0 ? 0.24 + Math.random() * 0.12 : 0.7 + Math.random() * 0.8;
+        if (this.burst <= 0 && Math.random() < 0.2) this.takeCover();
+      }
+    } else if (this.state === 'cover') {
+      // naar de dekking rennen, hurken, even wachten en dan weer opstaan om te vuren
+      faceAt = ctx.player.pos;
+      const d = _v2.subVectors(this.coverPt.pos, pos); d.y = 0;
+      if (d.length() > 0.35 && !this.crouch) { moveX = d.x; moveZ = d.z; speed = ENEMY.RUN; }
+      else {
+        this.crouch = true;
+        this.coverT -= dt;
+        if (this.coverT <= 0) { this.releaseCover(); this.state = 'combat'; this.cooldown = 0.35; this.burst = 0; }
       }
     } else if (this.state === 'search') {
       // naar de plek waar de speler het laatst was
@@ -291,6 +342,7 @@ class Enemy {
       this.stuckT = 0;
       if (this.state === 'search') this.searchT = 6;
       else if (this.state === 'patrol') { this.wpDir *= -1; this.wp = THREE.MathUtils.clamp(this.wp + this.wpDir, 0, this.route.length - 1); }
+      else if (this.state === 'cover') { this.releaseCover(); this.state = 'combat'; }
       else this.strafe = -this.strafe;
     }
 
@@ -303,14 +355,48 @@ class Enemy {
     if (wantMove) { wish = { forward: 1, right: 0, jump: false, speed }; yaw = Math.atan2(-moveX, -moveZ); }
     // tijdens "geraakt" niet lopen
     if (this.loco.locked) wish.speed = 0;
+    if (this.stagger > 0) { this.stagger -= dt; wish.speed *= 0.35; }
+    if (this.crouch) wish.speed = Math.min(wish.speed, 1.2);
     for (let left = dt; left > 1e-6; left -= 1 / 120) body.step(Math.min(1 / 120, left), wish, yaw);
     body.events.length = 0;
+    // voetstappen: hoorbaar, en door muren heen gedempt
+    if (body.onGround) {
+      const hs = body.horizontalSpeed();
+      this.stepDist += hs * dt;
+      const stride = this.crouch ? 0.8 : hs > 3 ? 1.5 : 1.1;
+      if (this.stepDist > stride) { this.stepDist = 0; this.mgr.sound('step', body.pos, { gain: hs > 3 ? 3 : this.crouch ? 0.9 : 1.8, falloff: 0.35 }); }
+    }
 
     // animatie op basis van de echte snelheid in de eigen kijkrichting
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
     const v = body.vel;
     this.place(dt, v.x * -fz + v.z * fx, v.x * fx + v.z * fz);
   }
+
+  // vrije dekkingsplek zoeken waar de speler je (gehurkt) niet kan zien
+  takeCover() {
+    const mgr = this.mgr, cam = mgr.ctx.camera.position, pos = this.body.pos;
+    let best = null, bd = Infinity;
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    for (const c of mgr.cover) {
+      if (c.by && c.by !== this) continue;
+      if (Math.abs(c.pos.y - pos.y) > 0.5) continue;
+      const d = c.pos.distanceTo(pos);
+      if (d > 10 || d >= bd) continue;
+      a.copy(c.pos).setY(pos.y + 0.95);
+      if (mgr.clear(a, cam)) continue;                               // gehurkt nog zichtbaar
+      a.copy(pos).setY(pos.y + 0.5); b.copy(c.pos).setY(pos.y + 0.5);
+      if (!mgr.clear(a, b)) continue;                                // er staat iets tussen
+      best = c; bd = d;
+    }
+    if (!best) return false;
+    this.releaseCover();
+    best.by = this; this.coverPt = best;
+    this.state = 'cover'; this.coverT = 1.6 + Math.random() * 1.8;
+    return true;
+  }
+
+  releaseCover() { if (this.coverPt) this.coverPt.by = null; this.coverPt = null; this.crouch = false; }
 
   faceTo(target, dt) {
     const diff = angleDiff(target, this.heading);
@@ -332,12 +418,12 @@ class Enemy {
   place(dt, vx, vz) {
     this.root.position.copy(this.body.pos);
     this.root.rotation.y = this.heading;
-    this.loco.update(dt, vx, vz, { airborne: !this.body.onGround && this.body.vel.y < -3 });
+    this.loco.update(dt, vx, vz, { airborne: !this.body.onGround && this.body.vel.y < -3, crouch: this.crouch });
     if (this.dead) return;
     // bovenlijf richten op de speler (op en neer) + terugslag van het pistool
     const cam = this.mgr.ctx.camera.position;
     let target = 0;
-    if (this.state === 'combat') {
+    if (this.state === 'combat' || this.state === 'cover') {
       const eye = this.eye(_v);
       target = Math.atan2(cam.y - 0.25 - eye.y, Math.hypot(cam.x - eye.x, cam.z - eye.z));
     }
@@ -348,6 +434,13 @@ class Enemy {
     // as = rechterkant van het personage in de wereld
     const axis = _v2.set(-Math.cos(this.heading), 0, Math.sin(this.heading));
     for (const [name, k] of [['Spine1', 0.5], ['Spine2', 0.5]]) rotateBoneWorld(this.bones[name], axis, pitch * k);
+    // schrikreactie (snel weg, verend terug)
+    if (this.flinch > 0.01) {
+      const f = this.flinch;
+      for (const [name, k] of [['Spine', 0.25], ['Spine1', 0.35], ['Spine2', 0.4]]) rotateBoneWorld(this.bones[name], this.flinchAxis, -0.42 * f * k);
+      rotateBoneWorld(this.bones.Neck, this.flinchAxis, -0.25 * f);
+      this.flinch *= Math.exp(-dt * 7);
+    }
     rotateBoneWorld(this.bones.RightHand, axis, this.recoil * 0.6);
     rotateBoneWorld(this.bones.RightForeArm, axis, this.recoil * 0.4);
   }
@@ -360,15 +453,15 @@ class Enemy {
     this.recoil = 0.35;
     // geluid: zachter, doffer en in stereo op afstand
     const cam = ctx.camera;
-    const rel = from.clone().sub(cam.position);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    const pan = rel.clone().normalize().dot(right) * 0.8;
-    ctx.audio.play('shot', { gain: Math.min(0.75, 2.4 / (1 + dist * 0.35)), rate: 0.94, pan, lowpass: 9000 / (1 + dist * 0.08) });
+    this.mgr.sound('shot', from, { gain: 2.2, rate: 0.94, falloff: 0.3 });
 
     // raakkans: lager op afstand, als je snel beweegt en bij het eerste schot
     const pspeed = ctx.player.horizontalSpeed() + (ctx.player.onGround ? 0 : 3);
     let chance = THREE.MathUtils.clamp(0.62 - dist * 0.02 - pspeed * 0.05, 0.12, 0.65);
     if (this.firstShot) chance *= 0.45;
+    if (ctx.playerCrouch) chance *= 0.8;          // kleiner doelwit
+    if (Math.abs(ctx.playerLean || 0) > 0.5) chance *= 0.7;   // om een hoek leunen
     this.firstShot = false;
     const target = cam.position.clone(); target.y -= 0.35;
     if (Math.random() < chance) {

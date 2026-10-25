@@ -47,6 +47,15 @@ export class Fists {
     model.rotation.y = Math.PI;
     this.root.add(model);
     this.model = model;
+    // naar ware grootte schalen rond het oog (hand ~9,5 cm van pols tot knokkel)
+    {
+      model.updateMatrixWorld(true);
+      const w = model.getObjectByName('handR').getWorldPosition(new THREE.Vector3());
+      const kn = model.getObjectByName('f_middle01R').getWorldPosition(new THREE.Vector3());
+      const k = 0.095 / w.distanceTo(kn);
+      model.scale.multiplyScalar(k); model.position.multiplyScalar(k);
+      this.realScale = k;
+    }
 
     this.mixer = new THREE.AnimationMixer(model);
     const clip = n => gltf.animations.find(a => a.name === n);
@@ -72,6 +81,22 @@ export class Fists {
     }
     this.mixer.setTime(0);
     this.idle = this.mixer.clipAction(this.clips.idle);
+    // echte first person: de armen van dit model zijn alleen nog een "regisseur" voor de handen
+    // van je eigen lichaam; zelf worden ze niet getekend
+    model.traverse(o => { if (o.isMesh) o.visible = false; });
+    this.handR = model.getObjectByName('handR');
+    this.handL = model.getObjectByName('handL');
+    this.knuckleR = model.getObjectByName('f_middle01R');
+    this.knuckleL = model.getObjectByName('f_middle01L');
+    // handoriëntatie in de bewakingshouding, t.o.v. de wapenwortel (voor de kalibratie)
+    this.idle.reset().play(); this.mixer.update(0);
+    this.root.updateMatrixWorld(true);
+    const rq = new THREE.Quaternion(); this.root.getWorldQuaternion(rq); rq.invert();
+    this.guardQ = {
+      R: rq.clone().multiply(this.handR.getWorldQuaternion(new THREE.Quaternion())),
+      L: rq.clone().multiply(this.handL.getWorldQuaternion(new THREE.Quaternion())),
+    };
+    this.idle.stop();
     this.ready = true;
   }
 

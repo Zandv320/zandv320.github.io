@@ -45,7 +45,7 @@ export function buildLevel(scene, renderer) {
   const planks = loadSet(renderer, 'planks');
   const floorMat = new THREE.MeshStandardMaterial({ ...concrete, color: 0x9a9a98, roughness: 1 });
   const wallMat = new THREE.MeshStandardMaterial({ ...concrete, color: 0xc9c6c0, roughness: 1 });
-  const ceilMat = new THREE.MeshStandardMaterial({ ...concrete, color: 0x55524e, roughness: 1 });
+  const ceilMat = new THREE.MeshStandardMaterial({ ...concrete, color: 0x8a8680, roughness: 1 });
   const woodMat = new THREE.MeshStandardMaterial({ ...planks, roughness: 1 });
   const darkWood = new THREE.MeshStandardMaterial({ ...planks, color: 0x8a6f58, roughness: 1 });
   const trimMat = new THREE.MeshStandardMaterial({ color: 0xe8b04a, roughness: 0.55 });
@@ -120,12 +120,23 @@ export function buildLevel(scene, renderer) {
   const bag = buildBag(scene, darkWood, colliders, hittables);
 
   // --- licht ---
-  scene.add(new THREE.HemisphereLight(0xdfe6ee, 0x3a332c, 0.6));
+  scene.add(new THREE.HemisphereLight(0xdfe6ee, 0x6e655a, 0.75));   // grondkleur = licht dat van de vloer terugkaatst naar het plafond
   const lamps = [[0, 0], [-8, -8], [8, -8], [-8, 8], [8, 8]];
+  const shadowLights = [];
   lamps.forEach(([x, z], i) => {
-    const l = new THREE.PointLight(0xfff0d8, i === 0 ? 70 : 38, 22, 1.6);
+    let l;
+    if (i === 0) {
+      l = new THREE.PointLight(0xfff0d8, 70, 22, 1.6);
+      l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -0.002;
+    } else {
+      // hoeklampen: brede spots recht naar beneden, met eigen (zachte) schaduw
+      l = new THREE.SpotLight(0xfff0d8, 46, 24, 1.2, 0.75, 1.6);
+      l.target.position.set(x, 0, z); scene.add(l.target);
+      l.castShadow = true; l.shadow.mapSize.set(512, 512); l.shadow.bias = -0.0015; l.shadow.radius = 3;
+      l.shadow.camera.near = 0.5; l.shadow.camera.far = 12;
+    }
     l.position.set(x, ROOM_H - 0.4, z);
-    if (i === 0) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -0.002; }
+    shadowLights.push(l);
     scene.add(l);
     const fix = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 1.2), new THREE.MeshBasicMaterial({ color: 0xfff1d6 }));
     fix.position.set(x, ROOM_H - 0.04, z); scene.add(fix);
@@ -145,7 +156,9 @@ export function buildLevel(scene, renderer) {
     [14, 3], [14, 6.5], [14, 10], [14, 13.5], [10.5, 12.5], [9, 4],
   ]);
 
-  return { colliders, hittables, bag, targets, ammo, pickupSpot, spawn: new THREE.Vector3(0, 0, 9) };
+  // lage kwaliteit: alleen de middelste lamp werpt schaduw
+  const setShadows = all => shadowLights.forEach((l, i) => { l.castShadow = i === 0 || all; });
+  return { colliders, hittables, bag, targets, ammo, pickupSpot, spawn: new THREE.Vector3(0, 0, 9), setShadows };
 }
 
 // Stootzak als slinger: verplaatsing s (x,z) van het zwaartepunt met demping

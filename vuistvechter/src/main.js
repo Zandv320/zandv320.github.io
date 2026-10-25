@@ -9,8 +9,9 @@ import { Viewmodel } from './viewmodel.js';
 import { Fists } from './fists.js';
 import { Pistol, PISTOL_STATS, CANT } from './pistol.js';
 import { Effects } from './effects.js';
-import { PlayerBody } from './playerbody.js';
+import { FPBody } from './fpbody.js';
 import { Enemies } from './enemy.js';
+import { Post } from './post.js';
 
 // ---------- Renderer ----------
 const host = document.getElementById('game');
@@ -32,11 +33,12 @@ scene.fog = new THREE.Fog(0x0d0f12, 25, 55);
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.25;
 
-const BASE_FOV = 78, SPRINT_FOV = 86;
-const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.05, 120);
+const BASE_FOV = 78, SPRINT_FOV = 84, ADS_FOV = 60;
+const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.05, 120);   // dichtbij-vlak klein: je eigen handen en wapen zitten vlak voor je
 camera.rotation.order = 'YXZ';
 
 const level = buildLevel(scene, renderer);
+const post = new Post(renderer, scene, camera);
 const player = new Player(level.spawn, level.colliders);
 const input = new Input(renderer.domElement);
 const audio = new Audio();
@@ -44,7 +46,7 @@ audio.volume = input.settings.volume;
 const effects = new Effects(scene);
 
 // ---------- Personages ----------
-const body = new PlayerBody(scene);
+const body = new FPBody(scene);
 body.load().catch(e => console.error('Lichaam laden mislukt', e));
 const HEALTH = { MAX: 100, REGEN_DELAY: 4, REGEN: 15, RESPAWN: 3.5 };
 let health = HEALTH.MAX, sinceHurt = 99, dead = false, deadT = 0, hurtFlash = 0, deaths = 0;
@@ -52,18 +54,19 @@ const enemies = new Enemies({
   scene, level, audio, effects, camera, player,
   get playerDead() { return dead; },
   get hostile() { return owned.includes(pistol); },   // pas vechten als je een wapen hebt
+  get playerCrouch() { return crouch; },
+  get playerLean() { return lean; },
   onPlayerHit: (dmg, from) => hurt(dmg, from),
   onKill: (e, part) => { updateScore(); killTimer = 0.35; },
 });
 enemies.load().catch(e => console.error('Vijanden laden mislukt', e));
 
 // ---------- Wapens ----------
-const vm = new Viewmodel(renderer);
+const vm = new Viewmodel(scene);
 const fists = new Fists();
 const pistol = new Pistol(audio);
 vm.add(fists); vm.add(pistol);
 const owned = [fists];          // volgorde = toets 1, 2, ...
-let lastWeapon = fists;
 fists.load().then(() => vm.set(fists)).catch(e => console.error('Vuisten laden mislukt', e));
 pistol.load().catch(e => console.error('Pistool laden mislukt', e));
 
@@ -92,7 +95,7 @@ new GLTFLoader().loadAsync('models/pistol.glb').then(gltf => {
 
 function selectWeapon(w) {
   if (!w || !owned.includes(w) || w === vm.current) return;
-  if (vm.switchTo(w)) { lastWeapon = vm.current; }
+  vm.switchTo(w);
 }
 
 // ---------- UI ----------
@@ -107,6 +110,15 @@ const dmgEl = $('dmg'), hitdirEl = $('hitdir'), deadEl = $('dead');
 function updateScore() {
   scoreEl.textContent = `Uitgeschakeld: ${enemies.kills}` + (level.targets.hits ? ` · Doelwitten: ${level.targets.hits}` : '');
 }
+const qualityEl = $('quality');
+const applyQuality = () => {
+  const q = input.settings.kwaliteit || 'hoog';
+  qualityEl.value = q;
+  renderer.setPixelRatio(q === 'laag' ? 1 : Math.min(devicePixelRatio, 2));
+  level.setShadows(q !== 'laag');
+  post.setQuality(q, host.clientWidth, host.clientHeight);
+};
+qualityEl.addEventListener('change', () => { input.settings.kwaliteit = qualityEl.value; input.save(); applyQuality(); resize(); });
 sens.value = input.settings.gevoeligheid;
 vol.value = input.settings.volume;
 const showSettings = () => {
@@ -140,7 +152,7 @@ const ray = new THREE.Raycaster();
 const center = new THREE.Vector2(0, 0);
 const tmpDir = new THREE.Vector3();
 
-let killTimer = 0;
+let killTimer = 0, lowHpVignette = 0;
 function showHit() { hitTimer = 0.16; }
 
 // geraakt door een vijand
@@ -216,7 +228,10 @@ fists.onImpact = () => {
 // schot: hitscan met spreiding
 function currentSpread() {
   const speed01 = Math.min(1, player.horizontalSpeed() / P.WALK);
-  return PISTOL_STATS.spread + speed01 * 0.012 + (player.onGround ? 0 : 0.035) + bloom;
+  const aim = vm.aimAmount;
+  // vanuit de heup minder zuiver dan over het vizier; hurken helpt ook
+  const base = PISTOL_STATS.spread * (1 - aim) * 3 + PISTOL_STATS.spread * 0.5 * aim;
+  return (base + speed01 * 0.014 + (player.onGround ? 0 : 0.035) + bloom) * (crouch ? 0.75 : 1);
 }
 pistol.onFire = () => {
   const spread = currentSpread();
@@ -251,28 +266,20 @@ pistol.onFire = () => {
     }
   }
   // terugslag: camera schopt omhoog en komt grotendeels terug
-  recoilVel += PISTOL_STATS.recoil * 60;
-  pitch += PISTOL_STATS.recoil * 0.25;
+  // de loop gaat omhoog en een beetje opzij; een deel blijft hangen (je moet terugtrekken)
+  const steady = crouch ? 0.75 : 1;
+  recoilVel += PISTOL_STATS.recoil * 60 * steady;
+  pitch += PISTOL_STATS.recoil * 0.3 * steady;
+  yaw += (Math.random() - 0.45) * 0.006 * steady;
   vmKick = 1;
   bloom = Math.min(0.03, bloom + 0.009);
-  trauma = Math.min(1, trauma + 0.12);
-  camera.getWorldDirection(tmpDir);
-  effects.muzzleLight(camera.position.clone().addScaledVector(tmpDir, 0.7));
+  trauma = Math.min(1, trauma + 0.1);
+  effects.muzzleLight(pistol.muzzle.getWorldPosition(new THREE.Vector3()));
 };
 
 // ---------- Rook uit de loop ----------
-// De loop staat in de viewmodel-scène (eigen camera en FOV). We zoeken het punt in de wereld
-// dat op hetzelfde plekje op het scherm ligt, zodat de rook daar uit lijkt te komen en daarna
-// gewoon in de wereld blijft hangen als je beweegt of draait.
-const _mz = new THREE.Vector3(), _dir = new THREE.Vector3();
 let smokeAcc = 0, lastHeatShots = 0;
-function muzzleWorld(out) {
-  pistol.muzzle.getWorldPosition(_mz);                 // positie in de viewmodel-scène
-  const depth = _mz.distanceTo(vm.camera.position);
-  _mz.project(vm.camera);                              // naar schermcoördinaten
-  _dir.set(_mz.x, _mz.y, 0.5).unproject(camera).sub(camera.position).normalize();
-  return out.copy(camera.position).addScaledVector(_dir, depth * 0.9);
-}
+const muzzleWorld = out => pistol.muzzle.getWorldPosition(out);
 function updateSmoke(dt) {
   if (vm.current !== pistol || !pistol.ready) { lastHeatShots = pistol.heat; return; }
   const fwd = camera.getWorldDirection(new THREE.Vector3());
@@ -296,14 +303,17 @@ let acc = 0, last = performance.now();
 let lastStep = 0;
 let yaw = 0, pitch = 0;
 const camPos = new THREE.Vector3(), _feet = new THREE.Vector3();
+// houding
+let crouch = false, lean = 0, stamina = 1, staminaWait = 0;
+const wallRay = new THREE.Raycaster();
 
 function resize() {
   const w = host.clientWidth, h = host.clientHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
-  vm.resize(w / h);
+  post.setSize(w, h);
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize); resize(); applyQuality();
 
 function frame(now) {
   requestAnimationFrame(frame);
@@ -312,7 +322,7 @@ function frame(now) {
 
   // kijken
   const mouse = input.takeMouse();
-  const s = 0.0021 * input.settings.gevoeligheid;
+  const s = 0.0021 * input.settings.gevoeligheid * (camera.fov / BASE_FOV);   // bij richten (inzoomen) trager
   yaw -= mouse[0] * s;
   pitch = THREE.MathUtils.clamp(pitch - mouse[1] * s, -1.55, 1.55);
 
@@ -320,7 +330,10 @@ function frame(now) {
   if (active) {
     if (input.pressed('Digit1')) selectWeapon(owned[0]);
     if (input.pressed('Digit2')) selectWeapon(owned[1]);
-    if (input.pressed('KeyQ')) selectWeapon(lastWeapon);
+    if (input.pressed('KeyC')) {
+      if (!crouch) crouch = true;
+      else if (player.canStand()) crouch = false;
+    }
     if (input.wheel !== 0 && owned.length > 1) {
       const i = owned.indexOf(vm.pending || vm.current);
       selectWeapon(owned[(i + (input.wheel > 0 ? 1 : -1) + owned.length) % owned.length]);
@@ -339,15 +352,24 @@ function frame(now) {
   // natuurkunde met vaste stap
   if (active) {
     acc += dt;
+    const aiming = input.aimDown && vm.current === pistol;
+    const wantSprint = input.down('ShiftLeft', 'ShiftRight') && !aiming && stamina > 0.05;
+    if (wantSprint && crouch && player.canStand()) crouch = false;     // sprinten = opstaan
     const wish = {
       forward: (input.down('KeyW', 'ArrowUp') ? 1 : 0) - (input.down('KeyS', 'ArrowDown') ? 1 : 0),
       right: (input.down('KeyD', 'ArrowRight') ? 1 : 0) - (input.down('KeyA', 'ArrowLeft') ? 1 : 0),
-      sprint: input.down('ShiftLeft', 'ShiftRight'),
+      sprint: wantSprint && !crouch,
       jump: false,
+      speed: crouch ? P.CROUCH_SPEED : aiming ? P.WALK * 0.55 : undefined,
     };
+    if (crouch) wish.jump = false;
+    // uithoudingsvermogen: ca. 6 s sprinten, daarna even op adem komen
+    if (wish.sprint && wish.forward > 0 && player.horizontalSpeed() > P.WALK) { stamina = Math.max(0, stamina - dt / 6); staminaWait = 1.2; }
+    else if ((staminaWait -= dt) <= 0) stamina = Math.min(1, stamina + dt / 4);
+    player.height = crouch ? P.CROUCH_HEIGHT : P.HEIGHT;
     let jumpEdge = input.jumpPressed; input.jumpPressed = false;
     while (acc >= DT) {
-      wish.jump = jumpEdge; jumpEdge = false;
+      wish.jump = jumpEdge && !crouch; jumpEdge = false;
       player.step(DT, wish, yaw);
       acc -= DT;
     }
@@ -403,10 +425,10 @@ function frame(now) {
 
   // voetstappen
   const speed = player.horizontalSpeed();
-  const stride = speed > P.WALK + 0.5 ? 2.5 : 2.0;
+  const stride = crouch ? 1.3 : speed > P.WALK + 0.5 ? 2.4 : 1.9;
   if (player.onGround && player.distance - lastStep > stride) {
     lastStep = player.distance;
-    audio.play('step', { gain: 2.2 * Math.min(1, speed / P.WALK) });
+    audio.play('step', { gain: (crouch ? 1.1 : 2.2) * Math.min(1, speed / P.WALK), wet: 0.12 });
   }
   if (!player.onGround) lastStep = player.distance - stride * 0.5;
 
@@ -427,11 +449,25 @@ function frame(now) {
   player.lerpPos(alpha, camPos);
   const bobAmt = player.onGround ? Math.min(1, speed / P.WALK) : 0;
   const phase = (player.distance / stride) * Math.PI * 2;
-  camera.position.set(camPos.x, camPos.y + P.EYE + player.stepSmooth + landDip + Math.abs(Math.sin(phase / 2)) * 0.035 * bobAmt - 0.017 * bobAmt, camPos.z);
+  // leunen (Q/E): romp kantelt, camera schuift opzij, maar niet door een muur
+  const leanWant = active ? (input.down('KeyE') ? 1 : 0) - (input.down('KeyQ') ? 1 : 0) : 0;
+  lean += (leanWant - lean) * (1 - Math.exp(-dt * 9));
+  _feet.set(camPos.x, camPos.y + player.stepSmooth, camPos.z);
+  const eye = body.pose(dt, { feet: _feet, vel: player.vel, yaw, pitch, airborne: !player.onGround, crouch, lean });
+  if (eye) camera.position.copy(eye);
+  else camera.position.set(camPos.x, camPos.y + P.EYE + player.stepSmooth, camPos.z);
+  camera.position.y += landDip;
+  if (Math.abs(lean) > 0.01) {
+    const side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(Math.sign(lean));
+    wallRay.set(camera.position, side); wallRay.far = 0.6;
+    const wh = wallRay.intersectObjects(level.hittables, false)[0];
+    const room = wh ? Math.max(0, wh.distance - 0.15) : 0.45;
+    camera.position.addScaledVector(side, Math.min(0.3 * Math.abs(lean), room));
+    camera.position.y -= 0.05 * Math.abs(lean);
+  }
   // dood: camera zakt naar de grond en kantelt
   const fall = dead ? THREE.MathUtils.smoothstep(deadT, 0, 0.7) : 0;
-  camera.position.y -= fall * (P.EYE - 0.3);
-  body.update(dt, _feet.set(camPos.x, camPos.y + player.stepSmooth, camPos.z), player.vel, yaw, !player.onGround, !dead);
+  camera.position.y -= fall * (camera.position.y - camPos.y - 0.3);
 
   trauma = Math.max(0, trauma - dt * 1.6);
   const sh = trauma * trauma;
@@ -440,18 +476,31 @@ function frame(now) {
   camera.rotation.set(
     pitch + recoil + sh * 0.035 * n(1),
     yaw + sh * 0.035 * n(7),
-    sh * 0.05 * n(13) + Math.sin(phase / 2) * 0.004 * bobAmt + fall * 1.1
+    sh * 0.05 * n(13) + Math.sin(phase / 2) * 0.003 * bobAmt + fall * 1.1 - lean * 0.2
   );
   const sprinting = input.down('ShiftLeft', 'ShiftRight') && speed > P.WALK + 0.3;
-  fov += ((sprinting ? SPRINT_FOV : BASE_FOV) - fov) * (1 - Math.exp(-dt * 6));
+  const aimNow = active && input.aimDown && vm.current === pistol && !sprinting;
+  const aimA = vm.aimAmount;
+  const fovWant = (sprinting ? SPRINT_FOV : BASE_FOV) * (1 - aimA) + ADS_FOV * aimA;
+  fov += (fovWant - fov) * (1 - Math.exp(-dt * 10));
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  camera.updateMatrixWorld(true);
+
+  // muur vlak voor je? wapen terugtrekken
+  wallRay.setFromCamera(center, camera); wallRay.far = 0.95;
+  const wallHit = wallRay.intersectObjects(level.hittables, false)[0];
+  const wall = vm.current === pistol && wallHit ? THREE.MathUtils.clamp((0.95 - wallHit.distance) / 0.55, 0, 1) : 0;
 
   vm.update(dt, {
+    camera,
     mouseDX: mouse[0] * input.settings.gevoeligheid,
     mouseDY: mouse[1] * input.settings.gevoeligheid,
     bobPhase: phase / 2, bobAmount: bobAmt,
-    sprint: sprinting, land: landDip, kick: vmKick * 0.02, lookDown: -pitch,
+    sprint: sprinting, land: landDip, kick: vmKick * 0.02,
+    aim: aimNow && wall < 0.3, wall, lean,
   });
+  body.arms(vm.current, camera);
+  body.finish(!dead);
   updateSmoke(dt);
   effects.update(dt);
 
@@ -471,6 +520,7 @@ function frame(now) {
   }
   const cs = gun ? 1 + currentSpread() * 45 : 1;
   crosshair.style.transform = `translate(-50%, -50%) scale(${cs.toFixed(3)})`;
+  crosshair.style.opacity = (1 - aimA * 1.4).toFixed(2);     // over het vizier geen kruisje
   killTimer = Math.max(0, killTimer - dt);
   hitmarker.classList.toggle('kill', killTimer > 0);
   if (killTimer > 0) hitmarker.style.opacity = '1';
@@ -481,6 +531,7 @@ function frame(now) {
   hurtFlash = Math.max(0, hurtFlash - dt * 1.6);
   const lowHp = 1 - health / HEALTH.MAX;
   dmgEl.style.opacity = Math.min(1, hurtFlash * 0.9 + lowHp * lowHp * 0.7).toFixed(3);
+  lowHpVignette = lowHp * lowHp * 0.4 + (1 - stamina) * 0.12;
   hitdirT = Math.max(0, hitdirT - dt);
   hitdirEl.style.opacity = Math.min(1, hitdirT * 1.5).toFixed(3);
   hitdirEl.style.transform = `translate(-50%, -50%) rotate(${(-(hitdirAngle - (yaw + Math.PI))).toFixed(3)}rad)`;
@@ -488,9 +539,8 @@ function frame(now) {
 
   input.endFrame();
   renderer.clear();
-  renderer.render(scene, camera);
-  vm.render(renderer);
+  post.render(dt, Math.min(0.35, lowHpVignette));
 }
 requestAnimationFrame(frame);
 
-window.__vv = { scene, renderer, look: (y, p) => { yaw = y; pitch = p; }, enemies, body, get health() { return health; }, hurt, player, camera, vm, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };
+window.__vv = { scene, renderer, look: (y, p) => { yaw = y; pitch = p; }, enemies, body, get health() { return health; }, hurt, player, camera, vm, get crouch() { return crouch; }, setCrouch: c => { crouch = c; }, level, input, fists, pistol, owned, CANT, get pickup() { return pickup; } };

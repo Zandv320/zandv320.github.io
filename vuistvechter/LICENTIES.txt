@@ -7,8 +7,8 @@ models/pistol.glb      "animated pistol" door DJMaesen (sketchfab.com/bumstrum),
                        Aangepast: texturen verkleind naar 1024 px en omgezet naar WebP.
 
 Adobe Mixamo (gratis te gebruiken in games, ook commercieel; zie mixamo.com en de Adobe-voorwaarden):
-models/enemy.glb       personage "SWAT" (Ch15) met animaties van Mixamo
-models/player.glb      personage Ch35 met animaties van Mixamo
+models/enemy.glb       personage "SWAT" (Ch15) met animaties van Mixamo (o.a. pistool-loopset, hurken)
+models/player.glb      personage Ch35 met animaties van Mixamo (o.a. pistool-loopset, hurken, boksen)
                        Beide omgezet van FBX naar glTF, texturen verkleind naar 1024 px (WebP),
                        mesh vereenvoudigd en gecomprimeerd met meshopt.
 
@@ -24,3 +24,4 @@ textures/concrete_*    Concrete031 van ambientCG.com
 textures/planks_*      Planks012 van ambientCG.com
 textures/fx/*          mondingsflits en rook: Kenney Particle Pack (kenney.nl / opengameart.org), ingekleurd
 sounds: kogelfluit en treffer bij de speler zijn in de browser gesynthetiseerd
+galm van de hal: in de browser gesynthetiseerde impulsrespons

@@ -9,12 +9,14 @@ export const P = {
   HEIGHT: 1.8,
   EYE: 1.65,
   STEP: 0.45,
-  WALK: 4.6,
-  SPRINT: 7.2,
-  ACCEL: 11,          // op de grond
+  CROUCH_HEIGHT: 1.2,
+  WALK: 4.0,
+  SPRINT: 6.6,
+  CROUCH_SPEED: 1.9,
+  ACCEL: 6.5,         // op de grond (lager = meer gewicht, je komt langzamer op gang)
   AIR_ACCEL: 2.2,     // in de lucht: een beetje bijsturen
   AIR_MAX: 1.0,       // max snelheid die je in de lucht kunt "toevoegen" per richting
-  FRICTION: 7.5,
+  FRICTION: 6.2,
   STOP_SPEED: 1.6,
   GRAVITY: 21,
   JUMP_V: 7.0,        // ~1,15 m hoog
@@ -28,6 +30,7 @@ export class Player {
     this.pos = spawn.clone();
     this.spawn = spawn.clone();
     this.prevPos = spawn.clone();
+    this.height = P.HEIGHT;     // lager tijdens hurken
     this.vel = new THREE.Vector3();
     this.colliders = colliders;
     this.onGround = true;
@@ -98,7 +101,7 @@ export class Player {
   collideHorizontal() {
     const p = this.pos, R = P.RADIUS;
     for (const c of this.colliders) {
-      if (p.y + P.HEIGHT <= c.bottom) continue;               // hangt boven ons hoofd
+      if (p.y + this.height <= c.bottom) continue;               // hangt boven ons hoofd
       const cx = THREE.MathUtils.clamp(p.x, c.minX, c.maxX);
       const cz = THREE.MathUtils.clamp(p.z, c.minZ, c.maxZ);
       let dx = p.x - cx, dz = p.z - cz;
@@ -149,9 +152,9 @@ export class Player {
     // plafond / onderkant van objecten
     if (v.y > 0) {
       for (const c of this.colliders) {
-        if (c.bottom < oldY + P.HEIGHT - 0.01) continue;
+        if (c.bottom < oldY + this.height - 0.01) continue;
         if (p.x + P.RADIUS * 0.8 < c.minX || p.x - P.RADIUS * 0.8 > c.maxX || p.z + P.RADIUS * 0.8 < c.minZ || p.z - P.RADIUS * 0.8 > c.maxZ) continue;
-        if (newY + P.HEIGHT > c.bottom) { newY = c.bottom - P.HEIGHT; v.y = 0; }
+        if (newY + this.height > c.bottom) { newY = c.bottom - this.height; v.y = 0; }
       }
     }
 
@@ -174,6 +177,17 @@ export class Player {
   // geïnterpoleerde positie voor de camera
   lerpPos(alpha, out) {
     return out.lerpVectors(this.prevPos, this.pos, alpha);
+  }
+
+  // kan ik hier rechtop staan (niets boven mijn hoofd)?
+  canStand() {
+    const p = this.pos;
+    for (const c of this.colliders) {
+      if (c.bottom < p.y + 0.3 || c.bottom > p.y + P.HEIGHT) continue;
+      if (p.x + P.RADIUS < c.minX || p.x - P.RADIUS > c.maxX || p.z + P.RADIUS < c.minZ || p.z - P.RADIUS > c.maxZ) continue;
+      return false;
+    }
+    return true;
   }
 
   horizontalSpeed() { return Math.hypot(this.vel.x, this.vel.z); }

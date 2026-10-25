@@ -19,6 +19,21 @@ export class Audio {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
     this.master.connect(this.ctx.destination);
+    // galm van de betonnen hal: gesynthetiseerde impulsrespons (ruis met exponentieel verval,
+    // hoge tonen sterven sneller uit), als "send" naast het droge geluid
+    const sr = this.ctx.sampleRate, len = Math.floor(sr * 1.9);
+    const ir = this.ctx.createBuffer(2, len, sr);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c); let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / sr, n = Math.random() * 2 - 1;
+        lp += (n - lp) * Math.max(0.05, 0.9 * Math.exp(-t * 2.2));     // steeds doffer
+        d[i] = lp * Math.exp(-t * 3.4) * (t < 0.012 ? t / 0.012 : 1);
+      }
+    }
+    this.reverb = this.ctx.createConvolver(); this.reverb.buffer = ir;
+    this.reverbGain = this.ctx.createGain(); this.reverbGain.gain.value = 0.9;
+    this.reverb.connect(this.reverbGain).connect(this.master);
 
     const names = ['hit1', 'hit2', 'hit3', 'hit4', 'hit5', 'jump', 'land',
       'step1', 'step2', 'step3', 'step4', 'step5', 'step6', 'step7', 'step8',
@@ -38,7 +53,7 @@ export class Audio {
   }
 
   // pan: -1 links .. 1 rechts; lowpass: kantelfrequentie in Hz (verre geluiden klinken doffer)
-  play(name, { gain = 1, rate = 1, jitter = 0.06, pan = 0, lowpass = 0 } = {}) {
+  play(name, { gain = 1, rate = 1, jitter = 0.06, pan = 0, lowpass = 0, wet = 0 } = {}) {
     if (!this.ctx) return;
     // "hit" of "step" kiest een willekeurige variant
     const opts = Object.keys(this.buffers).filter(k => k === name || k.replace(/\d+$/, '') === name);
@@ -53,6 +68,7 @@ export class Audio {
     if (lowpass > 0) { const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lowpass; node = node.connect(f); }
     if (pan && this.ctx.createStereoPanner) { const p = this.ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); node = node.connect(p); }
     node.connect(g).connect(this.master);
+    if (wet > 0 && this.reverb) { const w = this.ctx.createGain(); w.gain.value = wet; g.connect(w).connect(this.reverb); }
     src.start();
   }
 

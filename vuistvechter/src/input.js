@@ -10,6 +10,7 @@ export class Input {
     this.mouseDY = 0;
     this.locked = false;
     this.mouseDown = false;
+    this.aimDown = false;       // rechtermuisknop: richten
     this.jumpPressed = false;   // wordt door de game "geconsumeerd"
     this.punchPressed = false;
     this.edges = new Set();     // toetsen die deze frame zijn ingedrukt
@@ -26,7 +27,7 @@ export class Input {
       this.keys.add(e.code);
     });
     addEventListener('keyup', e => this.keys.delete(e.code));
-    addEventListener('blur', () => { this.keys.clear(); this.mouseDown = false; });
+    addEventListener('blur', () => { this.keys.clear(); this.mouseDown = false; this.aimDown = false; });
 
     addEventListener('mousemove', e => {
       if (!this.locked) return;
@@ -36,15 +37,18 @@ export class Input {
       this.mouseDY += e.movementY;
     });
     addEventListener('mousedown', e => {
-      if (!this.locked || e.button !== 0) return;
+      if (!this.locked) return;
+      if (e.button === 2) { this.aimDown = true; return; }
+      if (e.button !== 0) return;
       this.mouseDown = true; this.punchPressed = true;
     });
+    addEventListener('contextmenu', e => { if (this.locked) e.preventDefault(); });
     addEventListener('wheel', e => { if (this.locked) this.wheel += Math.sign(e.deltaY); }, { passive: true });
-    addEventListener('mouseup', e => { if (e.button === 0) this.mouseDown = false; });
+    addEventListener('mouseup', e => { if (e.button === 0) this.mouseDown = false; if (e.button === 2) this.aimDown = false; });
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
-      if (!this.locked) { this.keys.clear(); this.mouseDown = false; }
+      if (!this.locked) { this.keys.clear(); this.mouseDown = false; this.aimDown = false; }
       this.onLockChange?.(this.locked);
     });
   }

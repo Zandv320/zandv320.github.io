@@ -15,7 +15,8 @@ export function loadGLTF(url) {
 }
 
 // natuurlijke loopsnelheid van elke clip (m/s), gemeten aan de wortelbeweging in Mixamo
-const NATURAL = { walk: 2.6, run: 4.9, walkBack: 1.45, runBack: 3.4, strafeL: 2.2, strafeR: 2.5 };
+const NATURAL = { walk: 2.6, run: 4.9, walkBack: 1.45, runBack: 3.4, strafeL: 2.2, strafeR: 2.5, crouchWalk: 1.3, crouchBack: 1.1, crouchL: 1.2, crouchR: 1.2 };
+const CROUCH = { idle: 'crouchIdle', walk: 'crouchWalk', run: 'crouchWalk', walkBack: 'crouchBack', runBack: 'crouchBack', strafeL: 'crouchL', strafeR: 'crouchR' };
 
 export function cloneCharacter(gltf) {
   const model = SkeletonUtils.clone(gltf.scene);
@@ -66,7 +67,7 @@ export class Locomotion {
   }
 
   // vx = naar rechts, vz = naar voren (m/s); airborne; extra: 'shoot' als hij stilstaat en schiet
-  update(dt, vx, vz, { airborne = false, shooting = false } = {}) {
+  update(dt, vx, vz, { airborne = false, shooting = false, crouch = false } = {}) {
     if (this.locked) {
       this.locked.until -= dt;
       if (this.locked.until > 0 || this.locked.permanent) { this.mixer.update(dt); return; }
@@ -82,7 +83,11 @@ export class Locomotion {
       } else name = vx > 0 ? 'strafeR' : 'strafeL';
       ts = THREE.MathUtils.clamp(speed / NATURAL[name], 0.6, 1.7);
     } else if (shooting && this.actions.shoot) name = 'shoot';
-    this.play(name, 0.22, ts);
+    if (crouch && !airborne && this.actions[CROUCH[name]]) {
+      name = CROUCH[name];
+      ts = speed > 0.4 ? THREE.MathUtils.clamp(speed / NATURAL[name], 0.6, 1.6) : 1;
+    }
+    this.play(name, 0.25, ts);
     if (this.current) this.current.timeScale = ts;
     this.mixer.update(dt);
   }

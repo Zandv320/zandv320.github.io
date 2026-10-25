@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vuistvechter</title>
-<meta name="description" content="Vuistvechter: een first-person shooter in opbouw. Pak het pistool en schakel de twee bewakers in de hal uit.">
+<meta name="description" content="Vuistvechter: een realistische first-person shooter in opbouw. Echte first person met je hele lichaam, richten over het vizier, hurken en leunen tegen twee slimme bewakers.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Oswald:wght@600&display=swap">
 <style>
   /* Layout: full-screen WebGL canvas with a thin HUD layer on top. Single dark look by choice. */
@@ -85,6 +85,7 @@
   #dead div { font-family: var(--font-display); font-size: clamp(28px, 6vw, 48px); text-transform: uppercase; letter-spacing: .06em; color: var(--fg); text-align: center; }
   #dead small { display: block; font-family: var(--font-body); font-size: 14px; letter-spacing: .02em; text-transform: none; color: var(--muted); margin-top: 8px; }
   input[type=range] { accent-color: var(--accent); width: 100%; min-width: 0; }
+  select { font: inherit; font-size: 13px; color: var(--fg); background: #1a1d21; border: 1px solid #3a3d42; border-radius: 3px; padding: 4px 6px; }
 </style>
 </head>
 <body>
@@ -108,15 +109,19 @@
       <kbd>W A S D</kbd><span>Lopen</span>
       <kbd>Muis</kbd><span>Rondkijken</span>
       <kbd>Linkerklik</kbd><span>Stoten of schieten</span>
+      <kbd>Rechterklik</kbd><span>Richten over het vizier (vasthouden)</span>
+      <kbd>C</kbd><span>Hurken</span>
+      <kbd>Q E</kbd><span>Leunen naar links of rechts</span>
       <kbd>R</kbd><span>Herladen</span>
       <kbd>J</kbd><span>Wapen inspecteren</span>
-      <kbd>1 2 Q</kbd><span>Wapen wisselen (of het muiswiel)</span>
-      <kbd>Shift</kbd><span>Sprinten</span>
+      <kbd>1 2</kbd><span>Wapen wisselen (of het muiswiel)</span>
+      <kbd>Shift</kbd><span>Sprinten (zolang je adem hebt)</span>
       <kbd>Spatie</kbd><span>Springen</span>
     </div>
     <div class="settings">
       <label for="sens">Muisgevoeligheid <input id="sens" type="range" min="0.2" max="3" step="0.05"> <output id="sens-out"></output></label>
       <label for="vol">Volume <input id="vol" type="range" min="0" max="1" step="0.05"> <output id="vol-out"></output></label>
+      <label for="quality">Graphics <select id="quality"><option value="hoog">Hoog</option><option value="gemiddeld">Gemiddeld</option><option value="laag">Laag</option></select> <output></output></label>
     </div>
     <button class="go" id="start">Klik om te spelen</button>
   </div>

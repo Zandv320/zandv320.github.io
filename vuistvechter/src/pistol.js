@@ -56,6 +56,18 @@ export class Pistol {
     model.position.set(0.04, -0.2, -0.12);
     this.root.add(model);
     this.model = model;
+    // Het model is groter dan echt (zo zag het er goed uit met een eigen, smalle camera). Nu het in
+    // de wereld hangt, schalen we het rond het oog naar ware grootte: op het scherm blijft het gelijk,
+    // maar het wapen is ~21 cm en de handen van je lichaam kunnen het echt vastpakken.
+    {
+      this.root.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert();
+      const sb = new THREE.Box3().setFromObject(model.getObjectByName('slide_beretta_0'), true).applyMatrix4(inv);
+      const size = sb.getSize(new THREE.Vector3());
+      const k = 0.2 / Math.max(size.x, size.y, size.z);       // slede van een Beretta 92 is ~20 cm
+      model.scale.multiplyScalar(k); model.position.multiplyScalar(k);
+      this.realScale = k;
+    }
 
     // vuurmond: voorkant van de slede, opgezocht in rustpose
     this.mixer = new THREE.AnimationMixer(model);
@@ -100,7 +112,74 @@ export class Pistol {
     this.heat = 0;           // loopt op bij snel schieten; boven een drempel gaat de loop roken
 
     this.buildInspect(full);
+    this.buildFirstPerson();
     this.ready = true;
+  }
+
+  // ---------- Echte first person ----------
+  // De armen van dit model worden niet getekend: je eigen lichaam pakt het pistool vast.
+  // Hier bepalen we het "geweerframe" (z = loop, y = boven), de greep van de linkerhand en
+  // de houding om over het vizier te richten.
+  buildFirstPerson() {
+    const model = this.model;
+    model.traverse(o => { if (o.isMesh && o.material.name === 'arms') o.visible = false; });
+    this.actions.ambient.reset().play(); this.mixer.update(0);
+    this.root.updateMatrixWorld(true);
+    const rootInv = new THREE.Matrix4().copy(this.root.matrixWorld).invert();
+    const rel = o => new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld);
+    const base = model.getObjectByName('base');
+    this.base = base;
+    const baseRel = rel(base), baseInv = baseRel.clone().invert();
+    // loop: van midden slede naar vuurmond; boven: van de greep naar de slede
+    const slideBox = new THREE.Box3().setFromObject(model.getObjectByName('slide_beretta_0'), true).applyMatrix4(rootInv);
+    const gunBox = new THREE.Box3().setFromObject(model.getObjectByName('pistol'), true).applyMatrix4(rootInv);
+    // frame met greep (zonder losse hulzen/kogels) bepaalt waar "onder" is
+    const frameBox = new THREE.Box3().setFromObject(model.getObjectByName('base_beretta_0'), true).applyMatrix4(rootInv);
+    const muzzleRoot = new THREE.Vector3(); this.muzzle.getWorldPosition(muzzleRoot).applyMatrix4(rootInv);
+    const slideC = slideBox.getCenter(new THREE.Vector3()), gunC = frameBox.getCenter(new THREE.Vector3());
+    const zAxis = muzzleRoot.clone().sub(slideC).normalize();
+    const yAxis = slideC.clone().sub(gunC); yAxis.addScaledVector(zAxis, -yAxis.dot(zAxis)).normalize();
+    const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis);
+    const gunRootQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis));
+    const baseRootQ = new THREE.Quaternion(); baseRel.decompose(new THREE.Vector3(), baseRootQ, new THREE.Vector3());
+    this.gunOffQ = baseRootQ.clone().invert().multiply(gunRootQ);           // geweerframe t.o.v. 'base'
+    this.gunCenter = gunC.clone().applyMatrix4(baseInv);                     // in 'base'-ruimte
+    // lengte van het wapen in meters (langs de loop)
+    const corners = [];
+    for (const x of [gunBox.min.x, gunBox.max.x]) for (const y of [gunBox.min.y, gunBox.max.y]) for (const z of [gunBox.min.z, gunBox.max.z]) corners.push(new THREE.Vector3(x, y, z).dot(zAxis));
+    this.gunLength = Math.max(...corners) - Math.min(...corners);
+
+    // linkerhand van het model t.o.v. het geweerframe (in rust)
+    this.handL = model.getObjectByName('L_wrist_03');
+    this.handR = model.getObjectByName('R_wrist_028');
+    const gf = this.gunFrame(new THREE.Vector3(), new THREE.Quaternion());
+    const lp = new THREE.Vector3(), lq = new THREE.Quaternion();
+    this.handL.getWorldPosition(lp); this.handL.getWorldQuaternion(lq);
+    const gqi = gf.quat.clone().invert();
+    this.leftRel = { pos: lp.sub(gf.pos).applyQuaternion(gqi), quat: gqi.clone().multiply(lq) };
+    this.rightRel = { quat: gqi.clone().multiply(this.handR.getWorldQuaternion(new THREE.Quaternion())) };
+    // knokkel van de middelvinger: daaromheen sluit de hand om de greep
+    this.knuckleR = model.getObjectByName('R_middle1_037');
+    this.knuckleL = model.getObjectByName('L_middle1_012');
+
+    // richten: vizier (achterkant bovenop de slede) recht voor het oog, loop naar het kruisje
+    let top = 0;
+    for (const x of [slideBox.min.x, slideBox.max.x]) for (const y of [slideBox.min.y, slideBox.max.y]) for (const z of [slideBox.min.z, slideBox.max.z]) top = Math.max(top, new THREE.Vector3(x, y, z).sub(slideC).dot(yAxis));
+    const sight = slideC.clone().addScaledVector(yAxis, top + 0.004);
+    sight.addScaledVector(zAxis, -this.gunLength * 0.38);
+    const tiltInv = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.04, 0, 0));
+    const want = tiltInv.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    const q = want.multiply(gunRootQ.clone().invert());
+    const target = new THREE.Vector3(0, 0, -0.38).applyQuaternion(tiltInv);
+    this.adsPose = { quat: q, pos: target.sub(sight.clone().applyQuaternion(q)) };
+  }
+
+  // wereldpositie (midden van het wapen) en -oriëntatie van het geweerframe
+  gunFrame(pos, quat) {
+    this.base.updateWorldMatrix(true, false);
+    this.base.getWorldQuaternion(quat).multiply(this.gunOffQ);
+    pos.copy(this.gunCenter).applyMatrix4(this.base.matrixWorld);
+    return { pos, quat };
   }
 
   // ---------- Inspecteren (J): slede een stukje naar achter om te zien of er een patroon in de kamer zit ----------
