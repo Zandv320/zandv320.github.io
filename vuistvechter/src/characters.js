@@ -11,7 +11,7 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
 // versienummer achter de modellen: na een update haalt de browser zeker de nieuwe versie op
 // (GitHub Pages laat bestanden 10 minuten in de cache staan)
-export const ASSET_VERSION = 74;
+export const ASSET_VERSION = 75;
 export function loadGLTF(url) {
   if (!cache[url]) cache[url] = loader.loadAsync(`${url}?v=${ASSET_VERSION}`);
   return cache[url];
@@ -135,6 +135,8 @@ export async function attachPistol(model, bones, clipIdle) {
   const c = new THREE.Vector3(); let n = 0;
   for (const f of ['Middle', 'Ring', 'Pinky']) for (let i = 1; i <= 3; i++) { const b = bones[`RightHand${f}${i}`]; if (b) { c.add(loc(b)); n++; } }
   c.divideScalar(Math.max(1, n));
+  // wijsvinger: tweede kootje hoort op de trekker te liggen
+  const index = bones.RightHandIndex2 ? loc(bones.RightHandIndex2).lerp(loc(bones.RightHandIndex3 || bones.RightHandIndex2), 0.3) : null;
   mixer.stopAllAction(); mixer.uncacheRoot(model);
 
   // richting: in de richthouding wijst de loop recht naar voren (+z van het model) en de bovenkant
@@ -144,6 +146,13 @@ export async function attachPistol(model, bones, clipIdle) {
   const R = new THREE.Quaternion().setFromRotationMatrix(basis(fwdH, upH).multiply(basis(g.fwd, g.up).invert()));
   const k = g.scale;                                         // naar ware grootte (slede 20 cm)
   const t = c.clone().sub(g.gripCenter.clone().multiplyScalar(k).applyQuaternion(R));
+  // wapen langs zijn eigen as omhoog/omlaag schuiven tot de trekker bij de wijsvinger zit
+  if (index && g.trigger) {
+    const trig = g.trigger.clone().multiplyScalar(k).applyQuaternion(R).add(t);
+    const upH = g.up.clone().applyQuaternion(R);
+    const dy = THREE.MathUtils.clamp(index.clone().sub(trig).dot(upH), -0.03, 0.03);
+    t.addScaledVector(upH, dy);
+  }
 
   const holder = new THREE.Group();                          // in de hand, in meters
   const ws = new THREE.Vector3(); hand.getWorldScale(ws);
@@ -183,6 +192,7 @@ function measureGun(gun) {
     return ax;
   };
   const slide = verts('slide_beretta_0'), frame = verts('base_beretta_0');
+  const trigger = gun.getObjectByName('trigger_beretta_0') ? mean(verts('trigger_beretta_0')) : null;
   const sc = mean(slide), fc = mean(frame);
   const box = new THREE.Box3().setFromPoints(slide), sz = box.getSize(new THREE.Vector3());
   const seed = sz.x >= sz.y && sz.x >= sz.z ? new THREE.Vector3(1, 0, 0) : sz.y >= sz.z ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
@@ -205,7 +215,7 @@ function measureGun(gun) {
   const muzzle = sc.clone().addScaledVector(fwd, hi + 0.01 * slideLen);
   const slideRear = sc.clone().addScaledVector(fwd, lo + 0.08 * slideLen).addScaledVector(up, sMax);
   const gripBottom = gripCenter.clone().addScaledVector(gripAxis, 0.32 * slideLen);
-  return { fwd, up, left, gripCenter, gripAxis, muzzle, slideRear, gripBottom, scale: 0.2 / slideLen };
+  return { fwd, up, left, gripCenter, gripAxis, muzzle, slideRear, gripBottom, trigger, scale: 0.2 / slideLen };
 }
 
 // onzichtbare hitboxen aan de botten; userData.part bepaalt de schade
