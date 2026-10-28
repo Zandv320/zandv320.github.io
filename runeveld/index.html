@@ -111,6 +111,25 @@ body.touch #mobiel{display:flex}
 .kskillicoon{font-size:22px;width:32px;text-align:center}
 .kskill p{margin:6px 0 2px;font-size:12.5px;color:#d7dee6}.kskill em{font-style:normal;color:#9fe3b0;font-size:11.5px}
 @media (max-width:600px){.kstatgrid{grid-template-columns:1fr}}
+/* ---------- admin ---------- */
+#admin{position:fixed;right:max(12px,env(safe-area-inset-right));top:max(56px,env(safe-area-inset-top));bottom:max(12px,env(safe-area-inset-bottom));width:min(340px,calc(100vw - 24px));overflow:auto;padding:14px;z-index:8;font-size:12.5px}
+#admin h3{margin:0;font-size:17px}
+#admin details{border-top:1px solid var(--rand);padding:6px 0}
+#admin summary{cursor:pointer;font-weight:700;padding:6px 0;list-style:none;display:flex;justify-content:space-between}
+#admin summary:after{content:'+';color:var(--dim)}#admin details[open] summary:after{content:'−'}
+.arij{display:flex;align-items:center;gap:8px;padding:4px 0}
+.arij label{flex:1;color:var(--dim)}.arij input[type=range]{flex:1.4}
+.arij input[type=number],.arij input[type=text],.arij select{width:90px;padding:5px 7px;border-radius:8px;border:1px solid var(--rand);background:rgba(0,0,0,.45);color:#fff;font:inherit}
+.arij select{width:auto;flex:1}
+.arij output{width:46px;text-align:right;font-variant-numeric:tabular-nums}
+.aknop{padding:6px 10px;border-radius:8px;border:1px solid var(--rand);background:rgba(255,255,255,.08);white-space:nowrap}
+.aknop:hover{border-color:var(--goud)}.aknop.rood{border-color:rgba(248,113,113,.5);color:#fca5a5}
+.aknop.aan{background:rgba(255,200,87,.2);border-color:var(--goud)}
+.aknoppen{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}
+.atabel{width:100%;border-collapse:collapse;font-size:11.5px}.atabel td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+.atabel td.r{text-align:right;font-variant-numeric:tabular-nums}
+#admin textarea{width:100%;height:90px;font:11px monospace;background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--rand);border-radius:8px;padding:6px}
+.amono{font-family:monospace;font-size:11px;color:var(--dim);word-break:break-all}
 /* ---------- inventory ---------- */
 #inventaris{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:16px;z-index:7}
 #inventaris h3{margin:0;font-size:18px}
@@ -170,6 +189,7 @@ body.touch #mobiel{display:flex}
   <div id="rechts">
     <div class="paneel" title="Zeny">🪙 <b id="h-zeny">0</b></div>
     <div class="paneel"><span class="stip" id="h-stip"></span><span id="h-online">offline</span></div>
+    <button class="paneel" id="a-knop" title="Admin (Ctrl+Shift+A)" hidden>🛠️</button>
     <button class="paneel" id="i-knop" title="Inventory (I)">🎒</button>
     <button class="paneel" id="k-knop" title="Character (C)">👤</button>
     <a class="paneel" href="../" title="Back to all games">⌂</a>
@@ -209,6 +229,11 @@ body.touch #mobiel{display:flex}
     <p class="ktip" id="k-skillpunten"></p>
     <div class="kskills" id="k-skilllijst"></div>
   </div>
+</div>
+
+<div id="admin" class="paneel" hidden>
+  <div class="kkop"><div><h3>Admin</h3><small>Ctrl+Shift+A · local only, nothing here is secret</small></div><button class="ksluit" id="a-sluit" title="Close">✕</button></div>
+  <div id="a-inhoud"></div>
 </div>
 
 <div id="inventaris" class="paneel" hidden>
