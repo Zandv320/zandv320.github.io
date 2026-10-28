@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="Runeveld: een top-down MMORPG in je browser in de stijl van Ragnarok Online. Begin als zwaardvechter op het dorpsplein, versla monsters en speel samen met anderen.">
+<meta name="description" content="Runeveld: a top-down MMORPG in your browser in the style of Ragnarok Online. Start as a swordsman on the village square, defeat monsters and play together with others.">
 <meta name="theme-color" content="#101820">
 <title>Runeveld</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +37,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 #hud{position:fixed;inset:0;pointer-events:none}
 #hud>*{pointer-events:auto}
 #char{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));width:230px;padding:10px 12px}
-#char .kop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+#char .kop{display:flex;justify-content:space-between;align-items:baseline;gap:4px 8px;margin-bottom:4px;flex-wrap:wrap}
 #char b{font-size:15px;overflow:hidden;text-overflow:ellipsis}#char small{color:var(--dim);white-space:nowrap}
 .bar{position:relative;height:12px;background:rgba(0,0,0,.5);border-radius:6px;overflow:hidden;margin-top:5px}
 .bar i{position:absolute;inset:0;transform-origin:left;transition:transform .15s;background:linear-gradient(var(--c1),var(--c2))}
@@ -155,33 +155,33 @@ body.touch #mobiel{display:flex}
     <div class="paneel" title="Zeny">🪙 <b id="h-zeny">0</b></div>
     <div class="paneel"><span class="stip" id="h-stip"></span><span id="h-online">offline</span></div>
     <button class="paneel" id="k-knop" title="Character (C)">👤</button>
-    <a class="paneel" href="../" title="Terug naar de Speelhal">⌂</a>
+    <a class="paneel" href="../" title="Back to all games">⌂</a>
   </div>
   <div id="doelkader" class="paneel" hidden><b id="d-naam"></b> <small id="d-lvl"></small><div class="bar hp"><i id="d-hp"></i><span id="d-hpt"></span></div></div>
   <div id="melding"></div>
   <div id="chat">
     <div id="log" class="paneel"></div>
-    <form id="chatin" autocomplete="off"><input id="chattekst" maxlength="120" placeholder="Druk op Enter om te chatten"></form>
+    <form id="chatin" autocomplete="off"><input id="chattekst" maxlength="120" placeholder="Press Enter to chat"></form>
   </div>
   <div id="balk" class="paneel">
-    <button class="slot" data-skill="beuk" title="Beuk: 2,3× schade op je doelwit"><kbd>1</kbd><span class="ic">⚔️</span><span class="nm">Beuk</span><i class="cd"></i></button>
-    <button class="slot" data-skill="vuurkring" title="Vuurkring: raakt alle monsters om je heen"><kbd>2</kbd><span class="ic">🔥</span><span class="nm">Vuurkring</span><i class="cd"></i></button>
-    <button class="slot" data-skill="provocatie" title="Provocatie: lokt monsters in de buurt naar je toe"><kbd>3</kbd><span class="ic">😤</span><span class="nm">Provoceer</span><i class="cd"></i></button>
-    <button class="slot" data-skill="drank" title="Rode drank: herstelt 45 HP"><kbd>4</kbd><span class="ic">🧪</span><span class="nm">Drank</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
-    <button class="slot" data-skill="zit" title="Zitten: sneller herstellen"><kbd>X</kbd><span class="ic">🪑</span><span class="nm">Zitten</span><i class="cd"></i></button>
+    <button class="slot" data-skill="beuk" title="Bash: a hard blow to your target"><kbd>1</kbd><span class="ic">⚔️</span><span class="nm">Bash</span><i class="cd"></i></button>
+    <button class="slot" data-skill="vuurkring" title="Magnum Break: hits every monster around you"><kbd>2</kbd><span class="ic">🔥</span><span class="nm">Magnum</span><i class="cd"></i></button>
+    <button class="slot" data-skill="provocatie" title="Provoke: draws nearby monsters to you"><kbd>3</kbd><span class="ic">😤</span><span class="nm">Provoke</span><i class="cd"></i></button>
+    <button class="slot" data-skill="drank" title="Red potion: restores 45 HP"><kbd>4</kbd><span class="ic">🧪</span><span class="nm">Potion</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
+    <button class="slot" data-skill="zit" title="Sit: recover faster"><kbd>X</kbd><span class="ic">🪑</span><span class="nm">Sit</span><i class="cd"></i></button>
   </div>
-  <div id="mobiel"><button id="m-chat" title="Chat">💬</button><button id="m-zoomin" title="Inzoomen">+</button><button id="m-zoomuit" title="Uitzoomen">−</button></div>
+  <div id="mobiel"><button id="m-chat" title="Chat">💬</button><button id="m-zoomin" title="Zoom in">+</button><button id="m-zoomuit" title="Zoom out">−</button></div>
 </div>
 
 <div id="karakter" class="paneel" hidden>
-  <div class="kkop"><div><h3 id="k-naam">—</h3><small id="k-sub"></small></div><button class="ksluit" id="k-sluit" title="Sluiten (C)">✕</button></div>
-  <div class="ktabs"><button class="ktab actief" data-tab="uitrusting">Uitrusting<span class="kbadge" hidden></span></button><button class="ktab" data-tab="stats">Stats<span class="kbadge" hidden></span></button><button class="ktab" data-tab="skills">Skills<span class="kbadge" hidden></span></button></div>
+  <div class="kkop"><div><h3 id="k-naam">—</h3><small id="k-sub"></small></div><button class="ksluit" id="k-sluit" title="Close (C)">✕</button></div>
+  <div class="ktabs"><button class="ktab actief" data-tab="uitrusting">Equipment<span class="kbadge" hidden></span></button><button class="ktab" data-tab="stats">Stats<span class="kbadge" hidden></span></button><button class="ktab" data-tab="skills">Skills<span class="kbadge" hidden></span></button></div>
   <div class="kgrid" id="k-tab-uitrusting">
     <div class="kpreview"><canvas id="k-canvas" width="144" height="160"></canvas><div class="kstats" id="k-stats"></div></div>
     <div>
       <div class="kslots" id="k-slots"></div>
-      <div class="ktas"><h4>Tas</h4><div class="kitems" id="k-tas"></div></div>
-      <p class="ktip">Klik op een voorwerp in je tas om het aan te doen, en op een slot om het weer af te doen. Zonder kleding sta je in je onderbroek.</p>
+      <div class="ktas"><h4>Bag</h4><div class="kitems" id="k-tas"></div></div>
+      <p class="ktip">Click an item in your bag to equip it, and a slot to take it off again. Without clothes you stand in your underwear.</p>
     </div>
   </div>
   <div id="k-tab-stats" hidden>
@@ -195,25 +195,25 @@ body.touch #mobiel{display:flex}
 </div>
 
 <div id="winkel" class="paneel" hidden>
-  <h3>Koopman Bram</h3>
-  <p>"Welkom in Runeveld, avonturier. Een drankje voor onderweg, of iets stevigers om aan te trekken?"</p>
+  <h3>Merchant Bram</h3>
+  <p>"Welcome to Runeveld, adventurer. A potion for the road, or something sturdier to wear?"</p>
   <div id="w-lijst"></div>
-  <div class="rij"><span>Je hebt <b id="w-zeny">0</b> zeny</span><button class="knop alt" id="sluit">Sluiten</button></div>
+  <div class="rij"><span>You have <b id="w-zeny">0</b> zeny</span><button class="knop alt" id="sluit">Close</button></div>
 </div>
 
 <div id="start">
   <div class="kaart paneel">
     <h1>Runeveld</h1>
-    <div class="sub">Top-down MMORPG · het dorpsplein</div>
-    <label for="naam">Naam van je held</label>
-    <input id="naam" maxlength="14" placeholder="Bijv. Aria" spellcheck="false">
-    <div class="klas"><div class="icoon">⚔️</div><div><b>Zwaardvechter</b><small>Sterk van dichtbij. Vaardigheden: Beuk en Vuurkring.</small></div></div>
-    <button id="speel" class="knop">Speel</button>
-    <div class="hulp"><kbd>klik</kbd> lopen / aanvallen · <kbd>WASD</kbd> lopen · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> vaardigheden · <kbd>4</kbd> drank · <kbd>X</kbd> zitten · <kbd>C</kbd> character · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> of rechtermuisknop camera draaien · <kbd>scroll</kbd> zoom</div>
-    <a class="terug" href="../">← Speelhal</a>
+    <div class="sub">Top-down MMORPG · the village square</div>
+    <label for="naam">Your hero's name</label>
+    <input id="naam" maxlength="14" placeholder="e.g. Aria" spellcheck="false">
+    <div class="klas"><div class="icoon">⚔️</div><div><b>Swordsman</b><small>Strong up close. Skills: Bash and Magnum Break.</small></div></div>
+    <button id="speel" class="knop">Play</button>
+    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
+    <a class="terug" href="../">← All games</a>
   </div>
 </div>
-<div id="laden">Runeveld laden…</div>
+<div id="laden">Loading Runeveld…</div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

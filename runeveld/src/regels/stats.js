@@ -3,12 +3,12 @@
 import {SKILLS} from './skills.js';
 
 export const STATS=[
-  ['str','STR','Kracht: meer aanvalskracht'],
-  ['agi','AGI','Behendigheid: ontwijken en sneller slaan'],
-  ['vit','VIT','Vitaliteit: meer HP, verdediging en HP-herstel'],
-  ['int','INT','Intelligentie: meer SP, SP-herstel en sterkere Vuurkring'],
-  ['dex','DEX','Handigheid: raakkans en wat aanvalskracht'],
-  ['luk','LUK','Geluk: kans op kritieke treffers'],
+  ['str','STR','Strength: more attack power'],
+  ['agi','AGI','Agility: dodge and attack faster'],
+  ['vit','VIT','Vitality: more HP, defense and HP recovery'],
+  ['int','INT','Intelligence: more SP, SP recovery and a stronger Magnum Break'],
+  ['dex','DEX','Dexterity: hit chance and some attack power'],
+  ['luk','LUK','Luck: chance of critical hits'],
 ];
 export const MAX_STAT=99;
 export const basisStats=()=>({str:1,agi:1,vit:1,int:1,dex:1,luk:1});

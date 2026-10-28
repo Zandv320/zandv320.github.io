@@ -17,7 +17,7 @@ export function maakKarakter(P,A){
 
   function render(){
     const af=A.af();
-    $('#k-naam').textContent=P.naam;$('#k-sub').textContent=`Level ${P.lvl} · Zwaardvechter · Job ${P.job}`;
+    $('#k-naam').textContent=P.naam;$('#k-sub').textContent=`Level ${P.lvl} · Swordsman · Job ${P.job}`;
     const vs=A.vrijeStat(),vk=A.vrijeSkill();
     document.querySelectorAll('.ktab').forEach(b=>{b.classList.toggle('actief',b.dataset.tab===tab);
       const n=b.dataset.tab==='stats'?vs:b.dataset.tab==='skills'?vk:0;b.querySelector('.kbadge').textContent=n>0?n:'';b.querySelector('.kbadge').hidden=n<=0});
@@ -28,28 +28,28 @@ export function maakKarakter(P,A){
     $('#k-stats').innerHTML=[['HP',`${Math.ceil(P.hp)} / ${af.hpMax}`],['SP',`${Math.floor(P.sp)} / ${af.spMax}`],['ATK',af.atk],['DEF',af.def],['EXP',`${P.exp} / ${A.expMax()}`],['Zeny',P.zeny]]
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
     $('#k-slots').innerHTML=SLOTS.map(([slot,naam])=>{const it=P.uitr[slot]&&ITEMS[P.uitr[slot]];
-      return it?`<button class="kslot" data-slot="${slot}" title="Klik om af te doen"><small>${naam}</small><b>${it.icoon} ${esc(it.naam)}</b><i>${statTekst(it)}</i></button>`
-               :`<button class="kslot leeg" data-slot="${slot}"><small>${naam}</small><b>— leeg —</b></button>`}).join('');
+      return it?`<button class="kslot" data-slot="${slot}" title="Click to unequip"><small>${naam}</small><b>${it.icoon} ${esc(it.naam)}</b><i>${statTekst(it)}</i></button>`
+               :`<button class="kslot leeg" data-slot="${slot}"><small>${naam}</small><b>— empty —</b></button>`}).join('');
     const tel=new Map();for(const id of P.tas)tel.set(id,(tel.get(id)||0)+1);
     const rijen=[];
-    if(P.dranken>0)rijen.push(`<button class="kitem" data-drank="1" title="Klik om te drinken">🧪 Rode drank ×${P.dranken}<small>herstelt ${VAARDIGHEDEN.drank.heal} HP</small></button>`);
-    for(const[id,n]of tel){const it=ITEMS[id];if(!it)continue;rijen.push(`<button class="kitem" data-item="${id}" title="Klik om aan te doen">${it.icoon} ${esc(it.naam)}${n>1?' ×'+n:''}<small>${statTekst(it)}</small></button>`)}
-    $('#k-tas').innerHTML=rijen.length?rijen.join(''):'<span class="ktip">Je tas is leeg. Monsters laten soms uitrusting vallen, en Koopman Bram verkoopt het.</span>';
+    if(P.dranken>0)rijen.push(`<button class="kitem" data-drank="1" title="Click to drink">🧪 Red potion ×${P.dranken}<small>restores ${VAARDIGHEDEN.drank.heal} HP</small></button>`);
+    for(const[id,n]of tel){const it=ITEMS[id];if(!it)continue;rijen.push(`<button class="kitem" data-item="${id}" title="Click to equip">${it.icoon} ${esc(it.naam)}${n>1?' ×'+n:''}<small>${statTekst(it)}</small></button>`)}
+    $('#k-tas').innerHTML=rijen.length?rijen.join(''):'<span class="ktip">Your bag is empty. Monsters sometimes drop gear, and Merchant Bram sells it.</span>';
     tekenPreview();
   }
   function renderStats(af,vrij){
-    $('#k-statpunten').innerHTML=vrij>0?`Je hebt <b>${vrij}</b> statpunt${vrij===1?'':'en'} te verdelen.`:'Geen statpunten over. Elk level geeft nieuwe punten.';
+    $('#k-statpunten').innerHTML=vrij>0?`You have <b>${vrij}</b> stat point${vrij===1?'':'s'} to spend.`:'No stat points left. Every level grants new ones.';
     $('#k-statlijst').innerHTML=STATS.map(([k,naam,uitleg])=>{const n=P.stats[k]||1,kost=statKosten(n),kan=vrij>=kost&&n<MAX_STAT;
-      return`<div class="kstat" title="${esc(uitleg)}"><span class="kstatnaam">${naam}</span><b>${n}</b><button class="kplus" data-stat="${k}" ${kan?'':'disabled'} title="Kost ${kost} punt${kost===1?'':'en'}">+<small>${kost}</small></button><em>${esc(uitleg.split(':')[1]||'')}</em></div>`}).join('');
-    $('#k-afgeleid').innerHTML=[['ATK',af.atk],['DEF',af.def],['Raken',af.hit],['Ontwijken',af.flee],['Kritiek',af.crit.toFixed(1)+'%'],['Slagen/s',(1/af.aanvalTijd).toFixed(2)],['HP-herstel',af.hpRegen.toFixed(1)+'/s'],['SP-herstel',af.spRegen.toFixed(1)+'/s'],['Max HP',af.hpMax],['Max SP',af.spMax]]
+      return`<div class="kstat" title="${esc(uitleg)}"><span class="kstatnaam">${naam}</span><b>${n}</b><button class="kplus" data-stat="${k}" ${kan?'':'disabled'} title="Costs ${kost} point${kost===1?'':'s'}">+<small>${kost}</small></button><em>${esc(uitleg.split(':')[1]||'')}</em></div>`}).join('');
+    $('#k-afgeleid').innerHTML=[['ATK',af.atk],['DEF',af.def],['Hit',af.hit],['Flee',af.flee],['Crit',af.crit.toFixed(1)+'%'],['Attacks/s',(1/af.aanvalTijd).toFixed(2)],['HP recovery',af.hpRegen.toFixed(1)+'/s'],['SP recovery',af.spRegen.toFixed(1)+'/s'],['Max HP',af.hpMax],['Max SP',af.spMax]]
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
   }
   function renderSkills(vrij){
-    $('#k-skillpunten').innerHTML=`Job level <b>${P.job}</b>${P.job<MAX_JOB?` · job-exp ${P.jobexp} / ${jobExpVoor(P.job)}`:' (max)'} · ${vrij>0?`<b>${vrij}</b> skillpunt${vrij===1?'':'en'} te verdelen`:'geen skillpunten over'}`;
+    $('#k-skillpunten').innerHTML=`Job level <b>${P.job}</b>${P.job<MAX_JOB?` · job exp ${P.jobexp} / ${jobExpVoor(P.job)}`:' (max)'} · ${vrij>0?`<b>${vrij}</b> skill point${vrij===1?'':'s'} to spend`:'no skill points left'}`;
     $('#k-skilllijst').innerHTML=SKILL_VOLGORDE.map(id=>{const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
       const eis=Object.entries(sk.eis).map(([e,n])=>`${SKILLS[e].naam} ${n}`).join(', ');
-      const nu=l>0?sk.tekst(l):'nog niet geleerd',volgende=l<sk.max?`volgende: ${sk.tekst(l+1)}`:'max';
-      return`<div class="kskill ${l>0?'':'dicht'}"><div class="kskillkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passief)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · vereist '+esc(eis):''}</small></div><button class="kplus" data-skill="${id}" ${kan?'':'disabled'}>+</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em></div>`}).join('');
+      const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max';
+      return`<div class="kskill ${l>0?'':'dicht'}"><div class="kskillkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="kplus" data-skill="${id}" ${kan?'':'disabled'}>+</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em></div>`}).join('');
   }
   function tekenPreview(){
     const b=BLADEN.held,a=b.anims.idle,f=Math.floor(t*a.fps)%a.n;
@@ -68,7 +68,7 @@ export function maakKarakter(P,A){
   /* ---------- winkel ---------- */
   function renderWinkel(){
     const rij=(icoon,naam,stat,prijs,data)=>`<div class="rij"><span>${icoon} ${esc(naam)}<small class="wstat">${stat}</small></span><button class="knop" ${data} ${P.zeny<prijs?'disabled':''}>${prijs} zeny</button></div>`;
-    $('#w-lijst').innerHTML=rij('🧪','Rode drank','herstelt '+VAARDIGHEDEN.drank.heal+' HP',DRANK_PRIJS,'data-drank="1"')
+    $('#w-lijst').innerHTML=rij('🧪','Red potion','restores '+VAARDIGHEDEN.drank.heal+' HP',DRANK_PRIJS,'data-drank="1"')
       +WINKEL.map(id=>{const it=ITEMS[id];return rij(it.icoon,it.naam,statTekst(it),it.prijs,`data-item="${id}"`)}).join('');
     $('#w-zeny').textContent=P.zeny;
   }
