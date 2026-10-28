@@ -143,6 +143,40 @@ uit = stapel_lagen(lagen, 64, 64, 12)
 basis = naakt(uit[0])
 basis.save(UIT / 'held_lijf.png')
 uit[1].save(UIT / 'held_hoofd.png')
+
+# ---------- hoofddeksels: afgeleid van het haar, zodat ze elk frame precies meebewegen ----------
+HAAR = {(33, 26, 28), (43, 32, 35), (59, 44, 51), (77, 57, 69), (104, 79, 90)}
+
+
+def hoofddeksel(hoofd, fractie, kleuren, fw=64, fh=64):
+    """Bedekt per frame het bovenste deel (fractie) van het haar met een pet of helm.
+    kleuren: (donker, midden, licht) voor de drie haarschaduwen."""
+    out = Image.new('RGBA', hoofd.size, (0, 0, 0, 0))
+    src, dst = hoofd.load(), out.load()
+    donker, midden, licht = kleuren
+    for r in range(hoofd.height // fh):
+        for c in range(hoofd.width // fw):
+            ys = [y for y in range(r * fh, (r + 1) * fh) for x in range(c * fw, (c + 1) * fw) if src[x, y][3] > 0 and src[x, y][:3] in HAAR]
+            if not ys:
+                continue
+            top, bodem = min(ys), max(ys)
+            grens = top + max(2, round((bodem - top + 1) * fractie))
+            for y in range(top, grens):
+                for x in range(c * fw, (c + 1) * fw):
+                    p = src[x, y]
+                    if p[3] == 0 or p[:3] not in HAAR:
+                        continue
+                    k = p[:3]
+                    dst[x, y] = ((donker if k in ((33, 26, 28), (43, 32, 35)) else midden if k in ((59, 44, 51), (77, 57, 69)) else licht)) + (255,)
+                # onderrand van het deksel iets donkerder
+            for x in range(c * fw, (c + 1) * fw):
+                if grens - 1 >= top and dst[x, grens - 1][3] > 0:
+                    dst[x, grens - 1] = donker + (255,)
+    return out
+
+
+hoofddeksel(uit[1], .45, ((60, 36, 20), (122, 78, 40), (168, 118, 66))).save(UIT / 'hoofd1.png')   # leren pet
+hoofddeksel(uit[1], .72, ((52, 56, 66), (122, 130, 146), (196, 204, 218))).save(UIT / 'hoofd2.png')  # ijzeren helm
 for lvl in (1, 2, 3):
     i = 2 + (lvl - 1) * 3
     verschil(uit[i], basis).save(UIT / f'harnas{lvl}.png')

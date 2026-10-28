@@ -111,6 +111,22 @@ body.touch #mobiel{display:flex}
 .kskillicoon{font-size:22px;width:32px;text-align:center}
 .kskill p{margin:6px 0 2px;font-size:12.5px;color:#d7dee6}.kskill em{font-style:normal;color:#9fe3b0;font-size:11.5px}
 @media (max-width:600px){.kstatgrid{grid-template-columns:1fr}}
+/* ---------- inventory ---------- */
+#inventaris{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:16px;z-index:7}
+#inventaris h3{margin:0;font-size:18px}
+.igrid{display:grid;grid-template-columns:1fr 180px;gap:14px}
+.iraster{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.islot{position:relative;aspect-ratio:1;border-radius:10px;border:1px solid var(--rand);background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;transition:transform .08s}
+.islot.leeg{background:rgba(0,0,0,.25);border-style:dashed}
+.islot:not(.leeg):hover{border-color:var(--goud)}.islot.gekozen{border-color:var(--goud);background:rgba(255,200,87,.15)}
+.islot:active{transform:scale(.94)}
+.iicoon{font-size:24px;line-height:1}.iicoon.groot{font-size:32px}
+.iaantal{position:absolute;right:4px;bottom:3px;font-size:11px;font-weight:700;text-shadow:0 1px 2px #000}
+.idetail{padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.25);font-size:12.5px;min-height:120px}
+.idetailkop{display:flex;gap:10px;align-items:center}.idetailkop b{display:block}.idetailkop .istat{display:block;color:#9fe3b0;font-size:11px}
+.idetail p{margin:8px 0;color:#d7dee6}
+.iknoppen{display:flex;flex-direction:column;gap:6px}.iknoppen .knop{width:100%}
+@media (max-width:600px){.igrid{grid-template-columns:1fr}}
 /* ---------- winkel ---------- */
 #winkel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:16px;z-index:5}
 #winkel h3{margin:0 0 4px;font-size:17px}#winkel p{margin:0 0 8px;color:var(--dim);font-size:13px}
@@ -154,6 +170,7 @@ body.touch #mobiel{display:flex}
   <div id="rechts">
     <div class="paneel" title="Zeny">🪙 <b id="h-zeny">0</b></div>
     <div class="paneel"><span class="stip" id="h-stip"></span><span id="h-online">offline</span></div>
+    <button class="paneel" id="i-knop" title="Inventory (I)">🎒</button>
     <button class="paneel" id="k-knop" title="Character (C)">👤</button>
     <a class="paneel" href="../" title="Back to all games">⌂</a>
   </div>
@@ -194,6 +211,11 @@ body.touch #mobiel{display:flex}
   </div>
 </div>
 
+<div id="inventaris" class="paneel" hidden>
+  <div class="kkop"><div><h3>Inventory</h3><small><span id="i-vol">0 / 20</span> slots · 🪙 <span id="i-zeny">0</span> zeny</small></div><button class="ksluit" id="i-sluit" title="Close (I)">✕</button></div>
+  <div class="igrid"><div class="iraster" id="i-raster"></div><div class="idetail" id="i-detail"></div></div>
+</div>
+
 <div id="winkel" class="paneel" hidden>
   <h3>Merchant Bram</h3>
   <p>"Welcome to Runeveld, adventurer. A potion for the road, or something sturdier to wear?"</p>
@@ -209,7 +231,7 @@ body.touch #mobiel{display:flex}
     <input id="naam" maxlength="14" placeholder="e.g. Aria" spellcheck="false">
     <div class="klas"><div class="icoon">⚔️</div><div><b>Swordsman</b><small>Strong up close. Skills: Bash and Magnum Break.</small></div></div>
     <button id="speel" class="knop">Play</button>
-    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
+    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
     <a class="terug" href="../">← All games</a>
   </div>
 </div>

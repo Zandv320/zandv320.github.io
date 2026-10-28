@@ -19,7 +19,7 @@ function dier(naam,{loop,aanval,schaal=1/16,hoogte=20}){return{url:`sprites/${na
 export const BLADEN={
   held:{fw:64,fh:64,schaal:1/16,voet:20,hoogte:26,richtingen:HELD_RICHTINGEN,
     lagen:{lijf:'sprites/held_lijf.png',hoofd:'sprites/held_hoofd.png',harnas1:'sprites/harnas1.png',harnas2:'sprites/harnas2.png',harnas3:'sprites/harnas3.png',
-      wapen1:'sprites/wapen1.png',wapen2:'sprites/wapen2.png',wapen3:'sprites/wapen3.png',wapen1b:'sprites/wapen1b.png',wapen2b:'sprites/wapen2b.png',wapen3b:'sprites/wapen3b.png'},
+      wapen1:'sprites/wapen1.png',wapen2:'sprites/wapen2.png',wapen3:'sprites/wapen3.png',wapen1b:'sprites/wapen1b.png',wapen2b:'sprites/wapen2b.png',wapen3b:'sprites/wapen3b.png',hoofd1:'sprites/hoofd1.png',hoofd2:'sprites/hoofd2.png'},
     anims:{idle:{rij:0,n:12,fps:8},loop:{rij:4,n:8,fps:13},aanval:{rij:8,n:8,fps:16,eens:true},pijn:{rij:12,n:5,fps:12,eens:true},dood:{rij:16,n:7,fps:9,eens:true}}},
   koopman:{url:'sprites/koopman.png',fw:32,fh:32,schaal:1/16,voet:2,hoogte:28,richtingen:{onder:0},anims:{idle:{rij:0,n:4,fps:5,perRichting:false}}},
   konijn:dier('konijn',{loop:5,aanval:6,hoogte:19}),
@@ -30,8 +30,8 @@ export const BLADEN={
 /* De lagen van een held met deze uitrusting ({hoofd,lichaam,wapen}: item-ids of null), achterste eerst.
    Zonder kleding staat de held in zijn onderbroek. */
 export function heldLagen(uitr){
-  const T=BLADEN.held.lagen,w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam];
-  return[w&&T[w.laag+'b'],T.lijf,l&&T[l.laag],T.hoofd,w&&T[w.laag]].filter(Boolean);
+  const T=BLADEN.held.lagen,w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam],h=uitr.hoofd&&ITEMS[uitr.hoofd];
+  return[w&&T[w.laag+'b'],T.lijf,l&&T[l.laag],T.hoofd,h&&T[h.laag],w&&T[w.laag]].filter(Boolean);
 }
 
 /* laadt de texturen van alle bladen */

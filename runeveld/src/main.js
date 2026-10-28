@@ -1,13 +1,14 @@
 /* Runeveld – hoofdspel: speler, monsters, gevechten, levels, multiplayer, invoer. */
 import * as THREE from 'three';
-import {KLASSE,MAX_LVL,expVoor,VAARDIGHEDEN,DRANK_PRIJS,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING} from './data.js';
+import {KLASSE,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL} from './data.js';
+import {maakInventaris} from './inventaris.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
 import {SKILLS,MAX_JOB,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
 import {slag as regelSlag,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
 import {BLADEN,laadBladen,heldLagen} from './bladen.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
-import {renderer,scene,camera,cam,updateCamera,bouwWereld,botsing,vrij,VELD,canvas,grondPunt,straal,updateBorden,obstakels} from './world.js';
+import {renderer,scene,camera,cam,updateCamera,bouwWereld,botsing,vrij,VELD,DORP,inDorp,canvas,grondPunt,straal,updateBorden,obstakels} from './world.js';
 import {maakNet} from './net.js';
 import * as UI from './ui.js';
 
@@ -18,12 +19,12 @@ const R=(a,b)=>a+Math.random()*(b-a);
 const nu=()=>performance.now()/1000;
 
 /* ====================== toestand ====================== */
-const P={naam:'',lvl:1,exp:0,job:1,jobexp:0,stats:basisStats(),skills:{},hp:60,sp:14,zeny:0,dranken:5,x:0,z:4,dood:false,zit:false,uitr:{...STARTUITRUSTING},tas:[],
+const P={naam:'',lvl:1,exp:0,job:1,jobexp:0,stats:basisStats(),skills:{},hp:60,sp:14,zeny:0,x:0,z:4,dood:false,zit:false,uitr:{...STARTUITRUSTING},tas:STARTTAS.map(e=>({...e})),
   sprite:null,label:null,bestemming:null,naarNpc:false,target:null,wacht:null,cd:{},volgendeSlag:0,bezigTot:0,seq:0,anim:'idle',regenT:0,respawnT:0};
 const M=new Map();      /* monsters: id → monster */
 const S=new Map();      /* andere spelers: peer-id → speler */
 const klikbaar=[];      /* meshes waar je op kunt klikken */
-let net=null,H=null,npc=null,gestart=false,K=null;
+let net=null,H=null,npc=null,gestart=false,K=null,I=null;
 /* alles wat uit level, stats, uitrusting en skills volgt (regels/stats.js) */
 const draagt=()=>Object.values(P.uitr).map(id=>id&&ITEMS[id]).filter(Boolean);
 const af=()=>afgeleid({lvl:P.lvl,stats:P.stats,items:draagt(),skills:P.skills});
@@ -42,18 +43,22 @@ async function init(){
 }
 function start(naam,save){
   P.naam=naam;
-  if(save){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,dranken:save.dranken,x:save.x,z:save.z});
-    if(save.uitr)P.uitr={hoofd:null,lichaam:null,wapen:null,...save.uitr};if(Array.isArray(save.tas))P.tas=save.tas.filter(id=>ITEMS[id]);
+  if(save){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,x:save.x,z:save.z});
+    if(save.uitr)P.uitr={hoofd:null,lichaam:null,wapen:null,...save.uitr};
+    if(Array.isArray(save.tas)){P.tas=[];for(const e of save.tas){if(typeof e==='string')tasToevoegen(e,1,true);else if(e&&ITEMS[e.id])tasToevoegen(e.id,e.n|0,true)}}
+    if(save.dranken>0)tasToevoegen('drank',save.dranken,true);   /* oude opslag: drankjes als los getal */
+    if(!inDorp(P.x,P.z)&&Math.max(Math.abs(P.x),Math.abs(P.z))>VELD-2){P.x=0;P.z=4}
     for(const k in P.uitr)if(P.uitr[k]&&!ITEMS[P.uitr[k]])P.uitr[k]=null;
     if(save.stats)P.stats={...basisStats(),...save.stats};if(save.skills)P.skills=save.skills;
     P.job=Math.min(MAX_JOB,save.job||Math.min(MAX_JOB,save.lvl));P.jobexp=save.jobexp||0;
     P.hp=Math.min(save.hp,hpMax());P.sp=Math.min(save.sp,spMax())}
   else{P.hp=hpMax();P.sp=spMax()}
   P.sprite=new Sprite2D(BLADEN.held,{lagen:heldLagen(P.uitr)});scene.add(P.sprite.g);
-  K=maakKarakter(P,{af,expMax:()=>expVoor(P.lvl),vrijeStat,vrijeSkill,statOmhoog,skillOmhoog,uitrusten,afdoen,gebruikDrank:()=>vaardigheid('drank'),koop,koopDrank});
+  K=maakKarakter(P,{af,expMax:()=>expVoor(P.lvl),vrijeStat,vrijeSkill,statOmhoog,skillOmhoog,uitrusten,afdoen,koop,openInventaris:()=>I.toon(),winkelDicht:()=>I.render()});
+  I=maakInventaris(P,{uitrusten,gebruik:id=>{if(id==='drank')vaardigheid('drank')},verkoop,weggooi,winkelOpen:()=>K.winkelOpen()});
   P.label=UI.maakLabel('speler',naam);
   $('#start').hidden=true;$('#hud').hidden=false;
-  UI.sys(save?`Welcome back, ${naam}!`:`Welcome to Runeveld, ${naam}! Click a rabbit to attack it. Merchant Bram at the stall sells potions.`);
+  UI.sys(save?`Welcome back, ${naam}!`:`Welcome to Runeveld, ${naam}! The village is safe; the monsters roam the fields beyond the gates. Merchant Bram at the stall sells potions and gear.`);
   if(vrijeStat()>0||vrijeSkill()>0)UI.log(`<span class="lvl">You have ${vrijeStat()} stat points and ${vrijeSkill()} skill points to spend. Press C.</span>`);
   gestart=true;startNet();
   setInterval(bewaar,5000);addEventListener('pagehide',bewaar);
@@ -64,7 +69,7 @@ function maakNpc(){
   sprite.mesh.userData.npc=npc;klikbaar.push(sprite.mesh);obstakels.push({x:npc.x,z:npc.z,r:.4});
 }
 function lees(){try{const s=JSON.parse(localStorage.getItem(SLEUTEL));return s&&s.naam?s:null}catch(e){return null}}
-function bewaar(){if(!gestart)return;try{localStorage.setItem(SLEUTEL,JSON.stringify({naam:P.naam,lvl:P.lvl,exp:P.exp,job:P.job,jobexp:P.jobexp,stats:P.stats,skills:P.skills,hp:P.hp,sp:P.sp,zeny:P.zeny,dranken:P.dranken,uitr:P.uitr,tas:P.tas,x:+P.x.toFixed(2),z:+P.z.toFixed(2)}))}catch(e){}}
+function bewaar(){if(!gestart)return;try{localStorage.setItem(SLEUTEL,JSON.stringify({naam:P.naam,lvl:P.lvl,exp:P.exp,job:P.job,jobexp:P.jobexp,stats:P.stats,skills:P.skills,hp:P.hp,sp:P.sp,zeny:P.zeny,uitr:P.uitr,tas:P.tas,x:+P.x.toFixed(2),z:+P.z.toFixed(2)}))}catch(e){}}
 
 /* ====================== multiplayer ====================== */
 function startNet(){
@@ -106,10 +111,13 @@ function zorgMonster(id){
      doel:null,cd:0,wt:null,wtT:R(0,3),rt:0,nieuw:true};
   sprite.mesh.userData.m=m;klikbaar.push(sprite.mesh);M.set(id,m);return m;
 }
-function spawnPunt(){
-  for(let i=0;i<60;i++){const x=R(-VELD+2,VELD-2),z=R(-VELD+2,VELD-2);
-    if(Math.hypot(x,z)>9.5&&vrij(x,z,.8)&&Math.hypot(x-P.x,z-P.z)>4)return[x,z]}
-  return[R(-VELD+2,VELD-2),VELD-3];
+/* een plek in de zone van dit monster: buiten de palissade, op een vrije plek, niet op het pad bij de poorten */
+function spawnPunt(spec){
+  const[min,max]=spec.zone;
+  for(let i=0;i<80;i++){const x=R(-max,max),z=R(-max,max),r=Math.max(Math.abs(x),Math.abs(z));
+    if(r<min||r>max||inDorp(x,z)||Math.abs(x)<4||!vrij(x,z,.8)||Math.hypot(x-P.x,z-P.z)<4)continue;
+    return[x,z]}
+  return[max,max];
 }
 function sterfMonster(m){
   if(m.dood)return;m.dood=true;m.hp=0;m.st=3;m.doel=null;m.rt=R(RESPAWN[0],RESPAWN[1]);
@@ -122,24 +130,24 @@ function herleefMonster(m,[x,z]){
 }
 function wordHost(){
   H={snapT:0};
-  if(M.size===0){for(const s of SPAWNS)for(let i=0;i<s.n;i++){const m=zorgMonster(s.soort+'#'+i);const[x,z]=spawnPunt();m.x=m.tx=x;m.z=m.tz=z;m.nieuw=false}}
+  if(M.size===0){for(const s of SPAWNS)for(let i=0;i<s.n;i++){const m=zorgMonster(s.soort+'#'+i);const[x,z]=spawnPunt(m.spec);m.x=m.tx=x;m.z=m.tz=z;m.nieuw=false}}
   else for(const m of M.values()){m.x=m.tx;m.z=m.tz;m.doel=null;if(m.dood&&m.rt<=0)m.rt=R(RESPAWN[0],RESPAWN[1])}
 }
 function hostHit(d,f){
   const m=M.get(d.id);if(!m||m.dood)return;
   m.hp=Math.max(0,m.hp-d.dmg);if(!m.doel)m.doel=f;
   if(m.hp<=0){const sp=m.spec;m.dood=true;let buit=null;for(const[id,kans]of Object.entries(sp.buit||{}))if(Math.random()<kans){buit=id;break}
-    net.stuur('k',{id:m.id,door:f,exp:sp.exp,zeny:Math.round(R(sp.zeny[0],sp.zeny[1])),drank:Math.random()<sp.drank,buit})}
+    net.stuur('k',{id:m.id,door:f,exp:sp.exp,zeny:Math.round(R(sp.zeny[0],sp.zeny[1])),buit})}
 }
 function hostTick(dt){
   const spelers=[{id:net.me,x:P.x,z:P.z,dood:P.dood}];
   for(const[id,s]of S)spelers.push({id,x:s.x,z:s.z,dood:!!s.pres.dd});
   for(const m of M.values()){
     const sp=m.spec;
-    if(m.dood){m.rt-=dt;if(m.rt<=0)herleefMonster(m,spawnPunt());continue}
+    if(m.dood){m.rt-=dt;if(m.rt<=0)herleefMonster(m,spawnPunt(m.spec));continue}
     let doel=m.doel?spelers.find(s=>s.id===m.doel):null;
-    if(doel&&(doel.dood||Math.hypot(doel.x-m.x,doel.z-m.z)>13)){doel=null;m.doel=null}
-    if(!doel&&sp.agressief){let best=null,bd=sp.aggro;for(const s of spelers){if(s.dood)continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
+    if(doel&&(doel.dood||inDorp(doel.x,doel.z)||Math.hypot(doel.x-m.x,doel.z-m.z)>13)){doel=null;m.doel=null}
+    if(!doel&&sp.agressief){let best=null,bd=sp.aggro;for(const s of spelers){if(s.dood||inDorp(s.x,s.z))continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
     m.cd=Math.max(0,m.cd-dt);
     if(doel){
       const dx=doel.x-m.x,dz=doel.z-m.z,d=Math.hypot(dx,dz)||1e-4;m.kx=dx/d;m.kz=dz/d;
@@ -147,7 +155,7 @@ function hostTick(dt){
       else{m.st=0;if(m.cd<=0){m.cd=1.6;net.stuur('ma',{id:m.id,to:doel.id,dmg:Math.round(sp.atk*R(.85,1.15))})}}
     }else{
       m.wtT-=dt;
-      if(m.wtT<=0){if(m.wt){m.wt=null;m.wtT=R(1.5,4)}else{m.wt=[m.x+R(-4,4),m.z+R(-4,4)];m.wtT=R(2,5)}}
+      if(m.wtT<=0){if(m.wt){m.wt=null;m.wtT=R(1.5,4)}else{const wx=m.x+R(-4,4),wz=m.z+R(-4,4);m.wt=inDorp(wx,wz)||Math.abs(wx)<3?null:[wx,wz];m.wtT=R(2,5)}}
       if(m.wt){const dx=m.wt[0]-m.x,dz=m.wt[1]-m.z,d=Math.hypot(dx,dz);
         if(d<.2){m.wt=null;m.wtT=R(1.5,4);m.st=0}
         else{m.kx=dx/d;m.kz=dz/d;const s=sp.snelheid*.55*dt;const[nx,nz]=botsing(m.x+dx/d*s,m.z+dz/d*s,.3);
@@ -239,10 +247,10 @@ function vaardigheid(id){
   if(P.dood||!gestart)return;const t=nu();
   if(id==='zit'){zitten(!P.zit);return}
   if((P.cd[id]||0)>t)return;
-  if(id==='drank'){const V=VAARDIGHEDEN.drank;
-    if(P.dranken<=0){UI.sys('You are out of potions. Merchant Bram at the stall sells them.');return}
+  if(id==='drank'){const V=ITEMS.drank;
+    if(tasAantal('drank')<=0){UI.sys('You are out of potions. Merchant Bram at the stall sells them.');return}
     if(P.hp>=hpMax())return;
-    P.dranken--;P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();return;
+    tasVerwijderen('drank');P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();I.render();return;
   }
   const sk=SKILLS[id],l=P.skills[id]||0;if(!sk||sk.passief)return;
   if(l<=0){UI.sys(`You have not learned ${sk.naam} yet. Spend your skill points with C.`);return}
@@ -292,8 +300,9 @@ function herleef(){
 function beloning(d){
   P.exp+=d.exp;P.zeny+=d.zeny;
   UI.getal(P.x,P.sprite.h+.4,P.z,camera,'+'+d.exp+' exp','exp');
-  if(d.drank){P.dranken++;UI.sys('You found a Red potion!')}
-  if(d.buit&&ITEMS[d.buit]){P.tas.push(d.buit);UI.log('<span class="lvl">You found: '+ITEMS[d.buit].icoon+' '+UI.esc(ITEMS[d.buit].naam)+'! Press C to equip it.</span>');K.render()}
+  if(d.buit&&ITEMS[d.buit]){const it=ITEMS[d.buit];
+    if(tasToevoegen(d.buit))UI.log('<span class="lvl">You found: '+it.icoon+' '+UI.esc(it.naam)+'!'+(it.slot?' Open your inventory (I) to equip it.':'')+'</span>');
+    else UI.sys(`Your bag is full, the ${it.naam.toLowerCase()} was left behind.`);I.render()}
   let up=false,jobUp=false;
   while(P.lvl<MAX_LVL&&P.exp>=expVoor(P.lvl)){P.exp-=expVoor(P.lvl);P.lvl++;up=true}
   if(P.job<MAX_JOB){P.jobexp+=Math.round(d.exp*JOB_EXP_DEEL);while(P.job<MAX_JOB&&P.jobexp>=jobExpVoor(P.job)){P.jobexp-=jobExpVoor(P.job);P.job++;jobUp=true}}
@@ -303,23 +312,41 @@ function beloning(d){
 }
 function openWinkel(){K.winkelToon();npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z)}
 
-/* ====================== uitrusting ====================== */
-function vernieuwUiterlijk(){P.sprite.zetLagen(heldLagen(P.uitr));P.hp=Math.min(P.hp,hpMax())}
+/* ====================== tas en uitrusting ====================== */
+/* de tas is een lijst stapels [{id,n}] met hoogstens TAS_SLOTS stapels */
+function tasAantal(id){return P.tas.filter(e=>e.id===id).reduce((t,e)=>t+e.n,0)}
+function tasToevoegen(id,n=1,stil=false){
+  const it=ITEMS[id];if(!it||n<=0)return false;const max=it.stapel||1;
+  for(const e of P.tas){if(e.id!==id||e.n>=max)continue;const k=Math.min(n,max-e.n);e.n+=k;n-=k;if(n<=0)return true}
+  while(n>0){if(P.tas.length>=TAS_SLOTS){if(!stil)UI.sys('Your bag is full.');return false}const k=Math.min(n,max);P.tas.push({id,n:k});n-=k}
+  return true;
+}
+function tasVerwijderen(id,n=1){
+  if(tasAantal(id)<n)return false;
+  for(let i=P.tas.length-1;i>=0&&n>0;i--){const e=P.tas[i];if(e.id!==id)continue;const k=Math.min(n,e.n);e.n-=k;n-=k;if(e.n<=0)P.tas.splice(i,1)}
+  return true;
+}
+function vernieuwUiterlijk(){P.sprite.zetLagen(heldLagen(P.uitr));P.hp=Math.min(P.hp,hpMax());K.render();I.render()}
 function uitrusten(id){
-  const it=ITEMS[id],i=P.tas.indexOf(id);if(!it||i<0)return;
-  P.tas.splice(i,1);const oud=P.uitr[it.slot];if(oud)P.tas.push(oud);P.uitr[it.slot]=id;
+  const it=ITEMS[id];if(!it||!it.slot||!tasVerwijderen(id))return;
+  const oud=P.uitr[it.slot];P.uitr[it.slot]=id;if(oud)tasToevoegen(oud,1,true);
   vernieuwUiterlijk();UI.sys(`You equip the ${it.naam.toLowerCase()}.`);
 }
 function afdoen(slot){
-  const id=P.uitr[slot];if(!id)return;P.uitr[slot]=null;P.tas.push(id);
-  vernieuwUiterlijk();UI.sys(slot==='lichaam'?`You take off the ${ITEMS[id].naam.toLowerCase()}. Brr, a bit chilly like this.`:`You unequip the ${ITEMS[id].naam.toLowerCase()}.`);
+  const id=P.uitr[slot];if(!id)return;
+  if(!tasToevoegen(id))return;P.uitr[slot]=null;
+  vernieuwUiterlijk();UI.sys(slot==='lichaam'?`You take off the ${ITEMS[id].naam.toLowerCase()}. Brr, a bit chilly like this.`:`You take off the ${ITEMS[id].naam.toLowerCase()}.`);
 }
 function koop(id){
   const it=ITEMS[id];if(!it)return;
   if(P.zeny<it.prijs){UI.sys('Not enough zeny. Defeat monsters to earn zeny.');return}
-  P.zeny-=it.prijs;P.tas.push(id);UI.sys(`You bought a ${it.naam.toLowerCase()}. Press C to equip it.`);
+  if(!tasToevoegen(id))return;P.zeny-=it.prijs;UI.sys(`You bought a ${it.naam.toLowerCase()}.`);I.render();
 }
-function koopDrank(){if(P.zeny<DRANK_PRIJS){UI.sys('Not enough zeny. Defeat monsters to earn zeny.');return}P.zeny-=DRANK_PRIJS;P.dranken++;UI.sys('You bought a Red potion.')}
+function verkoop(id){
+  const it=ITEMS[id];if(!it||!K.winkelOpen()||!tasVerwijderen(id))return;
+  const z=Math.floor(it.prijs*VERKOOPDEEL);P.zeny+=z;UI.sys(`You sold a ${it.naam.toLowerCase()} for ${z} zeny.`);K.winkelRender();K.render();
+}
+function weggooi(id){const it=ITEMS[id];if(!it||!tasVerwijderen(id))return;UI.sys(`You drop the ${it.naam.toLowerCase()}.`)}
 
 /* ====================== effecten ====================== */
 const effecten=[];
@@ -389,15 +416,15 @@ function invoer(){
     if(!gestart)return;
     if(e.key==='Enter'){e.preventDefault();$('#chattekst').focus();return}
     if(e.code==='Digit1')vaardigheid('beuk');else if(e.code==='Digit2')vaardigheid('vuurkring');else if(e.code==='Digit3')vaardigheid('provocatie');else if(e.code==='Digit4')vaardigheid('drank');
-    else if(e.code==='KeyX')vaardigheid('zit');else if(e.code==='KeyC')K.toggle();
-    else if(e.key==='Escape'){if(K.isOpen()||K.winkelOpen()){K.sluit();K.winkelSluit()}else{P.target=null;P.wacht=null;UI.doelkader(null)}}
+    else if(e.code==='KeyX')vaardigheid('zit');else if(e.code==='KeyC')K.toggle();else if(e.code==='KeyI')I.toggle();
+    else if(e.key==='Escape'){if(K.isOpen()||K.winkelOpen()||I.isOpen()){K.sluit();K.winkelSluit();I.sluit()}else{P.target=null;P.wacht=null;UI.doelkader(null)}}
     keys.add(e.code);
   });
   addEventListener('keyup',e=>keys.delete(e.code));
   addEventListener('blur',()=>keys.clear());
   document.querySelectorAll('.slot').forEach(b=>b.addEventListener('click',()=>vaardigheid(b.dataset.skill)));
   $('#chatin').addEventListener('submit',e=>{e.preventDefault();const inp=$('#chattekst');const t=inp.value.trim();inp.value='';inp.blur();if(t&&net)net.stuur('c',{t:t.slice(0,120)})});
-  $('#k-knop').onclick=()=>{if(K)K.toggle()};
+  $('#k-knop').onclick=()=>{if(K)K.toggle()};$('#i-knop').onclick=()=>{if(I)I.toggle()};
   $('#m-chat').onclick=()=>$('#chattekst').focus();
   $('#m-zoomin').onclick=()=>{cam.afstand=Math.max(10,cam.afstand-3)};$('#m-zoomuit').onclick=()=>{cam.afstand=Math.min(32,cam.afstand+3)};
 }
@@ -414,10 +441,10 @@ function stap(dt){
   const t=nu();
   if(gestart){
     updateSpeler(dt);if(H)hostTick(dt);updateMonsters(dt);updateAnderen(dt);stuurPresence();
-    UI.hud(P,hpMax(),spMax(),expVoor(P.lvl));
+    UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'));
     for(const id of['beuk','vuurkring','provocatie']){UI.cooldown(id,((P.cd[id]||0)-t)/SKILLS[id].cd);UI.slotStatus(id,!(P.skills[id]>0),false)}
-    UI.cooldown('drank',((P.cd.drank||0)-t)/VAARDIGHEDEN.drank.cd);
-    UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',P.dranken<=0,false);
+    UI.cooldown('drank',((P.cd.drank||0)-t)/ITEMS.drank.cd);
+    UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',tasAantal('drank')<=0,false);
     doelRing.visible=!!P.target;if(P.target){doelRing.position.set(P.target.x,.03,P.target.z);doelRing.rotation.z+=dt*1.5}
     K.tick(dt);
   }
@@ -427,5 +454,5 @@ function stap(dt){
   updateCamera();updateBorden();renderer.render(scene,camera);
 }
 
-window.RV={P,M,S,cam,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,statOmhoog,skillOmhoog,af,K:()=>K};
+window.RV={P,M,S,cam,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I};
 init().catch(e=>{console.error(e);$('#laden').textContent='Loading failed: '+e.message});

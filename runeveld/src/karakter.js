@@ -1,5 +1,5 @@
 /* Runeveld – characterscherm (C) met uitrusting, stats en skills, en de winkel van Koopman Bram. */
-import {ITEMS,SLOTS,WINKEL,DRANK_PRIJS,VAARDIGHEDEN} from './data.js';
+import {ITEMS,SLOTS,WINKEL} from './data.js';
 import {BLADEN,heldLagen} from './bladen.js';
 import {STATS,MAX_STAT,statKosten} from './regels/stats.js';
 import {SKILLS,SKILL_VOLGORDE,kanLeren,MAX_JOB,jobExpVoor} from './regels/skills.js';
@@ -30,11 +30,8 @@ export function maakKarakter(P,A){
     $('#k-slots').innerHTML=SLOTS.map(([slot,naam])=>{const it=P.uitr[slot]&&ITEMS[P.uitr[slot]];
       return it?`<button class="kslot" data-slot="${slot}" title="Click to unequip"><small>${naam}</small><b>${it.icoon} ${esc(it.naam)}</b><i>${statTekst(it)}</i></button>`
                :`<button class="kslot leeg" data-slot="${slot}"><small>${naam}</small><b>— empty —</b></button>`}).join('');
-    const tel=new Map();for(const id of P.tas)tel.set(id,(tel.get(id)||0)+1);
-    const rijen=[];
-    if(P.dranken>0)rijen.push(`<button class="kitem" data-drank="1" title="Click to drink">🧪 Red potion ×${P.dranken}<small>restores ${VAARDIGHEDEN.drank.heal} HP</small></button>`);
-    for(const[id,n]of tel){const it=ITEMS[id];if(!it)continue;rijen.push(`<button class="kitem" data-item="${id}" title="Click to equip">${it.icoon} ${esc(it.naam)}${n>1?' ×'+n:''}<small>${statTekst(it)}</small></button>`)}
-    $('#k-tas').innerHTML=rijen.length?rijen.join(''):'<span class="ktip">Your bag is empty. Monsters sometimes drop gear, and Merchant Bram sells it.</span>';
+    const n=P.tas.reduce((t,e)=>t+e.n,0);
+    $('#k-tas').innerHTML=`<button class="knop alt" data-inventaris="1">🎒 Open inventory (I)</button><span class="ktip">${n?`${n} item${n===1?'':'s'} in your bag.`:'Your bag is empty. Monsters sometimes drop gear, and Merchant Bram sells it.'}</span>`;
     tekenPreview();
   }
   function renderStats(af,vrij){
@@ -60,26 +57,26 @@ export function maakKarakter(P,A){
   el.addEventListener('click',e=>{
     const tb=e.target.closest('.ktab');if(tb){tab=tb.dataset.tab;render();return}
     const s=e.target.closest('.kslot');if(s&&!s.classList.contains('leeg')){A.afdoen(s.dataset.slot);render();return}
-    const i=e.target.closest('.kitem');if(i){if(i.dataset.drank)A.gebruikDrank();else A.uitrusten(i.dataset.item);render();return}
+    if(e.target.closest('[data-inventaris]')){A.openInventaris();return}
     const p=e.target.closest('.kplus');if(p&&!p.disabled){if(p.dataset.stat)A.statOmhoog(p.dataset.stat);else if(p.dataset.skill)A.skillOmhoog(p.dataset.skill);render()}
   });
   $('#k-sluit').onclick=()=>sluit();
 
   /* ---------- winkel ---------- */
   function renderWinkel(){
-    const rij=(icoon,naam,stat,prijs,data)=>`<div class="rij"><span>${icoon} ${esc(naam)}<small class="wstat">${stat}</small></span><button class="knop" ${data} ${P.zeny<prijs?'disabled':''}>${prijs} zeny</button></div>`;
-    $('#w-lijst').innerHTML=rij('🧪','Red potion','restores '+VAARDIGHEDEN.drank.heal+' HP',DRANK_PRIJS,'data-drank="1"')
-      +WINKEL.map(id=>{const it=ITEMS[id];return rij(it.icoon,it.naam,statTekst(it),it.prijs,`data-item="${id}"`)}).join('');
+    $('#w-lijst').innerHTML=WINKEL.map(id=>{const it=ITEMS[id];
+      return`<div class="rij"><span>${it.icoon} ${esc(it.naam)}<small class="wstat">${statTekst(it)||esc(it.beschr||'')}</small></span><button class="knop" data-item="${id}" ${P.zeny<it.prijs?'disabled':''}>${it.prijs} zeny</button></div>`}).join('')
+      +'<p class="ktip">Open your inventory (I) while the shop is open to sell items for half their price.</p>';
     $('#w-zeny').textContent=P.zeny;
   }
-  wk.addEventListener('click',e=>{const b=e.target.closest('button[data-item],button[data-drank]');if(!b)return;if(b.dataset.drank)A.koopDrank();else A.koop(b.dataset.item);renderWinkel();if(open)render()});
-  $('#sluit').onclick=()=>{wk.hidden=true};
+  wk.addEventListener('click',e=>{const b=e.target.closest('button[data-item]');if(!b)return;A.koop(b.dataset.item);renderWinkel();if(open)render()});
+  $('#sluit').onclick=()=>{wk.hidden=true;A.winkelDicht&&A.winkelDicht()};
 
   function toon(welkTab){if(welkTab)tab=welkTab;open=true;el.hidden=false;render()}
   function sluit(){open=false;el.hidden=true}
   return{
     toon,sluit,toggle(){open?sluit():toon()},isOpen:()=>open,render:()=>{if(open)render()},
     tick(dt){if(!open||tab!=='uitrusting')return;t+=dt;tekenPreview()},
-    winkelToon(){wk.hidden=false;renderWinkel()},winkelSluit(){wk.hidden=true},winkelOpen:()=>!wk.hidden,
+    winkelToon(){wk.hidden=false;renderWinkel()},winkelSluit(){wk.hidden=true},winkelOpen:()=>!wk.hidden,winkelRender:()=>{if(!wk.hidden)renderWinkel()},
   };
 }
