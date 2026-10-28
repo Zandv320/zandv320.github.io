@@ -31,7 +31,8 @@ export const BLADEN={
    Zonder kleding staat de held in zijn onderbroek. */
 export function heldLagen(uitr){
   const T=BLADEN.held.lagen,w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam],h=uitr.hoofd&&ITEMS[uitr.hoofd];
-  return[w&&T[w.laag+'b'],T.lijf,l&&T[l.laag],T.hoofd,h&&T[h.laag],w&&T[w.laag]].filter(Boolean);
+  /* een hoofddeksel is een complete hoofdlaag (hoofd + deksel, haar eronder weggehaald) en vervangt T.hoofd */
+  return[w&&T[w.laag+'b'],T.lijf,l&&T[l.laag],h?T[h.laag]:T.hoofd,w&&T[w.laag]].filter(Boolean);
 }
 
 /* laadt de texturen van alle bladen */

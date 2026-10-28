@@ -147,7 +147,7 @@ uit[1].save(UIT / 'held_hoofd.png')
 # ---------- hoofddeksels: handgetekende pixel-art, per frame op het hoofd gezet ----------
 # Elk deksel heeft vier tekeningen (front, left, right, back) in tekens: . leeg, o omlijning, d donker, m midden, l licht, h glans.
 # Per frame wordt de bovenkant en het midden van het haar bepaald; daar komt het deksel op, zodat het elke beweging volgt.
-HAAR = {(33, 26, 28), (43, 32, 35), (59, 44, 51), (77, 57, 69), (104, 79, 90)}
+HAAR = {(33, 26, 28), (43, 32, 35), (59, 44, 51), (77, 57, 69), (104, 79, 90), (135, 108, 125)}
 IJZER = {'o': (40, 42, 52), 'd': (96, 102, 118), 'm': (140, 148, 166), 'l': (186, 194, 210), 'h': (232, 238, 248)}
 LEER = {'o': (52, 30, 16), 'd': (104, 64, 32), 'm': (148, 96, 48), 'l': (184, 130, 74), 'h': (214, 170, 110)}
 
@@ -234,30 +234,48 @@ def spiegel(im):
     return im.transpose(Image.FLIP_LEFT_RIGHT)
 
 
-def hoofddeksel(hoofd, front, right, back, kleuren, fw=64, fh=64, lift=1):
-    """Zet per frame het juiste deksel op het haar. Rij r binnen een animatie: 0 front, 1 left, 2 right, 3 back."""
+OGEN = {(63, 106, 212), (17, 11, 0)}      # iris en pupil: het stabiele anker voor de hoogte
+
+
+def hoofddeksel(hoofd, front, right, back, kleuren, rand, fw=64, fh=64):
+    """Zet per frame het juiste deksel op het hoofd. Rij r binnen een animatie: 0 front, 1 left, 2 right, 3 back.
+    Horizontaal: het midden van de schedel (de bovenste vier haarrijen; wapperend haar telt niet mee).
+    Verticaal: de rand van het deksel (`rand` = rij-index van de onderste randrij) komt één pixel boven de ogen;
+    zonder ogen in beeld (rugaanzicht) sluit de bovenkant op het haar aan."""
     art = {0: tekening(front, kleuren), 1: spiegel(tekening(right, kleuren)), 2: tekening(right, kleuren), 3: tekening(back, kleuren)}
-    out = Image.new('RGBA', hoofd.size, (0, 0, 0, 0))
-    src = hoofd.load()
+    # het resultaat is een complete hoofdlaag (hoofd + deksel) die de gewone hoofdlaag vervangt:
+    # haar op en boven de rand wordt weggehaald, zodat er geen plukken door de helm steken
+    out = hoofd.copy()
+    src, dst = hoofd.load(), out.load()
     for r in range(hoofd.height // fh):
         deksel = art[r % 4]
         for c in range(hoofd.width // fw):
-            xs, ys = [], []
+            haar, ogen = [], []
             for y in range(r * fh, (r + 1) * fh):
                 for x in range(c * fw, (c + 1) * fw):
                     p = src[x, y]
-                    if p[3] > 0 and p[:3] in HAAR:
-                        xs.append(x); ys.append(y)
-            if not ys:
+                    if p[3] == 0:
+                        continue
+                    if p[:3] in HAAR:
+                        haar.append((x, y))
+                    elif p[:3] in OGEN:
+                        ogen.append((x, y))
+            if not haar:
                 continue
-            top, midden = min(ys), (min(xs) + max(xs)) / 2
-            x0 = round(midden - deksel.width / 2 + .5)
-            out.alpha_composite(deksel, (x0, top - lift))
+            top = min(y for _, y in haar)
+            schedel = [x for x, y in haar if y <= top + 3]
+            xc = (min(schedel) + max(schedel)) / 2
+            x0 = int(xc - deksel.width / 2 + 1)
+            y0 = (min(y for _, y in ogen) - 1 - rand) if ogen else top - 1
+            for x, y in haar:
+                if y <= y0 + rand:
+                    dst[x, y] = (0, 0, 0, 0)
+            out.alpha_composite(deksel, (x0, y0))
     return out
 
 
-hoofddeksel(uit[1], PET_FRONT, PET_RIGHT, PET_BACK, LEER).save(UIT / 'hoofd1.png')      # leren pet
-hoofddeksel(uit[1], HELM_FRONT, HELM_RIGHT, HELM_BACK, IJZER).save(UIT / 'hoofd2.png')  # ijzeren helm
+hoofddeksel(uit[1], PET_FRONT, PET_RIGHT, PET_BACK, LEER, rand=8).save(UIT / 'hoofd1.png')      # leren pet
+hoofddeksel(uit[1], HELM_FRONT, HELM_RIGHT, HELM_BACK, IJZER, rand=8).save(UIT / 'hoofd2.png')  # ijzeren helm
 
 # ---------- dieren ----------
 for uit, map_, anims in (
