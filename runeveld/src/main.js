@@ -1,7 +1,8 @@
 /* Runeveld – hoofdspel: speler, monsters, gevechten, levels, multiplayer, invoer. */
 import * as THREE from 'three';
-import {KLASSE,MAX_LVL,expVoor,VAARDIGHEDEN,DRANK_PRIJS,MONSTERS,SPAWNS,RESPAWN} from './data.js';
-import {BLADEN,laadBladen,heldBlad} from './bladen.js';
+import {KLASSE,MAX_LVL,expVoor,VAARDIGHEDEN,DRANK_PRIJS,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING} from './data.js';
+import {BLADEN,laadBladen,heldLagen} from './bladen.js';
+import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
 import {renderer,scene,camera,cam,updateCamera,bouwWereld,botsing,vrij,VELD,canvas,grondPunt,straal,updateBorden,obstakels} from './world.js';
 import {maakNet} from './net.js';
@@ -14,13 +15,16 @@ const R=(a,b)=>a+Math.random()*(b-a);
 const nu=()=>performance.now()/1000;
 
 /* ====================== toestand ====================== */
-const P={naam:'',lvl:1,exp:0,hp:60,sp:14,zeny:0,dranken:5,x:0,z:4,dood:false,zit:false,
+const P={naam:'',lvl:1,exp:0,hp:60,sp:14,zeny:0,dranken:5,x:0,z:4,dood:false,zit:false,uitr:{...STARTUITRUSTING},tas:[],
   sprite:null,label:null,bestemming:null,naarNpc:false,target:null,wacht:null,cd:{},volgendeSlag:0,bezigTot:0,seq:0,anim:'idle',regenT:0,respawnT:0};
 const M=new Map();      /* monsters: id → monster */
 const S=new Map();      /* andere spelers: peer-id → speler */
 const klikbaar=[];      /* meshes waar je op kunt klikken */
-let net=null,H=null,npc=null,gestart=false;
-const hpMax=()=>KLASSE.hpMax(P.lvl),spMax=()=>KLASSE.spMax(P.lvl),atk=()=>KLASSE.atk(P.lvl);
+let net=null,H=null,npc=null,gestart=false,K=null;
+/* statistieken: basis per level plus wat je draagt */
+const draagt=()=>Object.values(P.uitr).map(id=>id&&ITEMS[id]).filter(Boolean);
+const som=k=>draagt().reduce((t,it)=>t+(it[k]||0),0);
+const hpMax=()=>KLASSE.hpMax(P.lvl)+som('hp'),spMax=()=>KLASSE.spMax(P.lvl),atk=()=>KLASSE.atk(P.lvl)+som('atk'),def=()=>som('def');
 
 /* ====================== opstarten ====================== */
 async function init(){
@@ -34,9 +38,13 @@ async function init(){
 }
 function start(naam,save){
   P.naam=naam;
-  if(save){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,dranken:save.dranken,x:save.x,z:save.z});P.hp=Math.min(save.hp,hpMax());P.sp=Math.min(save.sp,spMax())}
+  if(save){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,dranken:save.dranken,x:save.x,z:save.z});
+    if(save.uitr)P.uitr={hoofd:null,lichaam:null,wapen:null,...save.uitr};if(Array.isArray(save.tas))P.tas=save.tas.filter(id=>ITEMS[id]);
+    for(const k in P.uitr)if(P.uitr[k]&&!ITEMS[P.uitr[k]])P.uitr[k]=null;
+    P.hp=Math.min(save.hp,hpMax());P.sp=Math.min(save.sp,spMax())}
   else{P.hp=hpMax();P.sp=spMax()}
-  P.sprite=new Sprite2D(heldBlad(P.lvl));scene.add(P.sprite.g);
+  P.sprite=new Sprite2D(BLADEN.held,{lagen:heldLagen(P.uitr)});scene.add(P.sprite.g);
+  K=maakKarakter(P,{hpMax,spMax,atk,def,expMax:()=>expVoor(P.lvl),uitrusten,afdoen,gebruikDrank:()=>vaardigheid('drank'),koop,koopDrank});
   P.label=UI.maakLabel('speler',naam);
   $('#start').hidden=true;$('#hud').hidden=false;
   UI.sys(save?`Welkom terug, ${naam}!`:`Welkom in Runeveld, ${naam}! Klik op een konijn om aan te vallen. Koopman Bram bij de kraam verkoopt drankjes.`);
@@ -49,7 +57,7 @@ function maakNpc(){
   sprite.mesh.userData.npc=npc;klikbaar.push(sprite.mesh);obstakels.push({x:npc.x,z:npc.z,r:.4});
 }
 function lees(){try{const s=JSON.parse(localStorage.getItem(SLEUTEL));return s&&s.naam?s:null}catch(e){return null}}
-function bewaar(){if(!gestart)return;try{localStorage.setItem(SLEUTEL,JSON.stringify({naam:P.naam,lvl:P.lvl,exp:P.exp,hp:P.hp,sp:P.sp,zeny:P.zeny,dranken:P.dranken,x:+P.x.toFixed(2),z:+P.z.toFixed(2)}))}catch(e){}}
+function bewaar(){if(!gestart)return;try{localStorage.setItem(SLEUTEL,JSON.stringify({naam:P.naam,lvl:P.lvl,exp:P.exp,hp:P.hp,sp:P.sp,zeny:P.zeny,dranken:P.dranken,uitr:P.uitr,tas:P.tas,x:+P.x.toFixed(2),z:+P.z.toFixed(2)}))}catch(e){}}
 
 /* ====================== multiplayer ====================== */
 function startNet(){
@@ -58,8 +66,8 @@ function startNet(){
   net.onSpelers((spelers,weg)=>{
     for(const id of weg)verwijderSpeler(id);
     for(const[id,p]of spelers){if(!p||!p.n)continue;let s=S.get(id);
-      if(!s){s={sprite:new Sprite2D(heldBlad(p.l||1)),label:UI.maakLabel('ander',p.n),x:p.x||0,z:p.y||0,tx:0,tz:0,pres:p,seq:p.s,bezigTot:0};scene.add(s.sprite.g);S.set(id,s);UI.sys(`${p.n} is online.`)}
-      if(s.sprite.blad!==heldBlad(p.l||1))s.sprite.zetBlad(heldBlad(p.l||1));
+      if(!s){s={sprite:new Sprite2D(BLADEN.held,{lagen:heldLagen(p.u||{})}),label:UI.maakLabel('ander',p.n),x:p.x||0,z:p.y||0,tx:0,tz:0,pres:p,seq:p.s,bezigTot:0,uKey:JSON.stringify(p.u||{})};scene.add(s.sprite.g);S.set(id,s);UI.sys(`${p.n} is online.`)}
+      const uKey=JSON.stringify(p.u||{});if(uKey!==s.uKey){s.uKey=uKey;s.sprite.zetLagen(heldLagen(p.u||{}))}
       s.pres=p;s.tx=p.x||0;s.tz=p.y||0;s.label.naam.textContent=`${p.n} · Lv ${p.l||1}`}
     UI.online(net.verbonden(),net.aantal());
   });
@@ -77,7 +85,7 @@ function verwijderSpeler(id){const s=S.get(id);if(!s)return;s.sprite.verwijder()
 let presT=0,lastPres='';
 function stuurPresence(){
   const t=nu();if(t-presT<.12)return;
-  const p={n:P.naam,l:P.lvl,x:+P.x.toFixed(2),y:+P.z.toFixed(2),kx:+P.sprite.kijk.x.toFixed(2),ky:+P.sprite.kijk.y.toFixed(2),a:P.anim,s:P.seq,hp:Math.round(P.hp),hm:hpMax(),dd:P.dood,zt:P.zit};
+  const p={n:P.naam,l:P.lvl,x:+P.x.toFixed(2),y:+P.z.toFixed(2),kx:+P.sprite.kijk.x.toFixed(2),ky:+P.sprite.kijk.y.toFixed(2),a:P.anim,s:P.seq,hp:Math.round(P.hp),hm:hpMax(),dd:P.dood,zt:P.zit,u:P.uitr};
   const key=JSON.stringify(p);if(key===lastPres)return;lastPres=key;presT=t;net.presence(p,true);
 }
 
@@ -112,7 +120,8 @@ function wordHost(){
 function hostHit(d,f){
   const m=M.get(d.id);if(!m||m.dood)return;
   m.hp=Math.max(0,m.hp-d.dmg);if(!m.doel)m.doel=f;
-  if(m.hp<=0){const sp=m.spec;m.dood=true;net.stuur('k',{id:m.id,door:f,exp:sp.exp,zeny:Math.round(R(sp.zeny[0],sp.zeny[1])),drank:Math.random()<sp.drank})}
+  if(m.hp<=0){const sp=m.spec;m.dood=true;let buit=null;for(const[id,kans]of Object.entries(sp.buit||{}))if(Math.random()<kans){buit=id;break}
+    net.stuur('k',{id:m.id,door:f,exp:sp.exp,zeny:Math.round(R(sp.zeny[0],sp.zeny[1])),drank:Math.random()<sp.drank,buit})}
 }
 function hostTick(dt){
   const spelers=[{id:net.me,x:P.x,z:P.z,dood:P.dood}];
@@ -223,7 +232,7 @@ function vaardigheid(id){
   if(id==='drank'){
     if(P.dranken<=0){UI.sys('Je hebt geen drankjes meer. Koopman Bram bij de kraam verkoopt ze.');return}
     if(P.hp>=hpMax())return;
-    P.dranken--;P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');return;
+    P.dranken--;P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();return;
   }
   if(P.sp<V.sp){UI.sys('Niet genoeg SP.');return}
   if(id==='beuk'){
@@ -242,7 +251,7 @@ function vaardigheid(id){
   }
 }
 function neemSchade(dmg){
-  if(P.dood)return;P.hp-=dmg;UI.getal(P.x,P.sprite.h,P.z,camera,dmg,'pijn');P.sprite.raak();
+  if(P.dood)return;dmg=Math.max(1,Math.round(dmg*100/(100+def()*5)));P.hp-=dmg;UI.getal(P.x,P.sprite.h,P.z,camera,dmg,'pijn');P.sprite.raak();
   if(nu()>=P.bezigTot)speelEens('pijn',.25);
   if(P.hp<=0)sterf();
 }
@@ -259,12 +268,31 @@ function beloning(d){
   P.exp+=d.exp;P.zeny+=d.zeny;
   UI.getal(P.x,P.sprite.h+.4,P.z,camera,'+'+d.exp+' exp','exp');
   if(d.drank){P.dranken++;UI.sys('Je vond een Rode drank!')}
+  if(d.buit&&ITEMS[d.buit]){P.tas.push(d.buit);UI.log('<span class="lvl">Je vond: '+ITEMS[d.buit].icoon+' '+UI.esc(ITEMS[d.buit].naam)+'! Druk op C om het aan te doen.</span>');K.render()}
   let up=false;
   while(P.lvl<MAX_LVL&&P.exp>=expVoor(P.lvl)){P.exp-=expVoor(P.lvl);P.lvl++;up=true}
-  if(up){P.hp=hpMax();P.sp=spMax();UI.melding('LEVEL UP!','Je bent nu level '+P.lvl);UI.log('<span class="lvl">Je bent nu level '+P.lvl+'!</span>');ring(P.x,P.z,0xffc857,.3,2.6,.8,1);
-    if(P.sprite.blad!==heldBlad(P.lvl)){P.sprite.zetBlad(heldBlad(P.lvl));P.anim='idle';UI.sys('Je uitrusting is verbeterd!')}}
+  if(up){P.hp=hpMax();P.sp=spMax();UI.melding('LEVEL UP!','Je bent nu level '+P.lvl);UI.log('<span class="lvl">Je bent nu level '+P.lvl+'!</span>');ring(P.x,P.z,0xffc857,.3,2.6,.8,1)}
+  K.render();
 }
-function openWinkel(){$('#winkel').hidden=false;$('#w-zeny').textContent=P.zeny;npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z)}
+function openWinkel(){K.winkelToon();npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z)}
+
+/* ====================== uitrusting ====================== */
+function vernieuwUiterlijk(){P.sprite.zetLagen(heldLagen(P.uitr));P.hp=Math.min(P.hp,hpMax())}
+function uitrusten(id){
+  const it=ITEMS[id],i=P.tas.indexOf(id);if(!it||i<0)return;
+  P.tas.splice(i,1);const oud=P.uitr[it.slot];if(oud)P.tas.push(oud);P.uitr[it.slot]=id;
+  vernieuwUiterlijk();UI.sys(`Je doet ${it.naam} aan.`);
+}
+function afdoen(slot){
+  const id=P.uitr[slot];if(!id)return;P.uitr[slot]=null;P.tas.push(id);
+  vernieuwUiterlijk();UI.sys(slot==='lichaam'?`Je doet ${ITEMS[id].naam} uit. Brr, wel een beetje kil zo.`:`Je doet ${ITEMS[id].naam} af.`);
+}
+function koop(id){
+  const it=ITEMS[id];if(!it)return;
+  if(P.zeny<it.prijs){UI.sys('Niet genoeg zeny. Versla monsters om zeny te verdienen.');return}
+  P.zeny-=it.prijs;P.tas.push(id);UI.sys(`Je kocht ${it.naam}. Druk op C om het aan te doen.`);
+}
+function koopDrank(){if(P.zeny<DRANK_PRIJS){UI.sys('Niet genoeg zeny. Versla monsters om zeny te verdienen.');return}P.zeny-=DRANK_PRIJS;P.dranken++;UI.sys('Je kocht een Rode drank.')}
 
 /* ====================== effecten ====================== */
 const effecten=[];
@@ -334,15 +362,15 @@ function invoer(){
     if(!gestart)return;
     if(e.key==='Enter'){e.preventDefault();$('#chattekst').focus();return}
     if(e.code==='Digit1')vaardigheid('beuk');else if(e.code==='Digit2')vaardigheid('vuurkring');else if(e.code==='Digit3')vaardigheid('drank');
-    else if(e.code==='KeyX')vaardigheid('zit');else if(e.key==='Escape'){$('#winkel').hidden=true;P.target=null;P.wacht=null;UI.doelkader(null)}
+    else if(e.code==='KeyX')vaardigheid('zit');else if(e.code==='KeyC')K.toggle();
+    else if(e.key==='Escape'){if(K.isOpen()||K.winkelOpen()){K.sluit();K.winkelSluit()}else{P.target=null;P.wacht=null;UI.doelkader(null)}}
     keys.add(e.code);
   });
   addEventListener('keyup',e=>keys.delete(e.code));
   addEventListener('blur',()=>keys.clear());
   document.querySelectorAll('.slot').forEach(b=>b.addEventListener('click',()=>vaardigheid(b.dataset.skill)));
   $('#chatin').addEventListener('submit',e=>{e.preventDefault();const inp=$('#chattekst');const t=inp.value.trim();inp.value='';inp.blur();if(t&&net)net.stuur('c',{t:t.slice(0,120)})});
-  $('#koop').onclick=()=>{if(P.zeny<DRANK_PRIJS){UI.sys('Niet genoeg zeny. Versla monsters om zeny te verdienen.');return}P.zeny-=DRANK_PRIJS;P.dranken++;$('#w-zeny').textContent=P.zeny;UI.sys('Je kocht een Rode drank.')};
-  $('#sluit').onclick=()=>{$('#winkel').hidden=true};
+  $('#k-knop').onclick=()=>{if(K)K.toggle()};
   $('#m-chat').onclick=()=>$('#chattekst').focus();
   $('#m-zoomin').onclick=()=>{cam.afstand=Math.max(10,cam.afstand-3)};$('#m-zoomuit').onclick=()=>{cam.afstand=Math.min(32,cam.afstand+3)};
 }
@@ -363,6 +391,7 @@ function stap(dt){
     for(const id of['beuk','vuurkring','drank'])UI.cooldown(id,((P.cd[id]||0)-t)/VAARDIGHEDEN[id].cd);
     UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',P.dranken<=0,false);
     doelRing.visible=!!P.target;if(P.target){doelRing.position.set(P.target.x,.03,P.target.z);doelRing.rotation.z+=dt*1.5}
+    K.tick(dt);
   }
   npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera);
   updateEffecten(dt);
@@ -370,5 +399,5 @@ function stap(dt){
   updateCamera();updateBorden();renderer.render(scene,camera);
 }
 
-window.RV={P,M,S,cam,net:()=>net,H:()=>H,stap,vaardigheid};
+window.RV={P,M,S,cam,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,K:()=>K};
 init().catch(e=>{console.error(e);$('#laden').textContent='Laden mislukt: '+e.message});

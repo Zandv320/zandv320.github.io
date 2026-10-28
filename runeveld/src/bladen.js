@@ -5,31 +5,41 @@
      voet       pixels tussen de onderkant van het frame en de voeten
      hoogte     hoogte van het figuur in pixels (voor naamlabels)
      richtingen rij-offset per kijkrichting; ontbreekt een richting, dan wordt de tegenovergestelde gespiegeld
-     anims      rij (eerste rij van de animatie), n frames, fps, eens (speelt één keer), perRichting (false: één rij) */
+     anims      rij (eerste rij van de animatie), n frames, fps, eens (speelt één keer), perRichting (false: één rij)
+   De held bestaat uit lagen met dezelfde indeling: lijf, kleding, hoofd en wapen (zie heldLagen). */
 import {laadTextuur} from './sprites.js';
+import {ITEMS} from './data.js';
 
 const HELD_RICHTINGEN={onder:0,links:1,rechts:2,boven:3};
 const DIER_RICHTINGEN={onder:0,boven:1,links:2,rechts:3};
 
-/* De zwaardvechter heeft drie uiterlijken: beginneling, vechter, held. */
-function held(n){return{url:`sprites/zwaardvechter${n}.png`,fw:64,fh:64,schaal:1/16,voet:20,hoogte:26,richtingen:HELD_RICHTINGEN,
-  anims:{idle:{rij:0,n:12,fps:8},loop:{rij:4,n:8,fps:13},aanval:{rij:8,n:8,fps:16,eens:true},pijn:{rij:12,n:5,fps:12,eens:true},dood:{rij:16,n:7,fps:9,eens:true}}}}
 function dier(naam,{loop,aanval,schaal=1/16,hoogte=20}){return{url:`sprites/${naam}.png`,fw:32,fh:32,schaal,voet:4,hoogte,richtingen:DIER_RICHTINGEN,
   anims:{idle:{rij:0,n:4,fps:5},loop:{rij:4,n:loop,fps:10},aanval:{rij:8,n:aanval,fps:12,eens:true},pijn:{rij:12,n:4,fps:10,eens:true},dood:{rij:16,n:6,fps:8,eens:true}}}}
 
 export const BLADEN={
-  zwaardvechter1:held(1),zwaardvechter2:held(2),zwaardvechter3:held(3),
+  held:{fw:64,fh:64,schaal:1/16,voet:20,hoogte:26,richtingen:HELD_RICHTINGEN,
+    lagen:{lijf:'sprites/held_lijf.png',hoofd:'sprites/held_hoofd.png',harnas1:'sprites/harnas1.png',harnas2:'sprites/harnas2.png',harnas3:'sprites/harnas3.png',
+      wapen1:'sprites/wapen1.png',wapen2:'sprites/wapen2.png',wapen3:'sprites/wapen3.png',wapen1b:'sprites/wapen1b.png',wapen2b:'sprites/wapen2b.png',wapen3b:'sprites/wapen3b.png'},
+    anims:{idle:{rij:0,n:12,fps:8},loop:{rij:4,n:8,fps:13},aanval:{rij:8,n:8,fps:16,eens:true},pijn:{rij:12,n:5,fps:12,eens:true},dood:{rij:16,n:7,fps:9,eens:true}}},
   koopman:{url:'sprites/koopman.png',fw:32,fh:32,schaal:1/16,voet:2,hoogte:28,richtingen:{onder:0},anims:{idle:{rij:0,n:4,fps:5,perRichting:false}}},
   konijn:dier('konijn',{loop:5,aanval:6,hoogte:19}),
   vos:dier('vos',{loop:6,aanval:6,hoogte:20}),
   zwijn:dier('zwijn',{loop:6,aanval:5,schaal:1/14,hoogte:22}),
 };
 
-/* welk uiterlijk hoort bij een level */
-export function heldBlad(lvl){return BLADEN[lvl>=15?'zwaardvechter3':lvl>=6?'zwaardvechter2':'zwaardvechter1']}
+/* De lagen van een held met deze uitrusting ({hoofd,lichaam,wapen}: item-ids of null), achterste eerst.
+   Zonder kleding staat de held in zijn onderbroek. */
+export function heldLagen(uitr){
+  const T=BLADEN.held.lagen,w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam];
+  return[w&&T[w.laag+'b'],T.lijf,l&&T[l.laag],T.hoofd,w&&T[w.laag]].filter(Boolean);
+}
 
 /* laadt de texturen van alle bladen */
 export async function laadBladen(){
-  await Promise.all(Object.values(BLADEN).map(async b=>{b.tex=await laadTextuur(b.url);if(!b.tex)throw new Error('Sprite ontbreekt: '+b.url)}));
+  const laad=async url=>{const t=await laadTextuur(url);if(!t)throw new Error('Sprite ontbreekt: '+url);return t};
+  await Promise.all(Object.values(BLADEN).map(async b=>{
+    if(b.url)b.tex=await laad(b.url);
+    if(b.lagen){const t={};await Promise.all(Object.entries(b.lagen).map(async([k,url])=>{t[k]=await laad(url)}));b.lagen=t;b.tex=t.lijf}
+  }));
   return BLADEN;
 }

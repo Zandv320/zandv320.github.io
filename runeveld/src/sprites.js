@@ -1,18 +1,14 @@
 /* Runeveld – 2D sprites in een 3D-wereld (zoals Ragnarok Online).
    Een sprite is een plat vlak dat altijd naar de camera kijkt; de tekening komt uit een
-   spritesheet met per animatie een rij (of vier rijen: één per kijkrichting). */
+   spritesheet met per animatie vier rijen (één per kijkrichting). Een sprite kan uit meerdere
+   lagen bestaan die dezelfde indeling delen (lijf, kleding, hoofd, wapen): zo wordt uitrusting zichtbaar. */
 import * as THREE from 'three';
 
 const cache=new Map();
-/* Laadt een afbeelding als pixel-art textuur. Bestaat het bestand niet, dan tekent `fallback()` een canvas. */
-export function laadTextuur(url,fallback){
+/* Laadt een afbeelding als pixel-art textuur (null als het bestand ontbreekt). */
+export function laadTextuur(url){
   if(cache.has(url))return cache.get(url);
-  const p=new Promise(res=>{
-    const img=new Image();
-    img.onload=()=>res(maakTex(img));
-    img.onerror=()=>res(fallback?maakTex(fallback()):null);
-    img.src=url;
-  });
+  const p=new Promise(res=>{const img=new Image();img.onload=()=>res(maakTex(img));img.onerror=()=>res(null);img.src=url});
   cache.set(url,p);return p;
 }
 export function maakTex(bron){
@@ -23,62 +19,74 @@ export function maakTex(bron){
 
 const schaduwGeo=new THREE.CircleGeometry(.5,20);
 const schaduwMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.28,depthWrite:false});
+const klikMat=new THREE.MeshBasicMaterial({visible:false});
 
 /* Hoe ver sprites achterover leunen naar de camera (1 = exact naar de camera gericht). */
 export const LEUN=1;
 
 export class Sprite2D{
-  /* blad: {tex, fw, fh, schaal, richtingen:{onder,links,rechts,boven}, anims:{naam:{rij,n,fps,eens,perRichting,tex}}}
+  /* blad: {tex, fw, fh, schaal, voet, hoogte, richtingen:{onder,links,rechts,boven}, anims:{naam:{rij,n,fps,eens,perRichting}}}
+     lagen: texturen in tekenvolgorde (achterste eerst); zonder lagen wordt blad.tex gebruikt
      schaduw: diameter van de schaduw in wereld-eenheden (0 = geen) */
-  constructor(blad,{schaduw=.9}={}){
-    this.mat=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.5,side:THREE.DoubleSide});
-    this.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),this.mat);this.mesh.frustumCulled=false;
-    this.g=new THREE.Group();this.g.add(this.mesh);
-    this.anim=null;this.naam='';this.t=0;this.frame=0;this.richt='onder';this.klaar=false;this.kijk=new THREE.Vector2(0,1);this.flits=0;
-    this.zetBlad(blad);
+  constructor(blad,{schaduw=.9,lagen=null}={}){
+    this.g=new THREE.Group();this.lagen=[];
+    /* onzichtbaar vlak om op te klikken (raycast) */
+    this.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),klikMat);this.mesh.frustumCulled=false;this.g.add(this.mesh);
+    this.anim=null;this.naam='';this.t=0;this.frame=0;this.richt='onder';this.klaar=false;this.kijk=new THREE.Vector2(0,1);this.flits=0;this.cols=1;this.rows=1;
+    this.zetBlad(blad,lagen);
     if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=.02;s.scale.setScalar(schaduw);this.g.add(s);this.schaduw=s}
   }
-  /* (ander) blad gebruiken; de hoogte van het figuur en de voetpositie komen uit het blad */
-  zetBlad(blad){
-    this.blad=blad;this.bron=null;this.tex=null;this.cols=1;this.rows=1;this.anim=null;this.naam='';
+  /* (ander) blad gebruiken; hoogte van het figuur en voetpositie komen uit het blad */
+  zetBlad(blad,lagen=null){
+    this.blad=blad;this.anim=null;this.naam='';
     const w=blad.fw*blad.schaal,h=blad.fh*blad.schaal,voet=(blad.voet||0)*blad.schaal;
     this.w=w;this.h=(blad.hoogte||blad.fh)*blad.schaal;
-    this.mesh.geometry.dispose();const geo=new THREE.PlaneGeometry(w,h);geo.translate(0,h/2-voet,0);this.mesh.geometry=geo;
+    if(this.geo)this.geo.dispose();this.geo=new THREE.PlaneGeometry(w,h);this.geo.translate(0,h/2-voet,0);
+    this.mesh.geometry=this.geo;for(const L of this.lagen)L.mesh.geometry=this.geo;
+    this.zetLagen(lagen||[blad.tex]);
     this.speel('idle',true);
   }
-  _zetBron(src){
-    if(src===this.bron)return;this.bron=src;
-    this.tex=src.clone();this.tex.needsUpdate=true;
-    this.cols=Math.max(1,Math.round(src.image.width/this.blad.fw));this.rows=Math.max(1,Math.round(src.image.height/this.blad.fh));
-    this.mat.map=this.tex;this.mat.needsUpdate=true;
+  /* de lagen (texturen) vervangen, in tekenvolgorde */
+  zetLagen(bronnen){
+    bronnen=bronnen.filter(Boolean);
+    while(this.lagen.length>bronnen.length){const L=this.lagen.pop();L.mesh.removeFromParent();L.mesh.material.dispose();L.tex.dispose()}
+    bronnen.forEach((bron,i)=>{
+      let L=this.lagen[i];
+      if(!L){const mat=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.5,side:THREE.DoubleSide});
+        const mesh=new THREE.Mesh(this.geo,mat);mesh.frustumCulled=false;mesh.position.z=.004*(i+1);this.g.add(mesh);
+        L={mesh,bron:null,tex:null};this.lagen.push(L)}
+      if(L.bron!==bron){if(L.tex)L.tex.dispose();L.bron=bron;L.tex=bron.clone();L.tex.needsUpdate=true;L.mesh.material.map=L.tex;L.mesh.material.needsUpdate=true}
+    });
+    const b=bronnen[0];
+    this.cols=Math.max(1,Math.round(b.image.width/this.blad.fw));this.rows=Math.max(1,Math.round(b.image.height/this.blad.fh));
+    this._uv();
   }
   heeft(naam){return !!this.blad.anims[naam]}
   speel(naam,herstart=false){
     const a=this.blad.anims[naam]||this.blad.anims.idle;if(!a)return;
     if(this.anim===a&&!herstart)return;
-    this.anim=a;this.naam=naam;this.t=0;this.frame=0;this.klaar=false;
-    this._zetBron(a.tex||this.blad.tex);this._uv();
+    this.anim=a;this.naam=naam;this.t=0;this.frame=0;this.klaar=false;this._uv();
   }
   duur(naam){const a=this.blad.anims[naam];return a?a.n/a.fps:0}
   zetKijk(dx,dz){if(Math.abs(dx)+Math.abs(dz)<1e-4)return;this.kijk.set(dx,dz).normalize()}
-  /* korte witte/rode flits bij schade */
-  raak(kleur=0xff6060){this.flits=.12;this.mat.color.set(kleur)}
+  /* korte rode flits bij schade */
+  raak(kleur=0xff6060){this.flits=.12;for(const L of this.lagen)L.mesh.material.color.set(kleur)}
   update(dt,cam){
     const a=this.anim;
     if(a){this.t+=dt;let f=Math.floor(this.t*a.fps);
       if(a.eens){if(f>=a.n){f=a.n-1;this.klaar=true}}else f%=a.n;
       if(f!==this.frame){this.frame=f;this._uv()}}
-    if(this.flits>0){this.flits-=dt;if(this.flits<=0)this.mat.color.set(0xffffff)}
+    if(this.flits>0){this.flits-=dt;if(this.flits<=0)for(const L of this.lagen)L.mesh.material.color.set(0xffffff)}
     /* kijkrichting omzetten naar onder/links/rechts/boven, gezien vanuit de camera */
     const fx=this.kijk.x,fz=this.kijk.y,sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw);
     const weg=-(fx*sy+fz*cy);      /* > 0: van de camera af (we zien de rug) */
     const rechts=fx*cy-fz*sy;
     const r=Math.abs(weg)>=Math.abs(rechts)?(weg>0?'boven':'onder'):(rechts>0?'rechts':'links');
     if(r!==this.richt){this.richt=r;this._uv()}
-    this.g.rotation.y=cam.yaw;this.mesh.rotation.x=-cam.tilt*LEUN;
+    this.g.rotation.y=cam.yaw;const rx=-cam.tilt*LEUN;this.mesh.rotation.x=rx;for(const L of this.lagen)L.mesh.rotation.x=rx;
   }
   _uv(){
-    const a=this.anim;if(!a||!this.tex)return;
+    const a=this.anim;if(!a||!this.lagen.length)return;
     const d=this.blad.richtingen||{onder:0};
     let ri=d[this.richt],spiegel=false;
     if(ri===undefined){ /* geen eigen rij voor deze richting: gebruik de tegenovergestelde kant gespiegeld */
@@ -87,10 +95,9 @@ export class Sprite2D{
     }
     const rij=(a.rij||0)+(a.perRichting===false?0:ri),kol=(a.kol||0)+this.frame;
     const cw=1/this.cols,ch=1/this.rows;
-    this.tex.repeat.set(spiegel?-cw:cw,ch);
-    this.tex.offset.set(spiegel?(kol+1)*cw:kol*cw,1-(rij+1)*ch);
+    for(const L of this.lagen){L.tex.repeat.set(spiegel?-cw:cw,ch);L.tex.offset.set(spiegel?(kol+1)*cw:kol*cw,1-(rij+1)*ch)}
   }
-  verwijder(){this.g.removeFromParent();this.mat.dispose();if(this.tex)this.tex.dispose()}
+  verwijder(){this.g.removeFromParent();for(const L of this.lagen){L.mesh.material.dispose();L.tex.dispose()}this.lagen=[];this.geo.dispose()}
 }
 
 /* Een stilstaand plaatje (huis, boom, hek) dat ook naar de camera gekeerd staat. */

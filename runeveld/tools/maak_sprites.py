@@ -11,7 +11,10 @@ De map met packs bevat de uitgepakte zips uit runeveld/_download/, elk in een ei
     free-medieval-fortress-top-down-pixel-minigame-kit/
 
 Uitvoer (allemaal pixel-art, 1 wereld-eenheid = 16 px, zie world.js):
-    zwaardvechter1..3.png  64×64 frames, 12 kolommen, per animatie 4 rijen (onder, links, rechts, boven)
+    held_lijf.png          naakt basislijf (onderbroek), 64×64 frames, 12 kolommen, per animatie 4 rijen (onder, links, rechts, boven)
+    held_hoofd.png         hoofd en haar, zelfde indeling
+    harnas1..3.png         kleding als losse laag over het lijf (tuniek, leren vest, stalen harnas)
+    wapen1..3.png          zwaard vóór het lijf (incl. zwaai-effect), wapen1b..3b.png het deel achter het lijf
     konijn/vos/zwijn.png   32×32 frames, 6 kolommen, per animatie 4 rijen (onder, boven, links, rechts)
     koopman.png            32×32 frames, 4 kolommen, 1 rij
     grond.png              7 tegels van 32×32 naast elkaar: 3× gras, 2× keien, 2× pad
@@ -54,13 +57,98 @@ def stapel(animaties, fw, fh, cols, rijen=4):
     return out
 
 
-# ---------- zwaardvechter: drie uiterlijken (level 1-3) ----------
+# ---------- zwaardvechter: losse lagen ----------
+ANIMS = ('Idle', 'Run', 'attack', 'Hurt', 'Death')
+LEEG = Image.new('RGBA', (64, 256), (0, 0, 0, 0))
+
+
+def part(lvl, anim, naam):
+    p = SW / f'Swordsman_lvl{lvl}/Parts/Swordsman_lvl{lvl}_{anim}_{naam}.png'
+    return open_rgba(p) if p.exists() else None
+
+
+def stapel_lagen(lagen, fw, fh, cols, rijen=4):
+    """Als stapel(), maar voor meerdere lagen tegelijk: het aantal frames per rij komt van de eerste laag
+    (het lijf), zodat alle lagen precies gelijk lopen."""
+    outs = [Image.new('RGBA', (cols * fw, len(lagen[0]) * rijen * fh), (0, 0, 0, 0)) for _ in lagen]
+    for a in range(len(lagen[0])):
+        for r in range(rijen):
+            n = frames_in_rij(lagen[0][a], fw, fh, r)
+            for c in range(cols):
+                f = c % n
+                for li, laag in enumerate(lagen):
+                    sheet = laag[a]
+                    if sheet is None:
+                        continue
+                    outs[li].paste(sheet.crop((f * fw, r * fh, (f + 1) * fw, (r + 1) * fh)), (c * fw, (a * rijen + r) * fh))
+    return outs
+
+
+# kleuren van de tuniek (level 1) → huid; de laagste rijen van de tuniek worden een onderbroek
+TUNIEK = {(63, 67, 61): (190, 134, 95), (94, 97, 90): (225, 178, 110), (111, 115, 106): (225, 178, 110),
+          (134, 139, 124): (246, 202, 116), (45, 49, 43): (164, 111, 89)}
+ONDERBROEK = {(63, 67, 61): (205, 205, 210), (94, 97, 90): (238, 238, 242), (111, 115, 106): (238, 238, 242),
+              (134, 139, 124): (250, 250, 252), (45, 49, 43): (170, 170, 178)}
+
+
+def naakt(sheet, fw=64, fh=64):
+    """Maakt van een level-1-lijfsheet een naakt lijf: tuniek wordt huid, de heupen krijgen een onderbroek."""
+    out = sheet.copy()
+    px = out.load()
+    for r in range(sheet.height // fh):
+        for c in range(sheet.width // fw):
+            fr = sheet.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh))
+            bb = fr.getbbox()
+            if not bb:
+                continue
+            voet = r * fh + bb[3]            # onderste gevulde rij van dit frame
+            for y in range(r * fh + bb[1], voet):
+                for x in range(c * fw + bb[0], c * fw + bb[2]):
+                    p = px[x, y]
+                    if p[3] == 0:
+                        continue
+                    k = p[:3]
+                    if k in TUNIEK:
+                        band = voet - 8 <= y <= voet - 6
+                        px[x, y] = (ONDERBROEK if band else TUNIEK)[k] + (255,)
+    return out
+
+
+def verschil(laag, basis):
+    """Alleen de pixels van `laag` die anders zijn dan `basis` (de kleding zonder het lijf eronder)."""
+    out = Image.new('RGBA', laag.size, (0, 0, 0, 0))
+    a, b, o = laag.load(), basis.load(), out.load()
+    for y in range(laag.height):
+        for x in range(laag.width):
+            if a[x, y][3] > 0 and a[x, y] != b[x, y]:
+                o[x, y] = a[x, y]
+    return out
+
+
+lijf1 = [part(1, a, 'body') for a in ANIMS]
+hoofd = [part(1, a, 'head') for a in ANIMS]
+lagen = [lijf1, hoofd]
 for lvl in (1, 2, 3):
-    d = SW / f'Swordsman_lvl{lvl}/Without_shadow'
-    naam = lambda a: d / f'Swordsman_lvl{lvl}_{a}_without_shadow.png'
-    sheets = [open_rgba(naam(a)) for a in ('Idle', 'Run', 'attack', 'Hurt', 'Death')]
-    stapel(sheets, 64, 64, 12).save(UIT / f'zwaardvechter{lvl}.png')
-    print('zwaardvechter', lvl, [frames_in_rij(s, 64, 64, 0) for s in sheets])
+    lagen.append([part(lvl, a, 'body') for a in ANIMS])
+    voor = []
+    for a in ANIMS:
+        sw = part(lvl, a, 'sword')
+        zw = part(lvl, a, 'swing')
+        if sw is not None and zw is not None:
+            sw = sw.copy(); sw.alpha_composite(zw)
+        voor.append(sw)
+    lagen.append(voor)
+    lagen.append([part(lvl, a, 'sword_back') for a in ANIMS])
+uit = stapel_lagen(lagen, 64, 64, 12)
+basis = naakt(uit[0])
+basis.save(UIT / 'held_lijf.png')
+uit[1].save(UIT / 'held_hoofd.png')
+for lvl in (1, 2, 3):
+    i = 2 + (lvl - 1) * 3
+    verschil(uit[i], basis).save(UIT / f'harnas{lvl}.png')
+    uit[i + 1].save(UIT / f'wapen{lvl}.png')
+    uit[i + 2].save(UIT / f'wapen{lvl}b.png')
+print('zwaardvechter-lagen gemaakt')
 
 # ---------- dieren ----------
 for uit, map_, anims in (

@@ -10,7 +10,7 @@ function laadScript(src){return new Promise((res,rej)=>{const s=document.createE
 export function maakNet(){
   const handlers={},spelers=new Map(),gezien=new Map();
   const me=Date.now().toString(36).padStart(9,'0')+'-'+Math.random().toString(36).slice(2,8);
-  let client=null,verbonden=false,host=false,myPres={},gesloten=false;
+  let client=null,verbonden=false,host=false,myPres={},gesloten=false,brokerUrl='';
   const hostFns=[],spelerFns=[],connFns=[];
   const fire=(t,d,f,isMe)=>(handlers[t]||[]).forEach(fn=>{try{fn(d,f,isMe)}catch(e){console.error(e)}});
   const elect=()=>{let h=me;for(const id of spelers.keys())if(id<h)h=id;const v=h===me;if(v!==host){host=v;hostFns.forEach(f=>f(v))}};
@@ -37,7 +37,7 @@ export function maakNet(){
     elect(); /* alleen = host */
     try{if(typeof mqtt==='undefined')await laadScript(MQTT_CDN)}catch(e){}
     while(!gesloten){
-      if(typeof mqtt!=='undefined')for(const u of URLS){client=await verbind(u);if(client)break}
+      if(typeof mqtt!=='undefined')for(const u of URLS){client=await verbind(u);if(client){brokerUrl=u;break}}
       if(client)return;
       await new Promise(r=>setTimeout(r,20000));
     }
@@ -50,7 +50,7 @@ export function maakNet(){
   addEventListener('pagehide',()=>{try{publish('x',{f:me});client&&client.end(true)}catch(e){}});
 
   return{
-    me,spelers,
+    me,spelers,broker:()=>brokerUrl,
     verbonden:()=>verbonden,isHost:()=>host,hostId,
     aantal:()=>spelers.size+1,
     onHost(f){hostFns.push(f)},onSpelers(f){spelerFns.push(f)},onVerbinding(f){connFns.push(f)},
