@@ -29,7 +29,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 .bubble:after{content:'';position:absolute;left:50%;top:100%;margin-left:-5px;border:5px solid transparent;border-top-color:#fff}
 @keyframes bub{from{transform:translateY(6px);opacity:0}}
 .dmg{position:absolute;left:0;top:0;font-weight:900;font-size:18px;color:#fff;text-shadow:0 2px 0 #000,0 0 6px #000;animation:dmg .9s ease-out forwards}
-.dmg.eigen{color:#ffd166}.dmg.skill{font-size:24px;color:#ff8c42}.dmg.pijn{color:#ff6b6b}.dmg.heal{color:#7cf5a0}.dmg.exp{color:#d8b4fe;font-size:14px}
+.dmg.eigen{color:#ffd166}.dmg.skill{font-size:24px;color:#ff8c42}.dmg.crit{font-size:28px;color:#fff3b0;text-shadow:0 2px 0 #7a4a00,0 0 10px #ffb300}.dmg.mis{font-size:14px;color:#cfd8e3;font-weight:500}.dmg.pijn{color:#ff6b6b}.dmg.heal{color:#7cf5a0}.dmg.exp{color:#d8b4fe;font-size:14px}
 @keyframes dmg{0%{opacity:0;transform:translate(-50%,-80%) scale(.6)}15%{opacity:1;transform:translate(-50%,-110%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-230%) scale(1)}}
 
 /* ---------- panelen ---------- */
@@ -93,6 +93,24 @@ body.touch #mobiel{display:flex}
 .ktip{color:var(--dim);font-size:12px}
 .wstat{display:block;color:#9fe3b0;font-size:11px}
 @media (max-width:600px){.kgrid{grid-template-columns:1fr}.kpreview{flex-direction:row;align-items:flex-start}#k-canvas{width:108px;height:120px;flex:none}}
+/* tabbladen, stats en skills */
+.ktabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--rand)}
+.ktab{position:relative;padding:8px 14px;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.ktab.actief{color:#fff;border-bottom-color:var(--goud)}
+.kbadge{position:absolute;top:3px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--goud);color:#2a1a00;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.kstatgrid{display:grid;grid-template-columns:1fr 200px;gap:14px}
+.kstat{display:grid;grid-template-columns:44px 36px 44px 1fr;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.kstatnaam{font-weight:700;letter-spacing:.06em}.kstat b{text-align:right;font-variant-numeric:tabular-nums;font-size:16px}
+.kstat em{font-style:normal;color:var(--dim);font-size:11.5px}
+.kplus{width:40px;height:30px;border-radius:8px;background:linear-gradient(#ffd46b,#f0a829);color:#2a1a00;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;gap:2px}
+.kplus small{font-size:9px;font-weight:700}.kplus:disabled{filter:grayscale(1) opacity(.35);cursor:default}
+.kskills{display:flex;flex-direction:column;gap:8px}
+.kskill{padding:10px 12px;border-radius:10px;border:1px solid var(--rand);background:rgba(255,255,255,.05)}
+.kskill.dicht{opacity:.75}
+.kskillkop{display:flex;align-items:center;gap:10px}.kskillkop>div{flex:1}.kskillkop b small{color:var(--dim);font-weight:400}.kskillkop small{display:block;color:var(--dim);font-size:11px}
+.kskillicoon{font-size:22px;width:32px;text-align:center}
+.kskill p{margin:6px 0 2px;font-size:12.5px;color:#d7dee6}.kskill em{font-style:normal;color:#9fe3b0;font-size:11.5px}
+@media (max-width:600px){.kstatgrid{grid-template-columns:1fr}}
 /* ---------- winkel ---------- */
 #winkel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:16px;z-index:5}
 #winkel h3{margin:0 0 4px;font-size:17px}#winkel p{margin:0 0 8px;color:var(--dim);font-size:13px}
@@ -128,7 +146,7 @@ body.touch #mobiel{display:flex}
 
 <div id="hud" hidden>
   <div id="char" class="paneel">
-    <div class="kop"><b id="h-naam">—</b><small>Lv <span id="h-lvl">1</span> · Zwaardvechter</small></div>
+    <div class="kop"><b id="h-naam">—</b><small>Lv <span id="h-lvl">1</span> · Job <span id="h-job">1</span></small></div>
     <div class="bar hp"><i id="h-hp"></i><span id="h-hpt"></span></div>
     <div class="bar sp"><i id="h-sp"></i><span id="h-spt"></span></div>
     <div class="bar exp" id="h-expbar" title="Ervaring"><i id="h-exp"></i></div>
@@ -148,7 +166,8 @@ body.touch #mobiel{display:flex}
   <div id="balk" class="paneel">
     <button class="slot" data-skill="beuk" title="Beuk: 2,3× schade op je doelwit"><kbd>1</kbd><span class="ic">⚔️</span><span class="nm">Beuk</span><i class="cd"></i></button>
     <button class="slot" data-skill="vuurkring" title="Vuurkring: raakt alle monsters om je heen"><kbd>2</kbd><span class="ic">🔥</span><span class="nm">Vuurkring</span><i class="cd"></i></button>
-    <button class="slot" data-skill="drank" title="Rode drank: herstelt 45 HP"><kbd>3</kbd><span class="ic">🧪</span><span class="nm">Drank</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
+    <button class="slot" data-skill="provocatie" title="Provocatie: lokt monsters in de buurt naar je toe"><kbd>3</kbd><span class="ic">😤</span><span class="nm">Provoceer</span><i class="cd"></i></button>
+    <button class="slot" data-skill="drank" title="Rode drank: herstelt 45 HP"><kbd>4</kbd><span class="ic">🧪</span><span class="nm">Drank</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
     <button class="slot" data-skill="zit" title="Zitten: sneller herstellen"><kbd>X</kbd><span class="ic">🪑</span><span class="nm">Zitten</span><i class="cd"></i></button>
   </div>
   <div id="mobiel"><button id="m-chat" title="Chat">💬</button><button id="m-zoomin" title="Inzoomen">+</button><button id="m-zoomuit" title="Uitzoomen">−</button></div>
@@ -156,13 +175,22 @@ body.touch #mobiel{display:flex}
 
 <div id="karakter" class="paneel" hidden>
   <div class="kkop"><div><h3 id="k-naam">—</h3><small id="k-sub"></small></div><button class="ksluit" id="k-sluit" title="Sluiten (C)">✕</button></div>
-  <div class="kgrid">
+  <div class="ktabs"><button class="ktab actief" data-tab="uitrusting">Uitrusting<span class="kbadge" hidden></span></button><button class="ktab" data-tab="stats">Stats<span class="kbadge" hidden></span></button><button class="ktab" data-tab="skills">Skills<span class="kbadge" hidden></span></button></div>
+  <div class="kgrid" id="k-tab-uitrusting">
     <div class="kpreview"><canvas id="k-canvas" width="144" height="160"></canvas><div class="kstats" id="k-stats"></div></div>
     <div>
       <div class="kslots" id="k-slots"></div>
       <div class="ktas"><h4>Tas</h4><div class="kitems" id="k-tas"></div></div>
       <p class="ktip">Klik op een voorwerp in je tas om het aan te doen, en op een slot om het weer af te doen. Zonder kleding sta je in je onderbroek.</p>
     </div>
+  </div>
+  <div id="k-tab-stats" hidden>
+    <p class="ktip" id="k-statpunten"></p>
+    <div class="kstatgrid"><div id="k-statlijst"></div><div class="kstats" id="k-afgeleid"></div></div>
+  </div>
+  <div id="k-tab-skills" hidden>
+    <p class="ktip" id="k-skillpunten"></p>
+    <div class="kskills" id="k-skilllijst"></div>
   </div>
 </div>
 
@@ -181,7 +209,7 @@ body.touch #mobiel{display:flex}
     <input id="naam" maxlength="14" placeholder="Bijv. Aria" spellcheck="false">
     <div class="klas"><div class="icoon">⚔️</div><div><b>Zwaardvechter</b><small>Sterk van dichtbij. Vaardigheden: Beuk en Vuurkring.</small></div></div>
     <button id="speel" class="knop">Speel</button>
-    <div class="hulp"><kbd>klik</kbd> lopen / aanvallen · <kbd>WASD</kbd> lopen · <kbd>1</kbd> <kbd>2</kbd> vaardigheden · <kbd>3</kbd> drank · <kbd>X</kbd> zitten · <kbd>C</kbd> character · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> of rechtermuisknop camera draaien · <kbd>scroll</kbd> zoom</div>
+    <div class="hulp"><kbd>klik</kbd> lopen / aanvallen · <kbd>WASD</kbd> lopen · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> vaardigheden · <kbd>4</kbd> drank · <kbd>X</kbd> zitten · <kbd>C</kbd> character · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> of rechtermuisknop camera draaien · <kbd>scroll</kbd> zoom</div>
     <a class="terug" href="../">← Speelhal</a>
   </div>
 </div>

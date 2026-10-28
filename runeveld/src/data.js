@@ -1,21 +1,17 @@
 /* Runeveld – spelgegevens: klasse, vaardigheden, uitrusting, monsters, levels. */
 
+/* De klasse; HP, SP, ATK en aanvalssnelheid volgen uit level, stats en uitrusting (regels/stats.js). */
 export const KLASSE={
   naam:'Zwaardvechter',
   snelheid:4.6,          /* eenheden per seconde */
   bereik:1.5,            /* aanvalsbereik */
-  aanvalTijd:.9,         /* seconden tussen gewone slagen */
-  hpMax:l=>60+l*14,
-  spMax:l=>14+l*5,
-  atk:l=>4+l*2,          /* met blote vuisten; het wapen komt erbij */
 };
 
 export const MAX_LVL=30;
 export const expVoor=l=>Math.round(40*Math.pow(l,1.55));
 
+/* De actieve skills staan in regels/skills.js; het drankje is een voorwerp, geen skill. */
 export const VAARDIGHEDEN={
-  beuk:{naam:'Beuk',sp:7,cd:1.6,mult:2.3},
-  vuurkring:{naam:'Vuurkring',sp:14,cd:6,mult:1.5,straal:3},
   drank:{naam:'Rode drank',cd:1,heal:45},
 };
 export const DRANK_PRIJS=25;

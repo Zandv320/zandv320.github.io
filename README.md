@@ -27,7 +27,8 @@ npm run preview    # bekijk de productiebuild
 ## Runeveld
 
 - `runeveld/index.html` – pagina, CSS en HUD
-- `runeveld/src/` – ES-modules: `data` (klasse, vaardigheden, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `net` (MQTT), `ui`, `main` (spel)
+- `runeveld/src/` – ES-modules: `data` (klasse, uitrusting, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `net` (MQTT), `ui`, `karakter` (characterscherm en winkel), `main` (spel)
+- `runeveld/src/regels/` – pure spelregels zonder browser- of netwerkcode (stats, skills, gevecht), zodat een server later dezelfde regels kan draaien
 - `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies (Swordsman 1–3 Level, Hunt Animals, Village Pixel Tileset, Medieval Fortress kit) door `runeveld/tools/maak_sprites.py`
 - `runeveld/_download/` – de gedownloade Craftpix-zips (niet gecommit); uitpakken en `python3 -I runeveld/tools/maak_sprites.py <map-met-packs>` draaien om `sprites/` opnieuw te maken
 

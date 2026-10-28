@@ -44,7 +44,7 @@ export function melding(groot,klein=''){
 }
 
 export function hud(P,hpMax,spMax,expMax){
-  $('#h-naam').textContent=P.naam;$('#h-lvl').textContent=P.lvl;
+  $('#h-naam').textContent=P.naam;$('#h-lvl').textContent=P.lvl;$('#h-job').textContent=P.job;
   $('#h-hp').style.transform=`scaleX(${(P.hp/hpMax).toFixed(3)})`;$('#h-hpt').textContent=Math.ceil(P.hp)+' / '+hpMax;
   $('#h-sp').style.transform=`scaleX(${(P.sp/spMax).toFixed(3)})`;$('#h-spt').textContent=Math.floor(P.sp)+' / '+spMax;
   $('#h-exp').style.transform=`scaleX(${(P.exp/expMax).toFixed(3)})`;$('#h-expbar').title='Ervaring: '+P.exp+' / '+expMax;
