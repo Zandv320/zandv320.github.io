@@ -14,7 +14,9 @@ function velmoraGame(){
     load(i){if(i!==rid)return;const files=PARTS.map(p=>path.join(dir,p+'.js'));for(const f of files)this.addWatchFile(f);
       return files.map(f=>fs.readFileSync(f,'utf8')).join('\n')},
     /* de glTF-modellen worden als statische bestanden naast de pagina gezet */
-    closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}}
+    closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}
+      /* Runeveld: de sprites zijn losse PNG's die de pagina zelf laadt */
+      if(fs.existsSync('runeveld/sprites'))fs.cpSync(path.resolve(__dirname,'runeveld/sprites'),path.resolve(__dirname,'dist/runeveld/sprites'),{recursive:true})}
   }}
 
 export default defineConfig({
@@ -23,7 +25,7 @@ export default defineConfig({
   plugins:[velmoraGame()],
   build:{
     target:'es2022',
-    rollupOptions:{input:{velmora:path.resolve(__dirname,'velmora/index.html')}},
+    rollupOptions:{input:{velmora:path.resolve(__dirname,'velmora/index.html'),runeveld:path.resolve(__dirname,'runeveld/index.html')}},
     chunkSizeWarningLimit:1500
   },
   server:{port:5173,open:'/velmora/'}

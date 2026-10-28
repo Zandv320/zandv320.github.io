@@ -5,6 +5,7 @@ Browsergames op [zandv320.github.io](https://zandv320.github.io), gebouwd met [V
 ## Spellen
 
 - **Velmora** – fantasy-MMORPG (three.js, multiplayer via MQTT): `velmora/`
+- **Runeveld** – top-down MMORPG in de stijl van Ragnarok Online (2D-sprites in een 3D-wereld, multiplayer via MQTT): `runeveld/`
 
 ## Lokaal werken
 
@@ -22,6 +23,13 @@ npm run preview    # bekijk de productiebuild
   `1_core` data en regels · `2_world` wereld, licht, water · `2b_env` omgevingsmodellen + LOD · `3_models` procedurele modellen en animatie · `3b_gltf` glTF-karakters en -monsters · `4_game` spelsystemen · `4b_life` levensvaardigheden · `5_net` multiplayer · `6_ui` interface · `7_main` invoer, camera, hoofdlus
 - `velmora/models/` – glTF-modellen (KayKit en Quaternius, CC0; zie de LICENSE-bestanden daar)
 - `public/` – statische bestanden die ongewijzigd worden gekopieerd (Speelhal-startpagina, covers)
+
+## Runeveld
+
+- `runeveld/index.html` – pagina, CSS en HUD
+- `runeveld/src/` – ES-modules: `data` (klasse, vaardigheden, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `net` (MQTT), `ui`, `main` (spel)
+- `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies (Swordsman 1–3 Level, Hunt Animals, Village Pixel Tileset, Medieval Fortress kit) door `runeveld/tools/maak_sprites.py`
+- `runeveld/_download/` – de gedownloade Craftpix-zips (niet gecommit); uitpakken en `python3 -I runeveld/tools/maak_sprites.py <map-met-packs>` draaien om `sprites/` opnieuw te maken
 
 ## Nieuwe items en uitrusting toevoegen
 
