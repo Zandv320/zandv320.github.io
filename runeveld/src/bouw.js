@@ -21,7 +21,7 @@ export function tex(naam,rx=1,ry=1){
   const k=`${naam}|${rx.toFixed(3)}|${ry.toFixed(3)}`;if(varianten.has(k))return varianten.get(k);
   const t=new THREE.Texture(basis.get(naam));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);
   t.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
-  if(PIXEL>1&&!GLAD){t.minFilter=THREE.NearestMipmapNearestFilter;t.generateMipmaps=true;t.anisotropy=1}else{t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=4}
+  if(GLAD){t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=4}else{t.minFilter=THREE.NearestFilter;t.generateMipmaps=false}   /* geen mipmaps: geen wisselende niveaus */
   t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;varianten.set(k,t);return t;
 }
 /* belicht materiaal voor een vlak van w × h eenheden: de textuur herhaalt op ware grootte; `tint` maakt het iets donkerder */

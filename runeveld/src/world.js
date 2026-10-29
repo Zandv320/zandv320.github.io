@@ -21,27 +21,40 @@ renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.BasicShadowMap;
 
 export const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87c9ee);
-scene.fog=new THREE.Fog(0x87c9ee,55,95);
+/* geen mist: de orthografische camera staat op vaste afstand en de wereld eindigt in een bomenrij */
 /* licht voor de 3D-modellen; sprites zijn onbelicht en merken hier niets van */
 scene.add(new THREE.HemisphereLight(0xdff3ff,0x6a8a46,2.2));
 const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40,15);scene.add(zon);scene.add(zon.target);
 zon.castShadow=true;zon.shadow.mapSize.set(2048,2048);zon.shadow.bias=-.0005;
 Object.assign(zon.shadow.camera,{left:-30,right:30,top:30,bottom:-30,near:1,far:120});
 
-export const camera=new THREE.PerspectiveCamera(34,1,.5,220);
-/* RO-achtige camera: schuin van boven, draaibaar met Q/E, zoombaar met het scrollwiel */
-export const cam={yaw:0,tilt:THREE.MathUtils.degToRad(50),afstand:19,doel:new THREE.Vector3(0,0,0)};
+/* Pixelcamera: orthografisch, schuin van boven (zoals RO), met een vaste pixelschaal: cam.px gerenderde pixels per
+   wereld-eenheid. Op 16 valt elke sprite-pixel precies op één gerenderde pixel. De camera klikt op het pixelraster vast
+   (cam.r en cam.u zijn de schermassen), zodat niets verspringt zolang er niets beweegt. */
+export const camera=new THREE.OrthographicCamera(-1,1,1,-1,1,200);
+export const ZOOMS=[8,12,16,24,32];
+export const cam={yaw:0,tilt:THREE.MathUtils.degToRad(50),px:16,doel:new THREE.Vector3(0,0,0),r:new THREE.Vector3(1,0,0),u:new THREE.Vector3(0,1,0),afstand:60};
+const _e=new THREE.Vector3();
 export function updateCamera(){
-  const {yaw,tilt,afstand,doel}=cam;
+  const {yaw,tilt,afstand,doel,px}=cam;
   const h=afstand*Math.sin(tilt),r=afstand*Math.cos(tilt);
   camera.position.set(doel.x+Math.sin(yaw)*r,doel.y+h,doel.z+Math.cos(yaw)*r);
-  camera.lookAt(doel.x,doel.y+.8,doel.z);
+  camera.lookAt(doel.x,doel.y,doel.z);camera.updateMatrixWorld();
+  cam.r.setFromMatrixColumn(camera.matrixWorld,0);cam.u.setFromMatrixColumn(camera.matrixWorld,1);
+  /* vastklikken op hele gerenderde pixels langs de schermassen */
+  _e.copy(camera.position);
+  const er=_e.dot(cam.r),eu=_e.dot(cam.u);
+  camera.position.addScaledVector(cam.r,Math.round(er*px)/px-er).addScaledVector(cam.u,Math.round(eu*px)/px-eu);
+  camera.updateMatrixWorld();
 }
+/* zet een wereldpositie op het pixelraster van de huidige camera (voor sprites, zodat hun pixels niet verschuiven) */
+export function snap(v){const er=v.dot(cam.r),eu=v.dot(cam.u),px=cam.px;return v.addScaledVector(cam.r,Math.round(er*px)/px-er).addScaledVector(cam.u,Math.round(eu*px)/px-eu)}
 export function pasAan(){
-  const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;
-  /* in portret (telefoon) een wijdere lens, anders zie je bijna niets naast de speler */
-  camera.fov=camera.aspect<1?Math.min(62,34/camera.aspect):34;camera.updateProjectionMatrix();
+  const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);
+  const rw=Math.floor(w*renderer.getPixelRatio()),rh=Math.floor(h*renderer.getPixelRatio());   /* gerenderde pixels */
+  camera.left=-rw/cam.px/2;camera.right=rw/cam.px/2;camera.top=rh/cam.px/2;camera.bottom=-rh/cam.px/2;camera.updateProjectionMatrix();
 }
+export function zetZoom(px){cam.px=px;pasAan()}
 addEventListener('resize',pasAan);pasAan();
 
 /* ---------- gebieden ---------- */
@@ -65,7 +78,7 @@ export function straal(cx,cy){_v.set(cx/innerWidth*2-1,-(cy/innerHeight)*2+1);ra
 export function grondPunt(cx,cy){straal(cx,cy);return ray.ray.intersectPlane(grondVlak,_p)?_p.clone():null}
 
 /* ---------- grond: tegelkaart ---------- */
-const TILE=32,CPU=1.5;                    /* eenheden per grondtegel */
+const TILE=32,CPU=2;                      /* eenheden per grondtegel: 32 px op 2 eenheden = 16 px per eenheid, net als de sprites */
 const N=Math.round(VELD*2/CPU);           /* tegels per zijde */
 export function celType(x,z){ /* wereldcoördinaten → 'g' gras, 'c' keien, 'p' pad */
   if(Math.hypot(x,z)<PLEIN)return 'c';
@@ -86,7 +99,8 @@ function bouwGrond(atlas,decor){
   for(let k=0;k<520;k++){const x=R()*2*VELD-VELD,z=R()*2*VELD-VELD;if(celType(x,z)!=='g')continue;
     const img=[decor.graspol,decor.graspol,decor.bloemen,decor.bloemen2,decor.rots2][Math.floor(R()*5)];
     g.drawImage(img,Math.round(w2p(x)-img.width/2),Math.round(w2p(z)-img.height/2))}
-  const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4;
+  const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
+  if(GLAD){tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4}else{tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false}
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(VELD*2,VELD*2),new THREE.MeshBasicMaterial({map:tex}));
   mesh.rotation.x=-Math.PI/2;scene.add(mesh);
   /* schaduwvanger: een doorzichtig vlak dat alleen de slagschaduwen van gebouwen en hekken toont, in de omlijningskleur */

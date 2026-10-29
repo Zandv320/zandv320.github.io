@@ -9,7 +9,7 @@ import {slag as regelSlag,naVerdediging,raakKans,monsterGevecht} from './regels/
 import {BLADEN,laadBladen,heldLagen} from './bladen.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
-import {renderer,scene,camera,cam,updateCamera,bouwWereld,botsing,vrij,VELD,DORP,inDorp,canvas,grondPunt,straal,updateBorden,obstakels} from './world.js';
+import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,inDorp,canvas,grondPunt,straal,updateBorden,obstakels} from './world.js';
 import {maakNet} from './net.js';
 import * as UI from './ui.js';
 
@@ -59,7 +59,7 @@ function start(naam,save){
   P.sprite=new Sprite2D(BLADEN.held,{lagen:heldLagen(P.uitr)});scene.add(P.sprite.g);
   K=maakKarakter(P,{af,expMax:()=>expVoor(P.lvl),vrijeStat,vrijeSkill,statOmhoog,skillOmhoog,uitrusten,afdoen,koop,openInventaris:()=>I.toon(),winkelDicht:()=>I.render()});
   I=maakInventaris(P,{uitrusten,gebruik:id=>{if(id==='drank')vaardigheid('drank')},verkoop,weggooi,winkelOpen:()=>K.winkelOpen()});
-  ADM=maakAdmin({P,M,S,cam,camera,scene,renderer,ADMIN,net:()=>net,isHost:()=>!!H,
+  ADM=maakAdmin({P,M,S,cam,camera,scene,renderer,ADMIN,zetZoom,net:()=>net,isHost:()=>!!H,
     tasToevoegen,zetLevel,zetJob,respec,teleport,spawnMonster,doodMonster,doodAlles,herleefAlles,vernieuwUiterlijk,bewaar,
     herstel:()=>{P.hp=hpMax();P.sp=spMax();K.render()},exportSave:()=>localStorage.getItem(SLEUTEL),importSave:s=>{localStorage.setItem(SLEUTEL,s);location.reload()},
     resetSave:()=>{localStorage.removeItem(SLEUTEL);location.reload()},af,obstakels,render:()=>{K.render();I.render()}});
@@ -412,6 +412,8 @@ function klik(cx,cy){
   P.bestemming=[p.x,p.z];P.naarNpc=false;P.target=null;P.wacht=null;UI.doelkader(null);if(P.zit)zitten(false);
   ring(p.x,p.z,0xffffff,.5,.1,.35,.7);
 }
+/* zoomen in vaste stappen (pixels per eenheid), zodat de pixelschaal altijd heel blijft */
+function zoom(richting){const i=ZOOMS.indexOf(cam.px);const j=Math.max(0,Math.min(ZOOMS.length-1,i+richting));if(j!==i)zetZoom(ZOOMS[j])}
 function invoer(){
   const pointers=new Map();let ptr=null,pinch=0;
   canvas.addEventListener('pointerdown',e=>{
@@ -423,7 +425,7 @@ function invoer(){
   });
   canvas.addEventListener('pointermove',e=>{
     if(pointers.has(e.pointerId))pointers.set(e.pointerId,[e.clientX,e.clientY]);
-    if(pointers.size===2){const a=[...pointers.values()];const d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch)cam.afstand=THREE.MathUtils.clamp(cam.afstand*pinch/d,10,32);pinch=d;return}
+    if(pointers.size===2){const a=[...pointers.values()];const d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch&&Math.abs(d-pinch)>40){zoom(d>pinch?1:-1);pinch=d}return}
     if(!ptr)return;
     if(ptr.rot){cam.yaw-=(e.clientX-ptr.x)*.006;ptr.x=e.clientX;ptr.y=e.clientY;return}
     if(Math.hypot(e.clientX-ptr.x,e.clientY-ptr.y)>10)ptr.bewoog=true;
@@ -432,7 +434,7 @@ function invoer(){
   const einde=e=>{pointers.delete(e.pointerId);if(!ptr)return;const was=ptr;ptr=null;if(was.rot)return;if(!was.bewoog&&gestart)klik(e.clientX,e.clientY)};
   canvas.addEventListener('pointerup',einde);canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);ptr=null});
   canvas.addEventListener('contextmenu',e=>e.preventDefault());
-  canvas.addEventListener('wheel',e=>{cam.afstand=THREE.MathUtils.clamp(cam.afstand+e.deltaY*.015,10,32)},{passive:true});
+  let wielT=0;canvas.addEventListener('wheel',e=>{const t=nu();if(t-wielT<.15)return;wielT=t;zoom(e.deltaY<0?1:-1)},{passive:true});
   addEventListener('keydown',e=>{
     if(chatActief()){if(e.key==='Escape')$('#chattekst').blur();return}
     if(!gestart)return;
@@ -448,7 +450,7 @@ function invoer(){
   $('#chatin').addEventListener('submit',e=>{e.preventDefault();const inp=$('#chattekst');const t=inp.value.trim();inp.value='';inp.blur();if(t&&net)net.stuur('c',{t:t.slice(0,120)})});
   $('#k-knop').onclick=()=>{if(K)K.toggle()};$('#i-knop').onclick=()=>{if(I)I.toggle()};$('#a-knop').onclick=()=>{if(ADM)ADM.toggle()};
   $('#m-chat').onclick=()=>$('#chattekst').focus();
-  $('#m-zoomin').onclick=()=>{cam.afstand=Math.max(10,cam.afstand-3)};$('#m-zoomuit').onclick=()=>{cam.afstand=Math.min(32,cam.afstand+3)};
+  $('#m-zoomin').onclick=()=>zoom(1);$('#m-zoomuit').onclick=()=>zoom(-1);
 }
 
 /* ====================== hoofdlus ====================== */
@@ -461,6 +463,7 @@ function loop(){
 }
 function stap(dt){
   const t=nu();
+  _doel.set(P.x,0,P.z);cam.doel.lerp(_doel,1-Math.exp(-8*dt));updateCamera();
   if(gestart){
     updateSpeler(dt);if(H)hostTick(dt);updateMonsters(dt);updateAnderen(dt);stuurPresence();
     UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'));
@@ -472,8 +475,7 @@ function stap(dt){
   }
   npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera);
   updateEffecten(dt);
-  _doel.set(P.x,0,P.z);cam.doel.lerp(_doel,1-Math.exp(-8*dt));
-  updateCamera();updateBorden();renderer.render(scene,camera);
+  updateBorden();renderer.render(scene,camera);
 }
 
 window.RV={P,M,S,cam,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM};

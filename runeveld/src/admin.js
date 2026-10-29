@@ -67,8 +67,7 @@ export function maakAdmin(C){
     /* ---------- world & camera ---------- */
     d=sectie('World & camera');
     schuif(d,'Camera tilt',()=>Math.round(THREE.MathUtils.radToDeg(cam.tilt)),v=>cam.tilt=THREE.MathUtils.degToRad(v),25,85,1,v=>v+'°');
-    schuif(d,'Zoom',()=>cam.afstand,v=>cam.afstand=v,6,60,1);
-    schuif(d,'Field of view',()=>camera.fov,v=>{camera.fov=v;camera.updateProjectionMatrix()},15,90,1,v=>v+'°');
+    schuif(d,'Zoom (px per unit)',()=>cam.px,v=>C.zetZoom(v),4,48,4);
     schakel(d,'Fog',()=>!!scene.fog,v=>{scene.fog=v?new THREE.Fog(0x87c9ee,55,95):null});
     schuif(d,'Pixel size (reloads)',()=>{try{return parseFloat(localStorage.getItem('runeveld.pixel'))||2}catch(e){return 2}},v=>{try{localStorage.setItem('runeveld.pixel',String(v))}catch(e){}clearTimeout(window.__pxT);window.__pxT=setTimeout(()=>location.reload(),600)},1,4,.5,v=>v+'px');
     schakel(d,'Smooth graphics (reloads)',()=>{try{return localStorage.getItem('runeveld.glad')!=='0'}catch(e){return true}},v=>{try{localStorage.setItem('runeveld.glad',v?'1':'0')}catch(e){}location.reload()});

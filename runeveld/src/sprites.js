@@ -9,7 +9,7 @@ import * as THREE from 'three';
 export const GLAD=(()=>{try{return localStorage.getItem('runeveld.glad')==='1'}catch(e){return false}})();
 /* Pixelgrootte: hoeveel schermpixels (CSS) één gerenderde pixel beslaat. 2 laat de sprites ongeveer 1:1 in het
    pixelraster vallen; 1 is volle resolutie. Instelbaar in het admin-paneel. */
-export const PIXEL=(()=>{try{const v=parseFloat(localStorage.getItem('runeveld.pixel'));return v>0?v:2}catch(e){return 2}})();
+export const PIXEL=(()=>{try{const v=parseFloat(localStorage.getItem('runeveld.pixel'));if(v>0)return v}catch(e){}return innerWidth<700?1:2})();
 export const FACTOR=GLAD?2:1;             /* hoeveel keer groter de geladen sprites zijn dan de pixel-art */
 
 const cache=new Map();
@@ -25,7 +25,7 @@ export function laadTextuur(url,{ruw=false}={}){
 export function maakTex(bron,zacht=GLAD){
   const t=new THREE.Texture(bron);
   if(zacht){t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=4}
-  else{t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false}
+  else{t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false}   /* geen mipmaps: niets wisselt van niveau */
   t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;
 }
 
@@ -98,6 +98,7 @@ export class Sprite2D{
     const r=Math.abs(weg)>=Math.abs(rechts)?(weg>0?'boven':'onder'):(rechts>0?'rechts':'links');
     if(r!==this.richt){this.richt=r;this._uv()}
     this.g.rotation.y=cam.yaw;const rx=-cam.tilt*LEUN;this.mesh.rotation.x=rx;for(const L of this.lagen)L.mesh.rotation.x=rx;
+    klik(this,cam);
   }
   _uv(){
     const a=this.anim;if(!a||!this.lagen.length)return;
@@ -123,5 +124,15 @@ export class Bord{
     this.g=new THREE.Group();this.g.add(this.mesh);
     if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=SCHADUW_Y;s.scale.set(schaduw,schaduw*.62,1);s.renderOrder=2;this.g.add(s)}
   }
-  update(cam){this.g.rotation.y=cam.yaw;this.mesh.rotation.x=-cam.tilt*this.leun}
+  update(cam){this.g.rotation.y=cam.yaw;this.mesh.rotation.x=-cam.tilt*this.leun;klik(this,cam)}
+}
+
+/* Zet de groep van een sprite op het pixelraster van de camera. De logische positie (zoals het spel die zet) wordt
+   onthouden, zodat het vastklikken niet optelt; verandert het spel de positie, dan wordt die opnieuw als logisch gezien. */
+function klik(s,cam){
+  if(!cam.r||!cam.px)return;
+  if(!s._log){s._log=new THREE.Vector3();s._snap=new THREE.Vector3(NaN,NaN,NaN)}
+  if(!s.g.position.equals(s._snap))s._log.copy(s.g.position);
+  const v=s.g.position.copy(s._log),px=cam.px,er=v.dot(cam.r),eu=v.dot(cam.u);
+  v.addScaledVector(cam.r,Math.round(er*px)/px-er).addScaledVector(cam.u,Math.round(eu*px)/px-eu);s._snap.copy(v);
 }
