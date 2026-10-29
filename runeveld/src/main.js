@@ -598,7 +598,7 @@ function stap(dt){
   updateDorpelingen(dt,cam,camera,P);
   updateEffecten(dt);
   updateBorden();
-  if(DAG)DAG.update(cam,gestart&&!P.dood?[{x:P.x,z:P.z,y:.8,r:3.2,kleur:[255,240,220],sterkte:.3}]:[]);
+  if(DAG)DAG.update(cam,gestart&&!P.dood?[{x:P.x,z:P.z,y:.8,r:4,kleur:[255,240,220],sterkte:.4}]:[]);
   klokT+=dt;if(klokT>1){klokT=0;$('#h-tijd').textContent=(daglicht()>.5?'☀️ ':'🌙 ')+klokTekst()}
   renderer.render(scene,camera);
 }

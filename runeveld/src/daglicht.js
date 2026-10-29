@@ -17,7 +17,7 @@ export function daglicht(u=tijd()){
   if(u<7)return glad((u-5)/2);return 1-glad((u-19)/2);
 }
 export const isNacht=()=>daglicht()<.5;
-const NACHT=[62,78,138],DAG=[255,255,255],SCHEMER=[255,206,150];
+const NACHT=[122,138,196],DAG=[255,255,255],SCHEMER=[255,206,150];   /* de nacht is blauw, maar wegen en spullen blijven te zien */
 /* de kleur van het waas: nacht → (via een warme schemering) → dag */
 export function waasKleur(d=daglicht()){
   const w=4*d*(1-d);                                        /* warm rond de overgang */
@@ -37,13 +37,13 @@ export function maakDaglicht({scene,camera,renderer,zon,hemi,lichten}){
     const m=new THREE.Mesh(new THREE.PlaneGeometry(l.r*1.1,l.r*1.1),new THREE.MeshBasicMaterial({map:gloedTex,color:new THREE.Color(l.kleur[0]/255,l.kleur[1]/255,l.kleur[2]/255),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
     m.position.set(l.x,l.y??1.1,l.z);m.renderOrder=3;scene.add(m);return{m,l};
   });
-  const zonKleurDag=new THREE.Color(0xfff1d6),zonKleurNacht=new THREE.Color(0x6a7ab8),hemiDag=new THREE.Color(0xdff3ff),hemiNacht=new THREE.Color(0x3a4878),luchtDag=new THREE.Color(0x87c9ee),luchtNacht=new THREE.Color(0x0e1630);
+  const zonKleurDag=new THREE.Color(0xfff1d6),zonKleurNacht=new THREE.Color(0x9aa6d8),hemiDag=new THREE.Color(0xdff3ff),hemiNacht=new THREE.Color(0x6a78a8),luchtDag=new THREE.Color(0x87c9ee),luchtNacht=new THREE.Color(0x0e1630);
   let laatst=-1;
   function update(cam,extra=[]){
     const d=daglicht(),nacht=1-d;
     /* zon, hemellicht en lucht */
-    zon.intensity=.5+2.1*d;zon.color.copy(zonKleurNacht).lerp(zonKleurDag,d);
-    hemi.intensity=.8+1.4*d;hemi.color.copy(hemiNacht).lerp(hemiDag,d);
+    zon.intensity=1.1+1.5*d;zon.color.copy(zonKleurNacht).lerp(zonKleurDag,d);
+    hemi.intensity=1.4+.8*d;hemi.color.copy(hemiNacht).lerp(hemiDag,d);
     scene.background.copy(luchtNacht).lerp(luchtDag,d);
     for(const g of gloeden){g.m.material.opacity=nacht*(g.l.sterkte??.8)*.4;g.m.rotation.y=cam.yaw;g.m.rotation.x=-cam.tilt;g.m.visible=nacht>.02}
     /* het waas */
