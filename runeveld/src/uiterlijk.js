@@ -42,6 +42,7 @@ export function herkleur(laag,bron,doel,naam,strak=false){
 }
 /* de hoofdlaag (los haar, pet of helm) in een haarkleur */
 export function haarLaag(laag,kleur){
+  if(!BLADEN.held.lagen[laag])return undefined;   /* nog niet geladen: heldLagen() vraagt hem aan */
   if(!kleur||kleur==='standaard'||!HAAR[kleur])return BLADEN.held.lagen[laag];
   return herkleur(laag,HAAR_BRON,HAAR[kleur],'haar-'+kleur,laag!=='hoofd');
 }

@@ -39,7 +39,7 @@ export function maakSelectie(A){
     if(!open)return;t+=dt;const L=lijst();
     const c=scherm==='sel'?L[i]:scherm==='maak'?{uitr:KLASSEN[kl].start,haar,klasse:kl}:L[i];
     held.g.visible=!!c&&scherm!=='wis';
-    if(c){zetHeld(lagenVan(c),JSON.stringify([c.uitr||null,c.haar||null,c.klasse||null]));
+    if(c){const lg=lagenVan(c);zetHeld(lg,JSON.stringify([c.uitr||null,c.haar||null,c.klasse||null,lg.length]));
       /* naar de camera kijken, ook als die draait */
       held.zetKijk(Math.sin(A.cam.yaw),Math.cos(A.cam.yaw));held.update(dt,A.cam)}
     /* naam en level onder de voeten van de held */

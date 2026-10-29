@@ -6,7 +6,9 @@ import * as THREE from 'three';
 
 /* Gladde graphics: de sprites uit sprites/glad/ zijn 2× opgeschaald met Scale2x (tools/maak_sprites.py)
    en worden met zachte filtering getekend. Uit te zetten in het admin-paneel. */
-export const GLAD=(()=>{try{return localStorage.getItem('runeveld.glad')!=='0'}catch(e){return true}})();  /* standaard aan */
+/* telefoon: aanraakscherm en een klein scherm; daar staat de gladde modus standaard uit (4× minder textuurgeheugen) en is de schaduwkaart kleiner */
+export const TELEFOON=matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<820;
+export const GLAD=(()=>{try{const v=localStorage.getItem('runeveld.glad');if(v==='1')return true;if(v==='0')return false}catch(e){}return !TELEFOON})();
 /* Pixelgrootte: hoeveel schermpixels (CSS) één gerenderde pixel beslaat. 2 laat de sprites ongeveer 1:1 in het
    pixelraster vallen; 1 is volle resolutie. Instelbaar in het admin-paneel. */
 /* In de gladde modus rendert alles op volle resolutie: de 2×-sprites staan dan 1:1 bij een pixelschaal van 32. */

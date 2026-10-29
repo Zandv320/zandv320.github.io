@@ -3,7 +3,7 @@
    De wereld is een vierkant van -VELD..VELD; in het midden ligt het dorp (-DORP..DORP) achter een palissade
    met een poort in het noorden en het zuiden. Daarbuiten liggen velden en bos waar de monsters leven. */
 import * as THREE from 'three';
-import {laadTextuur,maakTex,Bord,FACTOR,GLAD,PIXEL} from './sprites.js';
+import {laadTextuur,maakTex,Bord,FACTOR,GLAD,PIXEL,TELEFOON} from './sprites.js';
 import * as B from './bouw.js';
 import {BOS,inBos,inVeld,veldRand,binnenWereld} from './gebied.js';
 export {binnenWereld};
@@ -28,7 +28,7 @@ scene.background=new THREE.Color(0x87c9ee);
 /* licht voor de 3D-modellen; sprites zijn onbelicht en merken hier niets van */
 export const hemi=new THREE.HemisphereLight(0xdff3ff,0x6a8a46,2.2);scene.add(hemi);
 export const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40,15);scene.add(zon);scene.add(zon.target);
-zon.castShadow=true;zon.shadow.mapSize.set(4096,4096);zon.shadow.bias=-.0005;
+zon.castShadow=true;zon.shadow.mapSize.set(TELEFOON?2048:4096,TELEFOON?2048:4096);zon.shadow.bias=-.0005;
 /* het bereik dekt het veld en het bos; de zon staat zo dat de projectie het bos (z tot -112) ook raakt */
 zon.position.set(20,40,-10);zon.target.position.set(0,0,-26);
 Object.assign(zon.shadow.camera,{left:-70,right:70,top:95,bottom:-95,near:1,far:160});

@@ -6,6 +6,7 @@ import {MAX_JOB} from './regels/skills.js';
 import {DORP,VELD} from './world.js';
 import * as THREE from 'three';
 import * as UI from './ui.js';
+import {GLAD} from './sprites.js';
 
 const SLEUTEL='runeveld.admin';
 
@@ -71,7 +72,7 @@ export function maakAdmin(C){
     schuif(d,'Time of day (24 = real clock)',()=>C.tijd(),v=>C.zetTijd(v>=24?null:v),0,24,.5,v=>v>=24?'real':v+'h');
     schakel(d,'Fog',()=>!!scene.fog,v=>{scene.fog=v?new THREE.Fog(0x87c9ee,55,95):null});
     schuif(d,'Pixel size (reloads)',()=>{try{return parseFloat(localStorage.getItem('runeveld.pixel'))||2}catch(e){return 2}},v=>{try{localStorage.setItem('runeveld.pixel',String(v))}catch(e){}clearTimeout(window.__pxT);window.__pxT=setTimeout(()=>location.reload(),600)},1,4,.5,v=>v+'px');
-    schakel(d,'Smooth graphics (reloads)',()=>{try{return localStorage.getItem('runeveld.glad')!=='0'}catch(e){return true}},v=>{try{localStorage.setItem('runeveld.glad',v?'1':'0')}catch(e){}location.reload()});
+    schakel(d,'Smooth graphics (reloads)',()=>GLAD,v=>{try{localStorage.setItem('runeveld.glad',v?'1':'0')}catch(e){}location.reload()});
     schakel(d,'Show collision & zones',()=>!!debug,v=>{v?toonDebug():verbergDebug()});
     const info=h('p',{class:'amono'});d.appendChild(info);
     /* ---------- network ---------- */

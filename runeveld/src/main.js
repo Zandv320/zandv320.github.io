@@ -14,7 +14,7 @@ import {wek as wekGeluid,G,isAan as geluidAan,zetAan as zetGeluid} from './gelui
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
 import {SKILLS,SKILLS_VAN,MAX_JOB,MAX_JOB_TIER,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
 import {slag as regelSlag,spreuk,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
-import {BLADEN,laadBladen} from './bladen.js';
+import {BLADEN,laadBladen,laadLagenVoor,opLaagGeladen} from './bladen.js';
 import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {maakSelectie,PODIUM} from './selectie.js';
 import {maakKarakter} from './karakter.js';
@@ -65,7 +65,7 @@ async function init(){
   invoer();loop();SEL.toon();
 }
 /* de wereld in met held nummer i uit de lijst; een held zonder level is nieuw */
-function start(i){
+async function start(i){
   const save=CH.lijst[i];P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...klasse().start};CH.laatst=i;schrijfChars(CH);
   bouwBalk();
   zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;toonNpcs(true);
@@ -80,7 +80,9 @@ function start(i){
     P.job=Math.min(maxJob(),save.job||Math.min(maxJob(),save.lvl));P.jobexp=save.jobexp||0;
     P.hp=Math.min(save.hp,hpMax());P.sp=Math.min(save.sp,spMax())}
   else{P.hp=hpMax();P.sp=spMax()}
+  await laadLagenVoor(P.uitr);   /* de kleding van deze held: pas nu laden */
   const naam=P.naam;P.sprite=new Sprite2D(BLADEN.held,{lagen:heldLagen(P.uitr,P.haar)});scene.add(P.sprite.g);
+  opLaagGeladen(()=>{if(P.sprite)P.sprite.zetLagen(heldLagen(P.uitr,P.haar));for(const s of S.values())s.sprite.zetLagen(heldLagen(s.pres.u||{},s.pres.h))});
   K=maakKarakter(P,{af,klasse,maxJob,skillVolgorde:()=>(SKILLS_VAN[P.klasse]||SKILLS_VAN.swordsman).volgorde,expMax:()=>expVoor(P.lvl),vrijeStat,vrijeSkill,statOmhoog,skillOmhoog,uitrusten,afdoen,koop,openInventaris:()=>I.toon(),winkelDicht:()=>I.render(),questLijst:()=>Q?Q.lijst():[],questsKlaar:()=>Q?Q.klaarAantal():0});
   I=maakInventaris(P,{uitrusten,gebruik:id=>{if(id==='drank')vaardigheid('drank')},verkoop,weggooi,winkelOpen:()=>K.winkelOpen()});
   ADM=maakAdmin({P,M,S,cam,camera,scene,renderer,ADMIN,zetZoom,net:()=>net,isHost:()=>!!H,

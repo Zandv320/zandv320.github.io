@@ -31,22 +31,43 @@ export const BLADEN={
   everzwijn:dier('everzwijn',{loop:6,aanval:5,schaal:1/11,hoogte:26}),
 };
 
-/* De lagen van een held met deze uitrusting ({hoofd,lichaam,wapen}: item-ids of null), achterste eerst.
-   Zonder kleding staat de held in zijn onderbroek. */
+/* De laagnamen van een held met deze uitrusting ({hoofd,lichaam,wapen}: item-ids of null), achterste eerst.
+   Een hoofddeksel is een complete hoofdlaag (hoofd + deksel, haar eronder weggehaald) en vervangt 'hoofd'. */
+export function heldLaagNamen(uitr){
+  const w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam],h=uitr.hoofd&&ITEMS[uitr.hoofd];
+  return[w&&w.laag+'b','lijf',l&&l.laag,h?h.laag:'hoofd',w&&w.laag].filter(Boolean);
+}
+/* De texturen van die lagen. Lagen die nog niet geladen zijn worden nu aangevraagd en ontbreken even;
+   via opLaagGeladen() hoort het spel wanneer ze er zijn en zet het de sprites opnieuw. Zonder kleding staat de
+   held in zijn onderbroek. */
 export function heldLagen(uitr){
-  const T=BLADEN.held.lagen,w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam],h=uitr.hoofd&&ITEMS[uitr.hoofd];
-  /* een hoofddeksel is een complete hoofdlaag (hoofd + deksel, haar eronder weggehaald) en vervangt T.hoofd */
-  return[w&&T[w.laag+'b'],T.lijf,l&&T[l.laag],h?T[h.laag]:T.hoofd,w&&T[w.laag]].filter(Boolean);
+  const T=BLADEN.held.lagen;
+  return heldLaagNamen(uitr).map(n=>{if(!T[n])laadLaag(n);return T[n]}).filter(Boolean);
 }
 
-/* laadt de texturen van alle bladen */
+/* Alleen de lagen die bij de start nodig zijn (lijf, hoofd, de dorpelingen) worden meteen geladen; de rest
+   (harnassen, gewaden, staven, zwaarden, hoeden) pas als iemand ze draagt. Elke laag is in de gladde modus
+   ruim 15 MB aan textuurgeheugen, en telefoons crashen als ze allemaal tegelijk geladen worden. */
+const BASIS=['lijf','hoofd','harnas1','harnas2','hoofd1','hoofd2','wapen1','wapen1b','wapen2','wapen2b'];
+const laagUrls={},laagBezig={},luisteraars=[];
+export function opLaagGeladen(cb){luisteraars.push(cb)}
+export function laadLaag(naam){
+  const T=BLADEN.held.lagen;if(T[naam])return Promise.resolve(T[naam]);
+  if(laagBezig[naam])return laagBezig[naam];
+  const url=laagUrls[naam];if(!url)return Promise.resolve(null);
+  return laagBezig[naam]=laadTextuur(url).then(t=>{if(!t)throw new Error('Sprite ontbreekt: '+url);T[naam]=t;delete laagBezig[naam];for(const cb of luisteraars)cb(naam);return t});
+}
+export const laadLagenVoor=uitr=>Promise.all(heldLaagNamen(uitr).map(laadLaag));
+
+/* laadt de texturen van alle bladen (de held: alleen de basislagen) */
 export async function laadBladen(){
   const laad=async url=>{const t=await laadTextuur(url);if(!t)throw new Error('Sprite ontbreekt: '+url);return t};
   await Promise.all(Object.values(BLADEN).map(async b=>{
     /* in de gladde modus zijn de sheets FACTOR keer groter: framegrootte mee schalen, wereldschaal terug */
     if(!b.geschaald){b.geschaald=true;b.fw*=FACTOR;b.fh*=FACTOR;b.voet=(b.voet||0)*FACTOR;b.hoogte=(b.hoogte||b.fh/FACTOR)*FACTOR;b.schaal/=FACTOR}
     if(b.url)b.tex=await laad(b.url);
-    if(b.lagen){const t={};await Promise.all(Object.entries(b.lagen).map(async([k,url])=>{t[k]=await laad(url)}));b.lagen=t;b.tex=t.lijf}
+    if(b.lagen&&typeof Object.values(b.lagen)[0]==='string'){Object.assign(laagUrls,b.lagen);const t={};b.lagen=t;
+      await Promise.all(BASIS.map(async k=>{t[k]=await laad(laagUrls[k])}));b.tex=t.lijf}
   }));
   return BLADEN;
 }
