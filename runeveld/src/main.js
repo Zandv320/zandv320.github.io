@@ -6,7 +6,7 @@ import {maakAdmin} from './admin.js';
 import {maakDorpelingen,updateDorpelingen,spreek,dorpelingen,groet} from './dorpelingen.js';
 import {maakQuests} from './quests.js';
 import {maakDialoog} from './dialoog.js';
-import {BOS,inBos} from './gebied.js';
+import {BOS,inBos,BOS_PLEK,afstandTotPad} from './gebied.js';
 import {maakKaart} from './kaart.js';
 import {wek as wekGeluid,G,isAan as geluidAan,zetAan as zetGeluid} from './geluid.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
@@ -133,14 +133,23 @@ function zorgMonster(id){
 }
 /* een plek in de zone van dit monster: buiten de palissade, op een vrije plek, niet op het pad bij de poorten */
 function spawnPunt(spec){
+  if(spec.gebied==='plek'){const[px,pz]=BOS_PLEK;for(let i=0;i<80;i++){const a=R(0,Math.PI*2),d=R(2.6,5.4),x=px+Math.cos(a)*d,z=pz+Math.sin(a)*d;if(vrij(x,z,.8))return[x,z]}return[px,pz-4]}
+  if(spec.gebied==='bos'){for(let i=0;i<120;i++){const x=R(BOS.x0+4,BOS.x1-4),z=R(BOS.z0+4,BOS.z1-6);
+      if(afstandTotPad(x,z)<3||Math.hypot(x-BOS_PLEK[0],z-BOS_PLEK[1])<10||!vrij(x,z,.8)||Math.hypot(x-P.x,z-P.z)<4)continue;return[x,z]}return[BOS.x0+8,BOS.z1-12]}
   const[min,max]=spec.zone;
   for(let i=0;i<80;i++){const x=R(-max,max),z=R(-max,max),r=Math.max(Math.abs(x),Math.abs(z));
     if(r<min||r>max||inDorp(x,z)||Math.abs(x)<4||!vrij(x,z,.8)||Math.hypot(x-P.x,z-P.z)<4)continue;
     return[x,z]}
   return[max,max];
 }
+/* mag dit monster hier zwerven? bosdieren blijven in het bos, het reuzenzwijn bij het altaar */
+function thuis(spec,x,z){
+  if(spec.gebied==='plek')return Math.hypot(x-BOS_PLEK[0],z-BOS_PLEK[1])<8;
+  if(spec.gebied==='bos')return inBos(x,z);
+  return !inDorp(x,z)&&Math.abs(x)>=3;
+}
 function sterfMonster(m){
-  if(m.dood)return;m.dood=true;m.hp=0;m.st=3;m.doel=null;m.rt=R(RESPAWN[0],RESPAWN[1]);
+  if(m.dood)return;m.dood=true;m.hp=0;m.st=3;m.doel=null;const rs=m.spec.respawn||RESPAWN;m.rt=R(rs[0],rs[1]);
   m.sprite.speel('dood',true);m.hideT=nu()+1.6;if(Math.hypot(m.x-P.x,m.z-P.z)<14)G.monsterDood();
   if(P.target===m){P.target=null;P.wacht=null;UI.doelkader(null)}
 }
@@ -151,7 +160,7 @@ function herleefMonster(m,[x,z]){
 function wordHost(){
   H={snapT:0};
   if(M.size===0){for(const s of SPAWNS)for(let i=0;i<s.n;i++){const m=zorgMonster(s.soort+'#'+i);const[x,z]=spawnPunt(m.spec);m.x=m.tx=x;m.z=m.tz=z;m.nieuw=false}}
-  else for(const m of M.values()){m.x=m.tx;m.z=m.tz;m.doel=null;if(m.dood&&m.rt<=0)m.rt=R(RESPAWN[0],RESPAWN[1])}
+  else for(const m of M.values()){m.x=m.tx;m.z=m.tz;m.doel=null;if(m.dood&&m.rt<=0){const rs=m.spec.respawn||RESPAWN;m.rt=R(rs[0],rs[1])}}
 }
 function hostHit(d,f){
   const m=M.get(d.id);if(!m||m.dood)return;
@@ -167,7 +176,7 @@ function hostTick(dt){
     if(m.dood){m.rt-=dt;if(m.rt<=0)herleefMonster(m,spawnPunt(m.spec));continue}
     if(ADMIN.bevroren){m.st=0;m.tx=m.x;m.tz=m.z;continue}
     let doel=m.doel?spelers.find(s=>s.id===m.doel):null;
-    if(doel&&(doel.dood||inDorp(doel.x,doel.z)||Math.hypot(doel.x-m.x,doel.z-m.z)>13)){doel=null;m.doel=null}
+    if(doel&&(doel.dood||inDorp(doel.x,doel.z)||Math.hypot(doel.x-m.x,doel.z-m.z)>13||(sp.gebied&&!inBos(doel.x,doel.z)))){doel=null;m.doel=null}
     if(!doel&&sp.agressief){let best=null,bd=sp.aggro;for(const s of spelers){if(s.dood||inDorp(s.x,s.z))continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
     m.cd=Math.max(0,m.cd-dt);
     if(doel){
@@ -176,7 +185,7 @@ function hostTick(dt){
       else{m.st=0;if(m.cd<=0){m.cd=1.6;net.stuur('ma',{id:m.id,to:doel.id,dmg:Math.round(sp.atk*R(.85,1.15))})}}
     }else{
       m.wtT-=dt;
-      if(m.wtT<=0){if(m.wt){m.wt=null;m.wtT=R(1.5,4)}else{const wx=m.x+R(-4,4),wz=m.z+R(-4,4);m.wt=inDorp(wx,wz)||Math.abs(wx)<3?null:[wx,wz];m.wtT=R(2,5)}}
+      if(m.wtT<=0){if(m.wt){m.wt=null;m.wtT=R(1.5,4)}else{const wx=m.x+R(-4,4),wz=m.z+R(-4,4);m.wt=thuis(sp,wx,wz)?[wx,wz]:null;m.wtT=R(2,5)}}
       if(m.wt){const dx=m.wt[0]-m.x,dz=m.wt[1]-m.z,d=Math.hypot(dx,dz);
         if(d<.2){m.wt=null;m.wtT=R(1.5,4);m.st=0}
         else{m.kx=dx/d;m.kz=dz/d;const s=sp.snelheid*.55*dt;const[nx,nz]=botsing(m.x+dx/d*s,m.z+dz/d*s,.3);
@@ -493,7 +502,7 @@ function loop(){
 }
 let tasT=0,zone=null;
 function stap(dt){
-  if(Q){tasT+=dt;if(tasT>=.5){tasT=0;Q.opTas()}}
+  if(Q){tasT+=dt;if(tasT>=.5){tasT=0;Q.opTas();Q.opPlek(P.x,P.z)}}
   const t=nu();
   _doel.set(P.x,0,P.z);cam.doel.lerp(_doel,1-Math.exp(-8*dt));if(cam.schudT>0)cam.schudT-=dt;updateCamera();
   if(gestart){

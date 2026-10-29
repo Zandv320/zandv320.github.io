@@ -107,7 +107,7 @@ export function maakAdmin(C){
     const mat=new THREE.MeshBasicMaterial({color:0xff4d4d,transparent:true,opacity:.35,depthWrite:false,side:THREE.DoubleSide});
     for(const o of C.obstakels){const m=new THREE.Mesh(new THREE.RingGeometry(o.r*.85,o.r,24),mat);m.rotation.x=-Math.PI/2;m.position.set(o.x,.05,o.z);debug.add(m)}
     const kleuren={konijn:0x9fe3b0,vos:0xffb84d,zwijn:0xff6b6b};
-    for(const[id,spec]of Object.entries(MONSTERS))for(const r of spec.zone){
+    for(const[id,spec]of Object.entries(MONSTERS))for(const r of(spec.zone||[])){
       const vorm=new THREE.Shape();vorm.moveTo(-r,-r);vorm.lineTo(r,-r);vorm.lineTo(r,r);vorm.lineTo(-r,r);vorm.lineTo(-r,-r);
       const g=new THREE.BufferGeometry().setFromPoints(vorm.getPoints());const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:kleuren[id]}));l.rotation.x=-Math.PI/2;l.position.y=.06;debug.add(l)}
     const dorp=new THREE.Shape();dorp.moveTo(-DORP,-DORP);dorp.lineTo(DORP,-DORP);dorp.lineTo(DORP,DORP);dorp.lineTo(-DORP,DORP);dorp.lineTo(-DORP,-DORP);

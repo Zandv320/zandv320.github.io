@@ -25,6 +25,10 @@ export const BLADEN={
   konijn:dier('konijn',{loop:5,aanval:6,hoogte:19}),
   vos:dier('vos',{loop:6,aanval:6,hoogte:20}),
   zwijn:dier('zwijn',{loop:6,aanval:5,schaal:1/14,hoogte:22}),
+  /* bosdieren: het hert rent als 'aanval' (een stoot met het gewei), de wolf en het reuzenzwijn zijn groter */
+  hert:dier('hert',{loop:6,aanval:6,schaal:1/15,hoogte:26}),
+  wolf:dier('wolf',{loop:6,aanval:6,schaal:1/13,hoogte:22}),
+  everzwijn:dier('everzwijn',{loop:6,aanval:5,schaal:1/11,hoogte:26}),
 };
 
 /* De lagen van een held met deze uitrusting ({hoofd,lichaam,wapen}: item-ids of null), achterste eerst.

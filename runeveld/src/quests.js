@@ -31,6 +31,8 @@ export function maakQuests(P,A){
       if(s.n>=d.n)UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: done! Return to ${UI.esc(QUESTS[id].gever)}.</span>`)}}if(w)vernieuw()}
   function opBezoek(npc){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='bezoek'&&d.npc===npc&&!s.n){s.n=1;w=true;
       UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: done! Return to ${UI.esc(QUESTS[id].gever)}.</span>`)}}if(w)vernieuw()}
+  function opPlek(x,z){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='plek'&&!s.n&&Math.hypot(x-d.x,z-d.z)<=d.r){s.n=1;w=true;
+      UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: you found ${UI.esc(d.naam)}. Return to ${UI.esc(QUESTS[id].gever)}.</span>`)}}if(w)vernieuw()}
   /* itemquests kijken gewoon in de tas */
   function opTas(){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='item'){const n=Math.min(d.n,A.tasAantal(d.item));if(n!==s.n){if(n>=d.n&&s.n<d.n)UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: you have everything. Return to ${UI.esc(QUESTS[id].gever)}.</span>`);s.n=n;w=true}}}if(w)vernieuw()}
 
@@ -51,5 +53,5 @@ export function maakQuests(P,A){
   const VOLG={klaar:0,bezig:1,nieuw:2,gedaan:3};
   function lijst(){return QUEST_VOLGORDE.map((id,i)=>({id,q:QUESTS[id],st:st(id),voortgang:tekst(id),i})).filter(x=>x.st!=='gesloten').sort((a,b)=>VOLG[a.st]-VOLG[b.st]||a.i-b.i)}
   const klaarAantal=()=>QUEST_VOLGORDE.filter(id=>st(id)==='klaar').length;
-  return{vanNpc,accepteer,lever,opDood,opBezoek,opTas,vernieuw,lijst,klaarAantal,status:st,tekst};
+  return{vanNpc,accepteer,lever,opDood,opBezoek,opTas,opPlek,vernieuw,lijst,klaarAantal,status:st,tekst};
 }

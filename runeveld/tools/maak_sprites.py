@@ -16,6 +16,7 @@ Uitvoer (allemaal pixel-art, 1 wereld-eenheid = 16 px, zie world.js):
     harnas1..3.png         kleding als losse laag over het lijf (tuniek, leren vest, stalen harnas)
     wapen1..3.png          zwaard vóór het lijf (incl. zwaai-effect), wapen1b..3b.png het deel achter het lijf
     konijn/vos/zwijn.png   32×32 frames, 6 kolommen, per animatie 4 rijen (onder, boven, links, rechts)
+    hert/wolf/everzwijn.png bosdieren: hert uit het pack, wolf en reuzenzwijn herkleurd uit vos en zwijn
     koopman.png            32×32 frames, 4 kolommen, 1 rij
     grond.png              7 tegels van 32×32 naast elkaar: 3× gras, 2× keien, 2× pad
     <decor>.png            losse plaatjes op ware grootte
@@ -283,6 +284,42 @@ for uit, map_, anims in (
         ('vos', 'Fox', ('Fox_Idle', 'Fox_walk', 'Fox_Run', 'Fox_Hurt', 'Fox_Death')),
         ('zwijn', 'Boar', ('Boar_Idle', 'Boar_Walk', 'Boar_Attack', 'Boar_Hurt', 'Boar_Death'))):
     sheets = [open_rgba(DIER / map_ / f'{a}.png') for a in anims]
+    stapel(sheets, 32, 32, 6).save(UIT / f'{uit}.png')
+    print(uit, [frames_in_rij(s, 32, 32, 0) for s in sheets])
+
+# ---------- bosdieren: het hert uit het pack, en een wolf en een reuzenzwijn als herkleuring van vos en zwijn ----------
+def herkleur_dier(im, fn):
+    """Past fn(r,g,b) toe op elke niet-doorzichtige pixel; zwarte omlijning blijft."""
+    out = im.copy(); px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a == 0 or (r < 40 and g < 40 and b < 40):
+                continue
+            px[x, y] = (*fn(r, g, b), a)
+    return out
+
+def wolfkleur(r, g, b):
+    """oranje vacht → blauwgrijs; wit en licht blijven licht"""
+    v = max(r, g, b); s = 0 if v == 0 else (v - min(r, g, b)) / v
+    if s < .22:
+        return (r, g, b)
+    return (int(v * .62), int(v * .66), int(v * .74))
+
+def everzwijnkleur(r, g, b):
+    """donkerder en roder; lichte delen (slagtanden) blijven licht"""
+    v = max(r, g, b)
+    if v > 200 and max(r, g, b) - min(r, g, b) < 60:
+        return (r, g, b)
+    return (int(r * .58), int(g * .42), int(b * .40))
+
+for uit, map_, anims, fn in (
+        ('hert', 'Deer', ('Deer_Idle', 'Deer_Walk', 'Deer_Run', 'Deer_Hurt', 'Deer_Death'), None),
+        ('wolf', 'Fox', ('Fox_Idle', 'Fox_walk', 'Fox_Run', 'Fox_Hurt', 'Fox_Death'), wolfkleur),
+        ('everzwijn', 'Boar', ('Boar_Idle', 'Boar_Walk', 'Boar_Attack', 'Boar_Hurt', 'Boar_Death'), everzwijnkleur)):
+    sheets = [open_rgba(DIER / map_ / f'{a}.png') for a in anims]
+    if fn:
+        sheets = [herkleur_dier(sh, fn) for sh in sheets]
     stapel(sheets, 32, 32, 6).save(UIT / f'{uit}.png')
     print(uit, [frames_in_rij(s, 32, 32, 0) for s in sheets])
 

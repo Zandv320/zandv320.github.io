@@ -5,6 +5,7 @@
    doel.soort: 'dood'   versla n monsters van `monster`
                'item'   lever n van `item` in (wordt uit de tas gehaald bij inleveren)
                'bezoek' spreek `npc` aan
+               'plek'   kom binnen `r` van (x,z); `naam` is de omschrijving in de tracker
    Een quest kan een minimumlevel (`lvl`) en een voorafgaande quest (`na`) vereisen. */
 export const QUESTS={
   mette_welkom:{gever:'Old Mette',titel:'A warm welcome',lvl:1,
@@ -47,6 +48,32 @@ export const QUESTS={
     bezig:'Four boar hides. The boars are east of the village.',
     klaar:'Four good hides. A deal is a deal: this helm has been waiting for a head that deserves it.',
     doel:{soort:'item',item:'zwijnenhuid',n:4},beloning:{exp:400,zeny:300,items:[{id:'ijzeren_helm',n:1}]}},
+  /* ---- Whisperwood, level 8 tot 15 ---- */
+  mette_altaar:{gever:'Old Mette',titel:'The old altar',lvl:8,na:'mette_welkom',
+    intro:'When I was a girl we left bread at the old altar in Whisperwood, north past the gate. Nobody goes there any more. Go and see if it still stands. Follow the path and do not stray.',
+    bezig:'North through the gate, then follow the path through the trees. The altar is on the stone circle at the end.',
+    klaar:'It still stands? Then the forest remembers us. Thank you, child. Here, for your trouble.',
+    doel:{soort:'plek',x:0,z:-103,r:5,naam:'the old altar'},beloning:{exp:300,zeny:200,items:[{id:'drank',n:3}]}},
+  rolf_wolven:{gever:'Guard Rolf',titel:'Howling in the north',lvl:8,na:'sven_vossen',
+    intro:'You hear that at night? Wolves, in Whisperwood. They are getting bolder. Six of them, and the rest will think twice.',
+    bezig:'Six grey wolves. They hunt between the trees off the path, north of the gate. Watch your back.',
+    klaar:'Six wolves. The howling is quieter already. Good work, and well paid.',
+    doel:{soort:'dood',monster:'wolf',n:6},beloning:{exp:600,zeny:500,items:[{id:'drank',n:5}]}},
+  lise_vacht:{gever:'Baker Lise',titel:'A warm coat',lvl:9,na:'lise_staarten',
+    intro:'Winter is coming and my coat is thin. Three wolf pelts from Whisperwood and I will have a warm one. I pay in bread and zeny.',
+    bezig:'Three wolf pelts. The wolves live in Whisperwood, north of the village.',
+    klaar:'Three pelts! Soft as anything. Here, and come by for bread whenever you like.',
+    doel:{soort:'item',item:'wolfsvacht',n:3},beloning:{exp:650,zeny:450,items:[{id:'drank',n:4}]}},
+  ragnar_gewei:{gever:'Smith Ragnar',titel:'Antlers for the forge',lvl:10,na:'ragnar_huiden',
+    intro:'Stag antler makes the best sword hilts. There are stags in Whisperwood. Two antlers. They will not give them up gladly.',
+    bezig:'Two stag antlers. The stags graze deep in Whisperwood. They are peaceful until you are not.',
+    klaar:'Two antlers. Now this is hilt material. Take this vest, I have outgrown it.',
+    doel:{soort:'item',item:'gewei',n:2},beloning:{exp:800,zeny:400,items:[{id:'vest',n:1}]}},
+  rolf_everzwijn:{gever:'Guard Rolf',titel:'The dire boar',lvl:13,na:'rolf_wolven',
+    intro:'Something big has made its den on the stone circle at the end of the forest path. A boar, they say, the size of a cart. Nobody goes near the altar any more. Deal with it and I will give you my own steel.',
+    bezig:'The dire boar lives on the stone circle at the old altar, at the end of the path through Whisperwood. Bring potions.',
+    klaar:'You killed it? By the gods. Here, as promised: my steel sword. Carry it better than I did.',
+    doel:{soort:'dood',monster:'everzwijn',n:1},beloning:{exp:1500,zeny:1200,items:[{id:'staalzwaard',n:1}]}},
 };
 export const QUEST_VOLGORDE=Object.keys(QUESTS);
 
@@ -64,5 +91,6 @@ export function voortgangTekst(id,s,monsterNaam,itemNaam){
   const d=QUESTS[id].doel,n=Math.min(s?.n||0,d.n||1);
   if(d.soort==='dood')return `${monsterNaam(d.monster)} ${n}/${d.n}`;
   if(d.soort==='item')return `${itemNaam(d.item)} ${n}/${d.n}`;
+  if(d.soort==='plek')return n?`Visited ${d.naam}`:`Go to ${d.naam}`;
   return n?`Spoke to ${d.npc}`:`Talk to ${d.npc}`;
 }
