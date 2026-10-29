@@ -3,6 +3,7 @@
 import {QUESTS,QUEST_VOLGORDE,status,voltooid,questsVan,voortgangTekst} from './regels/quests.js';
 import {ITEMS,MONSTERS} from './data.js';
 import * as UI from './ui.js';
+import {G} from './geluid.js';
 
 /* P: de speler (P.quests is de voortgang); A: {tasAantal, tasVerwijderen, tasToevoegen, beloning({exp,zeny}), npcLabel(naam), render()} */
 export function maakQuests(P,A){
@@ -23,7 +24,7 @@ export function maakQuests(P,A){
     s.st='gedaan';const b=q.beloning;A.beloning({exp:b.exp,zeny:b.zeny});
     const gekregen=[];for(const it of b.items||[]){if(A.tasToevoegen(it.id,it.n))gekregen.push(`${ITEMS[it.id].icoon} ${UI.esc(ITEMS[it.id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[it.id].naam.toLowerCase()} was left behind.`)}
     UI.log(`<span class="lvl">Quest complete: ${UI.esc(q.titel)} · +${b.exp} exp · +${b.zeny} zeny${gekregen.length?' · '+gekregen.join(', '):''}</span>`);
-    UI.melding('QUEST COMPLETE',q.titel);vernieuw();return true;
+    UI.melding('QUEST COMPLETE',q.titel);G.quest();vernieuw();return true;
   }
   /* gebeurtenissen */
   function opDood(soort){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='dood'&&d.monster===soort&&s.n<d.n){s.n++;w=true;

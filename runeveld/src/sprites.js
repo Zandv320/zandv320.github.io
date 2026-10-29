@@ -35,6 +35,14 @@ const schaduwGeo=new THREE.CircleGeometry(.5,16);
 const schaduwMat=new THREE.MeshBasicMaterial({color:0x1a1540,transparent:true,opacity:.32,depthWrite:false});
 const SCHADUW_Y=.06;
 const klikMat=new THREE.MeshBasicMaterial({visible:false});
+/* witte silhouetversie van een blad, voor de raakflits; één per bron */
+function witTex(bron){
+  if(bron.userData.wit)return bron.userData.wit;
+  const img=bron.image,c=document.createElement('canvas');c.width=img.width;c.height=img.height;const g=c.getContext('2d');
+  g.drawImage(img,0,0);g.globalCompositeOperation='source-in';g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+  const t=new THREE.CanvasTexture(c);t.magFilter=bron.magFilter;t.minFilter=bron.minFilter;t.generateMipmaps=false;t.colorSpace=bron.colorSpace;
+  bron.userData.wit=t;return t;
+}
 
 /* Hoe ver sprites achterover leunen naar de camera (1 = exact naar de camera gericht). */
 export const LEUN=1;
@@ -47,7 +55,7 @@ export class Sprite2D{
     this.g=new THREE.Group();this.lagen=[];
     /* onzichtbaar vlak om op te klikken (raycast) */
     this.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),klikMat);this.mesh.frustumCulled=false;this.g.add(this.mesh);
-    this.anim=null;this.naam='';this.t=0;this.frame=0;this.richt='onder';this.klaar=false;this.kijk=new THREE.Vector2(0,1);this.flits=0;this.cols=1;this.rows=1;
+    this.anim=null;this.naam='';this.t=0;this.frame=0;this.richt='onder';this.klaar=false;this.kijk=new THREE.Vector2(0,1);this.flits=0;this.cols=1;this.rows=1;this.stootV=new THREE.Vector2();this.stootT=0;this.punch=0;
     this.zetBlad(blad,lagen);
     if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=SCHADUW_Y;s.scale.set(schaduw,schaduw*.62,1);s.renderOrder=2;this.g.add(s);this.schaduw=s}
   }
@@ -69,8 +77,8 @@ export class Sprite2D{
       let L=this.lagen[i];
       if(!L){const mat=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.5,side:THREE.DoubleSide});
         const mesh=new THREE.Mesh(this.geo,mat);mesh.frustumCulled=false;mesh.position.z=.004*(i+1);this.g.add(mesh);
-        L={mesh,bron:null,tex:null};this.lagen.push(L)}
-      if(L.bron!==bron){if(L.tex)L.tex.dispose();L.bron=bron;L.tex=bron.clone();L.tex.needsUpdate=true;L.mesh.material.map=L.tex;L.mesh.material.needsUpdate=true}
+        L={mesh,bron:null,tex:null,wit:null};this.lagen.push(L)}
+      if(L.bron!==bron){if(L.tex)L.tex.dispose();if(L.wit)L.wit.dispose();L.bron=bron;L.tex=bron.clone();L.tex.needsUpdate=true;L.wit=witTex(bron).clone();L.wit.needsUpdate=true;L.mesh.material.map=L.tex;L.mesh.material.needsUpdate=true}
     });
     const b=bronnen[0];
     this.cols=Math.max(1,Math.round(b.image.width/this.blad.fw));this.rows=Math.max(1,Math.round(b.image.height/this.blad.fh));
@@ -84,14 +92,24 @@ export class Sprite2D{
   }
   duur(naam){const a=this.blad.anims[naam];return a?a.n/a.fps:0}
   zetKijk(dx,dz){if(Math.abs(dx)+Math.abs(dz)<1e-4)return;this.kijk.set(dx,dz).normalize()}
-  /* korte rode flits bij schade */
-  raak(kleur=0xff6060){this.flits=.12;for(const L of this.lagen)L.mesh.material.color.set(kleur)}
+  /* korte witte flits bij schade, met een squash */
+  raak(){this.flits=.09;this.punch=1;for(const L of this.lagen){L.wit.repeat.copy(L.tex.repeat);L.wit.offset.copy(L.tex.offset);L.mesh.material.map=L.wit}}
+  /* een duw in wereldrichting (dx,dz): terugstoot bij een klap of een uitval bij een aanval; alleen zichtbaar, de positie blijft */
+  stoot(dx,dz,kracht=.3){const l=Math.hypot(dx,dz)||1;this.stootV.set(dx/l*kracht,dz/l*kracht);this.stootT=1}
   update(dt,cam){
     const a=this.anim;
     if(a){this.t+=dt;let f=Math.floor(this.t*a.fps);
       if(a.eens){if(f>=a.n){f=a.n-1;this.klaar=true}}else f%=a.n;
       if(f!==this.frame){this.frame=f;this._uv()}}
-    if(this.flits>0){this.flits-=dt;if(this.flits<=0)for(const L of this.lagen)L.mesh.material.color.set(0xffffff)}
+    if(this.flits>0){this.flits-=dt;if(this.flits<=0)for(const L of this.lagen)L.mesh.material.map=L.tex}
+    /* squash en duw: op de lagen zelf, zodat de groep (positie, schaal) van het spel blijft */
+    if(this.punch>0||this.stootT>0){
+      this.punch=Math.max(0,this.punch-dt*7);this.stootT=Math.max(0,this.stootT-dt*5);
+      const p=this.punch,sx=1+.16*p,sy=1-.12*p;
+      const fx=this.stootV.x,fz=this.stootV.y,sy2=Math.sin(cam.yaw),cy2=Math.cos(cam.yaw);
+      const rechts=(fx*cy2-fz*sy2)*this.stootT,weg=-(fx*sy2+fz*cy2)*this.stootT;
+      for(const L of this.lagen){L.mesh.scale.set(sx,sy,1);L.mesh.position.x=rechts;L.mesh.position.y=weg*.55}
+    }
     /* kijkrichting omzetten naar onder/links/rechts/boven, gezien vanuit de camera */
     const fx=this.kijk.x,fz=this.kijk.y,sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw);
     const weg=-(fx*sy+fz*cy);      /* > 0: van de camera af (we zien de rug) */
@@ -111,7 +129,7 @@ export class Sprite2D{
     }
     const rij=(a.rij||0)+(a.perRichting===false?0:ri),kol=(a.kol||0)+this.frame;
     const cw=1/this.cols,ch=1/this.rows;
-    for(const L of this.lagen){L.tex.repeat.set(spiegel?-cw:cw,ch);L.tex.offset.set(spiegel?(kol+1)*cw:kol*cw,1-(rij+1)*ch)}
+    for(const L of this.lagen){L.tex.repeat.set(spiegel?-cw:cw,ch);L.tex.offset.set(spiegel?(kol+1)*cw:kol*cw,1-(rij+1)*ch);if(L.wit){L.wit.repeat.copy(L.tex.repeat);L.wit.offset.copy(L.tex.offset)}}
   }
   verwijder(){this.g.removeFromParent();for(const L of this.lagen){L.mesh.material.dispose();L.tex.dispose()}this.lagen=[];this.geo.dispose()}
 }

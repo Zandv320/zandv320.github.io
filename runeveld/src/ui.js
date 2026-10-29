@@ -20,6 +20,9 @@ export function labelHp(l,hp,max,toon){
   l.hp.hidden=!toon;if(toon)l.hpi.style.transform=`scaleX(${Math.max(0,hp/max).toFixed(3)})`;
 }
 export function verwijderLabel(l){l.el.remove()}
+/* rode schermrand bij schade; `laag` houdt hem zacht aan bij weinig HP */
+export function pijnFlits(){const p=$('#pijn');p.classList.remove('flits');void p.offsetWidth;p.classList.add('flits')}
+export function laagHp(aan){$('#pijn').classList.toggle('laag',!!aan)}
 /* questmarker boven een npc: 'nieuw' (!), 'bezig' (grijze ?), 'klaar' (gouden ?) of null */
 export function questMarker(l,soort){const m=l.el.querySelector('.qm');m.hidden=!soort;m.className='qm '+(soort||'');m.textContent=soort==='nieuw'?'!':soort?'?':''}
 export function bubble(l,tekst){
@@ -52,8 +55,11 @@ export function hud(P,hpMax,spMax,expMax,dranken){
   $('#h-exp').style.transform=`scaleX(${(P.exp/expMax).toFixed(3)})`;$('#h-expbar').title='Experience: '+P.exp+' / '+expMax;
   $('#h-zeny').textContent=P.zeny;$('#h-drank').textContent=dranken;$('#w-zeny').textContent=P.zeny;
 }
+let doelLabel=null;
 export function doelkader(m){
-  const el=$('#doelkader');if(!m){el.hidden=true;return}
+  const el=$('#doelkader');if(doelLabel){doelLabel.el.classList.remove('doel');doelLabel=null}
+  if(!m){el.hidden=true;return}
+  doelLabel=m.label;doelLabel.el.classList.add('doel');
   el.hidden=false;$('#d-naam').textContent=m.spec.naam;$('#d-lvl').textContent='Lv '+m.spec.lvl;
   $('#d-hp').style.transform=`scaleX(${Math.max(0,m.hp/m.hpm).toFixed(3)})`;$('#d-hpt').textContent=Math.max(0,Math.ceil(m.hp))+' / '+m.hpm;
 }

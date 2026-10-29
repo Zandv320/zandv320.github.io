@@ -38,12 +38,15 @@ const PR=GLAD?renderer.getPixelRatio():1;
 export const ZOOMS=(GLAD?[16,24,32,48,64]:[8,12,16,24,32]).map(v=>v*PR);
 export const cam={yaw:0,tilt:THREE.MathUtils.degToRad(50),px:(GLAD?32:16)*PR,doel:new THREE.Vector3(0,0,0),r:new THREE.Vector3(1,0,0),u:new THREE.Vector3(0,1,0),afstand:60};
 const _e=new THREE.Vector3();
+export function schud(kracht=.25,duur=.22){cam.schudK=Math.max(cam.schudK||0,kracht);cam.schudT=duur;cam.schudD=duur}
 export function updateCamera(){
   const {yaw,tilt,afstand,doel,px}=cam;
   const h=afstand*Math.sin(tilt),r=afstand*Math.cos(tilt);
   camera.position.set(doel.x+Math.sin(yaw)*r,doel.y+h,doel.z+Math.cos(yaw)*r);
   camera.lookAt(doel.x,doel.y,doel.z);camera.updateMatrixWorld();
   cam.r.setFromMatrixColumn(camera.matrixWorld,0);cam.u.setFromMatrixColumn(camera.matrixWorld,1);
+  if(cam.schudT>0){const k=cam.schudK*(cam.schudT/cam.schudD);camera.position.addScaledVector(cam.r,(Math.random()*2-1)*k).addScaledVector(cam.u,(Math.random()*2-1)*k)}
+  else cam.schudK=0;
   /* vastklikken op hele gerenderde pixels langs de schermassen */
   _e.copy(camera.position);
   const er=_e.dot(cam.r),eu=_e.dot(cam.u);
