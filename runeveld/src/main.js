@@ -8,6 +8,7 @@ import {maakQuests} from './quests.js';
 import {maakDialoog} from './dialoog.js';
 import {BOS,inBos,BOS_PLEK,afstandTotPad} from './gebied.js';
 import {maakKaart} from './kaart.js';
+import {maakDaglicht,daglicht,klokTekst,zetTijd,isNacht} from './daglicht.js';
 import {wek as wekGeluid,G,isAan as geluidAan,zetAan as zetGeluid} from './geluid.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
 import {SKILLS,SKILLS_VAN,MAX_JOB,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
@@ -17,7 +18,7 @@ import {heldLagen} from './uiterlijk.js';
 import {maakSelectie,PODIUM} from './selectie.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
-import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld} from './world.js';
+import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld,zon,hemi} from './world.js';
 import {maakNet} from './net.js';
 import * as UI from './ui.js';
 
@@ -34,7 +35,7 @@ const M=new Map();      /* monsters: id → monster */
 const S=new Map();      /* andere spelers: peer-id → speler */
 const klikbaar=[];      /* meshes waar je op kunt klikken */
 let stdPx=0,stdTilt=0;
-let net=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null;
+let net=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null,DAG=null;
 /* schakelaars voor het admin-paneel (admin.js) */
 const ADMIN={god:false,snelheid:1,bevroren:false,noclip:false,expMult:1,dropMult:1};
 /* alles wat uit level, stats, uitrusting en skills volgt (regels/stats.js) */
@@ -48,6 +49,10 @@ const vrijeStat=()=>statPuntenVoor(P.lvl)-statPuntenBesteed(P.stats),vrijeSkill=
 /* ====================== opstarten ====================== */
 async function init(){
   await laadBladen();await bouwWereld();maakNpc();maakDorpelingen(scene,klikbaar);toonNpcs(false);
+  /* dag en nacht: lantaarns en het altaar geven 's nachts licht */
+  const lichten=borden.filter(b=>b.naam==='lantaarn').map(b=>({x:b.x,z:b.z,y:1.1,r:4.5,kleur:[255,210,130],sterkte:.85}));
+  lichten.push({x:BOS_PLEK[0],z:BOS_PLEK[1],y:1.2,r:6.5,kleur:[170,120,255],sterkte:.7});
+  DAG=maakDaglicht({scene,camera,renderer,zon,hemi,lichten});
   $('#laden').classList.add('weg');
   addEventListener('pointerdown',wekGeluid,{capture:true});addEventListener('keydown',wekGeluid,{capture:true});
   CH=leesChars();
@@ -78,7 +83,7 @@ function start(i){
   ADM=maakAdmin({P,M,S,cam,camera,scene,renderer,ADMIN,zetZoom,net:()=>net,isHost:()=>!!H,
     tasToevoegen,zetLevel,zetJob,respec,teleport,spawnMonster,doodMonster,doodAlles,herleefAlles,vernieuwUiterlijk,bewaar,
     herstel:()=>{P.hp=hpMax();P.sp=spMax();K.render()},exportSave:()=>JSON.stringify(CH.lijst[P.slot]),importSave:s=>{gestart=false;CH.lijst[P.slot]={...JSON.parse(s),naam:P.naam};schrijfChars(CH);location.reload()},
-    resetSave:()=>{gestart=false;CH.lijst.splice(P.slot,1);CH.laatst=0;schrijfChars(CH);location.reload()},af,obstakels,render:()=>{K.render();I.render()}});
+    resetSave:()=>{gestart=false;CH.lijst.splice(P.slot,1);CH.laatst=0;schrijfChars(CH);location.reload()},tijd:()=>24,zetTijd,af,obstakels,render:()=>{K.render();I.render()}});
   P.label=UI.maakLabel('speler',naam);
   Q=maakQuests(P,{tasAantal,tasVerwijderen,tasToevoegen,beloning:d=>beloning({...d,buit:null}),render:()=>{K.render();I.render()},
     elkeNpc:f=>{f('Merchant Bram',npc.label);for(const n of dorpelingen())f(n.spec.naam,n.label)}});
@@ -204,11 +209,12 @@ function hostTick(dt){
     if(ADMIN.bevroren||nu()<(m.ijsTot||0)){m.st=0;m.tx=m.x;m.tz=m.z;continue}
     let doel=m.doel?spelers.find(s=>s.id===m.doel):null;
     if(doel&&(doel.dood||inDorp(doel.x,doel.z)||Math.hypot(doel.x-m.x,doel.z-m.z)>13||(sp.gebied&&!inBos(doel.x,doel.z)))){doel=null;m.doel=null}
-    if(!doel&&sp.agressief){let best=null,bd=sp.aggro;for(const s of spelers){if(s.dood||inDorp(s.x,s.z))continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
+    const nachtF=isNacht()&&sp.nacht?sp.nacht:null;
+    if(!doel&&sp.agressief){let best=null,bd=sp.aggro*(nachtF?nachtF.aggro:1);for(const s of spelers){if(s.dood||inDorp(s.x,s.z))continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
     m.cd=Math.max(0,m.cd-dt);
     if(doel){
       const dx=doel.x-m.x,dz=doel.z-m.z,d=Math.hypot(dx,dz)||1e-4;m.kx=dx/d;m.kz=dz/d;
-      if(d>sp.bereik){const s=sp.snelheid*dt;[m.x,m.z]=botsing(m.x+dx/d*s,m.z+dz/d*s,.3);m.st=1}
+      if(d>sp.bereik){const s=sp.snelheid*(nachtF?nachtF.snelheid:1)*dt;[m.x,m.z]=botsing(m.x+dx/d*s,m.z+dz/d*s,.3);m.st=1}
       else{m.st=0;if(m.cd<=0){m.cd=1.6;net.stuur('ma',{id:m.id,to:doel.id,dmg:Math.round(sp.atk*R(.85,1.15))})}}
     }else{
       m.wtT-=dt;
@@ -569,7 +575,7 @@ function loop(){
   const t=nu(),dt=Math.min(.05,t-last);last=t;
   stap(dt);
 }
-let tasT=0,zone=null;
+let tasT=0,zone=null,klokT=2;
 function stap(dt){
   if(Q){tasT+=dt;if(tasT>=.5){tasT=0;Q.opTas();Q.opPlek(P.x,P.z)}}
   if(SEL&&!gestart)SEL.tick(dt);
@@ -591,7 +597,10 @@ function stap(dt){
   if(gestart){npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera)}
   updateDorpelingen(dt,cam,camera,P);
   updateEffecten(dt);
-  updateBorden();renderer.render(scene,camera);
+  updateBorden();
+  if(DAG)DAG.update(cam,gestart&&!P.dood?[{x:P.x,z:P.z,y:.8,r:3.2,kleur:[255,240,220],sterkte:.3}]:[]);
+  klokT+=dt;if(klokT>1){klokT=0;$('#h-tijd').textContent=(daglicht()>.5?'☀️ ':'🌙 ')+klokTekst()}
+  renderer.render(scene,camera);
 }
 
 window.RV={P,M,S,cam,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,gesprek,dorpelingen};

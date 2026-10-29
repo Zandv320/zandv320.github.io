@@ -18,6 +18,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 [hidden]{display:none!important}
 
 /* ---------- labels en effecten boven de wereld ---------- */
+#nacht{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:multiply;display:none}
 #labels,#fx{position:fixed;inset:0;pointer-events:none;overflow:hidden}
 .label{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:3px;white-space:nowrap;will-change:transform}
 .label .naam{font-size:12px;font-weight:500;text-shadow:0 1px 2px #000;padding:1px 7px;border-radius:6px;background:rgba(0,0,0,.4)}
@@ -221,6 +222,7 @@ body.touch #mobiel{display:flex}
 </head>
 <body>
 <canvas id="c"></canvas>
+<canvas id="nacht"></canvas>
 <div id="labels"></div>
 <div id="pijn"></div>
 <div id="fx"></div>
@@ -234,6 +236,7 @@ body.touch #mobiel{display:flex}
   </div>
   <div id="rechts">
     <div class="paneel" title="Zeny">🪙 <b id="h-zeny">0</b></div>
+    <div class="paneel" id="h-tijd" title="Time of day">☀️ 12:00</div>
     <div class="paneel"><span class="stip" id="h-stip"></span><span id="h-online">offline</span></div>
     <button class="paneel" id="a-knop" title="Admin (Ctrl+Shift+A)" hidden>🛠️</button>
     <button class="paneel" id="m-knop" title="Map (M)">🗺️</button>

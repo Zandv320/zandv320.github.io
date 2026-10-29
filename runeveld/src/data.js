@@ -59,7 +59,7 @@ export const MONSTERS={
 /* Hoeveel van elk monster er rondlopen. */
 /* Whisperwood (gebied.js): `gebied:'bos'` spawnt in het bos buiten het pad, 'plek' op de open plek bij het altaar. */
 export const BOS_MONSTERS={
-  wolf:{naam:'Grey Wolf',lvl:9,hp:260,atk:24,exp:120,zeny:[20,45],snelheid:3.2,agressief:true,bereik:1.3,aggro:6,gebied:'bos',buit:{wolfsvacht:.5,drank:.25,vest:.08,ijzerzwaard:.08,zijden_gewaad:.05}},
+  wolf:{naam:'Grey Wolf',lvl:9,hp:260,atk:24,exp:120,zeny:[20,45],snelheid:3.2,agressief:true,bereik:1.3,aggro:6,gebied:'bos',nacht:{aggro:1.7,snelheid:1.15},buit:{wolfsvacht:.5,drank:.25,vest:.08,ijzerzwaard:.08,zijden_gewaad:.05}},
   hert:{naam:'Stag',lvl:11,hp:380,atk:30,exp:170,zeny:[25,60],snelheid:3.4,agressief:false,bereik:1.4,aggro:0,gebied:'bos',buit:{gewei:.45,drank:.25,ijzeren_helm:.07,harnas:.05,sterrenhoed:.05}},
   everzwijn:{naam:'Dire Boar',lvl:14,hp:900,atk:46,exp:520,zeny:[80,160],snelheid:2.4,agressief:true,bereik:1.6,aggro:7,gebied:'plek',respawn:[60,90],buit:{slagtand:.8,staalzwaard:.12,kristalstaf:.12,harnas:.1,magiergewaad:.1,drank:.5}},
 };

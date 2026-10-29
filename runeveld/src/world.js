@@ -26,8 +26,8 @@ export const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87c9ee);
 /* geen mist: de orthografische camera staat op vaste afstand en de wereld eindigt in een bomenrij */
 /* licht voor de 3D-modellen; sprites zijn onbelicht en merken hier niets van */
-scene.add(new THREE.HemisphereLight(0xdff3ff,0x6a8a46,2.2));
-const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40,15);scene.add(zon);scene.add(zon.target);
+export const hemi=new THREE.HemisphereLight(0xdff3ff,0x6a8a46,2.2);scene.add(hemi);
+export const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40,15);scene.add(zon);scene.add(zon.target);
 zon.castShadow=true;zon.shadow.mapSize.set(4096,4096);zon.shadow.bias=-.0005;
 /* het bereik dekt het veld en het bos; de zon staat zo dat de projectie het bos (z tot -112) ook raakt */
 zon.position.set(20,40,-10);zon.target.position.set(0,0,-26);
