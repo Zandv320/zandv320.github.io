@@ -6,7 +6,7 @@ import * as THREE from 'three';
 
 /* Gladde graphics: de sprites uit sprites/glad/ zijn 2× opgeschaald met Scale2x (tools/maak_sprites.py)
    en worden met zachte filtering getekend. Uit te zetten in het admin-paneel. */
-export const GLAD=(()=>{try{return localStorage.getItem('runeveld.glad')==='1'}catch(e){return false}})();
+export const GLAD=(()=>{try{return localStorage.getItem('runeveld.glad')!=='0'}catch(e){return true}})();  /* standaard aan */
 /* Pixelgrootte: hoeveel schermpixels (CSS) één gerenderde pixel beslaat. 2 laat de sprites ongeveer 1:1 in het
    pixelraster vallen; 1 is volle resolutie. Instelbaar in het admin-paneel. */
 /* In de gladde modus rendert alles op volle resolutie: de 2×-sprites staan dan 1:1 bij een pixelschaal van 32. */

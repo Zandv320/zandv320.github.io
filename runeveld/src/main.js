@@ -235,7 +235,7 @@ function updateSpeler(dt){
     const s=KLASSE.snelheid*ADMIN.snelheid*dt;const[nx,nz]=ADMIN.noclip?[Math.max(-VELD+1,Math.min(VELD-1,P.x+dx*s)),Math.max(-VELD+1,Math.min(VELD-1,P.z+dz*s))]:botsing(P.x+dx*s,P.z+dz*s);
     if(P.bestemming&&Math.hypot(nx-P.x,nz-P.z)<s*.2){P.bestemming=null;if(P.naarNpc){P.naarNpc=false;openWinkel()}}
     P.x=nx;P.z=nz;P.sprite.zetKijk(dx,dz);zetAnim('loop');
-  }else if(!bezig)zetAnim(P.zit?'zit':'idle');
+  }else if(t>=P.bezigTot)zetAnim(P.zit?'zit':'idle');   /* opnieuw kijken: een slag in dit frame zet bezigTot */
   P.sprite.g.position.set(P.x,0,P.z);P.sprite.update(dt,cam);
   UI.plaatsLabel(P.label,P.x,P.sprite.h+.15,P.z,camera);
   P.regenT+=dt;

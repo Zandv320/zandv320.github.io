@@ -25,9 +25,10 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 .label .hp{width:46px;height:5px;background:rgba(0,0,0,.6);border-radius:3px;overflow:hidden}
 .label .hp i{display:block;height:100%;background:#4ade80;transform-origin:left}
 .label.monster .hp i{background:var(--rood)}
-.bubble{position:absolute;bottom:calc(100% + 6px);max-width:220px;white-space:normal;text-align:center;background:#fff;color:#111;font-size:12px;line-height:1.3;padding:6px 9px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.35);animation:bub .2s ease-out}
-.bubble:after{content:'';position:absolute;left:50%;top:100%;margin-left:-5px;border:5px solid transparent;border-top-color:#fff}
-@keyframes bub{from{transform:translateY(6px);opacity:0}}
+.bubble{--bub:rgba(14,20,28,.94);--bubrand:rgba(255,255,255,.22);position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);width:max-content;max-width:220px;white-space:normal;text-align:center;background:var(--bub);border:1px solid var(--bubrand);color:var(--tekst);font-size:12px;line-height:1.35;padding:6px 10px;border-radius:9px;box-shadow:0 4px 14px rgba(0,0,0,.4);animation:bub .2s ease-out}
+.bubble:after{content:'';position:absolute;left:50%;top:100%;width:8px;height:8px;margin:-5px 0 0 -4px;background:var(--bub);border:1px solid var(--bubrand);border-top:0;border-left:0;transform:rotate(45deg)}
+.label.npc .bubble{--bubrand:rgba(255,200,87,.45)}.label.ander .bubble{--bubrand:rgba(191,227,255,.35)}
+@keyframes bub{from{margin-bottom:-6px;opacity:0}}
 .dmg{position:absolute;left:0;top:0;font-weight:900;font-size:18px;color:#fff;text-shadow:0 2px 0 #000,0 0 6px #000;animation:dmg .9s ease-out forwards}
 .dmg.eigen{color:#ffd166}.dmg.skill{font-size:24px;color:#ff8c42}.dmg.crit{font-size:28px;color:#fff3b0;text-shadow:0 2px 0 #7a4a00,0 0 10px #ffb300}.dmg.mis{font-size:14px;color:#cfd8e3;font-weight:500}.dmg.pijn{color:#ff6b6b}.dmg.heal{color:#7cf5a0}.dmg.exp{color:#d8b4fe;font-size:14px}
 @keyframes dmg{0%{opacity:0;transform:translate(-50%,-80%) scale(.6)}15%{opacity:1;transform:translate(-50%,-110%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-230%) scale(1)}}
