@@ -52,7 +52,11 @@ export function maakDorpelingen(scene,klikbaar){
   return lijst;
 }
 
+/* op het selectiescherm zijn de dorpelingen er niet: pas in de echte wereld */
+let zichtbaar=true;
+export function toonDorpelingen(aan){zichtbaar=aan;for(const n of lijst){n.sprite.g.visible=aan;n.label.el.hidden=!aan}}
 export function updateDorpelingen(dt,cam,camera,speler){
+  if(!zichtbaar)return;
   const t=performance.now()/1000;
   for(const n of lijst){
     const d=n.spec,s=n.sprite;

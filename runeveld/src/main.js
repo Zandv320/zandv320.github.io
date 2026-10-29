@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {KLASSE,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL} from './data.js';
 import {maakInventaris} from './inventaris.js';
 import {maakAdmin} from './admin.js';
-import {maakDorpelingen,updateDorpelingen,spreek,dorpelingen,groet} from './dorpelingen.js';
+import {maakDorpelingen,updateDorpelingen,spreek,dorpelingen,groet,toonDorpelingen} from './dorpelingen.js';
 import {maakQuests} from './quests.js';
 import {maakDialoog} from './dialoog.js';
 import {BOS,inBos,BOS_PLEK,afstandTotPad} from './gebied.js';
@@ -45,7 +45,7 @@ const vrijeStat=()=>statPuntenVoor(P.lvl)-statPuntenBesteed(P.stats),vrijeSkill=
 
 /* ====================== opstarten ====================== */
 async function init(){
-  await laadBladen();await bouwWereld();maakNpc();maakDorpelingen(scene,klikbaar);
+  await laadBladen();await bouwWereld();maakNpc();maakDorpelingen(scene,klikbaar);toonNpcs(false);
   $('#laden').classList.add('weg');
   addEventListener('pointerdown',wekGeluid,{capture:true});addEventListener('keydown',wekGeluid,{capture:true});
   CH=leesChars();
@@ -57,7 +57,7 @@ async function init(){
 /* de wereld in met held nummer i uit de lijst; een held zonder level is nieuw */
 function start(i){
   const save=CH.lijst[i];P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';CH.laatst=i;schrijfChars(CH);
-  zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;
+  zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;toonNpcs(true);
   if(save.lvl){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,x:save.x,z:save.z});
     if(save.uitr)P.uitr={hoofd:null,lichaam:null,wapen:null,...save.uitr};
     if(Array.isArray(save.tas)){P.tas=[];for(const e of save.tas){if(typeof e==='string')tasToevoegen(e,1,true);else if(e&&ITEMS[e.id])tasToevoegen(e.id,e.n|0,true)}}
@@ -88,6 +88,8 @@ function start(i){
   gestart=true;startNet();
   setInterval(bewaar,5000);addEventListener('pagehide',bewaar);
 }
+/* npc's en dorpelingen alleen in de echte wereld, niet op het selectiescherm */
+function toonNpcs(aan){npc.sprite.g.visible=aan;npc.label.el.hidden=!aan;toonDorpelingen(aan)}
 function maakNpc(){
   const sprite=new Sprite2D(BLADEN.koopman);sprite.g.position.set(-7.4,0,-3.4);sprite.zetKijk(.3,1);scene.add(sprite.g);
   npc={sprite,label:UI.maakLabel('npc','Merchant Bram'),x:-7.4,z:-3.4};
@@ -531,7 +533,7 @@ function stap(dt){
     const zn=inBos(P.x,P.z)?'bos':'veld';if(zone&&zn!==zone)UI.melding(zn==='bos'?BOS.naam:'Runeveld',zn==='bos'?'The old forest. Stay on the path.':'Fields and village.');zone=zn;
     K.tick(dt);ADM.tick(dt);KT.render();KT.renderMini();
   }
-  npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera);
+  if(gestart){npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera)}
   updateDorpelingen(dt,cam,camera,P);
   updateEffecten(dt);
   updateBorden();renderer.render(scene,camera);
