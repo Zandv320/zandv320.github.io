@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import {laadTextuur,maakTex,Bord,FACTOR,GLAD,PIXEL} from './sprites.js';
 import * as B from './bouw.js';
-import {BOS,inBos} from './gebied.js';
+import {BOS,inBos,inVeld,veldRand,binnenWereld} from './gebied.js';
+export {binnenWereld};
 import {bouwBos} from './bos.js';
 
 export const VELD=60;                     /* halve breedte van de wereld */
@@ -73,12 +74,13 @@ export const opPad=(x,z)=>Math.abs(x)<1.6;
 
 /* ---------- botsingen ---------- */
 export const obstakels=[];                /* {x,z,r} */
-/* binnen de wereld: het veld, of het bos (dat bij de ingang 2 eenheden overlapt met het veld, zodat je er zacht in loopt) */
-export const binnenWereld=(x,z,m=1.5)=>(Math.abs(x)<VELD-m&&Math.abs(z)<VELD-m)||(x>BOS.x0+m&&x<BOS.x1-m&&z>BOS.z0+m&&z<BOS.z1+2);
+/* buiten de wereld? dan terug naar binnen: in kleine stappen richting het dorp of het bosmidden, wat het dichtst bij is */
 function klem(x,z,m=1.2){
-  const ax=Math.max(-VELD+m,Math.min(VELD-m,x)),az=Math.max(-VELD+m,Math.min(VELD-m,z));
-  const bx=Math.max(BOS.x0+m,Math.min(BOS.x1-m,x)),bz=Math.max(BOS.z0+m,Math.min(BOS.z1+2,z));
-  return Math.hypot(ax-x,az-z)<=Math.hypot(bx-x,bz-z)?[ax,az]:[bx,bz];
+  if(binnenWereld(x,z,m))return[x,z];
+  let best=null,bd=1e9;
+  for(const[cx,cz]of[[0,0],[BOS.cx,BOS.cz]]){const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz)||1;
+    for(let s=.3;s<60;s+=.3){const px=x+dx/d*s,pz=z+dz/d*s;if(binnenWereld(px,pz,m)){if(s<bd){bd=s;best=[px,pz]}break}}}
+  return best||[0,4];
 }
 export function botsing(x,z,r=.35){
   [x,z]=klem(x,z);
@@ -96,7 +98,7 @@ export function grondPunt(cx,cy){straal(cx,cy);return ray.ray.intersectPlane(gro
 /* ---------- grond: tegelkaart ---------- */
 const TILE=32,CPU=2;                      /* eenheden per grondtegel: 32 px op 2 eenheden = 16 px per eenheid, net als de sprites */
 /* de grondkaart dekt het veld en het bos erboven */
-const X0=-VELD,X1=VELD,Z0=BOS.z0,Z1=VELD,NX=Math.round((X1-X0)/CPU),NZ=Math.round((Z1-Z0)/CPU);
+const X0=-VELD-10,X1=VELD+10,Z0=BOS.z0,Z1=VELD+10,NX=Math.round((X1-X0)/CPU),NZ=Math.round((Z1-Z0)/CPU);
 export function celType(x,z){ /* wereldcoördinaten → 'g' gras, 'c' keien, 'p' pad */
   if(Math.hypot(x,z)<PLEIN)return 'c';
   if(opPad(x,z))return 'p';
@@ -107,16 +109,17 @@ function bouwGrond(atlas,decor){
   const R=toeval(12345);
   const c=document.createElement('canvas');c.width=NX*TILE;c.height=NZ*TILE;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const w2px=v=>(v-X0)/CPU*TILE,w2pz=v=>(v-Z0)/CPU*TILE;          /* wereld → canvaspixels */
-  const inVeld=(x,z)=>Math.abs(x)<VELD&&Math.abs(z)<VELD;
   for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
     const x=(i+.5)*CPU+X0,z=(j+.5)*CPU+Z0;
     const idx=(R()<.12?2:R()<.3?1:0);   /* plein en pad zijn 3D-vlakken met kit-texturen (bouw.js) */
     g.drawImage(atlas,idx*TILE,0,TILE,TILE,i*TILE,j*TILE,TILE,TILE);
   }
-  /* het bos: donkerder, koeler gras; wat lichter rond het pad en op de open plek */
-  const gr=g.createLinearGradient(0,w2pz(BOS.z1-7),0,w2pz(BOS.z1+3));gr.addColorStop(0,'rgba(22,44,38,.34)');gr.addColorStop(1,'rgba(22,44,38,0)');
-  g.fillStyle='rgba(22,44,38,.34)';g.fillRect(w2px(X0),w2pz(Z0),(X1-X0)/CPU*TILE,(BOS.z1-7-Z0)/CPU*TILE);
-  g.fillStyle=gr;g.fillRect(w2px(X0),w2pz(BOS.z1-7),(X1-X0)/CPU*TILE,10/CPU*TILE);
+  /* het bos: donkerder, koeler gras; buiten de wereld (achter de bomenrand) nog donkerder. Per halve tegel, zodat de
+     golvende randen te volgen zijn; de bomen eroverheen maken de trapjes onzichtbaar */
+  const H=TILE/4,S=CPU/4;
+  for(let j=0;j<NZ*4;j++)for(let i=0;i<NX*4;i++){const x=(i+.5)*S+X0,z=(j+.5)*S+Z0;
+    if(inBos(x,z)&&!inVeld(x,z))g.fillStyle='rgba(22,44,38,.34)';else if(!inBos(x,z,-2.5)&&!inVeld(x,z,-2.5))g.fillStyle='rgba(10,28,20,.5)';else continue;
+    g.fillRect(i*H,j*H,H,H)}
   /* wat bloemen en steentjes in het gras, spaarzaam en alleen buiten het dorp wat dichter; in het bos alleen steentjes */
   for(let k=0;k<380;k++){const x=X0+R()*(X1-X0),z=Z0+R()*(Z1-Z0);
     if(inVeld(x,z)){if(celType(x,z)!=='g'||(inDorp(x,z)&&R()<.7))continue}else if(!inBos(x,z))continue;
@@ -216,9 +219,14 @@ export async function bouwWereld(){
   }
   for(let k=0;k<28;k++){const x=R()*2*(VELD-3)-(VELD-3),z=R()*2*(VELD-3)-(VELD-3);if(!buiten(x,z,2)||Math.abs(x)<3||!vrij(x,z,1.5))continue;P.push(prop('rots',x,z,{r:.6,schaduw:1.4,schaal:1.2}))}
   /* een bomenrij als rand van de wereld */
-  for(let i=-VELD+1.5;i<VELD;i+=3){const s=R()<.5?'den':'boom';
-    if(Math.abs(i)>3.2)P.push(prop(s,i,-VELD+1.2,{r:.7,schaduw:1.8,schaal:1.3}));   /* in het noorden een opening voor de weg naar het bos */
-    P.push(prop(s,i,VELD-1.2,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,-VELD+1.2,i,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,VELD-1.2,i,{r:.7,schaduw:1.8,schaal:1.3}))}
+  /* een bomenrand langs de golvende rand van het veld: de binnenste rij sluit af (botsing), daarbuiten nog drie
+     losse rijen zodat de wereld in bos overgaat. Waar het bos het veld overlapt (de noordpoort) staat niets. */
+  for(let th=0;th<Math.PI*2;th+=2.3/60){const r=veldRand(th);
+    for(const[k,dicht,kans]of[[-1.3,true,1],[1.6,false,1],[4.4,false,.85],[7.4,false,.7],[10.4,false,.5]]){
+      const rr=r+k+(dicht?0:(R()-.5)*1.6),x=Math.sin(th)*rr+(dicht?0:(R()-.5)*1.2),z=Math.cos(th)*rr;
+      if(inBos(x,z)||R()>kans)continue;
+      const s=R()<.6?'den':R()<.5?'boom':'boom2';
+      P.push(prop(s,x,z,{r:dicht?.7:0,schaduw:1.8,schaal:1.3}))}}
   bouwBos({scene,prop,bouw,vrij,toeval,P});
   await Promise.all(P);
 }

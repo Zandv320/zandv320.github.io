@@ -2,7 +2,7 @@
    uit wat er in de scene staat (userData.kaart op bouwsels en vlakken, de billboards uit `borden`); de live laag
    (speler, medespelers, monsters, npc's met questmarkers) wordt elk frame opnieuw getekend zolang de kaart open is. */
 import * as THREE from 'three';
-import {BOS} from './gebied.js';
+import {BOS,inBos,inVeld} from './gebied.js';
 
 const KLEUR={
   buiten:'#2f4a22',gras:'#86b54c',bos:'#4c7a3b',dorp:'#8fbb52',
@@ -12,7 +12,7 @@ const KLEUR={
   boom:'#3b8a3c',den:'#2d6b3a',struik:'#67ad4c',rots:'#9b9b95',lantaarn:'#ffd27a',
   speler:'#ffffff',ander:'#7cc4ff',monster:'#f87171',monsterRustig:'#ffd1a6',npc:'#ffc857',quest:'#ffe9a8',
 };
-const X0=-60,X1=60,Z0=BOS.z0,Z1=60;        /* de wereld: het veld en het bos erboven */
+const X0=-70,X1=70,Z0=BOS.z0,Z1=70;        /* de wereld: het veld en het bos erboven */
 
 /* A: {scene, borden, P, M (monsters), S (medespelers), npcs() → [{naam,x,z,label}], Q (quests), VELD, DORP, PLEIN, loopNaar(x,z), inDorp} */
 export function maakKaart(A){
@@ -37,8 +37,10 @@ export function maakKaart(A){
     const px=x=>(x-X0)*schaal,pz=z=>(z-Z0)*schaal;
     /* grond: buiten de wereld, het veld, het bos, het dorp */
     g.fillStyle=KLEUR.buiten;g.fillRect(0,0,c.width,c.height);
-    g.fillStyle=KLEUR.gras;g.fillRect(px(-A.VELD),pz(-A.VELD),2*A.VELD*schaal,2*A.VELD*schaal);
-    g.fillStyle=KLEUR.bos;g.fillRect(px(BOS.x0),pz(BOS.z0),(BOS.x1-BOS.x0)*schaal,(BOS.z1-BOS.z0)*schaal);
+    /* de golvende vormen van veld en bos, per halve eenheid */
+    const st=.5;
+    for(let z=Z0;z<Z1;z+=st)for(let x=X0;x<X1;x+=st){const v=inVeld(x+st/2,z+st/2),b=inBos(x+st/2,z+st/2);if(!v&&!b)continue;
+      g.fillStyle=v?KLEUR.gras:KLEUR.bos;g.fillRect(px(x),pz(z),st*schaal+.5,st*schaal+.5)}
     g.fillStyle=KLEUR.dorp;g.fillRect(px(-A.DORP),pz(-A.DORP),2*A.DORP*schaal,2*A.DORP*schaal);
     /* vlakken: plein, wegen, open plek */
     for(const v of items.vlak){
