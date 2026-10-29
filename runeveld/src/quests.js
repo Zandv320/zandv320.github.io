@@ -24,7 +24,7 @@ export function maakQuests(P,A){
     s.st='gedaan';const b=q.beloning;A.beloning({exp:b.exp,zeny:b.zeny});
     const gekregen=[];for(const it of b.items||[]){const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&it.mage?it.mage:it.id;if(A.tasToevoegen(id,it.n))gekregen.push(`${ITEMS[id].icoon} ${UI.esc(ITEMS[id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[id].naam.toLowerCase()} was left behind.`)}
     UI.log(`<span class="lvl">Quest complete: ${UI.esc(q.titel)} · +${b.exp} exp · +${b.zeny} zeny${gekregen.length?' · '+gekregen.join(', '):''}</span>`);
-    UI.melding('QUEST COMPLETE',q.titel);G.quest();vernieuw();return true;
+    UI.melding('QUEST COMPLETE',q.titel);G.quest();if(A.fx)A.fx('sprankel');vernieuw();return true;
   }
   /* gebeurtenissen */
   function opDood(soort){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='dood'&&d.monster===soort&&s.n<d.n){s.n++;w=true;

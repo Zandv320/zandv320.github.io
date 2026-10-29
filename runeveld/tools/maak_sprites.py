@@ -19,6 +19,7 @@ Uitvoer (allemaal pixel-art, 1 wereld-eenheid = 16 px, zie world.js):
     hert/wolf/everzwijn.png bosdieren: hert uit het pack, wolf en reuzenzwijn herkleurd uit vos en zwijn
     gewaad1..3/staf1..3(+b)/hoed1..2 magiër: gewaad, staf met bol en punthoed, afgeleid van de heldlagen
     harnas4..5/gewaad4..5 tweede klassen: knight (staalblauw), crusader (zilver/goud), wizard (middernacht), sage (groen)
+    fx/*.png + fx.json      skill- en spreukeffecten uit de Craftpix-effectpacks (één rij frames per effect)
     koopman.png            32×32 frames, 4 kolommen, 1 rij
     grond.png              7 tegels van 32×32 naast elkaar: 3× gras, 2× keien, 2× pad
     <decor>.png            losse plaatjes op ware grootte
@@ -722,6 +723,58 @@ tegel(1).save(TEX / 'keien.png')
 tegel(27).save(TEX / 'keien2.png')
 tegel(6).save(TEX / 'pad.png')
 print('texturen:', sorted(p.name for p in TEX.glob('*.png')))
+
+# ---------- effecten: Craftpix "Free Pixel Magic Sprite Effects" en "11 Free Pixel Art Explosion Sprites" ----------
+# Losse frames worden tot één rij geknipt (strak om de tekening heen, vierkant en gecentreerd zodat de animatie niet
+# verspringt). De maten komen in sprites/fx/fx.json, zodat fx.js niets hoeft te weten van de bron.
+import json
+FXE = BRON / 'fx-explosion/PNG'
+FXM = BRON / 'fx-magic/1 Magic'
+FX = UIT / 'fx'
+FX.mkdir(exist_ok=True)
+fxinfo = {}
+
+
+def knip_reeks(frames, marge=2):
+    """Alle frames om dezelfde vierkante uitsnede (rond het midden van het frame) en naast elkaar."""
+    x0 = min(f.getbbox()[0] for f in frames); y0 = min(f.getbbox()[1] for f in frames)
+    x1 = max(f.getbbox()[2] for f in frames); y1 = max(f.getbbox()[3] for f in frames)
+    w, h = frames[0].size
+    r = max(w / 2 - x0, x1 - w / 2, h / 2 - y0, y1 - h / 2) + marge
+    r = int(min(r, w / 2, h / 2)); s = 2 * r
+    out = Image.new('RGBA', (s * len(frames), s), (0, 0, 0, 0))
+    for i, f in enumerate(frames):
+        out.paste(f.crop((w // 2 - r, h // 2 - r, w // 2 + r, h // 2 + r)), (i * s, 0))
+    return out, s
+
+
+def reeks(map_, naam, nrs):
+    return [open_rgba(FXE / map_ / f'{naam}{i}.png') for i in nrs]
+
+
+for uit, map_, naam, nrs, fps in (
+        ('explosie', 'Explosion', 'Explosion', range(1, 11), 20),
+        ('vuurkring', 'Circle_explosion', 'Circle_explosion', range(1, 11), 18),
+        ('vorst', 'Explosion_blue_circle', 'Explosion_blue_circle', range(1, 11), 18),
+        ('vorst2', 'Explosion_blue_oval', 'Explosion_blue_oval', range(1, 11), 16),
+        ('groenkring', 'Explosion_gas_circle', 'Explosion_gas_circle', range(1, 11), 18),
+        ('tweekleur', 'Explosion_two_colors', 'Explosion_two_colors', range(1, 11), 18),
+        ('rook', 'Smoke', 'Smoke', range(1, 7), 12),
+        ('vonk', 'Lightning', 'Lightning_spot', range(1, 5), 16)):
+    sheet, s = knip_reeks(reeks(map_, naam, nrs))
+    sheet.save(FX / f'{uit}.png'); fxinfo[uit] = dict(fw=s, fh=s, n=len(nrs), fps=fps)
+# de bliksem: begin, drie slagen, einde; hoog en smal, niet vierkant
+bl = [open_rgba(FXE / 'Lightning' / f'{n}.png') for n in ('Lightning_beginning1', 'Lightning_beginning2', 'Lightning_beginning3', 'Lightning_beginning4', 'Lightning_beginning5', 'Lightning_cycle1', 'Lightning_cycle2', 'Lightning_cycle3', 'Lightning_end1', 'Lightning_end2', 'Lightning_end3')]
+sheet = Image.new('RGBA', (64 * len(bl), 193), (0, 0, 0, 0))
+for i, f in enumerate(bl):
+    sheet.paste(f, (i * 64, 0))
+sheet.save(FX / 'bliksem.png'); fxinfo['bliksem'] = dict(fw=64, fh=193, n=len(bl), fps=16)
+# magie-sheets: 72 px hoog, frames van 72 breed
+for uit, naam, fps in (('ring', '2', 14), ('slag', '3_2', 18), ('komeet', '4_1', 12), ('spiesen', '7', 14), ('sprankel', '8', 12), ('flits', '9', 18), ('wortels', '1', 14), ('splash', '10', 14)):
+    im = open_rgba(FXM / f'{naam}.png')
+    im.save(FX / f'{uit}.png'); fxinfo[uit] = dict(fw=72, fh=72, n=im.width // 72, fps=fps)
+(FX / 'fx.json').write_text(json.dumps(fxinfo))
+print('effecten:', {k: (v['fw'], v['n']) for k, v in fxinfo.items()})
 
 # ---------- gladde versie: Scale2x twee keer (4×) en terug naar 2× met Lanczos ----------
 # Scale2x (EPX) maakt schuine pixeltrappen vloeiend zonder te vervagen; de laatste stap verzacht de randen.

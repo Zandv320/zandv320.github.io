@@ -9,6 +9,7 @@ import {maakDialoog} from './dialoog.js';
 import {BOS,inBos,BOS_PLEK,afstandTotPad} from './gebied.js';
 import {maakKaart} from './kaart.js';
 import {maakDaglicht,daglicht,klokTekst,zetTijd,isNacht} from './daglicht.js';
+import {maakFx} from './fx.js';
 import {wek as wekGeluid,G,isAan as geluidAan,zetAan as zetGeluid} from './geluid.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
 import {SKILLS,SKILLS_VAN,MAX_JOB,MAX_JOB_TIER,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
@@ -35,7 +36,7 @@ const M=new Map();      /* monsters: id → monster */
 const S=new Map();      /* andere spelers: peer-id → speler */
 const klikbaar=[];      /* meshes waar je op kunt klikken */
 let stdPx=0,stdTilt=0;
-let net=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null,DAG=null;
+let net=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null,DAG=null,FX=null;
 /* schakelaars voor het admin-paneel (admin.js) */
 const ADMIN={god:false,snelheid:1,bevroren:false,noclip:false,expMult:1,dropMult:1};
 /* alles wat uit level, stats, uitrusting en skills volgt (regels/stats.js) */
@@ -50,6 +51,7 @@ const vrijeStat=()=>statPuntenVoor(P.lvl)-statPuntenBesteed(P.stats),vrijeSkill=
 /* ====================== opstarten ====================== */
 async function init(){
   await laadBladen();await bouwWereld();maakNpc();maakDorpelingen(scene,klikbaar);toonNpcs(false);
+  FX=await maakFx({scene});
   /* dag en nacht: lantaarns en het altaar geven 's nachts licht */
   const lichten=borden.filter(b=>b.naam==='lantaarn').map(b=>({x:b.x,z:b.z,y:1.1,r:4.5,kleur:[255,210,130],sterkte:.85}));
   lichten.push({x:BOS_PLEK[0],z:BOS_PLEK[1],y:1.2,r:6.5,kleur:[170,120,255],sterkte:.7});
@@ -86,7 +88,7 @@ function start(i){
     herstel:()=>{P.hp=hpMax();P.sp=spMax();K.render()},exportSave:()=>JSON.stringify(CH.lijst[P.slot]),importSave:s=>{gestart=false;CH.lijst[P.slot]={...JSON.parse(s),naam:P.naam};schrijfChars(CH);location.reload()},
     resetSave:()=>{gestart=false;CH.lijst.splice(P.slot,1);CH.laatst=0;schrijfChars(CH);location.reload()},tijd:()=>24,zetTijd,af,obstakels,render:()=>{K.render();I.render()}});
   P.label=UI.maakLabel('speler',naam);
-  Q=maakQuests(P,{tasAantal,tasVerwijderen,tasToevoegen,beloning:d=>beloning({...d,buit:null}),render:()=>{K.render();I.render()},
+  Q=maakQuests(P,{tasAantal,tasVerwijderen,tasToevoegen,beloning:d=>beloning({...d,buit:null}),render:()=>{K.render();I.render()},fx:naam=>FX.speel(naam,P.x,P.z,{grootte:2.6,voet:true,volg:P,tint:0xffe6a0}),
     elkeNpc:f=>{f('Merchant Bram',npc.label);for(const n of dorpelingen())f(n.spec.naam,n.label)}});
   DL=maakDialoog(Q,{openWinkel,advancementOpties,advance,klasseNaam:id=>KLASSEN[id]});Q.vernieuw();
   KT=maakKaart({scene,borden,P,M,S,VELD,DORP,PLEIN,inDorp,npcs:()=>[npc,...dorpelingen().map(n=>({naam:n.spec.naam,x:n.x,z:n.z,label:n.label}))],
@@ -183,7 +185,7 @@ function thuis(spec,x,z){
 }
 function sterfMonster(m){
   if(m.dood)return;m.dood=true;m.hp=0;m.st=3;m.doel=null;const rs=m.spec.respawn||RESPAWN;m.rt=R(rs[0],rs[1]);
-  m.sprite.speel('dood',true);m.hideT=nu()+1.6;if(Math.hypot(m.x-P.x,m.z-P.z)<14)G.monsterDood();
+  m.sprite.speel('dood',true);m.hideT=nu()+1.6;if(Math.hypot(m.x-P.x,m.z-P.z)<14)G.monsterDood();if(FX)FX.speel('rook',m.x,m.z,{grootte:1.6,voet:true,vertraging:.9});
   if(P.target===m){P.target=null;P.wacht=null;UI.doelkader(null)}
 }
 function herleefMonster(m,[x,z]){
@@ -311,7 +313,7 @@ function klap(m,dx,dz,kracht){
 function raak(m,r,soort){
   if(r.mis){UI.getal(m.x,m.sprite.h*.8,m.z,camera,'Miss','mis');G.mis();return}
   UI.getal(m.x,m.sprite.h*.8,m.z,camera,r.crit?r.dmg+'!':r.dmg,r.crit?'crit':soort?'skill':'eigen');
-  klap(m,m.x-P.x,m.z-P.z,soort==='rolstoot'?1.2:r.crit?.45:.28);G.raak(r.crit);if(r.crit)schud(.22,.2);else if(soort)schud(.1,.15);
+  klap(m,m.x-P.x,m.z-P.z,soort==='rolstoot'?1.2:r.crit?.45:.28);G.raak(r.crit);if(r.crit&&!soort)FX.speel('flits',m.x,m.z,{grootte:1.4,y:.6,tint:0xffe6a0});if(r.crit)schud(.22,.2);else if(soort)schud(.1,.15);
   if(!H)m.hp=Math.max(0,m.hp-r.dmg);
   net.stuur('h',{id:m.id,dmg:r.dmg});
 }
@@ -322,7 +324,7 @@ function vaardigheid(id){
   if(id==='drank'){const V=ITEMS.drank;
     if(tasAantal('drank')<=0){UI.sys('You are out of potions. Merchant Bram at the stall sells them.');return}
     if(P.hp>=hpMax())return;
-    tasVerwijderen('drank');G.drank();P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();I.render();return;
+    tasVerwijderen('drank');G.drank();FX.speel('sprankel',P.x,P.z,{grootte:2,voet:true,volg:P});P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();I.render();return;
   }
   const sk=SKILLS[id],l=P.skills[id]||0;if(!sk||sk.passief)return;
   if(l<=0){UI.sys(`You have not learned ${sk.naam} yet. Spend your skill points with C.`);return}
@@ -333,11 +335,11 @@ function vaardigheid(id){
     const m=P.target;if(Math.hypot(m.x-P.x,m.z-P.z)>klasse().bereik){P.wacht='beuk';return}
     P.sp-=sp;P.cd.beuk=t+sk.cd;if(P.zit)zitten(false);
     P.volgendeSlag=t+a.aanvalTijd;speelEens('aanval',.5);P.sprite.zetKijk(m.x-P.x,m.z-P.z);P.sprite.stoot(m.x-P.x,m.z-P.z,.25);G.skill();
-    const r=regelSlag({...a,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood)raak(m,r,'beuk')},220);
+    const r=regelSlag({...a,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'beuk');FX.speel('flits',m.x,m.z,{grootte:1.6,y:.6})}},220);
   }
   if(id==='vuurkring'){
     P.sp-=sp;P.cd.vuurkring=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);
-    ring(P.x,P.z,0xff8c42,.4,sk.straal,.45,.9);G.skill();schud(.15,.2);
+    ring(P.x,P.z,0xff8c42,.4,sk.straal,.45,.9);G.skill();schud(.15,.2);FX.speel('vuurkring',P.x,P.z,{grootte:sk.straal*2.3,y:.1});
     setTimeout(()=>{let n=0;for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;
       if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,regelSlag({...a,hit:999,mult:sk.mult(l)*a.skillBonus},monsterGevecht(m.spec)),'vuurkring');n++}}
       if(!n)UI.sys('Magnum Break hit nothing.')},200);
@@ -348,18 +350,18 @@ function vaardigheid(id){
     P.sp-=sp;P.cd.vuurpijl=t+sk.cd;if(P.zit)zitten(false);
     P.volgendeSlag=t+Math.max(a.aanvalTijd,.6);speelEens('aanval',.45);P.sprite.zetKijk(m.x-P.x,m.z-P.z);G.skill();
     const r=spreuk({matk:a.matk,mult:sk.mult(l)});
-    projectiel(P.x,P.z,m,0xff8c42,()=>{if(!m.dood){raak(m,r,'vuurpijl');ring(m.x,m.z,0xff8c42,.2,.9,.3,.8)}});
+    projectiel(P.x,P.z,m,0xff8c42,()=>{if(!m.dood){raak(m,r,'vuurpijl');FX.speel('explosie',m.x,m.z,{grootte:2.2,voet:true,y:-.1})}});
   }
   if(id==='vorstnova'){
     P.sp-=sp;P.cd.vorstnova=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);
-    ring(P.x,P.z,0x9ad8ff,.4,sk.straal,.5,.9);G.skill();schud(.12,.2);
+    ring(P.x,P.z,0x9ad8ff,.4,sk.straal,.5,.9);G.skill();schud(.12,.2);FX.speel('vorst',P.x,P.z,{grootte:sk.straal*2.4,y:.2});
     setTimeout(()=>{let n=0;const ids=[];for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;
       if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,spreuk({matk:a.matk,mult:sk.mult(l)}),'vorstnova');m.ijsTot=nu()+sk.bevries(l);ids.push(m.id);n++}}
       if(ids.length)net.stuur('ijs',{ids,duur:sk.bevries(l)});
       if(!n)UI.sys('Frost Nova hit nothing.')},200);
   }
   if(id==='barriere'){
-    P.sp-=sp;P.cd.barriere=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);
+    P.sp-=sp;P.cd.barriere=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xd8c0ff);
     ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);G.skill();UI.sys(`Arcane Barrier: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`);
   }
   /* ---- tweede klassen ---- */
@@ -368,36 +370,41 @@ function vaardigheid(id){
     const m=P.target,ber=sk.bereik||klasse().bereik;if(Math.hypot(m.x-P.x,m.z-P.z)>ber){P.wacht=id;return false}
     P.sp-=sp;P.cd[id]=t+sk.cd;if(P.zit)zitten(false);P.volgendeSlag=t+a.aanvalTijd;speelEens('aanval',.5);P.sprite.zetKijk(m.x-P.x,m.z-P.z);G.skill();return m};
   if(id==='doorboor'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.35);
-    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood)raak(m,r,'doorboor')},200)}
+    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'doorboor');FX.speel('slag',m.x,m.z,{grootte:2.4,y:.7,spiegel:m.x<P.x})}},200)}
   if(id==='heiligkruis'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.25);ring(m.x,m.z,0xfff2b0,.2,1.2,.35,.9);
-    const r=regelSlag({...a,atk:a.atk+a.matk*.5,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood)raak(m,r,'heiligkruis')},200)}
+    const r=regelSlag({...a,atk:a.atk+a.matk*.5,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'heiligkruis');FX.speel('flits',m.x,m.z,{grootte:2.4,y:.7,tint:0xfff0a0});FX.speel('sprankel',m.x,m.z,{grootte:2,voet:true,tint:0xfff4c0})}},200)}
   if(id==='schildstoot'){const m=doelSlag();if(!m)return;
     /* stormloop: naar het doel toe springen */
     const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz)||1;if(d>1.2){[P.x,P.z]=botsing(m.x-dx/d*1,m.z-dz/d*1)}P.sprite.stoot(dx,dz,.5);schud(.15,.15);
-    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'schildstoot');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)})}},150)}
+    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'schildstoot');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)});FX.speel('vonk',m.x,m.z,{grootte:1.8,y:.6});FX.speel('vorst2',m.x,m.z,{grootte:2.6,y:.3})}},150)}
   if(id==='rolstoot'){
-    P.sp-=sp;P.cd.rolstoot=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);ring(P.x,P.z,0xffd27a,.4,sk.straal,.4,.9);G.skill();schud(.2,.2);
+    P.sp-=sp;P.cd.rolstoot=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);ring(P.x,P.z,0xffd27a,.4,sk.straal,.4,.9);G.skill();schud(.2,.2);FX.speel('tweekleur',P.x,P.z,{grootte:sk.straal*2.4,y:.2});
     setTimeout(()=>{let n=0;for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec)),'rolstoot');n++}}if(!n)UI.sys('Bowling Bash hit nothing.')},180);
   }
-  if(id==='volharden'){P.sp-=sp;P.cd.volharden=t+sk.cd;P.endureTot=t+sk.duur(l);P.endureDef=sk.def(l);ring(P.x,P.z,0xd9b25a,.3,1.5,.5,.9);G.skill();UI.sys(`Endure: DEF +${sk.def(l)}, nothing moves you for ${sk.duur(l)}s.`)}
+  if(id==='volharden'){P.sp-=sp;P.cd.volharden=t+sk.cd;P.endureTot=t+sk.duur(l);P.endureDef=sk.def(l);ring(P.x,P.z,0xd9b25a,.3,1.5,.5,.9);FX.speel('ring',P.x,P.z,{grootte:3,y:.2,tint:0xffd27a});G.skill();UI.sys(`Endure: DEF +${sk.def(l)}, nothing moves you for ${sk.duur(l)}s.`)}
   if(id==='genezing'){if(P.hp>=hpMax()){UI.sys('You are at full health.');return}P.sp-=sp;P.cd.genezing=t+sk.cd;const h=Math.round(hpMax()*sk.deel(l));P.hp=Math.min(hpMax(),P.hp+h);
-    ring(P.x,P.z,0x7cf5a0,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h,'heal');G.drank();K.render()}
+    ring(P.x,P.z,0x7cf5a0,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h,'heal');G.drank();K.render();FX.speel('groenkring',P.x,P.z,{grootte:3.6,y:.2});FX.speel('sprankel',P.x,P.z,{grootte:2.2,voet:true,volg:P})}
   if(id==='manabron'){if(P.sp>=spMax()){UI.sys('Your SP is full.');return}P.cd.manabron=t+sk.cd;const h=Math.round(spMax()*sk.deel(l));P.sp=Math.min(spMax(),P.sp+h);
-    ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h+' SP','mis');G.drank();K.render()}
-  if(id==='bliksem'||id==='aardspies'){const m=doelSlag();if(!m)return;
-    const r=spreuk({matk:a.matk,mult:sk.mult(l)});const kleur=id==='bliksem'?0x7fc8ff:0xb08050;
-    projectiel(P.x,P.z,m,kleur,()=>{if(!m.dood){raak(m,r,id);ring(m.x,m.z,kleur,.2,1.1,.3,.8);if(id==='bliksem')schud(.12,.15)}})}
+    ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h+' SP','mis');G.drank();K.render();FX.speel('groenkring',P.x,P.z,{grootte:3.2,y:.2,tint:0x7fb8ff});FX.speel('sprankel',P.x,P.z,{grootte:2.2,voet:true,volg:P,tint:0x9fd0ff})}
+  if(id==='bliksem'){const m=doelSlag();if(!m)return;
+    const r=spreuk({matk:a.matk,mult:sk.mult(l)});
+    FX.speel('bliksem',m.x,m.z,{grootte:5,voet:true,volg:m});
+    setTimeout(()=>{if(!m.dood){raak(m,r,'bliksem');FX.speel('vonk',m.x,m.z,{grootte:2,y:.4});schud(.14,.18)}},300)}
+  if(id==='aardspies'){const m=doelSlag();if(!m)return;
+    const r=spreuk({matk:a.matk,mult:sk.mult(l)});
+    FX.speel('spiesen',m.x,m.z,{grootte:2.6,voet:true,volg:m});FX.speel('wortels',m.x,m.z,{grootte:2.2,voet:true,volg:m,vertraging:.1});
+    setTimeout(()=>{if(!m.dood){raak(m,r,'aardspies');schud(.1,.15)}},350)}
   if(id==='stormvlaag'){
     P.sp-=sp;P.cd.stormvlaag=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.7);
-    ring(P.x,P.z,0xbfe8ff,.4,sk.straal,.7,.9);ring(P.x,P.z,0xffffff,.2,sk.straal*.6,.5,.6);G.skill();schud(.2,.3);
+    ring(P.x,P.z,0xbfe8ff,.4,sk.straal,.7,.9);ring(P.x,P.z,0xffffff,.2,sk.straal*.6,.5,.6);G.skill();schud(.2,.3);FX.speel('vorst2',P.x,P.z,{grootte:sk.straal*2.5,y:.3});FX.speel('vorst',P.x,P.z,{grootte:sk.straal*1.6,y:.2,vertraging:.15});
     setTimeout(()=>{let n=0;const ids=[];for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;
       if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,spreuk({matk:a.matk,mult:sk.mult(l)}),'stormvlaag');m.ijsTot=nu()+sk.bevries(l);ids.push(m.id);n++}}
       if(ids.length)net.stuur('ijs',{ids,duur:sk.bevries(l)});if(!n)UI.sys('Storm Gust hit nothing.')},250);
   }
-  if(id==='energiemantel'){P.sp-=sp;P.cd.energiemantel=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);ring(P.x,P.z,0x5fb0ff,.3,1.8,.7,.9);G.skill();UI.sys(`Energy Coat: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`)}
+  if(id==='energiemantel'){P.sp-=sp;P.cd.energiemantel=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xa8dcff);ring(P.x,P.z,0x5fb0ff,.3,1.8,.7,.9);G.skill();UI.sys(`Energy Coat: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`)}
   if(id==='provocatie'){
     P.sp-=sp;P.cd.provocatie=t+sk.cd;if(P.zit)zitten(false);speelEens('pijn',.3);
-    const straal=sk.straal(l);ring(P.x,P.z,0xff4d4d,.3,straal,.5,.7);
+    const straal=sk.straal(l);ring(P.x,P.z,0xff4d4d,.3,straal,.5,.7);FX.speel('ring',P.x,P.z,{grootte:3.2,y:.2,tint:0xff7070});
     let n=0;for(const m of M.values())if(!m.dood&&m.sprite.g.visible&&Math.hypot(m.x-P.x,m.z-P.z)<=straal)n++;
     net.stuur('prov',{x:+P.x.toFixed(2),z:+P.z.toFixed(2),straal});
     UI.sys(n?`You provoke ${n} monster${n===1?'':'s'}.`:'There is nobody to provoke.');
@@ -435,12 +442,14 @@ function beloning(d){
   let up=false,jobUp=false;
   while(P.lvl<MAX_LVL&&P.exp>=expVoor(P.lvl)){P.exp-=expVoor(P.lvl);P.lvl++;up=true}
   if(P.job<maxJob()){P.jobexp+=Math.round(d.exp*JOB_EXP_DEEL);while(P.job<maxJob()&&P.jobexp>=jobExpVoor(P.job)){P.jobexp-=jobExpVoor(P.job);P.job++;jobUp=true}}
-  if(up){G.levelUp();P.hp=hpMax();P.sp=spMax();UI.melding('LEVEL UP!',`You are now level ${P.lvl}. You have ${vrijeStat()} stat points to spend (C).`);UI.log('<span class="lvl">You are now level '+P.lvl+'! Spend your stat points with C.</span>');ring(P.x,P.z,0xffc857,.3,2.6,.8,1)}
+  if(up){G.levelUp();FX.speel('flits',P.x,P.z,{grootte:3.4,y:.9,tint:0xffd27a});FX.speel('sprankel',P.x,P.z,{grootte:2.6,voet:true,volg:P,tint:0xffe6a0});P.hp=hpMax();P.sp=spMax();UI.melding('LEVEL UP!',`You are now level ${P.lvl}. You have ${vrijeStat()} stat points to spend (C).`);UI.log('<span class="lvl">You are now level '+P.lvl+'! Spend your stat points with C.</span>');ring(P.x,P.z,0xffc857,.3,2.6,.8,1)}
   if(jobUp){if(!up)G.levelUp();UI.log(`<span class="lvl">Job level ${P.job}! You have ${vrijeSkill()} skill point${vrijeSkill()===1?'':'s'} to spend (C).</span>`);if(!up)ring(P.x,P.z,0x8ad0ff,.3,2.2,.7,.9);
     if(klasse().tier===1&&P.job>=maxJob()){const opties=ADVANCEMENT[P.klasse]||[];UI.melding('JOB MASTERED',`Speak to ${KLASSEN[opties[0]].gever} to choose your path.`);UI.log(`<span class="lvl">You have mastered the ${klasse().naam} path. Speak to ${UI.esc(KLASSEN[opties[0]].gever)} to advance to ${opties.map(o=>KLASSEN[o].naam).join(' or ')}.</span>`)}}
   K.render();
 }
 function openWinkel(){K.winkelToon();npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z)}
+/* een aura die de held volgt zolang de barrière duurt */
+function aura(tint){if(P.auraFx)P.auraFx.stop();P.auraFx=FX.speel('ring',P.x,P.z,{grootte:4.4,y:.2,tint,loop:true,volg:P,additief:true})}
 /* class advancement: op het maximale joblevel van een eerste klasse kiest de speler bij de npc zijn tweede klasse */
 function advancementOpties(npcNaam){
   if(klasse().tier!==1||P.job<maxJob())return null;
@@ -450,7 +459,7 @@ function advance(id){
   const k=KLASSEN[id];if(!k||!(ADVANCEMENT[P.klasse]||[]).includes(id)||P.job<maxJob())return false;
   P.klasse=id;P.job=1;P.jobexp=0;P.hp=hpMax();P.sp=spMax();
   if(k.uitrusting&&!tasToevoegen(k.uitrusting,1))UI.sys(`Your bag is full; come back for your ${ITEMS[k.uitrusting].naam.toLowerCase()}.`);
-  bouwBalk();UI.melding(k.naam.toUpperCase(),`You are now a ${k.naam}. New skills await on the Skills tab.`);G.levelUp();ring(P.x,P.z,0xffc857,.3,3,1,1);
+  bouwBalk();UI.melding(k.naam.toUpperCase(),`You are now a ${k.naam}. New skills await on the Skills tab.`);G.levelUp();ring(P.x,P.z,0xffc857,.3,3,1,1);FX.speel('flits',P.x,P.z,{grootte:4,y:1,tint:0xffd27a});FX.speel('ring',P.x,P.z,{grootte:3.6,y:.2,tint:0xffd27a});
   UI.log(`<span class="lvl">You have become a ${k.naam}! Your job level starts again at 1 and now goes up to ${maxJob()}. Your ${UI.esc(ITEMS[k.uitrusting].naam)} is in your bag.</span>`);
   K.render();I.render();bewaar();return true;
 }
@@ -517,18 +526,11 @@ function herleefAlles(){if(!H)return;for(const m of M.values())if(m.dood)m.rt=0}
 /* ====================== effecten ====================== */
 const effecten=[];
 const ringGeo=new THREE.RingGeometry(.82,1,40);
-/* een pixelvuurbal: 8×8 canvas, als billboard van de speler naar het monster, daarna fn() */
-let vuurbalTex=null;
+/* een projectiel: de komeet uit de effectsheets vliegt van de speler naar het monster, daarna fn() */
 function projectiel(x0,z0,m,kleur,fn){
-  if(!vuurbalTex){const c=document.createElement('canvas');c.width=c.height=8;const g=c.getContext('2d');
-    const pix=(x,y,k)=>{g.fillStyle=k;g.fillRect(x,y,1,1)};
-    for(const[x,y]of[[2,1],[3,1],[4,1],[5,1],[1,2],[6,2],[1,3],[6,3],[1,4],[6,4],[1,5],[6,5],[2,6],[3,6],[4,6],[5,6]])pix(x,y,'#3a3a3a');
-    for(let y=2;y<6;y++)for(let x=2;x<6;x++)pix(x,y,'#d8d8d8');for(const[x,y]of[[3,2],[2,3],[3,3],[4,3],[3,4]])pix(x,y,'#f4f4f4');pix(3,3,'#ffffff');
-    vuurbalTex=new THREE.CanvasTexture(c);vuurbalTex.magFilter=THREE.NearestFilter;vuurbalTex.minFilter=THREE.NearestFilter;vuurbalTex.generateMipmaps=false}
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.5,.5),new THREE.MeshBasicMaterial({map:vuurbalTex,color:kleur,transparent:true,alphaTest:.5,depthWrite:false}));
-  mesh.position.set(x0,.9,z0);mesh.rotation.y=cam.yaw;mesh.rotation.x=-cam.tilt;scene.add(mesh);
-  const duur=Math.max(.12,Math.hypot(m.x-x0,m.z-z0)/22);
-  effecten.push({m:mesh,t:0,duur,vlucht:{x0,z0,doel:m,fn}});
+  const e=FX.speel('komeet',x0,z0,{grootte:2.6,y:.9,loop:true,spiegel:(m.x-x0)<0,tint:kleur===0xff8c42?null:kleur});
+  const duur=Math.max(.14,Math.hypot(m.x-x0,m.z-z0)/20);
+  effecten.push({t:0,duur,vlucht:{x0,z0,doel:m,fn,e}});
 }
 function ring(x,z,kleur,r0,r1,duur,opac=1){
   const m=new THREE.Mesh(ringGeo,new THREE.MeshBasicMaterial({color:kleur,transparent:true,opacity:opac,depthWrite:false,side:THREE.DoubleSide}));
@@ -536,8 +538,8 @@ function ring(x,z,kleur,r0,r1,duur,opac=1){
 }
 function updateEffecten(dt){
   for(let i=effecten.length-1;i>=0;i--){const e=effecten[i];e.t+=dt;const p=Math.min(1,e.t/e.duur);
-    if(e.vlucht){const v=e.vlucht,tx=v.doel.x,tz=v.doel.z;e.m.position.set(v.x0+(tx-v.x0)*p,.9+Math.sin(p*Math.PI)*.4,v.z0+(tz-v.z0)*p);e.m.rotation.y=cam.yaw;e.m.rotation.x=-cam.tilt;e.m.rotation.z+=dt*12;
-      if(p>=1){scene.remove(e.m);e.m.material.dispose();effecten.splice(i,1);v.fn()}continue}
+    if(e.vlucht){const v=e.vlucht,tx=v.doel.x,tz=v.doel.z;if(v.e)v.e.g.position.set(v.x0+(tx-v.x0)*p,.9+Math.sin(p*Math.PI)*.4,v.z0+(tz-v.z0)*p);
+      if(p>=1){if(v.e)v.e.stop();effecten.splice(i,1);v.fn()}continue}
     const r=e.r0+(e.r1-e.r0)*(1-Math.pow(1-p,2));
     e.m.scale.setScalar(Math.max(.01,r));e.m.material.opacity=e.opac*(1-p);
     if(p>=1){scene.remove(e.m);e.m.material.dispose();effecten.splice(i,1)}}
@@ -641,6 +643,7 @@ function stap(dt){
     UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',tasAantal('drank')<=0,false);
     doelRing.visible=!!P.target;if(P.target){doelRing.position.set(P.target.x,.03,P.target.z);doelRing.rotation.z+=dt*1.5;doelRing.scale.setScalar(1+.08*Math.sin(t*7))}
     UI.laagHp(!P.dood&&P.hp<hpMax()*.25);
+    if(P.auraFx&&(t>=P.barriereTot||P.dood)){P.auraFx.stop();P.auraFx=null}
     /* naam van het gebied in beeld als je een ander gebied binnenloopt */
     const zn=inBos(P.x,P.z)?'bos':'veld';if(zone&&zn!==zone)UI.melding(zn==='bos'?BOS.naam:'Runeveld',zn==='bos'?'The old forest. Stay on the path.':'Fields and village.');
     if(zn!==zone){zone=zn;$('#mm-zone').textContent=zn==='bos'?BOS.naam:inDorp(P.x,P.z)?'Runeveld':'Runeveld fields'}else if(zn==='veld'&&tasT===0){$('#mm-zone').textContent=inDorp(P.x,P.z)?'Runeveld':'Runeveld fields'}
@@ -650,10 +653,11 @@ function stap(dt){
   updateDorpelingen(dt,cam,camera,P);
   updateEffecten(dt);
   updateBorden();
+  if(FX)FX.update(dt,cam);
   if(DAG)DAG.update(cam,gestart&&!P.dood?[{x:P.x,z:P.z,y:.8,r:4,kleur:[255,240,220],sterkte:.4}]:[]);
   klokT+=dt;if(klokT>1){klokT=0;$('#h-tijd').textContent=(daglicht()>.5?'☀️ ':'🌙 ')+klokTekst()}
   renderer.render(scene,camera);
 }
 
-window.RV={P,M,S,cam,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,gesprek,dorpelingen,advance,maxJob};
+window.RV={P,M,S,cam,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
 init().catch(e=>{console.error(e);$('#laden').textContent='Loading failed: '+e.message});
