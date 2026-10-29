@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import {laadTextuur,maakTex,Bord,FACTOR,GLAD,PIXEL} from './sprites.js';
 import * as B from './bouw.js';
+import {BOS,inBos} from './gebied.js';
+import {bouwBos} from './bos.js';
 
 export const VELD=60;                     /* halve breedte van de wereld */
 export const DORP=22;                     /* halve breedte van het dorp */
@@ -25,8 +27,10 @@ scene.background=new THREE.Color(0x87c9ee);
 /* licht voor de 3D-modellen; sprites zijn onbelicht en merken hier niets van */
 scene.add(new THREE.HemisphereLight(0xdff3ff,0x6a8a46,2.2));
 const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40,15);scene.add(zon);scene.add(zon.target);
-zon.castShadow=true;zon.shadow.mapSize.set(2048,2048);zon.shadow.bias=-.0005;
-Object.assign(zon.shadow.camera,{left:-30,right:30,top:30,bottom:-30,near:1,far:120});
+zon.castShadow=true;zon.shadow.mapSize.set(4096,4096);zon.shadow.bias=-.0005;
+/* het bereik dekt het veld en het bos; de zon staat zo dat de projectie het bos (z tot -112) ook raakt */
+zon.position.set(20,40,-10);zon.target.position.set(0,0,-26);
+Object.assign(zon.shadow.camera,{left:-70,right:70,top:95,bottom:-95,near:1,far:160});
 
 /* Pixelcamera: orthografisch, schuin van boven (zoals RO), met een vaste pixelschaal: cam.px gerenderde pixels per
    wereld-eenheid. Op 16 valt elke sprite-pixel precies op één gerenderde pixel. De camera klikt op het pixelraster vast
@@ -69,14 +73,20 @@ export const opPad=(x,z)=>Math.abs(x)<1.6;
 
 /* ---------- botsingen ---------- */
 export const obstakels=[];                /* {x,z,r} */
+/* binnen de wereld: het veld, of het bos (dat bij de ingang 2 eenheden overlapt met het veld, zodat je er zacht in loopt) */
+export const binnenWereld=(x,z,m=1.5)=>(Math.abs(x)<VELD-m&&Math.abs(z)<VELD-m)||(x>BOS.x0+m&&x<BOS.x1-m&&z>BOS.z0+m&&z<BOS.z1+2);
+function klem(x,z,m=1.2){
+  const ax=Math.max(-VELD+m,Math.min(VELD-m,x)),az=Math.max(-VELD+m,Math.min(VELD-m,z));
+  const bx=Math.max(BOS.x0+m,Math.min(BOS.x1-m,x)),bz=Math.max(BOS.z0+m,Math.min(BOS.z1+2,z));
+  return Math.hypot(ax-x,az-z)<=Math.hypot(bx-x,bz-z)?[ax,az]:[bx,bz];
+}
 export function botsing(x,z,r=.35){
-  const lim=VELD-1.2;
-  x=Math.max(-lim,Math.min(lim,x));z=Math.max(-lim,Math.min(lim,z));
+  [x,z]=klem(x,z);
   for(const o of obstakels){const dx=x-o.x,dz=z-o.z,d=Math.hypot(dx,dz),min=o.r+r;
     if(d<min){if(d<1e-4){x+=min}else{x=o.x+dx/d*min;z=o.z+dz/d*min}}}
   return[x,z];
 }
-export function vrij(x,z,r=.5){if(Math.abs(x)>VELD-1.5||Math.abs(z)>VELD-1.5)return false;for(const o of obstakels)if(Math.hypot(x-o.x,z-o.z)<o.r+r)return false;return true}
+export function vrij(x,z,r=.5){if(!binnenWereld(x,z))return false;for(const o of obstakels)if(Math.hypot(x-o.x,z-o.z)<o.r+r)return false;return true}
 
 /* ---------- muis → grondpunt ---------- */
 const ray=new THREE.Raycaster(),grondVlak=new THREE.Plane(new THREE.Vector3(0,1,0),0),_v=new THREE.Vector2(),_p=new THREE.Vector3();
@@ -85,7 +95,8 @@ export function grondPunt(cx,cy){straal(cx,cy);return ray.ray.intersectPlane(gro
 
 /* ---------- grond: tegelkaart ---------- */
 const TILE=32,CPU=2;                      /* eenheden per grondtegel: 32 px op 2 eenheden = 16 px per eenheid, net als de sprites */
-const N=Math.round(VELD*2/CPU);           /* tegels per zijde */
+/* de grondkaart dekt het veld en het bos erboven */
+const X0=-VELD,X1=VELD,Z0=BOS.z0,Z1=VELD,NX=Math.round((X1-X0)/CPU),NZ=Math.round((Z1-Z0)/CPU);
 export function celType(x,z){ /* wereldcoördinaten → 'g' gras, 'c' keien, 'p' pad */
   if(Math.hypot(x,z)<PLEIN)return 'c';
   if(opPad(x,z))return 'p';
@@ -94,25 +105,30 @@ export function celType(x,z){ /* wereldcoördinaten → 'g' gras, 'c' keien, 'p'
 function toeval(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
 function bouwGrond(atlas,decor){
   const R=toeval(12345);
-  const c=document.createElement('canvas');c.width=N*TILE;c.height=N*TILE;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
-  const w2p=v=>(v+VELD)/CPU*TILE;          /* wereld → canvaspixels */
-  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
-    const x=(i+.5)*CPU-VELD,z=(j+.5)*CPU-VELD,t=celType(x,z);
+  const c=document.createElement('canvas');c.width=NX*TILE;c.height=NZ*TILE;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  const w2px=v=>(v-X0)/CPU*TILE,w2pz=v=>(v-Z0)/CPU*TILE;          /* wereld → canvaspixels */
+  const inVeld=(x,z)=>Math.abs(x)<VELD&&Math.abs(z)<VELD;
+  for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
+    const x=(i+.5)*CPU+X0,z=(j+.5)*CPU+Z0;
     const idx=(R()<.12?2:R()<.3?1:0);   /* plein en pad zijn 3D-vlakken met kit-texturen (bouw.js) */
     g.drawImage(atlas,idx*TILE,0,TILE,TILE,i*TILE,j*TILE,TILE,TILE);
   }
-  /* wat bloemen en steentjes in het gras, spaarzaam en alleen buiten het dorp wat dichter */
-  for(let k=0;k<260;k++){const x=R()*2*VELD-VELD,z=R()*2*VELD-VELD;if(celType(x,z)!=='g')continue;
-    if(inDorp(x,z)&&R()<.7)continue;
-    const img=[decor.bloemen,decor.bloemen2,decor.rots2,decor.bloemen][Math.floor(R()*4)];
-    g.drawImage(img,Math.round(w2p(x)-img.width/2),Math.round(w2p(z)-img.height/2))}
+  /* het bos: donkerder, koeler gras; wat lichter rond het pad en op de open plek */
+  const gr=g.createLinearGradient(0,w2pz(BOS.z1-7),0,w2pz(BOS.z1+3));gr.addColorStop(0,'rgba(22,44,38,.34)');gr.addColorStop(1,'rgba(22,44,38,0)');
+  g.fillStyle='rgba(22,44,38,.34)';g.fillRect(w2px(X0),w2pz(Z0),(X1-X0)/CPU*TILE,(BOS.z1-7-Z0)/CPU*TILE);
+  g.fillStyle=gr;g.fillRect(w2px(X0),w2pz(BOS.z1-7),(X1-X0)/CPU*TILE,10/CPU*TILE);
+  /* wat bloemen en steentjes in het gras, spaarzaam en alleen buiten het dorp wat dichter; in het bos alleen steentjes */
+  for(let k=0;k<380;k++){const x=X0+R()*(X1-X0),z=Z0+R()*(Z1-Z0);
+    if(inVeld(x,z)){if(celType(x,z)!=='g'||(inDorp(x,z)&&R()<.7))continue}else if(!inBos(x,z))continue;
+    const img=inBos(x,z)?decor.rots2:[decor.bloemen,decor.bloemen2,decor.rots2,decor.bloemen][Math.floor(R()*4)];
+    g.drawImage(img,Math.round(w2px(x)-img.width/2),Math.round(w2pz(z)-img.height/2))}
   const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
   if(GLAD){tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4}else{tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false}
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(VELD*2,VELD*2),new THREE.MeshBasicMaterial({map:tex}));
-  mesh.rotation.x=-Math.PI/2;scene.add(mesh);
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0),new THREE.MeshBasicMaterial({map:tex}));
+  mesh.rotation.x=-Math.PI/2;mesh.position.set((X0+X1)/2,0,(Z0+Z1)/2);scene.add(mesh);
   /* schaduwvanger: een doorzichtig vlak dat alleen de slagschaduwen van gebouwen en hekken toont, in de omlijningskleur */
-  const vanger=new THREE.Mesh(new THREE.PlaneGeometry(VELD*2,VELD*2),new THREE.ShadowMaterial({color:0x1a1540,opacity:.38}));
-  vanger.rotation.x=-Math.PI/2;vanger.position.y=.03;vanger.receiveShadow=true;vanger.renderOrder=1;scene.add(vanger);
+  const vanger=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0),new THREE.ShadowMaterial({color:0x1a1540,opacity:.38}));
+  vanger.rotation.x=-Math.PI/2;vanger.position.set((X0+X1)/2,.03,(Z0+Z1)/2);vanger.receiveShadow=true;vanger.renderOrder=1;scene.add(vanger);
   /* wijde omgeving buiten de wereld */
   const buiten=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshBasicMaterial({color:0x4f7f2a}));
   buiten.rotation.x=-Math.PI/2;buiten.position.y=-.01;scene.add(buiten);
@@ -201,7 +217,9 @@ export async function bouwWereld(){
   for(let k=0;k<28;k++){const x=R()*2*(VELD-3)-(VELD-3),z=R()*2*(VELD-3)-(VELD-3);if(!buiten(x,z,2)||Math.abs(x)<3||!vrij(x,z,1.5))continue;P.push(prop('rots',x,z,{r:.6,schaduw:1.4,schaal:1.2}))}
   /* een bomenrij als rand van de wereld */
   for(let i=-VELD+1.5;i<VELD;i+=3){const s=R()<.5?'den':'boom';
-    P.push(prop(s,i,-VELD+1.2,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,i,VELD-1.2,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,-VELD+1.2,i,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,VELD-1.2,i,{r:.7,schaduw:1.8,schaal:1.3}))}
+    if(Math.abs(i)>3.2)P.push(prop(s,i,-VELD+1.2,{r:.7,schaduw:1.8,schaal:1.3}));   /* in het noorden een opening voor de weg naar het bos */
+    P.push(prop(s,i,VELD-1.2,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,-VELD+1.2,i,{r:.7,schaduw:1.8,schaal:1.3}),prop(s,VELD-1.2,i,{r:.7,schaduw:1.8,schaal:1.3}))}
+  bouwBos({scene,prop,bouw,vrij,toeval,P});
   await Promise.all(P);
 }
 export function updateBorden(){for(const b of borden)b.update(cam)}

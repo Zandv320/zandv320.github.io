@@ -147,8 +147,20 @@ export function moestuin(w=4,d=3){
 }
 
 /* ---------- plein en pad als texturen op de grond (zonder polygon-offset, anders zakken ze onder het gras) ---------- */
-export function plein(straal){
-  const m=new THREE.Mesh(new THREE.CircleGeometry(straal,48),grondMat('keien',straal*2,straal*2));
+/* ---------- bos: een oud altaar van gestapelde steen en een menhir ---------- */
+export function altaar(){
+  const g=new THREE.Group();
+  g.add(blok(3.2,.35,2.4,'steen',.86));
+  const b=blok(2.3,.5,1.6,'steen',.94);b.position.y=.35+.25;g.add(b);
+  const t=blok(1.7,.3,1.1,'steen',1.04);t.position.y=.85+.15;g.add(t);
+  return g;
+}
+export function menhir(h=2.2){
+  const g=new THREE.Group();g.add(blok(.8,h,.6,'steen',.84));
+  const k=blok(.6,.3,.45,'steen',.9);k.position.y=h+.15;g.add(k);return g;
+}
+export function plein(straal,naam='keien',tint=1){
+  const m=new THREE.Mesh(new THREE.CircleGeometry(straal,48),grondMat(naam,straal*2,straal*2));m.material.color.setScalar(tint);
   m.rotation.x=-Math.PI/2;m.position.y=.02;return m;
 }
 export function pad(breedte,lengte,{x=0,z=0,rot=0}={}){

@@ -6,6 +6,7 @@ import {maakAdmin} from './admin.js';
 import {maakDorpelingen,updateDorpelingen,spreek,dorpelingen,groet} from './dorpelingen.js';
 import {maakQuests} from './quests.js';
 import {maakDialoog} from './dialoog.js';
+import {BOS,inBos} from './gebied.js';
 import {wek as wekGeluid,G,isAan as geluidAan,zetAan as zetGeluid} from './geluid.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
 import {SKILLS,MAX_JOB,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
@@ -486,7 +487,7 @@ function loop(){
   const t=nu(),dt=Math.min(.05,t-last);last=t;
   stap(dt);
 }
-let tasT=0;
+let tasT=0,zone=null;
 function stap(dt){
   if(Q){tasT+=dt;if(tasT>=.5){tasT=0;Q.opTas()}}
   const t=nu();
@@ -499,6 +500,8 @@ function stap(dt){
     UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',tasAantal('drank')<=0,false);
     doelRing.visible=!!P.target;if(P.target){doelRing.position.set(P.target.x,.03,P.target.z);doelRing.rotation.z+=dt*1.5;doelRing.scale.setScalar(1+.08*Math.sin(t*7))}
     UI.laagHp(!P.dood&&P.hp<hpMax()*.25);
+    /* naam van het gebied in beeld als je een ander gebied binnenloopt */
+    const zn=inBos(P.x,P.z)?'bos':'veld';if(zone&&zn!==zone)UI.melding(zn==='bos'?BOS.naam:'Runeveld',zn==='bos'?'The old forest. Stay on the path.':'Fields and village.');zone=zn;
     K.tick(dt);ADM.tick(dt);
   }
   npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera);
