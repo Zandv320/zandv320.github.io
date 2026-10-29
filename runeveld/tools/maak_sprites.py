@@ -324,7 +324,8 @@ for uit, box in (('boom', (160, 49, 192, 94)), ('boom2', (193, 65, 223, 96)), ('
 PAL = {'lijn': (12, 15, 42), 'dak': (108, 129, 161), 'dak_d': (64, 82, 115), 'pleister': (254, 225, 184), 'balk': (181, 89, 69),
        'balk_d': (61, 51, 51), 'steen': (135, 133, 124), 'steen_d': (99, 102, 99), 'steen_l': (188, 173, 159), 'hout': (181, 89, 69),
        'hout_l': (208, 119, 83), 'hout_d': (115, 76, 68), 'hout_h': (235, 150, 97), 'rood': (178, 45, 45), 'tan': (212, 198, 146),
-       'groen': (129, 148, 71), 'glas': (108, 129, 161), 'glas_l': (188, 173, 159), 'water': (64, 82, 115), 'water_l': (108, 129, 161)}
+       'groen': (129, 148, 71), 'glas': (108, 129, 161), 'glas_l': (188, 173, 159), 'water': (88, 124, 166), 'water_l': (170, 196, 222), 'water_d': (64, 82, 115),
+       'hooi': (212, 198, 146), 'hooi_d': (170, 148, 90), 'aarde': (160, 118, 72), 'aarde_d': (120, 86, 52)}
 TEX = UIT / 'tex'
 TEX.mkdir(exist_ok=True)
 
@@ -406,10 +407,28 @@ textuur('glas', 16, 16, glas)
 
 # water, 16×16
 def water(vul, px):
-    vul(0, 0, 16, 16, 'water')
-    for (x, y) in ((1, 3), (9, 6), (4, 11), (12, 13)):
-        vul(x, y, x + 4, y + 1, 'water_l')
-textuur('water', 16, 16, water)
+    vul(0, 0, 32, 32, 'water')
+    for (x, y, l) in ((2, 4, 6), (18, 7, 7), (9, 13, 5), (24, 16, 6), (4, 22, 7), (16, 26, 6), (27, 27, 4)):
+        vul(x, y, x + l, y + 1, 'water_l')
+    for (x, y, l) in ((12, 3, 4), (3, 10, 5), (22, 11, 4), (14, 19, 6), (26, 22, 4), (8, 29, 5)):
+        vul(x, y, x + l, y + 1, 'water_d')
+textuur('water', 32, 32, water)
+
+# hooibaal: tan met donkere strohalmen, 32×32
+def hooi(vul, px):
+    vul(0, 0, 32, 32, 'hooi')
+    for (x, y, l) in ((2, 3, 6), (12, 7, 9), (22, 2, 7), (5, 14, 8), (18, 17, 6), (26, 12, 5), (1, 24, 7), (14, 27, 9), (24, 23, 6), (9, 20, 4)):
+        vul(x, y, x + l, y + 1, 'hooi_d')
+textuur('hooi', 32, 32, hooi)
+
+# omgewoelde aarde voor de moestuin, 32×32 met rijen
+def aarde(vul, px):
+    vul(0, 0, 32, 32, 'aarde')
+    for y in range(2, 32, 8):
+        vul(0, y, 32, y + 2, 'aarde_d')
+    for (x, y) in ((4, 6), (13, 14), (22, 6), (8, 22), (26, 22), (17, 30)):
+        vul(x, y, x + 3, y + 1, 'groen'); vul(x + 1, y - 1, x + 2, y, 'groen')
+textuur('aarde', 32, 32, aarde)
 
 # keien en pad: de tegels uit de Craftpix-tileset zelf
 tegel(1).save(TEX / 'keien.png')

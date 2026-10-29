@@ -95,9 +95,10 @@ function bouwGrond(atlas,decor){
     const idx=(R()<.12?2:R()<.3?1:0);   /* plein en pad zijn 3D-vlakken met kit-texturen (bouw.js) */
     g.drawImage(atlas,idx*TILE,0,TILE,TILE,i*TILE,j*TILE,TILE,TILE);
   }
-  /* graspollen, bloemen en steentjes verspreid over het gras */
-  for(let k=0;k<520;k++){const x=R()*2*VELD-VELD,z=R()*2*VELD-VELD;if(celType(x,z)!=='g')continue;
-    const img=[decor.graspol,decor.graspol,decor.bloemen,decor.bloemen2,decor.rots2][Math.floor(R()*5)];
+  /* wat bloemen en steentjes in het gras, spaarzaam en alleen buiten het dorp wat dichter */
+  for(let k=0;k<260;k++){const x=R()*2*VELD-VELD,z=R()*2*VELD-VELD;if(celType(x,z)!=='g')continue;
+    if(inDorp(x,z)&&R()<.7)continue;
+    const img=[decor.bloemen,decor.bloemen2,decor.rots2,decor.bloemen][Math.floor(R()*4)];
     g.drawImage(img,Math.round(w2p(x)-img.width/2),Math.round(w2p(z)-img.height/2))}
   const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
   if(GLAD){tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4}else{tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false}
@@ -126,27 +127,51 @@ async function prop(naam,x,z,{r=0,schaduw=0,schaal=.65}={}){
 function bouw(g,x,z,{rot=0,r=0}={}){g.position.set(x,0,z);g.rotation.y=rot;g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});scene.add(g);if(r>0)obstakels.push({x,z,r});return g}
 
 export async function bouwWereld(){
-  const[atlas,graspol,bloemen,bloemen2,rots2]=await Promise.all(['grond','graspol','bloemen','bloemen2','rots2'].map(n=>laadTextuur('sprites/'+n+'.png',{ruw:true})));
-  if(!atlas||!graspol||!bloemen||!bloemen2||!rots2)throw new Error('Grondsprites ontbreken');
-  bouwGrond(atlas.image,{graspol:graspol.image,bloemen:bloemen.image,bloemen2:bloemen2.image,rots2:rots2.image});
+  const[atlas,bloemen,bloemen2,rots2]=await Promise.all(['grond','bloemen','bloemen2','rots2'].map(n=>laadTextuur('sprites/'+n+'.png',{ruw:true})));
+  if(!atlas||!bloemen||!bloemen2||!rots2)throw new Error('Grondsprites ontbreken');
+  bouwGrond(atlas.image,{bloemen:bloemen.image,bloemen2:bloemen2.image,rots2:rots2.image});
   await B.laadTexturen();
   const P=[];
-  /* ----- het dorp ----- */
-  scene.add(B.plein(PLEIN));scene.add(B.pad(3.2,VELD*2));
+  /* ----- het dorp: een plein met de put, een kruising van wegen, huizen aan de wegen, en leven eromheen ----- */
+  scene.add(B.plein(PLEIN));
+  scene.add(B.pad(3.2,VELD*2));                                   /* de doorgaande weg noord-zuid, door beide poorten */
+  scene.add(B.pad(2.6,DORP*2-2,{rot:Math.PI/2}));                 /* de dorpsweg oost-west */
   bouw(B.put(),0,0,{r:1.1});
-  bouw(B.kraam({stof:'stof_rood'}),-7.5,-6,{r:1.7,rot:.2});bouw(B.kraam({stof:'stof_groen',w:2.8}),8,-6.5,{r:1.6,rot:-.3});
-  bouw(B.ton(),-5.2,-8.2,{r:.45});bouw(B.ton(),-4.2,-8.5,{r:.45});bouw(B.kist(),-10.3,-7.6,{r:.5,rot:.3});bouw(B.kist(.7),10.8,-8,{r:.45,rot:.5});bouw(B.ton(),11.7,-7.3,{r:.45});
-  for(const[x,z]of[[-6.5,6.5],[6.5,6.5],[6.5,-6.5],[-6.5,-6.5]])P.push(prop('lantaarn',x*1.25,z*1.25,{r:.25}));
-  P.push(prop('bord',2.2,8.6,{r:.4}),prop('bord',3.2,-DORP+2.5,{r:.4}),prop('bord',-3.2,DORP-2.5,{r:.4}));
-  bouw(B.huis({w:6,d:5,muur:'muur'}),-14,-14,{r:3.3});
-  bouw(B.huis({w:7.5,d:5.5,h:3.4,dakH:2.6,muur:'muur',ramen:3}),14,-13.5,{r:4});
-  bouw(B.huis({w:6.5,d:5,muur:'hout',ramen:2}),15.5,11,{r:3.4,rot:Math.PI});
-  bouw(B.huis({w:6,d:5,h:2.8,dakH:2,muur:'steen',ramen:1,schoorsteen:true}),-15,12,{r:3.3,rot:Math.PI});
-  P.push(prop('kar',-8.5,-13.5,{r:1.2,schaduw:2.6}),prop('aambeeld',9.5,-9.6,{r:.5,schaduw:1}));
-  const dorpsbomen=[['boom',-18,-19],['boom2',-18.5,3],['boom',18.5,-6],['boom2',-8,19],['boom',-13,19.5],['den2',-6,-19.5],['boom',7,-19.5],['boom2',18.5,-19.5],['den',11,19]];
+  /* het plein: kramen, bankjes, lantaarns, koopwaar */
+  bouw(B.kraam({stof:'stof_rood'}),-8.2,-6.2,{r:1.7,rot:.25});bouw(B.kraam({stof:'stof_groen',w:2.8}),8.4,-6.4,{r:1.6,rot:-.25});
+  bouw(B.ton(),-5.6,-8.6,{r:.45});bouw(B.ton(),-4.6,-8.9,{r:.45});bouw(B.kist(),-11,-8.4,{r:.5,rot:.3});bouw(B.kist(.7),11.4,-8.2,{r:.45,rot:.5});bouw(B.ton(),12.2,-7.4,{r:.45});
+  /* vier bankjes op de diagonalen rond de put, allemaal naar de put gericht */
+  for(const hoek of[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4])bouw(B.bank(),Math.sin(hoek)*4.6,Math.cos(hoek)*4.6,{r:.8,rot:hoek+Math.PI});
+  for(const[x,z]of[[-6.5,6.5],[6.5,6.5],[6.5,-6.5],[-6.5,-6.5]])P.push(prop('lantaarn',x*1.3,z*1.3,{r:.25}));
+  /* huizen aan de oost-westweg, elk met een paadje van de deur naar de weg */
+  const huizen=[
+    ['vakwerk',{w:6,d:5,muur:'muur'},-13,-10,0],
+    ['taverne',{w:7.5,d:5.5,h:3.4,dakH:2.6,muur:'muur',ramen:3},13,-10,0],
+    ['houten',{w:6.5,d:5,muur:'hout',ramen:2},13.5,10.5,Math.PI],
+    ['smid',{w:6,d:5,h:2.8,dakH:2,muur:'steen',ramen:1},-13.5,10.5,Math.PI],
+  ];
+  for(const[,opt,x,z,rot]of huizen){
+    bouw(B.huis(opt),x,z,{r:Math.max(opt.w,opt.d)/2+.4,rot});
+    const deurX=x+(rot?1:-1)*(-opt.w/2+1.3),deurZ=z+(rot?-1:1)*opt.d/2;        /* de deur zit links in de voorgevel */
+    scene.add(B.pad(1.6,Math.abs(deurZ)-1.3,{x:deurX,z:(deurZ+(rot?-1.3:1.3))/2}));
+  }
+  /* smidse naast de smid: aambeeld, houtstapel, kist */
+  P.push(prop('aambeeld',-9.2,8.2,{r:.5,schaduw:1}),prop('hout',-16.5,6.4,{r:.6,schaduw:1.2}));bouw(B.kist(),-9.8,10.6,{r:.5,rot:.4});
+  /* achter de taverne: tonnen en hooi */
+  bouw(B.ton(),17.6,-12.4,{r:.45});bouw(B.ton(),18.4,-11.6,{r:.45});bouw(B.hooibaal(),17.2,-7.6,{r:.7,rot:.4});bouw(B.hooibaal(),18.6,-8.4,{r:.7,rot:-.2});
+  /* moestuinen en een vijver */
+  bouw(B.moestuin(4.5,3),-14,-17.5,{r:2.4});bouw(B.moestuin(4,3),14,17.6,{r:2.2});
+  bouw(B.vijver(2.4),6.5,15.5,{r:3.1});
+  for(const[x,z]of[[3.6,13.2],[9.8,13.6],[4.2,18.2]])P.push(prop('rots',x,z,{r:.5,schaduw:1.2,schaal:1.1}));P.push(prop('struik',9.6,17.8,{schaduw:1,schaal:1.3}),prop('bloemen',3.2,16.4,{schaal:1.6}));
+  P.push(prop('kar',-7.6,-14.8,{r:1.2,schaduw:2.6}));
+  /* borden bij de poorten en bij het plein */
+  P.push(prop('bord',2.4,9.2,{r:.4}),prop('bord',3.4,-DORP+2.6,{r:.4}),prop('bord',-3.4,DORP-2.6,{r:.4}));
+  P.push(prop('lantaarn',3.2,-DORP+1.2,{r:.25}),prop('lantaarn',-3.2,-DORP+1.2,{r:.25}),prop('lantaarn',3.2,DORP-1.2,{r:.25}),prop('lantaarn',-3.2,DORP-1.2,{r:.25}));
+  /* beplanting: bomen in de hoeken, struiken bij de huizen, bloemen langs het plein */
+  const dorpsbomen=[['boom',-19,-19],['den',-16,-20],['boom2',-19.5,-4],['boom',19,-19],['den2',20,-15],['boom2',19.5,4],['boom',-19,18.5],['den',-20,14],['boom2',19.5,19],['den',-6,19.5],['boom',10,-19.5]];
   for(const[n,x,z]of dorpsbomen)P.push(prop(n,x,z,{r:.55,schaduw:1.8,schaal:1.3}));
-  for(const[x,z]of[[-15.5,-2],[16.5,-10],[-6,13],[9.5,13.5],[12,5],[-11,-10],[5,-13],[-16.5,7],[14,-2],[-2,15.5]])P.push(prop('struik',x,z,{schaduw:1,schaal:1.3}));
-  for(const[x,z]of[[-12,4],[11,-16],[-4,-15],[16,16],[-17,-6]])P.push(prop('rots',x,z,{r:.6,schaduw:1.4,schaal:1.2}));
+  for(const[x,z]of[[-9.6,-11.6],[-16.6,-12],[9.4,-13],[17,-13.8],[10,13.2],[17.4,12.6],[-17.2,12.8],[-10,13.4],[-5,-10.6],[5.4,-10.8],[-10.4,3],[10.6,3]])P.push(prop('struik',x,z,{schaduw:1,schaal:1.3}));
+  for(const[x,z]of[[-9,0],[9,0],[-4,9.6],[4,9.6],[-9.4,-3.4],[9.4,3.4],[-15.6,-6.2],[15.8,6]])P.push(prop('bloemen',x,z,{schaal:1.6}));
   /* palissade rond het dorp, met poorten op het pad in het noorden en zuiden */
   const STAP=2.6;
   for(let i=-DORP+STAP/2;i<DORP;i+=STAP){

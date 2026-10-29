@@ -71,8 +71,8 @@ function start(naam,save){
   setInterval(bewaar,5000);addEventListener('pagehide',bewaar);
 }
 function maakNpc(){
-  const sprite=new Sprite2D(BLADEN.koopman);sprite.g.position.set(-5.4,0,-3.6);sprite.zetKijk(.3,1);scene.add(sprite.g);
-  npc={sprite,label:UI.maakLabel('npc','Merchant Bram'),x:-5.4,z:-3.6};
+  const sprite=new Sprite2D(BLADEN.koopman);sprite.g.position.set(-7.4,0,-3.4);sprite.zetKijk(.3,1);scene.add(sprite.g);
+  npc={sprite,label:UI.maakLabel('npc','Merchant Bram'),x:-7.4,z:-3.4};
   sprite.mesh.userData.npc=npc;klikbaar.push(sprite.mesh);obstakels.push({x:npc.x,z:npc.z,r:.4});
 }
 function lees(){try{const s=JSON.parse(localStorage.getItem(SLEUTEL));return s&&s.naam?s:null}catch(e){return null}}

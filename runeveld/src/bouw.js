@@ -8,7 +8,7 @@ import {GLAD,PIXEL} from './sprites.js';
 const PPU=16;
 const basis=new Map();          /* naam → geladen afbeelding */
 const varianten=new Map();      /* naam|rx|ry → gekloonde textuur met eigen herhaling */
-const NAMEN=['muur','dak','steen','hout','hout_donker','stof_rood','stof_groen','glas','water','keien','keien2','pad'];
+const NAMEN=['muur','dak','steen','hout','hout_donker','stof_rood','stof_groen','glas','water','keien','keien2','pad','hooi','aarde'];
 const LIJN=0x0c0f2a;
 
 export function laadTexturen(){
@@ -28,6 +28,8 @@ export function tex(naam,rx=1,ry=1){
 export const mat=(naam,w,h,tint=1)=>new THREE.MeshLambertMaterial({map:tex(naam,w/tegelW(naam),h/tegelH(naam)),color:new THREE.Color(tint,tint,tint),polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
 const kleur=(hex,tint=1)=>new THREE.MeshLambertMaterial({color:new THREE.Color(hex).multiplyScalar(tint),polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
 const lijnMat=new THREE.LineBasicMaterial({color:LIJN});
+/* grondvlakken zonder polygon-offset, anders zakken ze onder het gras */
+const grondMat=(naam,w,h)=>new THREE.MeshLambertMaterial({map:tex(naam,w/tegelW(naam),h/tegelH(naam))});
 /* donkere omlijning langs scherpe randen, zoals de omlijning van de sprites */
 function omlijn(mesh,hoek=35){mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,hoek),lijnMat));return mesh}
 const doos=(w,h,d,m)=>{const b=omlijn(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m));b.position.y=h/2;return b};
@@ -107,13 +109,49 @@ export function kist(w=.85){
   return g;
 }
 
+/* ---------- bankje: zitting, rugleuning en vier poten ---------- */
+export function bank(){
+  const g=new THREE.Group();
+  const zit=doos(1.7,.1,.5,mat('hout',1.7,.5));zit.position.y=.45;g.add(zit);
+  const rug=doos(1.7,.45,.08,mat('hout',1.7,.45));rug.position.set(0,.6,-.22);g.add(rug);
+  for(const[x,z]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const p=doos(.1,.45,.1,mat('hout_donker',.1,.45));p.position.set(x*.75,0,z*.18);g.add(p)}
+  return g;
+}
+
+/* ---------- hooibaal: liggende rol ---------- */
+export function hooibaal(){
+  const g=new THREE.Group();
+  const rol=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1.1,10),mat('hooi',3,1.1)),40);rol.rotation.z=Math.PI/2;rol.position.y=.5;g.add(rol);
+  return g;
+}
+
+/* ---------- vijver: water met een stenen rand ---------- */
+export function vijver(r=2.4){
+  const g=new THREE.Group();
+  /* het water staat tot net onder de stenen rand, zodat het als een gevulde vijver leest en niet als een gat */
+  const water=new THREE.Mesh(new THREE.CircleGeometry(r+.1,24),grondMat('water',r*2,r*2));water.rotation.x=-Math.PI/2;water.position.y=.3;g.add(water);
+  const rand=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(r+.5,r+.6,.4,24,1,true),mat('steen',(r+.5)*6,.4)),40);rand.position.y=.2;g.add(rand);
+  const binnen=new THREE.Mesh(new THREE.RingGeometry(r,r+.5,24),grondMat('steen',r*2,r*2));binnen.rotation.x=-Math.PI/2;binnen.position.y=.405;g.add(binnen);
+  const bodem=new THREE.Mesh(new THREE.CylinderGeometry(r+.05,r+.05,.4,24,1,true),mat('steen',r*6,.4));bodem.position.y=.2;bodem.material.side=THREE.BackSide;g.add(bodem);
+  return g;
+}
+
+/* ---------- moestuin: omgewoelde aarde met een laag hekje eromheen ---------- */
+export function moestuin(w=4,d=3){
+  const g=new THREE.Group();
+  const grond=new THREE.Mesh(new THREE.PlaneGeometry(w,d),grondMat('aarde',w,d));grond.rotation.x=-Math.PI/2;grond.position.y=.025;g.add(grond);
+  const n=Math.max(2,Math.round(w/1.3)),m=Math.max(2,Math.round(d/1.3));
+  for(let i=0;i<n;i++){const x=-w/2+(i+.5)*w/n;for(const z of[-d/2,d/2]){const h=hek(w/n,.7);h.position.set(x,0,z);g.add(h)}}
+  for(let i=0;i<m;i++){const z=-d/2+(i+.5)*d/m;for(const x of[-w/2,w/2]){const h=hek(d/m,.7);h.rotation.y=Math.PI/2;h.position.set(x,0,z);g.add(h)}}
+  return g;
+}
+
 /* ---------- plein en pad als texturen op de grond (zonder polygon-offset, anders zakken ze onder het gras) ---------- */
-const grondMat=(naam,w,h)=>new THREE.MeshLambertMaterial({map:tex(naam,w/tegelW(naam),h/tegelH(naam))});
 export function plein(straal){
   const m=new THREE.Mesh(new THREE.CircleGeometry(straal,48),grondMat('keien',straal*2,straal*2));
   m.rotation.x=-Math.PI/2;m.position.y=.02;return m;
 }
-export function pad(breedte,lengte){
+export function pad(breedte,lengte,{x=0,z=0,rot=0}={}){
   const m=new THREE.Mesh(new THREE.PlaneGeometry(breedte,lengte),grondMat('pad',breedte,lengte));
-  m.rotation.x=-Math.PI/2;m.position.y=.015;return m;
+  m.rotation.order='YXZ';m.rotation.y=rot;m.rotation.x=-Math.PI/2;m.position.set(x,.015,z);return m;
 }
