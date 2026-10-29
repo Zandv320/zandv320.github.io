@@ -1,6 +1,7 @@
 /* Runeveld – characterscherm (C) met uitrusting, stats en skills, en de winkel van Koopman Bram. */
 import {ITEMS,SLOTS,WINKEL} from './data.js';
-import {BLADEN,heldLagen} from './bladen.js';
+import {BLADEN} from './bladen.js';
+import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {STATS,MAX_STAT,statKosten} from './regels/stats.js';
 import {SKILLS,SKILL_VOLGORDE,kanLeren,MAX_JOB,jobExpVoor} from './regels/skills.js';
 import {esc} from './ui.js';
@@ -55,13 +56,7 @@ export function maakKarakter(P,A){
       const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max';
       return`<div class="kskill ${l>0?'':'dicht'}"><div class="kskillkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="kplus" data-skill="${id}" ${kan?'':'disabled'}>+</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em></div>`}).join('');
   }
-  function tekenPreview(){
-    const b=BLADEN.held,a=b.anims.idle,f=Math.floor(t*a.fps)%a.n;
-    ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,cv.width,cv.height);
-    /* alleen het stuk van het frame waar het figuur staat, zodat het lekker groot in beeld komt */
-    const k=b.fw/64;ctx.imageSmoothingEnabled=k>1;
-    for(const tex of heldLagen(P.uitr))ctx.drawImage(tex.image,f*b.fw+14*k,10*k,36*k,40*k,0,0,cv.width,cv.height);
-  }
+  function tekenPreview(){tekenHeld(ctx,heldLagen(P.uitr,P.haar),t)}
   el.addEventListener('click',e=>{
     const tb=e.target.closest('.ktab');if(tb){tab=tb.dataset.tab;render();return}
     const s=e.target.closest('.kslot');if(s&&!s.classList.contains('leeg')){A.afdoen(s.dataset.slot);render();return}

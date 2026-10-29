@@ -4,41 +4,10 @@
    Puur lokaal en zonder gevolgen voor het spel; de server neemt dit later over als hij er is. */
 import * as THREE from 'three';
 import {BLADEN} from './bladen.js';
-import {Sprite2D,maakTex,GLAD} from './sprites.js';
+import {Sprite2D} from './sprites.js';
 import * as UI from './ui.js';
 
-/* kleurenpaletten, donker → licht; de bronkleuren zijn die van de sprites */
-const HAAR_BRON=[[33,26,28],[43,32,35],[59,44,51],[77,57,69],[104,79,90],[135,108,125]];
-const HAAR={
-  bruin:[[40,24,12],[66,40,20],[96,60,30],[130,86,44],[165,116,66],[196,150,96]],
-  blond:[[96,70,20],[140,104,32],[184,140,50],[214,172,78],[236,200,112],[250,226,150]],
-  grijs:[[60,60,64],[92,92,98],[124,124,132],[160,160,168],[196,196,204],[226,226,232]],
-  zwart:[[14,12,16],[24,20,24],[36,30,36],[50,42,50],[66,56,66],[88,76,88]],
-  rood:[[70,22,14],[104,34,20],[140,48,26],[176,68,34],[206,96,52],[230,130,80]],
-};
-const TUNIEK_BRON=[[45,49,43],[63,67,61],[94,97,90],[111,115,106],[134,139,124]];
-const TUNIEK={
-  blauw:[[28,42,78],[42,62,110],[64,92,150],[84,116,176],[118,150,204]],
-  rood:[[96,26,22],[132,38,32],[170,54,44],[196,78,62],[222,112,92]],
-  groen:[[34,62,28],[50,90,40],[72,122,56],[96,150,74],[132,180,104]],
-  creme:[[120,104,72],[160,140,100],[200,180,140],[222,206,168],[240,228,196]],
-  grijs:[[52,52,56],[78,78,84],[108,108,116],[136,136,146],[168,168,178]],
-};
-
-const kleurCache=new Map();
-/* een laag met vervangen kleuren: elke pixel die dicht bij een bronkleur ligt krijgt de doelkleur van dezelfde tint */
-function herkleur(laag,bron,doel,naam,strak=false){
-  const k=laag+'|'+naam;if(kleurCache.has(k))return kleurCache.get(k);
-  const img=BLADEN.held.lagen[laag].image;
-  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const g=c.getContext('2d');g.drawImage(img,0,0);
-  const d=g.getImageData(0,0,c.width,c.height),p=d.data;
-  for(let i=0;i<p.length;i+=4){if(p[i+3]===0)continue;
-    let best=-1,bd=strak?3*3:48*48;
-    for(let j=0;j<bron.length;j++){const b=bron[j],dd=(p[i]-b[0])**2+(p[i+1]-b[1])**2+(p[i+2]-b[2])**2;if(dd<bd){bd=dd;best=j}}
-    if(best>=0){p[i]=doel[best][0];p[i+1]=doel[best][1];p[i+2]=doel[best][2]}}
-  g.putImageData(d,0,0);
-  const t=maakTex(c,GLAD);kleurCache.set(k,t);return t;
-}
+import {HAAR_BRON,HAAR,TUNIEK_BRON,TUNIEK,herkleur} from './uiterlijk.js';
 
 /* de dorpelingen: uiterlijk, route (lijst van punten; één punt = stilstaan) en praatjes.
    kleding: 'harnas1' tuniek (herkleurbaar), 'harnas2' leren vest, 'harnas3' harnas; hoofd: 'hoofd1' pet, 'hoofd2' helm */
