@@ -59,7 +59,7 @@ export function huis({w=6,d=5,h=3,dakH=2.2,muur='muur',ramen=2,schoorsteen=true}
   const nok=doos(w+2*ov+.1,.18,.22,mat('hout_donker',w,.2));nok.position.y=h+dakH-.02;g.add(nok);
   for(const t of[1,-1]){const rand=doos(w+2*ov,.16,.12,mat('hout_donker',w,.2));rand.position.set(0,h-.04,t*span);g.add(rand)}
   if(schoorsteen){const s=blok(.7,dakH*.95,.7,'steen');s.position.set(w/2-1.1,h+dakH*.25,-d*.15);g.add(s)}
-  return g;
+  g.userData.kaart='huis';return g;
 }
 
 /* ---------- houten hek: twee palen en twee liggers per segment (lengte `L`, langs x) ---------- */
@@ -67,7 +67,7 @@ export function hek(L=2.6,h=1.25){
   const g=new THREE.Group();
   for(const t of[-1,1]){const p=doos(.2,h,.2,mat('hout_donker',.2,h));p.position.x=t*(L/2-.1);g.add(p)}
   for(const y of[h*.42,h*.8]){const r=doos(L,.16,.1,mat('hout',L,.16));r.position.y=y;g.add(r)}
-  return g;
+  g.userData.kaart='hek';return g;
 }
 
 /* ---------- waterput: stenen rand met water, twee palen, dwarsbalk en een dakje ---------- */
@@ -79,7 +79,7 @@ export function put(){
   const balk=doos(1.9,.16,.16,mat('hout',1.9,.16));balk.position.y=1.5;g.add(balk);
   const ov=.3,span=.9,dakH=.6,L=Math.hypot(span,dakH),a=Math.atan2(dakH,span);
   for(const[teken,tint]of[[1,1],[-1,.85]]){const p=helling(2.2,L,'dak',tint);p.rotation.x=-Math.PI/2+teken*a;p.position.set(0,2.2+dakH/2,teken*span/2);g.add(p)}
-  return g;
+  g.userData.kaart='put';return g;
 }
 
 /* ---------- marktkraam: toonbank, vier palen, schuine stoffen luifel en wat koopwaar ---------- */
@@ -92,7 +92,7 @@ export function kraam({stof='stof_rood',w=3.2,d=1.6}={}){
   const luifel=helling(w+.4,L,stof,1);luifel.rotation.x=-Math.PI/2+a;luifel.position.set(0,2.55,.1);g.add(luifel);
   const val=doos(w+.4,.35,.05,mat(stof,w+.4,.35));val.position.set(0,2.15,d/2+.32);g.add(val);
   for(const[x,hh,n]of[[-1,.3,'hout'],[0,.25,'hout_donker'],[1,.35,'steen']]){const k=blok(.6,hh,.5,n);k.position.set(x*.95,1,d*.1);g.add(k)}
-  return g;
+  g.userData.kaart='kraam';return g;
 }
 
 /* ---------- ton en kist ---------- */
@@ -101,12 +101,12 @@ export function ton(){
   const lijf=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.95,10),mat('hout',2.3,.95)),40);lijf.position.y=.475;g.add(lijf);
   for(const y of[.2,.75]){const band=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(.385,.385,.08,10),kleur(0x3d3333)),40);band.position.y=y;g.add(band)}
   const top=new THREE.Mesh(new THREE.CircleGeometry(.36,10),mat('hout_donker',.72,.72));top.rotation.x=-Math.PI/2;top.position.y=.96;g.add(top);
-  return g;
+  g.userData.kaart='klein';return g;
 }
 export function kist(w=.85){
   const g=new THREE.Group();g.add(blok(w,w*.85,w,'hout'));
   for(const[x,z]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const r=doos(.08,w*.85,.08,mat('hout_donker',.1,w));r.position.set(x*w/2,0,z*w/2);g.add(r)}
-  return g;
+  g.userData.kaart='klein';return g;
 }
 
 /* ---------- bankje: zitting, rugleuning en vier poten ---------- */
@@ -115,14 +115,14 @@ export function bank(){
   const zit=doos(1.7,.1,.5,mat('hout',1.7,.5));zit.position.y=.45;g.add(zit);
   const rug=doos(1.7,.45,.08,mat('hout',1.7,.45));rug.position.set(0,.6,-.22);g.add(rug);
   for(const[x,z]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const p=doos(.1,.45,.1,mat('hout_donker',.1,.45));p.position.set(x*.75,0,z*.18);g.add(p)}
-  return g;
+  g.userData.kaart='klein';return g;
 }
 
 /* ---------- hooibaal: liggende rol ---------- */
 export function hooibaal(){
   const g=new THREE.Group();
   const rol=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1.1,10),mat('hooi',3,1.1)),40);rol.rotation.z=Math.PI/2;rol.position.y=.5;g.add(rol);
-  return g;
+  g.userData.kaart='hooi';return g;
 }
 
 /* ---------- vijver: water met een stenen rand ---------- */
@@ -133,7 +133,7 @@ export function vijver(r=2.4){
   const rand=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(r+.5,r+.6,.4,24,1,true),mat('steen',(r+.5)*6,.4)),40);rand.position.y=.2;g.add(rand);
   const binnen=new THREE.Mesh(new THREE.RingGeometry(r,r+.5,24),grondMat('steen',r*2,r*2));binnen.rotation.x=-Math.PI/2;binnen.position.y=.405;g.add(binnen);
   const bodem=new THREE.Mesh(new THREE.CylinderGeometry(r+.05,r+.05,.4,24,1,true),mat('steen',r*6,.4));bodem.position.y=.2;bodem.material.side=THREE.BackSide;g.add(bodem);
-  return g;
+  g.userData.kaart='vijver';return g;
 }
 
 /* ---------- moestuin: omgewoelde aarde met een laag hekje eromheen ---------- */
@@ -143,7 +143,7 @@ export function moestuin(w=4,d=3){
   const n=Math.max(2,Math.round(w/1.3)),m=Math.max(2,Math.round(d/1.3));
   for(let i=0;i<n;i++){const x=-w/2+(i+.5)*w/n;for(const z of[-d/2,d/2]){const h=hek(w/n,.7);h.position.set(x,0,z);g.add(h)}}
   for(let i=0;i<m;i++){const z=-d/2+(i+.5)*d/m;for(const x of[-w/2,w/2]){const h=hek(d/m,.7);h.rotation.y=Math.PI/2;h.position.set(x,0,z);g.add(h)}}
-  return g;
+  g.userData.kaart='moestuin';return g;
 }
 
 /* ---------- plein en pad als texturen op de grond (zonder polygon-offset, anders zakken ze onder het gras) ---------- */
@@ -153,17 +153,17 @@ export function altaar(){
   g.add(blok(3.2,.35,2.4,'steen',.86));
   const b=blok(2.3,.5,1.6,'steen',.94);b.position.y=.35+.25;g.add(b);
   const t=blok(1.7,.3,1.1,'steen',1.04);t.position.y=.85+.15;g.add(t);
-  return g;
+  g.userData.kaart='altaar';return g;
 }
 export function menhir(h=2.2){
   const g=new THREE.Group();g.add(blok(.8,h,.6,'steen',.84));
-  const k=blok(.6,.3,.45,'steen',.9);k.position.y=h+.15;g.add(k);return g;
+  const k=blok(.6,.3,.45,'steen',.9);k.position.y=h+.15;g.add(k);g.userData.kaart='menhir';return g;
 }
 export function plein(straal,naam='keien',tint=1){
-  const m=new THREE.Mesh(new THREE.CircleGeometry(straal,48),grondMat(naam,straal*2,straal*2));m.material.color.setScalar(tint);
+  const m=new THREE.Mesh(new THREE.CircleGeometry(straal,48),grondMat(naam,straal*2,straal*2));m.material.color.setScalar(tint);m.userData.kaart={soort:naam==='keien'?'plein':'plek',r:straal};
   m.rotation.x=-Math.PI/2;m.position.y=.02;return m;
 }
 export function pad(breedte,lengte,{x=0,z=0,rot=0}={}){
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(breedte,lengte),grondMat('pad',breedte,lengte));
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(breedte,lengte),grondMat('pad',breedte,lengte));m.userData.kaart={soort:'pad',w:breedte,l:lengte};
   m.rotation.order='YXZ';m.rotation.y=rot;m.rotation.x=-Math.PI/2;m.position.set(x,.015,z);return m;
 }

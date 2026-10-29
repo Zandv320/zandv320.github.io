@@ -142,7 +142,7 @@ async function prop(naam,x,z,{r=0,schaduw=0,schaal=.65}={}){
   const tex=await laadTextuur('sprites/'+naam+'.png');if(!tex)throw new Error('Sprite ontbreekt: '+naam);
   const w=tex.image.width/FACTOR/PPU*schaal,h=tex.image.height/FACTOR/PPU*schaal;
   if(r>0)obstakels.push({x,z,r});
-  const b=new Bord(tex,w,h,{schaduw});b.g.position.set(x,0,z);scene.add(b.g);borden.push(b);
+  const b=new Bord(tex,w,h,{schaduw});b.g.position.set(x,0,z);scene.add(b.g);borden.push(b);b.naam=naam;b.x=x;b.z=z;b.schaal=schaal;
   return b;
 }
 /* pixel-3D-bouwsels (bouw.js): gebouwen, kramen, put, hekken, tonnen. `rot`: draaiing om de y-as; de voorkant wijst naar +z. */

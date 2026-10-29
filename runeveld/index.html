@@ -25,6 +25,11 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 .label .qm{font-size:20px;font-weight:900;line-height:1;color:var(--goud);text-shadow:0 2px 0 #5a3d00,0 0 10px rgba(0,0,0,.6);animation:qm 1.2s ease-in-out infinite}
 .label .qm.bezig{color:#c9d3dd;text-shadow:0 2px 0 #223,0 0 10px rgba(0,0,0,.6);animation:none}
 @keyframes qm{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+#minimap{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 46px);width:156px;height:156px;padding:0;border-radius:12px;image-rendering:auto}
+@media (max-width:700px){#minimap{display:none}}
+#kaart{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 14px;z-index:6;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 24px)}
+#kaart-canvas{display:block;border-radius:8px;cursor:crosshair;image-rendering:auto;touch-action:none}
+#kaart .legenda{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--dim)}#kaart .legenda i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;border:1px solid rgba(0,0,0,.5);vertical-align:-1px}
 #qtracker{position:absolute;left:max(12px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 104px);width:230px;padding:8px 12px;font-size:12px;display:flex;flex-direction:column;gap:5px}
 #qtracker .qt{display:flex;flex-direction:column}#qtracker .qt b{font-weight:500}#qtracker .qt span{color:var(--dim)}#qtracker .qt.klaar span{color:var(--goud)}
 @media (max-width:700px){#qtracker{display:none}}
@@ -215,11 +220,13 @@ body.touch #mobiel{display:flex}
     <div class="paneel" title="Zeny">🪙 <b id="h-zeny">0</b></div>
     <div class="paneel"><span class="stip" id="h-stip"></span><span id="h-online">offline</span></div>
     <button class="paneel" id="a-knop" title="Admin (Ctrl+Shift+A)" hidden>🛠️</button>
+    <button class="paneel" id="m-knop" title="Map (M)">🗺️</button>
     <button class="paneel" id="g-knop" title="Sound">🔊</button>
     <button class="paneel" id="i-knop" title="Inventory (I)">🎒</button>
     <button class="paneel" id="k-knop" title="Character (C)">👤</button>
     <a class="paneel" href="../" title="Back to all games">⌂</a>
   </div>
+  <canvas id="minimap" class="paneel" width="156" height="156"></canvas>
   <div id="qtracker" class="paneel" hidden></div>
   <div id="doelkader" class="paneel" hidden><b id="d-naam"></b> <small id="d-lvl"></small><div class="bar hp"><i id="d-hp"></i><span id="d-hpt"></span></div></div>
   <div id="melding"></div>
@@ -259,6 +266,12 @@ body.touch #mobiel{display:flex}
   <div id="k-tab-quests" hidden><div class="kquests" id="k-questlijst"></div></div>
 </div>
 
+<div id="kaart" class="paneel" hidden>
+  <div class="kkop"><div><h3>World map</h3><small>Scroll to zoom · drag to pan · click to walk there · <span id="kaart-pos">—</span></small></div><button class="ksluit" id="kaart-sluit" title="Close (M)">✕</button></div>
+  <canvas id="kaart-canvas"></canvas>
+  <div class="legenda"><span><i style="background:#fff"></i>you</span><span><i style="background:#7cc4ff"></i>players</span><span><i style="background:#f87171"></i>monsters</span><span><i style="background:#ffd1a6"></i>harmless</span><span><i style="background:#ffc857"></i>villagers</span></div>
+</div>
+
 <div id="dialoog" class="paneel" hidden>
   <canvas id="dl-portret" width="48" height="64"></canvas>
   <div class="dl-body"><b id="dl-naam"></b><p id="dl-tekst"></p><div id="dl-keuzes"></div></div>
@@ -289,7 +302,7 @@ body.touch #mobiel{display:flex}
     <input id="naam" maxlength="14" placeholder="e.g. Aria" spellcheck="false">
     <div class="klas"><div class="icoon">⚔️</div><div><b>Swordsman</b><small>Strong up close. Skills: Bash and Magnum Break.</small></div></div>
     <button id="speel" class="knop">Play</button>
-    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
+    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>M</kbd> map · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
     <a class="terug" href="../">← All games</a>
   </div>
 </div>
