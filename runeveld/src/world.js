@@ -32,8 +32,11 @@ Object.assign(zon.shadow.camera,{left:-30,right:30,top:30,bottom:-30,near:1,far:
    wereld-eenheid. Op 16 valt elke sprite-pixel precies op één gerenderde pixel. De camera klikt op het pixelraster vast
    (cam.r en cam.u zijn de schermassen), zodat niets verspringt zolang er niets beweegt. */
 export const camera=new THREE.OrthographicCamera(-1,1,1,-1,1,200);
-export const ZOOMS=[8,12,16,24,32];
-export const cam={yaw:0,tilt:THREE.MathUtils.degToRad(50),px:16,doel:new THREE.Vector3(0,0,0),r:new THREE.Vector3(1,0,0),u:new THREE.Vector3(0,1,0),afstand:60};
+/* zoomstappen in gerenderde pixels per eenheid. Standaard 32 CSS-pixels per eenheid: in de pixelmodus is dat 16 gerenderde
+   pixels (halve resolutie), in de gladde modus 32 × de pixelverhouding van het scherm, zodat de 2×-sprites 1:1 staan. */
+const PR=GLAD?renderer.getPixelRatio():1;
+export const ZOOMS=(GLAD?[16,24,32,48,64]:[8,12,16,24,32]).map(v=>v*PR);
+export const cam={yaw:0,tilt:THREE.MathUtils.degToRad(50),px:(GLAD?32:16)*PR,doel:new THREE.Vector3(0,0,0),r:new THREE.Vector3(1,0,0),u:new THREE.Vector3(0,1,0),afstand:60};
 const _e=new THREE.Vector3();
 export function updateCamera(){
   const {yaw,tilt,afstand,doel,px}=cam;

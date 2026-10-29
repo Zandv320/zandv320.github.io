@@ -9,7 +9,8 @@ import * as THREE from 'three';
 export const GLAD=(()=>{try{return localStorage.getItem('runeveld.glad')==='1'}catch(e){return false}})();
 /* Pixelgrootte: hoeveel schermpixels (CSS) één gerenderde pixel beslaat. 2 laat de sprites ongeveer 1:1 in het
    pixelraster vallen; 1 is volle resolutie. Instelbaar in het admin-paneel. */
-export const PIXEL=(()=>{try{const v=parseFloat(localStorage.getItem('runeveld.pixel'));if(v>0)return v}catch(e){}return innerWidth<700?1:2})();
+/* In de gladde modus rendert alles op volle resolutie: de 2×-sprites staan dan 1:1 bij een pixelschaal van 32. */
+export const PIXEL=GLAD?1:(()=>{try{const v=parseFloat(localStorage.getItem('runeveld.pixel'));if(v>0)return v}catch(e){}return innerWidth<700?1:2})();
 export const FACTOR=GLAD?2:1;             /* hoeveel keer groter de geladen sprites zijn dan de pixel-art */
 
 const cache=new Map();
