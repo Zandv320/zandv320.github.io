@@ -335,12 +335,21 @@ class _Px:
     def __init__(self, im): self.d, self.w, self.h = im.load(), im.width, im.height
 
 
-def staf(zwaard, zwaard_b, lijf, k, fw=64, fh=64):
-    """k: {'hout','hout_l','orb_o','orb','orb_h','boog'}. Geeft (voor, achter)."""
+HUID = {(190, 134, 95), (225, 178, 110), (246, 202, 116), (164, 111, 89)}
+
+
+def staf(zwaard, zwaard_b, lijf, hoofd, k, fw=64, fh=64, rijen=4):
+    """k: {'hout','hout_l','orb_o','orb','orb_h','boog'}. Geeft (voor, achter).
+    De greep is de huidpixel van het lijf die het dichtst bij het heft van het zwaard ligt (de hand). In rust, lopen,
+    pijn en dood staat de staf schuin rechtop door de hand (licht naar buiten geheld), met de bol boven het hoofd; in
+    de aanvalsframes wijst hij mee met het zwaard, als een stoot naar het doel. Daarna gaan de handpixels er weer
+    overheen, zodat de hand de staf vasthoudt in plaats van ernaast te hangen."""
     voor = Image.new('RGBA', zwaard.size, (0, 0, 0, 0)); achter = voor.copy()
     zv, zb, lf = zwaard.load(), zwaard_b.load(), lijf.load()
+    vorig = {}                                                # laatste greep per rij, voor frames zonder zwaard
     boog = lambda p: p[0] > 200 and p[1] > 200 and p[2] > 200
     for r in range(zwaard.height // fh):
+        aanval = (r // rijen) == 2                                   # derde animatie: aanval
         for c in range(zwaard.width // fw):
             pv, pb, bg = [], [], []
             for y in range(r * fh, (r + 1) * fh):
@@ -355,32 +364,65 @@ def staf(zwaard, zwaard_b, lijf, k, fw=64, fh=64):
             d = _Px(doel)
             for x, y, b in bg:                                    # de zwaai-boog, lichtblauw, in zijn eigen laag
                 _Px(achter if b else voor).d[x, y] = k['boog'] + (255,)
-            if not punten:
-                continue
-            # as van het zwaard: de twee verst uiteenliggende pixels; de hand is het eind het dichtst bij het lijf
             lb = lijf.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
             cx, cy = (c * fw + (lb[0] + lb[2]) / 2, r * fh + (lb[1] + lb[3]) / 2) if lb else (c * fw + 32, r * fh + 38)
+            hb = hoofd.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
+            hoofdTop = r * fh + (hb[1] if hb else 18)
+            if not punten:
+                if r not in vorig:
+                    continue
+                gx, gy, ux, uy, hand, doel = vorig[r]; d = _Px(doel); heft = (gx, gy); tip = (gx + ux * 8, gy + uy * 8); best = 64
             best, a, bpt = -1, None, None
             for i in range(len(punten)):
                 for j in range(i + 1, len(punten)):
                     dd = (punten[i][0] - punten[j][0]) ** 2 + (punten[i][1] - punten[j][1]) ** 2
                     if dd > best:
                         best, a, bpt = dd, punten[i], punten[j]
-            if a is None or best < 4:
-                continue
-            da = (a[0] - cx) ** 2 + (a[1] - cy) ** 2; db = (bpt[0] - cx) ** 2 + (bpt[1] - cy) ** 2
-            hand, tip = (a, bpt) if da <= db else (bpt, a)
-            # de staf staat rechtop in de hand: 9 px eronder (tot de grond) en 13 px erboven, de bol op de top
-            hx, hy = hand[0], hand[1]
-            lijn(d, hx + 1, hy + 9, hx + 1, hy - 13, k['hout_l'])
-            lijn(d, hx, hy + 9, hx, hy - 13, k['hout'])
-            ox, oy = hx, hy - 15
-            for yy in range(-1, 2):
+            if punten:
+                if a is None or best < 4:
+                    continue
+                da = (a[0] - cx) ** 2 + (a[1] - cy) ** 2; db = (bpt[0] - cx) ** 2 + (bpt[1] - cy) ** 2
+                heft, tip = (a, bpt) if da <= db else (bpt, a)
+                # de hand: huidpixels van het lijf vlak bij het heft
+                hand, hd = None, 99
+                for y in range(max(r * fh, heft[1] - 4), min((r + 1) * fh, heft[1] + 5)):
+                    for x in range(max(c * fw, heft[0] - 4), min((c + 1) * fw, heft[0] + 5)):
+                        p = lf[x, y]
+                        if p[3] > 0 and p[:3] in HUID:
+                            dd = (x - heft[0]) ** 2 + (y - heft[1]) ** 2
+                            if dd < hd:
+                                hd, hand = dd, (x, y)
+                gx, gy = hand if hand else (heft[0], heft[1])
+                L = best ** .5; ux, uy = (tip[0] - heft[0]) / L, (tip[1] - heft[1]) / L
+                vorig[r] = (gx, gy, ux, uy, hand, doel)
+            if aanval:
+                x0, y0 = round(gx - ux * 4), round(gy - uy * 4); x1, y1 = round(gx + ux * 11), round(gy + uy * 11)
+                ox, oy = round(gx + ux * 12.5), round(gy + uy * 12.5)
+                nx, ny = (1, 0) if abs(uy) >= abs(ux) else (0, 1)
+            else:
+                # rechtop door de hand, de bol altijd net boven het hoofd (ook als de staf achter het lijf hangt)
+                uit = 1 if gx >= cx else -1
+                ox, oy = gx + uit * 3, hoofdTop - 3
+                vx, vy = ox - gx, oy - gy; L = max(1, (vx * vx + vy * vy) ** .5); vx, vy = vx / L, vy / L
+                x0, y0 = round(gx - vx * 9), round(gy - vy * 9); x1, y1 = round(ox - vx * 1.5), round(oy - vy * 1.5)
+                nx, ny = (1, 0)
+            lijn(d, x0 + nx, y0 + ny, x1 + nx, y1 + ny, k['hout_l'])
+            lijn(d, x0, y0, x1, y1, k['hout'])
+            for yy in range(-1, 2):                                            # de bol op de top
                 for xx in range(-1, 2):
                     rand = abs(xx) + abs(yy) == 2
                     d.d[ox + xx, oy + yy] = (k['orb_o'] if rand else k['orb']) + (255,)
-            d.d[ox, oy - 1] = k['orb_o'] + (255,); d.d[ox - 1, oy] = k['orb_o'] + (255,); d.d[ox + 1, oy] = k['orb_o'] + (255,); d.d[ox, oy + 1] = k['orb_o'] + (255,)
+            for xx, yy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
+                d.d[ox + xx, oy + yy] = k['orb_o'] + (255,)
             d.d[ox, oy] = k['orb_h'] + (255,)
+            # de hand weer bovenop de staf, zodat hij hem vasthoudt (alleen als de staf vóór het lijf ligt)
+            if doel is voor and hand:
+                for y in range(gy - 2, gy + 3):
+                    for x in range(gx - 2, gx + 3):
+                        if r * fh <= y < (r + 1) * fh and c * fw <= x < (c + 1) * fw:
+                            p = lf[x, y]
+                            if p[3] > 0 and p[:3] in HUID and doel.getpixel((x, y))[3] > 0:
+                                d.d[x, y] = p
     return voor, achter
 
 
@@ -393,7 +435,7 @@ tuniek_laag = verschil(uit[2], basis)           # de tuniek (level 1) zonder het
 for naam, palet in GEWADEN.items():
     gewaad(tuniek_laag, basis, palet).save(UIT / f'{naam}.png')
 for naam, k in STAVEN.items():
-    v, a = staf(uit[3], uit[4], basis, k)
+    v, a = staf(uit[3], uit[4], basis, uit[1], k)
     v.save(UIT / f'{naam}.png'); a.save(UIT / f'{naam}b.png')
 
 HOED_FRONT = """
