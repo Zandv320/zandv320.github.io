@@ -46,7 +46,7 @@ export function maakQuests(P,A){
   function renderTracker(){
     const actief=QUEST_VOLGORDE.filter(id=>P.quests[id]&&P.quests[id].st!=='gedaan');
     tracker.hidden=!actief.length;
-    tracker.innerHTML=actief.map(id=>{const k=st(id)==='klaar';return `<div class="qt${k?' klaar':''}"><b>${UI.esc(QUESTS[id].titel)}</b><span>${k?'Return to '+UI.esc(QUESTS[id].gever):UI.esc(tekst(id))}</span></div>`}).join('');
+    tracker.innerHTML='<div class="qth">Quests</div>'+actief.map(id=>{const k=st(id)==='klaar';return `<div class="qt${k?' klaar':''}"><b>${UI.esc(QUESTS[id].titel)}</b><span>${k?'Return to '+UI.esc(QUESTS[id].gever):UI.esc(tekst(id))}</span></div>`}).join('');
   }
   function vernieuw(){markers();renderTracker();A.render()}
   /* voor het characterscherm */

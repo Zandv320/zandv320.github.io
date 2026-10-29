@@ -47,7 +47,7 @@ export function maakSelectie(A){
     if(!info.hidden){_v.set(PODIUM.x,-.15,PODIUM.z).project(A.camera);info.style.transform=`translate(${((_v.x+1)/2*innerWidth).toFixed(1)}px,${((1-_v.y)/2*innerHeight).toFixed(1)}px) translate(-50%,0)`}
   }
   /* waar de camera naar kijkt zolang het selectiescherm open is: de held iets links van het midden, op borsthoogte */
-  function cameraDoel(){const b=matchMedia('(max-width:760px)').matches;return[PODIUM.x+(b?0:2.4),.7,PODIUM.z]}
+  function cameraDoel(){const b=matchMedia('(max-width:700px)').matches;return b?[PODIUM.x,.7,PODIUM.z+3.6]:[PODIUM.x+2.4,.7,PODIUM.z]}
   function toonScherm(naam){scherm=naam;sel.hidden=naam!=='sel';maak.hidden=naam!=='maak';wis.hidden=naam!=='wis';if(naam==='sel')renderLijst()}
 
   /* ---- selectie ---- */

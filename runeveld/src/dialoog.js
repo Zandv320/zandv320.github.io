@@ -35,9 +35,9 @@ export function maakDialoog(Q,A){
   }
   /* n: {naam, groet, sprite, winkel} */
   function openVoor(n){
-    npc=n;open=true;el.hidden=false;$('#dl-naam').textContent=n.naam;portret(n.sprite);Q.opBezoek(n.naam);menu();
+    npc=n;open=true;el.hidden=false;document.body.classList.add('dialoog-open');$('#dl-naam').textContent=n.naam;portret(n.sprite);Q.opBezoek(n.naam);menu();
   }
-  function sluit(){if(!open)return;open=false;el.hidden=true;npc=null;A.gesloten&&A.gesloten()}
+  function sluit(){if(!open)return;open=false;el.hidden=true;document.body.classList.remove('dialoog-open');npc=null;A.gesloten&&A.gesloten()}
   el.addEventListener('pointerdown',e=>e.stopPropagation());
   return{open:openVoor,sluit,isOpen:()=>open,menu:()=>{if(open)menu()}};
 }

@@ -14,7 +14,7 @@ import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT
 import {SKILLS,SKILLS_VAN,MAX_JOB,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
 import {slag as regelSlag,spreuk,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
 import {BLADEN,laadBladen} from './bladen.js';
-import {heldLagen} from './uiterlijk.js';
+import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {maakSelectie,PODIUM} from './selectie.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
@@ -101,7 +101,7 @@ function start(i){
 function toonNpcs(aan){npc.sprite.g.visible=aan;npc.label.el.hidden=!aan;toonDorpelingen(aan)}
 /* de drie skillknoppen op de balk horen bij de klasse */
 function bouwBalk(){
-  const b=$('#balk');b.querySelectorAll('.slot[data-skill]').forEach((s,i)=>{if(i<3)s.remove()});
+  const b=$('#balk');b.querySelectorAll('.slot[data-skill]').forEach(s=>{if(s.dataset.skill!=='drank'&&s.dataset.skill!=='zit')s.remove()});
   const eerst=b.firstElementChild;
   balk().forEach((id,i)=>{const sk=SKILLS[id],el=document.createElement('button');el.className='slot';el.dataset.skill=id;el.title=`${sk.naam}: ${sk.beschr}`;
     el.innerHTML=`<kbd>${i+1}</kbd><span class="ic">${sk.icoon}</span><span class="nm">${UI.esc(sk.naam.split(' ')[0])}</span><i class="cd"></i>`;
@@ -563,7 +563,8 @@ function invoer(){
   $('#k-knop').onclick=()=>{if(K)K.toggle()};$('#i-knop').onclick=()=>{if(I)I.toggle()};$('#a-knop').onclick=()=>{if(ADM)ADM.toggle()};
   $('#m-knop').onclick=()=>{if(KT)KT.toggle()};
   const gk=$('#g-knop');gk.textContent=geluidAan()?'🔊':'🔇';gk.onclick=()=>{zetGeluid(!geluidAan());gk.textContent=geluidAan()?'🔊':'🔇';G.klik()};
-  $('#m-chat').onclick=()=>$('#chattekst').focus();
+  $('#m-chat').onclick=()=>{document.body.classList.add('chat-open');$('#chattekst').focus()};$('#chat-sluit').onclick=()=>{document.body.classList.remove('chat-open');$('#chattekst').blur()};
+  $('#j-knop').onclick=()=>{if(!K)return;if(K.isOpen())K.sluit();else K.toon('quests')};
   $('#m-zoomin').onclick=()=>zoom(1);$('#m-zoomuit').onclick=()=>zoom(-1);
 }
 
@@ -575,7 +576,7 @@ function loop(){
   const t=nu(),dt=Math.min(.05,t-last);last=t;
   stap(dt);
 }
-let tasT=0,zone=null,klokT=2;
+let tasT=0,zone=null,klokT=2,portretT=1;const portretCtx=$('#h-portret').getContext('2d');
 function stap(dt){
   if(Q){tasT+=dt;if(tasT>=.5){tasT=0;Q.opTas();Q.opPlek(P.x,P.z)}}
   if(SEL&&!gestart)SEL.tick(dt);
@@ -584,14 +585,16 @@ function stap(dt){
   cam.doel.lerp(_doel,1-Math.exp(-8*dt));if(cam.schudT>0)cam.schudT-=dt;updateCamera();
   if(gestart){
     updateSpeler(dt);if(H)hostTick(dt);updateMonsters(dt);updateAnderen(dt);stuurPresence();
-    UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'));
+    UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'),klasse().naam);
+    portretT+=dt;if(portretT>.25){portretT=0;tekenHeld(portretCtx,heldLagen(P.uitr,P.haar),t)}
     for(const id of balk()){UI.cooldown(id,((P.cd[id]||0)-t)/SKILLS[id].cd);UI.slotStatus(id,!(P.skills[id]>0),id==='barriere'&&t<P.barriereTot)}
     UI.cooldown('drank',((P.cd.drank||0)-t)/ITEMS.drank.cd);
     UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',tasAantal('drank')<=0,false);
     doelRing.visible=!!P.target;if(P.target){doelRing.position.set(P.target.x,.03,P.target.z);doelRing.rotation.z+=dt*1.5;doelRing.scale.setScalar(1+.08*Math.sin(t*7))}
     UI.laagHp(!P.dood&&P.hp<hpMax()*.25);
     /* naam van het gebied in beeld als je een ander gebied binnenloopt */
-    const zn=inBos(P.x,P.z)?'bos':'veld';if(zone&&zn!==zone)UI.melding(zn==='bos'?BOS.naam:'Runeveld',zn==='bos'?'The old forest. Stay on the path.':'Fields and village.');zone=zn;
+    const zn=inBos(P.x,P.z)?'bos':'veld';if(zone&&zn!==zone)UI.melding(zn==='bos'?BOS.naam:'Runeveld',zn==='bos'?'The old forest. Stay on the path.':'Fields and village.');
+    if(zn!==zone){zone=zn;$('#mm-zone').textContent=zn==='bos'?BOS.naam:inDorp(P.x,P.z)?'Runeveld':'Runeveld fields'}else if(zn==='veld'&&tasT===0){$('#mm-zone').textContent=inDorp(P.x,P.z)?'Runeveld':'Runeveld fields'}
     K.tick(dt);ADM.tick(dt);KT.render();KT.renderMini();
   }
   if(gestart){npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera)}

@@ -48,8 +48,8 @@ export function melding(groot,klein=''){
   clearTimeout(meldT);meldT=setTimeout(()=>{el.innerHTML=''},2600);
 }
 
-export function hud(P,hpMax,spMax,expMax,dranken){
-  $('#h-naam').textContent=P.naam;$('#h-lvl').textContent=P.lvl;$('#h-job').textContent=P.job;
+export function hud(P,hpMax,spMax,expMax,dranken,klasseNaam){
+  $('#h-naam').textContent=P.naam;$('#h-lvl').textContent=P.lvl;$('#h-job').textContent=P.job;if(klasseNaam)$('#h-klassenaam').textContent=klasseNaam;
   $('#h-hp').style.transform=`scaleX(${(P.hp/hpMax).toFixed(3)})`;$('#h-hpt').textContent=Math.ceil(P.hp)+' / '+hpMax;
   $('#h-sp').style.transform=`scaleX(${(P.sp/spMax).toFixed(3)})`;$('#h-spt').textContent=Math.floor(P.sp)+' / '+spMax;
   $('#h-exp').style.transform=`scaleX(${(P.exp/expMax).toFixed(3)})`;$('#h-expbar').title='Experience: '+P.exp+' / '+expMax;
