@@ -21,7 +21,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 #labels,#fx{position:fixed;inset:0;pointer-events:none;overflow:hidden}
 .label{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:3px;white-space:nowrap;will-change:transform}
 .label .naam{font-size:12px;font-weight:500;text-shadow:0 1px 2px #000;padding:1px 7px;border-radius:6px;background:rgba(0,0,0,.4)}
-.label.speler .naam{color:#fff}.label.ander .naam{color:#bfe3ff}.label.monster .naam{color:#ffd1d1}.label.npc .naam{color:#ffe9a8}
+.label.speler .naam{display:none}  /* je eigen naam staat al in de HUD; de ballon blijft boven je hoofd */.label.ander .naam{color:#bfe3ff}.label.monster .naam{color:#ffd1d1}.label.npc .naam{color:#ffe9a8}
 .label .hp{width:46px;height:5px;background:rgba(0,0,0,.6);border-radius:3px;overflow:hidden}
 .label .hp i{display:block;height:100%;background:#4ade80;transform-origin:left}
 .label.monster .hp i{background:var(--rood)}
