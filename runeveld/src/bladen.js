@@ -7,7 +7,7 @@
      richtingen rij-offset per kijkrichting; ontbreekt een richting, dan wordt de tegenovergestelde gespiegeld
      anims      rij (eerste rij van de animatie), n frames, fps, eens (speelt één keer), perRichting (false: één rij)
    De held bestaat uit lagen met dezelfde indeling: lijf, kleding, hoofd en wapen (zie heldLagen). */
-import {laadTextuur} from './sprites.js';
+import {laadTextuur,FACTOR} from './sprites.js';
 import {ITEMS} from './data.js';
 
 const HELD_RICHTINGEN={onder:0,links:1,rechts:2,boven:3};
@@ -39,6 +39,8 @@ export function heldLagen(uitr){
 export async function laadBladen(){
   const laad=async url=>{const t=await laadTextuur(url);if(!t)throw new Error('Sprite ontbreekt: '+url);return t};
   await Promise.all(Object.values(BLADEN).map(async b=>{
+    /* in de gladde modus zijn de sheets FACTOR keer groter: framegrootte mee schalen, wereldschaal terug */
+    if(!b.geschaald){b.geschaald=true;b.fw*=FACTOR;b.fh*=FACTOR;b.voet=(b.voet||0)*FACTOR;b.hoogte=(b.hoogte||b.fh/FACTOR)*FACTOR;b.schaal/=FACTOR}
     if(b.url)b.tex=await laad(b.url);
     if(b.lagen){const t={};await Promise.all(Object.entries(b.lagen).map(async([k,url])=>{t[k]=await laad(url)}));b.lagen=t;b.tex=t.lijf}
   }));

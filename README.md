@@ -12,6 +12,7 @@ Browsergames op [zandv320.github.io](https://zandv320.github.io), gebouwd met [V
 ```bash
 npm install
 npm run dev        # ontwikkelserver op http://localhost:5173/velmora/
+# Zonder Node (bijv. als npm een ddev-wrapper is): python3 -I runeveld/tools/dev_server.py  →  http://localhost:8765/runeveld/
 npm run build      # productiebuild in dist/
 npm run preview    # bekijk de productiebuild
 ```
@@ -27,9 +28,9 @@ npm run preview    # bekijk de productiebuild
 ## Runeveld
 
 - `runeveld/index.html` – pagina, CSS en HUD
-- `runeveld/src/` – ES-modules: `data` (klasse, uitrusting, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `net` (MQTT), `ui`, `karakter` (characterscherm en winkel), `inventaris` (inventory), `admin` (admin-paneel, Ctrl+Shift+A of `?admin`), `main` (spel)
+- `runeveld/src/` – ES-modules: `data` (klasse, uitrusting, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `bouw` (de dorpsomgeving in pixel-3D: huizen, kramen, put, hekken, tonnen en kisten als dichte 3D-vormen bekleed met tegelbare pixeltexturen in het palet van de sprites (`sprites/tex/`, gegenereerd door het knipscript) en met een donkere omlijning, zoals in Ragnarok Online: 3D-omgeving met 2D-figuren), `net` (MQTT), `ui`, `karakter` (characterscherm en winkel), `inventaris` (inventory), `admin` (admin-paneel, Ctrl+Shift+A of `?admin`), `main` (spel)
 - `runeveld/src/regels/` – pure spelregels zonder browser- of netwerkcode (stats, skills, gevecht), zodat een server later dezelfde regels kan draaien
-- `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies (Swordsman 1–3 Level, Hunt Animals, Village Pixel Tileset, Medieval Fortress kit) door `runeveld/tools/maak_sprites.py`
+- `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies; `sprites/glad/` is dezelfde set 2× opgeschaald met Scale2x voor de gladde weergave (standaard uit; schakelaar in het admin-paneel, net als de pixelgrootte van de weergave) (Swordsman 1–3 Level, Hunt Animals, Village Pixel Tileset, Medieval Fortress kit) door `runeveld/tools/maak_sprites.py`
 - `runeveld/_download/` – de gedownloade Craftpix-zips (niet gecommit); uitpakken en `python3 -I runeveld/tools/maak_sprites.py <map-met-packs>` draaien om `sprites/` opnieuw te maken
 
 ## Nieuwe items en uitrusting toevoegen

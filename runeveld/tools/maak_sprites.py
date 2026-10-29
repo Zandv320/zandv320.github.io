@@ -319,4 +319,139 @@ for uit, box in (('boom', (160, 49, 192, 94)), ('boom2', (193, 65, 223, 96)), ('
                  ('graspol', (162, 225, 224, 286))):
     col.crop(box).save(UIT / f'{uit}.png')
 
+# ---------- tegelbare texturen voor de 3D-dorpsomgeving (bouw.js), in het palet van de sprites ----------
+# Zo past de 3D-omgeving bij de Craftpix-stijl: dezelfde kleuren, dezelfde pixeldichtheid (16 px per eenheid).
+PAL = {'lijn': (12, 15, 42), 'dak': (108, 129, 161), 'dak_d': (64, 82, 115), 'pleister': (254, 225, 184), 'balk': (181, 89, 69),
+       'balk_d': (61, 51, 51), 'steen': (135, 133, 124), 'steen_d': (99, 102, 99), 'steen_l': (188, 173, 159), 'hout': (181, 89, 69),
+       'hout_l': (208, 119, 83), 'hout_d': (115, 76, 68), 'hout_h': (235, 150, 97), 'rood': (178, 45, 45), 'tan': (212, 198, 146),
+       'groen': (129, 148, 71), 'glas': (108, 129, 161), 'glas_l': (188, 173, 159), 'water': (64, 82, 115), 'water_l': (108, 129, 161)}
+TEX = UIT / 'tex'
+TEX.mkdir(exist_ok=True)
+
+
+def textuur(naam, w, h, teken):
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    px = im.load()
+    def vul(x0, y0, x1, y1, k):
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                px[x % w, y % h] = PAL[k] + (255,)
+    teken(vul, px)
+    im.save(TEX / f'{naam}.png')
+
+
+# pleistermuur met rode balken (vakwerk), 64×64
+def muur(vul, px):
+    vul(0, 0, 64, 64, 'pleister')
+    for x in (0, 32):
+        vul(x, 0, x + 4, 64, 'balk')
+    vul(0, 0, 64, 4, 'balk'); vul(0, 60, 64, 64, 'balk')
+    for i in range(0, 28):                       # schuine schoren
+        vul(4 + i, 56 - i * 2, 7 + i, 58 - i * 2, 'balk'); vul(36 + i, 56 - i * 2, 39 + i, 58 - i * 2, 'balk')
+    for x in (0, 32):
+        vul(x + 4, 0, x + 5, 64, 'balk_d')
+    vul(0, 4, 64, 5, 'balk_d')
+textuur('muur', 64, 64, muur)
+
+# blauwe dakpannen, 32×32: rijen van 8 met verspringende naden
+def dak(vul, px):
+    vul(0, 0, 32, 32, 'dak')
+    for r in range(4):
+        y = r * 8
+        vul(0, y + 7, 32, y + 8, 'dak_d')
+        off = 8 if r % 2 else 0
+        for x in range(off, 32 + off, 16):
+            vul(x, y, x + 1, y + 8, 'dak_d')
+        vul(0, y, 32, y + 1, 'lijn')
+textuur('dak', 32, 32, dak)
+
+# grijze stenen blokken, 32×32
+def steen(vul, px):
+    vul(0, 0, 32, 32, 'steen')
+    for r in range(4):
+        y = r * 8; off = 8 if r % 2 else 0
+        vul(0, y + 7, 32, y + 8, 'steen_d')
+        for x in range(off, 32 + off, 16):
+            vul(x, y, x + 1, y + 8, 'steen_d'); vul(x + 1, y, x + 15, y + 1, 'steen_l')
+textuur('steen', 32, 32, steen)
+
+# houten planken (verticaal), 32×32, en een donkere variant voor palen en lijsten
+def planken(k, kl, kd):
+    def f(vul, px):
+        vul(0, 0, 32, 32, k)
+        for x in range(0, 32, 8):
+            vul(x, 0, x + 1, 32, kd); vul(x + 1, 0, x + 2, 32, kl)
+        for (x, y) in ((3, 5), (11, 20), (19, 9), (27, 26), (5, 28), (21, 2)):
+            vul(x, y, x + 3, y + 1, kd)
+    return f
+textuur('hout', 32, 32, planken('hout', 'hout_l', 'hout_d'))
+textuur('hout_donker', 32, 32, planken('hout_d', 'hout', 'balk_d'))
+
+# luifelstof: verticale strepen, 32×16
+def strepen(a, b):
+    def f(vul, px):
+        for x in range(0, 32, 8):
+            vul(x, 0, x + 8, 16, a if (x // 8) % 2 == 0 else b)
+    return f
+textuur('stof_rood', 32, 16, strepen('rood', 'pleister'))
+textuur('stof_groen', 32, 16, strepen('groen', 'tan'))
+
+# glas-in-lood, 16×16
+def glas(vul, px):
+    vul(0, 0, 16, 16, 'glas')
+    for i in range(16):
+        vul(i, 15 - i, i + 1, 16 - i, 'glas_l')
+    vul(7, 0, 9, 16, 'balk_d'); vul(0, 7, 16, 9, 'balk_d')
+textuur('glas', 16, 16, glas)
+
+# water, 16×16
+def water(vul, px):
+    vul(0, 0, 16, 16, 'water')
+    for (x, y) in ((1, 3), (9, 6), (4, 11), (12, 13)):
+        vul(x, y, x + 4, y + 1, 'water_l')
+textuur('water', 16, 16, water)
+
+# keien en pad: de tegels uit de Craftpix-tileset zelf
+tegel(1).save(TEX / 'keien.png')
+tegel(27).save(TEX / 'keien2.png')
+tegel(6).save(TEX / 'pad.png')
+print('texturen:', sorted(p.name for p in TEX.glob('*.png')))
+
+# ---------- gladde versie: Scale2x twee keer (4×) en terug naar 2× met Lanczos ----------
+# Scale2x (EPX) maakt schuine pixeltrappen vloeiend zonder te vervagen; de laatste stap verzacht de randen.
+# De engine kan deze 2×-sprites met zachte filtering tekenen ("smooth graphics" in het admin-paneel).
+import numpy as np
+
+
+def scale2x(a):
+    """a: array (h, w, 4) uint8 → (2h, 2w, 4)."""
+    h, w, _ = a.shape
+    v = a.view(np.uint32).reshape(h, w)                     # één getal per pixel, voor snelle vergelijking
+    P = v
+    A = np.vstack([v[:1], v[:-1]])                          # boven
+    D = np.vstack([v[1:], v[-1:]])                          # onder
+    C = np.hstack([v[:, :1], v[:, :-1]])                    # links
+    B = np.hstack([v[:, 1:], v[:, -1:]])                    # rechts
+    e0 = np.where((C == A) & (C != D) & (A != B), A, P)
+    e1 = np.where((A == B) & (A != C) & (B != D), B, P)
+    e2 = np.where((D == C) & (D != B) & (C != A), C, P)
+    e3 = np.where((B == D) & (B != A) & (D != C), D, P)
+    out = np.empty((h * 2, w * 2), dtype=np.uint32)
+    out[0::2, 0::2] = e0; out[0::2, 1::2] = e1; out[1::2, 0::2] = e2; out[1::2, 1::2] = e3
+    return out.view(np.uint8).reshape(h * 2, w * 2, 4)
+
+
+def glad(im):
+    a = np.array(im.convert('RGBA'))
+    a[a[:, :, 3] == 0] = 0                                  # doorzichtige pixels gelijkmaken, anders ziet Scale2x valse randen
+    b = scale2x(scale2x(a))
+    return Image.fromarray(b, 'RGBA').resize((im.width * 2, im.height * 2), Image.LANCZOS)
+
+
+GLAD = UIT / 'glad'
+GLAD.mkdir(exist_ok=True)
+for p in sorted(UIT.glob('*.png')):
+    glad(Image.open(p)).save(GLAD / p.name)
+print('gladde sprites:', len(list(GLAD.glob('*.png'))))
+
 print('klaar:', sorted(p.name for p in UIT.glob('*.png')))

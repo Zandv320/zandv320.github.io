@@ -52,7 +52,8 @@ export function maakKarakter(P,A){
     const b=BLADEN.held,a=b.anims.idle,f=Math.floor(t*a.fps)%a.n;
     ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,cv.width,cv.height);
     /* alleen het stuk van het frame waar het figuur staat, zodat het lekker groot in beeld komt */
-    for(const tex of heldLagen(P.uitr))ctx.drawImage(tex.image,f*b.fw+14,10,36,40,0,0,cv.width,cv.height);
+    const k=b.fw/64;ctx.imageSmoothingEnabled=k>1;
+    for(const tex of heldLagen(P.uitr))ctx.drawImage(tex.image,f*b.fw+14*k,10*k,36*k,40*k,0,0,cv.width,cv.height);
   }
   el.addEventListener('click',e=>{
     const tb=e.target.closest('.ktab');if(tb){tab=tb.dataset.tab;render();return}

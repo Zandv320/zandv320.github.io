@@ -70,6 +70,8 @@ export function maakAdmin(C){
     schuif(d,'Zoom',()=>cam.afstand,v=>cam.afstand=v,6,60,1);
     schuif(d,'Field of view',()=>camera.fov,v=>{camera.fov=v;camera.updateProjectionMatrix()},15,90,1,v=>v+'°');
     schakel(d,'Fog',()=>!!scene.fog,v=>{scene.fog=v?new THREE.Fog(0x87c9ee,55,95):null});
+    schuif(d,'Pixel size (reloads)',()=>{try{return parseFloat(localStorage.getItem('runeveld.pixel'))||2}catch(e){return 2}},v=>{try{localStorage.setItem('runeveld.pixel',String(v))}catch(e){}clearTimeout(window.__pxT);window.__pxT=setTimeout(()=>location.reload(),600)},1,4,.5,v=>v+'px');
+    schakel(d,'Smooth graphics (reloads)',()=>{try{return localStorage.getItem('runeveld.glad')!=='0'}catch(e){return true}},v=>{try{localStorage.setItem('runeveld.glad',v?'1':'0')}catch(e){}location.reload()});
     schakel(d,'Show collision & zones',()=>!!debug,v=>{v?toonDebug():verbergDebug()});
     const info=h('p',{class:'amono'});d.appendChild(info);
     /* ---------- network ---------- */

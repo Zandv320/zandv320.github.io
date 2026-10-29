@@ -4,21 +4,35 @@
    lagen bestaan die dezelfde indeling delen (lijf, kleding, hoofd, wapen): zo wordt uitrusting zichtbaar. */
 import * as THREE from 'three';
 
+/* Gladde graphics: de sprites uit sprites/glad/ zijn 2× opgeschaald met Scale2x (tools/maak_sprites.py)
+   en worden met zachte filtering getekend. Uit te zetten in het admin-paneel. */
+export const GLAD=(()=>{try{return localStorage.getItem('runeveld.glad')==='1'}catch(e){return false}})();
+/* Pixelgrootte: hoeveel schermpixels (CSS) één gerenderde pixel beslaat. 2 laat de sprites ongeveer 1:1 in het
+   pixelraster vallen; 1 is volle resolutie. Instelbaar in het admin-paneel. */
+export const PIXEL=(()=>{try{const v=parseFloat(localStorage.getItem('runeveld.pixel'));return v>0?v:2}catch(e){return 2}})();
+export const FACTOR=GLAD?2:1;             /* hoeveel keer groter de geladen sprites zijn dan de pixel-art */
+
 const cache=new Map();
-/* Laadt een afbeelding als pixel-art textuur (null als het bestand ontbreekt). */
-export function laadTextuur(url){
-  if(cache.has(url))return cache.get(url);
-  const p=new Promise(res=>{const img=new Image();img.onload=()=>res(maakTex(img));img.onerror=()=>res(null);img.src=url});
-  cache.set(url,p);return p;
+/* Laadt een afbeelding als textuur (null als het bestand ontbreekt). In de gladde modus komt hij uit sprites/glad/,
+   tenzij `ruw` (voor de grondtegels, die zelf in een canvas worden samengesteld). */
+export function laadTextuur(url,{ruw=false}={}){
+  const glad=GLAD&&!ruw&&url.startsWith('sprites/');
+  const bron=glad?url.replace('sprites/','sprites/glad/'):url;
+  if(cache.has(bron))return cache.get(bron);
+  const p=new Promise(res=>{const img=new Image();img.onload=()=>res(maakTex(img,glad));img.onerror=()=>res(glad?laadTextuur(url,{ruw:true}):null);img.src=bron});
+  cache.set(bron,p);return p;
 }
-export function maakTex(bron){
+export function maakTex(bron,zacht=GLAD){
   const t=new THREE.Texture(bron);
-  t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;
+  if(zacht){t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=4}
+  else{t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false}
   t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;
 }
 
-const schaduwGeo=new THREE.CircleGeometry(.5,20);
-const schaduwMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.28,depthWrite:false});
+/* blobschaduw onder figuren en planten: een platte ellips net boven plein en pad (y .06), zodat hij nooit z-fight met de grond */
+const schaduwGeo=new THREE.CircleGeometry(.5,16);
+const schaduwMat=new THREE.MeshBasicMaterial({color:0x1a1540,transparent:true,opacity:.32,depthWrite:false});
+const SCHADUW_Y=.06;
 const klikMat=new THREE.MeshBasicMaterial({visible:false});
 
 /* Hoe ver sprites achterover leunen naar de camera (1 = exact naar de camera gericht). */
@@ -34,7 +48,7 @@ export class Sprite2D{
     this.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),klikMat);this.mesh.frustumCulled=false;this.g.add(this.mesh);
     this.anim=null;this.naam='';this.t=0;this.frame=0;this.richt='onder';this.klaar=false;this.kijk=new THREE.Vector2(0,1);this.flits=0;this.cols=1;this.rows=1;
     this.zetBlad(blad,lagen);
-    if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=.02;s.scale.setScalar(schaduw);this.g.add(s);this.schaduw=s}
+    if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=SCHADUW_Y;s.scale.set(schaduw,schaduw*.62,1);s.renderOrder=2;this.g.add(s);this.schaduw=s}
   }
   /* (ander) blad gebruiken; hoogte van het figuur en voetpositie komen uit het blad */
   zetBlad(blad,lagen=null){
@@ -107,7 +121,7 @@ export class Bord{
     this.mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:.5,side:THREE.DoubleSide});
     this.mesh=new THREE.Mesh(geo,this.mat);this.leun=leun;
     this.g=new THREE.Group();this.g.add(this.mesh);
-    if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=.02;s.scale.set(schaduw,schaduw*.7,1);this.g.add(s)}
+    if(schaduw>0){const s=new THREE.Mesh(schaduwGeo,schaduwMat);s.rotation.x=-Math.PI/2;s.position.y=SCHADUW_Y;s.scale.set(schaduw,schaduw*.62,1);s.renderOrder=2;this.g.add(s)}
   }
   update(cam){this.g.rotation.y=cam.yaw;this.mesh.rotation.x=-cam.tilt*this.leun}
 }

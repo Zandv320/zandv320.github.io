@@ -16,7 +16,8 @@ function velmoraGame(){
     /* de glTF-modellen worden als statische bestanden naast de pagina gezet */
     closeBundle(){for(const d of ['models','ui','fx']){const src=path.resolve(__dirname,'velmora/'+d),dst=path.resolve(__dirname,'dist/velmora/'+d);if(fs.existsSync(src))fs.cpSync(src,dst,{recursive:true})}
       /* Runeveld: de sprites zijn losse PNG's die de pagina zelf laadt */
-      if(fs.existsSync('runeveld/sprites'))fs.cpSync(path.resolve(__dirname,'runeveld/sprites'),path.resolve(__dirname,'dist/runeveld/sprites'),{recursive:true})}
+      if(fs.existsSync('runeveld/sprites'))fs.cpSync(path.resolve(__dirname,'runeveld/sprites'),path.resolve(__dirname,'dist/runeveld/sprites'),{recursive:true})
+}
   }}
 
 export default defineConfig({
