@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {KLASSE,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL} from './data.js';
 import {maakInventaris} from './inventaris.js';
 import {maakAdmin} from './admin.js';
+import {maakDorpelingen,updateDorpelingen,spreek} from './dorpelingen.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
 import {SKILLS,MAX_JOB,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
 import {slag as regelSlag,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
@@ -36,7 +37,7 @@ const vrijeStat=()=>statPuntenVoor(P.lvl)-statPuntenBesteed(P.stats),vrijeSkill=
 
 /* ====================== opstarten ====================== */
 async function init(){
-  await laadBladen();await bouwWereld();maakNpc();
+  await laadBladen();await bouwWereld();maakNpc();maakDorpelingen(scene,klikbaar);
   $('#laden').classList.add('weg');
   const save=lees();if(save)$('#naam').value=save.naam;
   const go=()=>{const n=$('#naam').value.trim();if(n.length<2){$('#naam').focus();return}start(n,save&&save.naam===n?save:null)};
@@ -406,6 +407,7 @@ function klik(cx,cy){
   const hits=straal(cx,cy).intersectObjects(klikbaar,false).filter(h=>h.object.visible&&h.object.parent.visible);
   if(hits.length){const u=hits[0].object.userData;
     if(u.m&&!u.m.dood){P.target=u.m;P.wacht=null;P.bestemming=null;P.naarNpc=false;UI.doelkader(u.m);if(P.zit)zitten(false);return}
+    if(u.dorpeling){spreek(u.dorpeling,P);return}
     if(u.npc){if(Math.hypot(npc.x-P.x,npc.z-P.z)<2.6)openWinkel();else{const dx=P.x-npc.x,dz=P.z-npc.z,d=Math.hypot(dx,dz)||1;P.bestemming=[npc.x+dx/d*1.6,npc.z+dz/d*1.6];P.naarNpc=true;P.target=null;UI.doelkader(null)}return}
   }
   const p=grondPunt(cx,cy);if(!p)return;
@@ -474,6 +476,7 @@ function stap(dt){
     K.tick(dt);ADM.tick(dt);
   }
   npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera);
+  updateDorpelingen(dt,cam,camera,P);
   updateEffecten(dt);
   updateBorden();renderer.render(scene,camera);
 }
