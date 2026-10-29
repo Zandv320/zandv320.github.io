@@ -22,7 +22,7 @@ export function maakQuests(P,A){
     const q=QUESTS[id],s=P.quests[id];if(!voltooid(id,s))return false;
     if(q.doel.soort==='item'&&!A.tasVerwijderen(q.doel.item,q.doel.n))return false;
     s.st='gedaan';const b=q.beloning;A.beloning({exp:b.exp,zeny:b.zeny});
-    const gekregen=[];for(const it of b.items||[]){const id=P.klasse==='mage'&&it.mage?it.mage:it.id;if(A.tasToevoegen(id,it.n))gekregen.push(`${ITEMS[id].icoon} ${UI.esc(ITEMS[id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[id].naam.toLowerCase()} was left behind.`)}
+    const gekregen=[];for(const it of b.items||[]){const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&it.mage?it.mage:it.id;if(A.tasToevoegen(id,it.n))gekregen.push(`${ITEMS[id].icoon} ${UI.esc(ITEMS[id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[id].naam.toLowerCase()} was left behind.`)}
     UI.log(`<span class="lvl">Quest complete: ${UI.esc(q.titel)} · +${b.exp} exp · +${b.zeny} zeny${gekregen.length?' · '+gekregen.join(', '):''}</span>`);
     UI.melding('QUEST COMPLETE',q.titel);G.quest();vernieuw();return true;
   }

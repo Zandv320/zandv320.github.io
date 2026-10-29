@@ -60,7 +60,7 @@ export function maakSelectie(A){
 
   /* ---- aanmaken ---- */
   function renderKlasse(){
-    $('#maak-klassen').innerHTML=Object.entries(KLASSEN).map(([id,k])=>`<button class="klas${id===kl?' actief':''}" data-klasse="${id}"><div class="icoon">${k.icoon}</div><div><b>${k.naam}</b><small>${esc(k.beschr)}</small></div></button>`).join('');
+    $('#maak-klassen').innerHTML=Object.entries(KLASSEN).filter(([,k])=>k.tier===1).map(([id,k])=>`<button class="klas${id===kl?' actief':''}" data-klasse="${id}"><div class="icoon">${k.icoon}</div><div><b>${k.naam}</b><small>${esc(k.beschr)}</small></div></button>`).join('');
   }
   $('#maak-klassen').addEventListener('click',e=>{const b=e.target.closest('.klas');if(!b)return;kl=b.dataset.klasse;renderKlasse()});
   function renderHaar(){

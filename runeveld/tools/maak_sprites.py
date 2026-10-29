@@ -18,6 +18,7 @@ Uitvoer (allemaal pixel-art, 1 wereld-eenheid = 16 px, zie world.js):
     konijn/vos/zwijn.png   32×32 frames, 6 kolommen, per animatie 4 rijen (onder, boven, links, rechts)
     hert/wolf/everzwijn.png bosdieren: hert uit het pack, wolf en reuzenzwijn herkleurd uit vos en zwijn
     gewaad1..3/staf1..3(+b)/hoed1..2 magiër: gewaad, staf met bol en punthoed, afgeleid van de heldlagen
+    harnas4..5/gewaad4..5 tweede klassen: knight (staalblauw), crusader (zilver/goud), wizard (middernacht), sage (groen)
     koopman.png            32×32 frames, 4 kolommen, 1 rij
     grond.png              7 tegels van 32×32 naast elkaar: 3× gras, 2× keien, 2× pad
     <decor>.png            losse plaatjes op ware grootte
@@ -449,6 +450,33 @@ for naam, palet in GEWADEN.items():
 for naam, k in STAVEN.items():
     v, a = staf(uit[3], uit[4], basis, uit[1], k)
     v.save(UIT / f'{naam}.png'); a.save(UIT / f'{naam}b.png')
+
+# ---------- tweede klassen: Knight en Crusader (harnas in staalblauw / zilver met goud), Wizard en Sage (gewaad) ----------
+import colorsys
+GEWADEN['gewaad4'] = [(14, 20, 52), (24, 34, 84), (36, 52, 120), (50, 74, 150), (80, 110, 190)]        # wizard: middernacht
+GEWADEN['gewaad5'] = [(24, 52, 34), (36, 80, 50), (52, 112, 70), (72, 140, 92), (110, 176, 128)]       # sage: woudgroen
+for naam in ('gewaad4', 'gewaad5'):
+    gewaad(tuniek_laag, basis, GEWADEN[naam]).save(UIT / f'{naam}.png')
+
+
+def hsv_laag(im, fn):
+    """Past fn(h, s, v) → (h, s, v) toe op elke pixel die geen omlijning is."""
+    out = im.copy(); px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a == 0 or (r < 40 and g < 40 and b < 40):
+                continue
+            h, sv, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            h, sv, v = fn(h, sv, v)
+            rr, gg, bb = colorsys.hsv_to_rgb(h % 1, max(0, min(1, sv)), max(0, min(1, v)))
+            px[x, y] = (int(rr * 255), int(gg * 255), int(bb * 255), a)
+    return out
+
+
+harnas3_laag = verschil(uit[8], basis)
+hsv_laag(harnas3_laag, lambda h, s, v: (h + .04, s * .55, v * .82)).save(UIT / 'harnas4.png')                       # knight: donker staalblauw
+hsv_laag(harnas3_laag, lambda h, s, v: ((.12, .8, min(1, v * 1.25)) if (h < .06 or h > .93) else (h, s * .2, min(1, v * 1.2)))).save(UIT / 'harnas5.png')  # crusader: zilver, rood wordt goud
 
 HOED_FRONT = """
 ........oo........

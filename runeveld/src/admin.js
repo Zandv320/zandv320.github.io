@@ -35,7 +35,7 @@ export function maakAdmin(C){
     /* ---------- character ---------- */
     let d=sectie('Character',true);
     const lvl=getal(d,'Base level',()=>P.lvl,v=>C.zetLevel(v),1,MAX_LVL);
-    const job=getal(d,'Job level',()=>P.job,v=>C.zetJob(v),1,MAX_JOB);
+    const job=getal(d,'Job level',()=>P.job,v=>C.zetJob(v),1,50);
     getal(d,'Zeny',()=>P.zeny,v=>{P.zeny=Math.max(0,v|0);C.render()},0,9999999);
     knoppen(d,[['Full HP/SP',()=>C.herstel()],['+1000 zeny',()=>{P.zeny+=1000;C.render()}],['Reset stats & skills',()=>C.respec(),'rood']]);
     schakel(d,'God mode (no damage)',()=>ADMIN.god,v=>ADMIN.god=v);

@@ -3,7 +3,7 @@ import {ITEMS,SLOTS,WINKEL} from './data.js';
 import {BLADEN} from './bladen.js';
 import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {STATS,MAX_STAT,statKosten} from './regels/stats.js';
-import {SKILLS,kanLeren,MAX_JOB,jobExpVoor} from './regels/skills.js';
+import {SKILLS,kanLeren,jobExpVoor} from './regels/skills.js';
 import {esc} from './ui.js';
 
 export function statTekst(it){const d=[];if(it.atk)d.push('ATK +'+it.atk);if(it.matk)d.push('MATK +'+it.matk);if(it.def)d.push('DEF +'+it.def);if(it.hp)d.push('HP +'+it.hp);if(it.sp)d.push('SP +'+it.sp);if(it.klasse)d.push(it.klasse==='mage'?'Mage':'Swordsman');return d.join(' · ')}
@@ -29,7 +29,7 @@ export function maakKarakter(P,A){
     const l=A.questLijst(),naam={nieuw:'Available',bezig:'In progress',klaar:'Ready to turn in',gedaan:'Completed'};
     $('#k-questlijst').innerHTML=l.length?l.map(x=>`<div class="quest ${x.st}"><div class="qkop"><b>${esc(x.q.titel)}</b><span class="qst">${naam[x.st]}</span></div>
       <small>${esc(x.q.gever)}${x.st==='gedaan'?'':' · '+esc(x.voortgang)}</small><p>${esc(x.st==='gedaan'?x.q.klaar:x.q.intro)}</p>
-      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>{const id=P.klasse==='mage'&&i.mage?i.mage:i.id;return ' · '+ITEMS[id].icoon+' '+esc(ITEMS[id].naam)+(i.n>1?' ×'+i.n:'')}).join('')}</div></div>`).join('')
+      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>{const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&i.mage?i.mage:i.id;return ' · '+ITEMS[id].icoon+' '+esc(ITEMS[id].naam)+(i.n>1?' ×'+i.n:'')}).join('')}</div></div>`).join('')
       :'<p class="ktip">No quests yet. Villagers with a <b class="qm nieuw">!</b> above their head have work for you.</p>';
   }
   function renderUitrusting(af){
@@ -50,7 +50,7 @@ export function maakKarakter(P,A){
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
   }
   function renderSkills(vrij){
-    $('#k-skillpunten').innerHTML=`Job level <b>${P.job}</b>${P.job<MAX_JOB?` · job exp ${P.jobexp} / ${jobExpVoor(P.job)}`:' (max)'} · ${vrij>0?`<b>${vrij}</b> skill point${vrij===1?'':'s'} to spend`:'no skill points left'}`;
+    $('#k-skillpunten').innerHTML=`Job level <b>${P.job}</b>${P.job<A.maxJob()?` · job exp ${P.jobexp} / ${jobExpVoor(P.job)}`:' (max)'} · ${vrij>0?`<b>${vrij}</b> skill point${vrij===1?'':'s'} to spend`:'no skill points left'}`;
     $('#k-skilllijst').innerHTML=A.skillVolgorde().map(id=>{const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
       const eis=Object.entries(sk.eis).map(([e,n])=>`${SKILLS[e].naam} ${n}`).join(', ');
       const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max';

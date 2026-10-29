@@ -3,15 +3,26 @@
 /* De klassen; HP, SP, ATK, MATK en aanvalssnelheid volgen uit level, stats en uitrusting (regels/stats.js).
    snelheid: eenheden per seconde; bereik: bereik van de gewone slag; hp/sp: factor op de maximale HP en SP. */
 export const KLASSEN={
-  swordsman:{naam:'Swordsman',icoon:'⚔️',snelheid:4.6,bereik:1.5,hp:1,sp:1,
+  swordsman:{naam:'Swordsman',icoon:'⚔️',tier:1,basis:'swordsman',snelheid:4.6,bereik:1.5,hp:1,sp:1,
     beschr:'Strong up close. Skills: Bash, Magnum Break, Provoke.',start:{hoofd:null,lichaam:'tuniek',wapen:'houtzwaard'}},
-  mage:{naam:'Mage',icoon:'🔮',snelheid:4.4,bereik:1.3,hp:.78,sp:1.7,
+  mage:{naam:'Mage',icoon:'🔮',tier:1,basis:'mage',snelheid:4.4,bereik:1.3,hp:.78,sp:1.7,
     beschr:'Fragile, but deadly from a distance. Skills: Fire Bolt, Frost Nova, Arcane Barrier.',start:{hoofd:null,lichaam:'gewaad',wapen:'houtstaf'}},
+  /* tweede klassen, te kiezen op job 20 bij een npc; job gaat terug naar 1 en loopt dan tot 50 */
+  knight:{naam:'Knight',icoon:'🛡️',tier:2,basis:'swordsman',snelheid:4.7,bereik:1.5,hp:1.15,sp:1,gever:'Guard Rolf',uitrusting:'ridderharnas',
+    beschr:'Heavy armor and heavier blows. Pierce, Bowling Bash and Endure.'},
+  crusader:{naam:'Crusader',icoon:'✝️',tier:2,basis:'swordsman',snelheid:4.5,bereik:1.5,hp:1.1,sp:1.3,gever:'Guard Rolf',uitrusting:'kruisharnas',
+    beschr:'Holy steel: Holy Cross, Shield Charge and Heal.'},
+  wizard:{naam:'Wizard',icoon:'⚡',tier:2,basis:'mage',snelheid:4.4,bereik:1.3,hp:.8,sp:2,gever:'Old Mette',uitrusting:'wizardgewaad',
+    beschr:'Raw elemental power: Jupitel Thunder, Storm Gust and Energy Coat.'},
+  sage:{naam:'Sage',icoon:'📗',tier:2,basis:'mage',snelheid:4.5,bereik:1.3,hp:.95,sp:1.8,gever:'Old Mette',uitrusting:'sagegewaad',
+    beschr:'Scholar of magic: Earth Spike, Mana Spring and Heal.'},
 };
+export const ADVANCEMENT={swordsman:['knight','crusader'],mage:['wizard','sage']};
 export const KLASSE=KLASSEN.swordsman;
 
-export const MAX_LVL=30;
-export const expVoor=l=>Math.round(40*Math.pow(l,1.55));
+export const MAX_LVL=99;
+/* exp voor het volgende level: tot 30 zoals voorheen, daarna steeds steiler */
+export const expVoor=l=>Math.round(40*Math.pow(l,1.55)*(l<=30?1:1+Math.pow((l-30)/20,1.5)));
 
 /* Voorwerpen. Uitrusting heeft een `slot` (hoofd, lichaam, wapen) en een `laag` (spritelaag van de held, bladen.js);
    `klasse` beperkt wie het kan dragen; verbruiksartikelen hebben `gebruik`. Alles stapelt tot `stapel` per inventory-slot. */
@@ -29,6 +40,11 @@ export const ITEMS={
   gewaad:{naam:'Apprentice robe',slot:'lichaam',laag:'gewaad1',def:1,sp:10,prijs:30,icoon:'🥋',klasse:'mage',beschr:'Blue wool, a little scorched at the sleeves.'},
   zijden_gewaad:{naam:'Silk robe',slot:'lichaam',laag:'gewaad2',def:4,sp:30,matk:5,prijs:350,icoon:'👘',klasse:'mage',beschr:'Red silk that whispers when you walk.'},
   magiergewaad:{naam:'Archmage robe',slot:'lichaam',laag:'gewaad3',def:8,sp:70,matk:12,prijs:1500,icoon:'🧙',klasse:'mage',beschr:'Deep purple, stitched with runes that glow under moonlight.'},
+  /* klassewapenrusting van de tweede klassen, gekregen bij de advancement */
+  ridderharnas:{naam:'Knight plate',slot:'lichaam',laag:'harnas4',def:16,hp:120,prijs:3000,icoon:'🛡️',klasse:'knight',beschr:'Blued steel, forged for the road beyond the forest.'},
+  kruisharnas:{naam:'Crusader plate',slot:'lichaam',laag:'harnas5',def:14,hp:90,sp:25,prijs:3000,icoon:'✝️',klasse:'crusader',beschr:'Silver with gold trim. It catches the light even at night.'},
+  wizardgewaad:{naam:'Wizard robe',slot:'lichaam',laag:'gewaad4',def:9,sp:110,matk:22,prijs:3000,icoon:'⚡',klasse:'wizard',beschr:'Midnight blue, humming with static.'},
+  sagegewaad:{naam:'Sage robe',slot:'lichaam',laag:'gewaad5',def:10,sp:120,matk:16,hp:40,prijs:3000,icoon:'📗',klasse:'sage',beschr:'Forest green, pockets full of notes.'},
   houtzwaard:{naam:'Wooden sword',slot:'wapen',laag:'wapen1',atk:4,prijs:25,icoon:'🪵',klasse:'swordsman',beschr:'A practice sword. The rabbits still mind it.'},
   ijzerzwaard:{naam:'Iron sword',slot:'wapen',laag:'wapen2',atk:11,prijs:400,icoon:'🗡️',klasse:'swordsman',beschr:'A proper blade with a proper edge.'},
   staalzwaard:{naam:'Steel sword',slot:'wapen',laag:'wapen3',atk:22,prijs:1800,icoon:'⚔️',klasse:'swordsman',beschr:'Forged for someone who means it.'},

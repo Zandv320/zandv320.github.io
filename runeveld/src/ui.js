@@ -48,11 +48,12 @@ export function melding(groot,klein=''){
   clearTimeout(meldT);meldT=setTimeout(()=>{el.innerHTML=''},2600);
 }
 
-export function hud(P,hpMax,spMax,expMax,dranken,klasseNaam){
+export function hud(P,hpMax,spMax,expMax,dranken,klasseNaam,jobMax){
   $('#h-naam').textContent=P.naam;$('#h-lvl').textContent=P.lvl;$('#h-job').textContent=P.job;if(klasseNaam)$('#h-klassenaam').textContent=klasseNaam;
   $('#h-hp').style.transform=`scaleX(${(P.hp/hpMax).toFixed(3)})`;$('#h-hpt').textContent=Math.ceil(P.hp)+' / '+hpMax;
   $('#h-sp').style.transform=`scaleX(${(P.sp/spMax).toFixed(3)})`;$('#h-spt').textContent=Math.floor(P.sp)+' / '+spMax;
   $('#h-exp').style.transform=`scaleX(${(P.exp/expMax).toFixed(3)})`;$('#h-expbar').title='Experience: '+P.exp+' / '+expMax;
+  if(jobMax!==undefined){$('#h-jobexp').style.transform=`scaleX(${jobMax?Math.min(1,P.jobexp/jobMax).toFixed(3):1})`;$('#h-jobbar').title=jobMax?'Job experience: '+P.jobexp+' / '+jobMax:'Job level at maximum'}
   $('#h-zeny').textContent=P.zeny;$('#h-drank').textContent=dranken;$('#w-zeny').textContent=P.zeny;
 }
 let doelLabel=null;

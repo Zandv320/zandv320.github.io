@@ -70,6 +70,7 @@ h1,h2,h3{font-family:var(--kop);font-weight:700;letter-spacing:.04em}
 .bar span{position:absolute;inset:0;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;text-shadow:0 1px 1px #000,0 0 3px #000;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .bar.hp{--c1:#8ef0a4;--c2:#2fb85a;--c3:#15702f}.bar.sp{--c1:#9ccbff;--c2:#3b7fe0;--c3:#1d3f90}.bar.exp{--c1:#e2c2ff;--c2:#9b5de5;--c3:#55249a;height:7px}
 .bar.exp span{display:none}
+.bar.job{--c1:#ffe6a3;--c2:#e0a52e;--c3:#8a5a10;height:4px;margin-top:-2px;border-top:0;border-radius:0 0 3px 3px}.bar.job i::after{display:none}
 
 /* ---------- spelerframe (linksboven) ---------- */
 #char{position:absolute;left:var(--veilig-links);top:var(--veilig-boven);width:268px;padding:8px 10px 9px 8px;display:flex;gap:9px;align-items:center}
