@@ -760,7 +760,10 @@ for uit, map_, naam, nrs, fps in (
         ('groenkring', 'Explosion_gas_circle', 'Explosion_gas_circle', range(1, 11), 18),
         ('tweekleur', 'Explosion_two_colors', 'Explosion_two_colors', range(1, 11), 18),
         ('rook', 'Smoke', 'Smoke', range(1, 7), 12),
-        ('vonk', 'Lightning', 'Lightning_spot', range(1, 5), 16)):
+        ('vonk', 'Lightning', 'Lightning_spot', range(1, 5), 16),
+        ('vuur', 'Fire', 'Fire', range(1, 7), 10),                          # brandende grond (loop)
+        ('paddenstoel', 'Nuclear_explosion', 'Nuclear_explosion', range(1, 11), 14),   # de inslag van Starfall
+        ('gifwolk', 'Explosion_gas', 'Explosion_gas', range(1, 11), 16)):
     sheet, s = knip_reeks(reeks(map_, naam, nrs))
     sheet.save(FX / f'{uit}.png'); fxinfo[uit] = dict(fw=s, fh=s, n=len(nrs), fps=fps)
 # de bliksem: begin, drie slagen, einde; hoog en smal, niet vierkant
@@ -770,7 +773,8 @@ for i, f in enumerate(bl):
     sheet.paste(f, (i * 64, 0))
 sheet.save(FX / 'bliksem.png'); fxinfo['bliksem'] = dict(fw=64, fh=193, n=len(bl), fps=16)
 # magie-sheets: 72 px hoog, frames van 72 breed
-for uit, naam, fps in (('ring', '2', 14), ('slag', '3_2', 18), ('komeet', '4_1', 12), ('spiesen', '7', 14), ('sprankel', '8', 12), ('flits', '9', 18), ('wortels', '1', 14), ('splash', '10', 14)):
+for uit, naam, fps in (('ring', '2', 14), ('slag', '3_2', 18), ('komeet', '4_1', 12), ('spiesen', '7', 14), ('sprankel', '8', 12), ('flits', '9', 18), ('wortels', '1', 14), ('splash', '10', 14),
+                       ('straal', '3', 18), ('harten', '5', 12), ('spat', '6_2', 16), ('knal', '4_2', 16), ('kaars', '6', 12)):
     im = open_rgba(FXM / f'{naam}.png')
     im.save(FX / f'{uit}.png'); fxinfo[uit] = dict(fw=72, fh=72, n=im.width // 72, fps=fps)
 (FX / 'fx.json').write_text(json.dumps(fxinfo))
@@ -809,7 +813,7 @@ def glad(im):
 
 GLAD = UIT / 'glad'
 GLAD.mkdir(exist_ok=True)
-for p in sorted(UIT.glob('*.png')):
+for p in sorted(q for q in UIT.glob('*.png') if q.stem != 'iconen'):
     glad(Image.open(p)).save(GLAD / p.name)
 print('gladde sprites:', len(list(GLAD.glob('*.png'))))
 

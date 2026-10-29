@@ -1,6 +1,7 @@
 /* Runeveld – questvoortgang van de speler: aannemen, bijhouden (kills, items, bezoeken), inleveren,
    de markers boven npc's, de tracker in de HUD en de lijst voor het characterscherm. */
 import {QUESTS,QUEST_VOLGORDE,status,voltooid,questsVan,voortgangTekst} from './regels/quests.js';
+import {ico} from './iconen.js';
 import {ITEMS,MONSTERS} from './data.js';
 import * as UI from './ui.js';
 import {G} from './geluid.js';
@@ -22,7 +23,7 @@ export function maakQuests(P,A){
     const q=QUESTS[id],s=P.quests[id];if(!voltooid(id,s))return false;
     if(q.doel.soort==='item'&&!A.tasVerwijderen(q.doel.item,q.doel.n))return false;
     s.st='gedaan';const b=q.beloning;A.beloning({exp:b.exp,zeny:b.zeny});
-    const gekregen=[];for(const it of b.items||[]){const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&it.mage?it.mage:it.id;if(A.tasToevoegen(id,it.n))gekregen.push(`${ITEMS[id].icoon} ${UI.esc(ITEMS[id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[id].naam.toLowerCase()} was left behind.`)}
+    const gekregen=[];for(const it of b.items||[]){const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&it.mage?it.mage:it.id;if(A.tasToevoegen(id,it.n))gekregen.push(`${ico(id,ITEMS[id].icoon,'klein')} ${UI.esc(ITEMS[id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[id].naam.toLowerCase()} was left behind.`)}
     UI.log(`<span class="lvl">Quest complete: ${UI.esc(q.titel)} · +${b.exp} exp · +${b.zeny} zeny${gekregen.length?' · '+gekregen.join(', '):''}</span>`);
     UI.melding('QUEST COMPLETE',q.titel);G.quest();if(A.fx)A.fx('sprankel');vernieuw();return true;
   }

@@ -63,6 +63,15 @@ h1,h2,h3{font-family:var(--kop);font-weight:700;letter-spacing:.04em}
 @keyframes pijnflits{0%{opacity:1;box-shadow:inset 0 0 120px 20px rgba(255,40,40,.55)}100%{opacity:0;box-shadow:inset 0 0 120px 20px rgba(255,40,40,0)}}
 @keyframes laaghp{0%,100%{box-shadow:inset 0 0 90px 10px rgba(255,40,40,.18)}50%{box-shadow:inset 0 0 110px 20px rgba(255,40,40,.4)}}
 
+/* ---------- pixel-iconen uit de atlas (sprites/iconen.png, cellen van 32px) ---------- */
+.ico{display:inline-block;flex:none;width:var(--is,32px);height:var(--is,32px);background:url(sprites/iconen.png) no-repeat;background-size:calc(var(--is,32px)*12) auto;background-position:calc(var(--ix)*var(--is,32px)*-1) calc(var(--iy)*var(--is,32px)*-1);image-rendering:pixelated;vertical-align:middle;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
+.ico.klein{--is:20px;vertical-align:-5px;margin-right:2px}.ico-emoji.klein{font-size:16px}
+#status .ico{--is:18px}#menu .mk .ico{--is:24px}#menu .mk.uit .ico{opacity:.4}#mobiel .ico{--is:22px}
+.slot .ic .ico{--is:30px;border-radius:3px}.kskillicoon .ico{--is:36px;border-radius:4px}
+.tnode .ti{overflow:hidden}.tnode .ti .ico{--is:54px;border-radius:50%;filter:none}
+.kslot b .ico{--is:22px}.iicoon .ico{--is:32px}.iicoon.groot .ico{--is:48px}.klas .icoon .ico{--is:40px;border-radius:4px}
+#dl-keuzes .ico{--is:22px;border-radius:3px}.kkop .ico{--is:18px}#log .ico{--is:18px}
+
 /* ---------- balken ---------- */
 .bar{position:relative;height:13px;background:#0a0b12;border-radius:3px;overflow:hidden;border:1px solid rgba(0,0,0,.8);box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.04)}
 .bar i{position:absolute;inset:0;transform-origin:left;transition:transform .15s;background:linear-gradient(180deg,var(--c1) 0%,var(--c2) 55%,var(--c3) 100%)}

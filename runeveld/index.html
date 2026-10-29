@@ -32,7 +32,7 @@
   </div>
   <div id="doelkader" class="frame plat" hidden><div class="kop"><b id="d-naam"></b><small id="d-lvl"></small></div><div class="bar hp"><i id="d-hp"></i><span id="d-hpt"></span></div></div>
   <div id="rechtsboven">
-    <div id="status" class="frame plat"><span title="Zeny">🪙 <b id="h-zeny">0</b></span><span id="h-tijd" title="Time of day">☀️ 12:00</span><span title="Players online"><i class="stip" id="h-stip"></i><span id="h-online" class="online-tekst">offline</span></span></div>
+    <div id="status" class="frame plat"><span title="Zeny"><i data-ico="ui_zeny" data-emoji="🪙"></i> <b id="h-zeny">0</b></span><span id="h-tijd" title="Time of day">☀️ 12:00</span><span title="Players online"><i class="stip" id="h-stip"></i><span id="h-online" class="online-tekst">offline</span></span></div>
     <div id="mm" class="frame"><canvas id="minimap" width="156" height="156"></canvas><div id="mm-zone">Runeveld</div></div>
     <div id="qtracker" class="frame plat" hidden></div>
   </div>
@@ -42,19 +42,19 @@
     <form id="chatin" autocomplete="off"><input id="chattekst" maxlength="120" placeholder="Say something…"><button type="button" id="chat-sluit" title="Close chat">✕</button></form>
   </div>
   <div id="onder">
-    <div id="mobiel" class="frame plat"><button id="m-chat" title="Chat">💬</button><button id="m-zoomin" title="Zoom in">+</button><button id="m-zoomuit" title="Zoom out">−</button></div>
+    <div id="mobiel" class="frame plat"><button id="m-chat" title="Chat"><i data-ico="ui_chat" data-emoji="💬"></i></button><button id="m-zoomin" title="Zoom in">+</button><button id="m-zoomuit" title="Zoom out">−</button></div>
     <div id="balk" class="frame">
-      <button class="slot" data-skill="drank" title="Red potion: restores 45 HP"><kbd>R</kbd><span class="ic">🧪</span><span class="nm">Potion</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
-      <button class="slot" data-skill="zit" title="Sit: recover faster"><kbd>X</kbd><span class="ic">🪑</span><span class="nm">Sit</span><i class="cd"></i></button>
+      <button class="slot" data-skill="drank" title="Red potion: restores 45 HP"><kbd>R</kbd><span class="ic" data-ico="drank" data-emoji="🧪"></span><span class="nm">Potion</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
+      <button class="slot" data-skill="zit" title="Sit: recover faster"><kbd>X</kbd><span class="ic" data-ico="ui_zit" data-emoji="🪑"></span><span class="nm">Sit</span><i class="cd"></i></button>
     </div>
     <div id="menu" class="frame plat">
-      <button class="mk" id="k-knop" title="Character (C)">👤<kbd>C</kbd></button>
-      <button class="mk" id="i-knop" title="Inventory (I)">🎒<kbd>I</kbd></button>
-      <button class="mk" id="j-knop" title="Quests (J)">📜<kbd>J</kbd></button>
-      <button class="mk" id="m-knop" title="Map (M)">🗺️<kbd>M</kbd></button>
+      <button class="mk" id="k-knop" title="Character (C)"><i data-ico="ui_char" data-emoji="👤"></i><kbd>C</kbd></button>
+      <button class="mk" id="i-knop" title="Inventory (I)"><i data-ico="ui_tas" data-emoji="🎒"></i><kbd>I</kbd></button>
+      <button class="mk" id="j-knop" title="Quests (J)"><i data-ico="ui_quests" data-emoji="📜"></i><kbd>J</kbd></button>
+      <button class="mk" id="m-knop" title="Map (M)"><i data-ico="ui_kaart" data-emoji="🗺️"></i><kbd>M</kbd></button>
       <button class="mk alleen-desktop" id="g-knop" title="Sound">🔊</button>
-      <button class="mk" id="a-knop" title="Admin (Ctrl+Shift+A)" hidden>🛠️</button>
-      <a class="mk alleen-desktop" href="../" title="Back to all games">⌂</a>
+      <button class="mk" id="a-knop" title="Admin (Ctrl+Shift+A)" hidden><i data-ico="ui_admin" data-emoji="🛠️"></i></button>
+      <a class="mk alleen-desktop" href="../" title="Back to all games"><i data-ico="ui_huis" data-emoji="⌂"></i></a>
     </div>
   </div>
 </div>
@@ -98,7 +98,7 @@
 </div>
 
 <div id="inventaris" class="paneel modal" hidden>
-  <div class="kkop"><div><h3>Inventory</h3><small><span id="i-vol">0 / 20</span> slots · 🪙 <span id="i-zeny">0</span> zeny</small></div><button class="ksluit" id="i-sluit" title="Close (I)">✕</button></div>
+  <div class="kkop"><div><h3>Inventory</h3><small><span id="i-vol">0 / 20</span> slots · <i data-ico="ui_zeny" data-emoji="🪙"></i> <span id="i-zeny">0</span> zeny</small></div><button class="ksluit" id="i-sluit" title="Close (I)">✕</button></div>
   <div class="igrid"><div class="iraster" id="i-raster"></div><div class="idetail" id="i-detail"></div></div>
 </div>
 
@@ -118,7 +118,7 @@
     </div>
     <div class="sel-rechts paneel"><h3>Characters</h3><div id="sel-lijst"></div></div>
     <div class="sel-knoppen"><button class="knop groot" id="sel-speel">Enter World</button><button class="knop alt" id="sel-nieuw">Create New Character</button><button class="knop alt rood" id="sel-wis">Delete Character</button></div>
-    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd>–<kbd>6</kbd> skills · <kbd>R</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>M</kbd> map · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
+    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd>–<kbd>9</kbd> skills · <kbd>R</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>M</kbd> map · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
     <a class="terug" href="../">← All games</a>
   </div>
   <div id="sel-info"><b id="sel-naam"></b><small id="sel-sub"></small></div>

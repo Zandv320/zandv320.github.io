@@ -1,6 +1,7 @@
 /* Runeveld – characterselectie, zoals in WoW: een lijst van helden rechts, de gekozen held groot in beeld,
    onderaan Enter World / Create / Delete. Aanmaken met naam en haarkleur; verwijderen door de naam te typen. */
 import {heldLagen,tekenHeld,HAARKEUZE} from './uiterlijk.js';   /* tekenHeld: de kleine avatars in de lijst */
+import {ico} from './iconen.js';
 import {KLASSEN} from './data.js';
 import {inBos,BOS} from './gebied.js';
 import {esc} from './ui.js';
@@ -60,7 +61,7 @@ export function maakSelectie(A){
 
   /* ---- aanmaken ---- */
   function renderKlasse(){
-    $('#maak-klassen').innerHTML=Object.entries(KLASSEN).filter(([,k])=>k.tier===1).map(([id,k])=>`<button class="klas${id===kl?' actief':''}" data-klasse="${id}"><div class="icoon">${k.icoon}</div><div><b>${k.naam}</b><small>${esc(k.beschr)}</small></div></button>`).join('');
+    $('#maak-klassen').innerHTML=Object.entries(KLASSEN).filter(([,k])=>k.tier===1).map(([id,k])=>`<button class="klas${id===kl?' actief':''}" data-klasse="${id}"><div class="icoon">${ico("k_"+id,k.icoon)}</div><div><b>${k.naam}</b><small>${esc(k.beschr)}</small></div></button>`).join('');
   }
   $('#maak-klassen').addEventListener('click',e=>{const b=e.target.closest('.klas');if(!b)return;kl=b.dataset.klasse;renderKlasse()});
   function renderHaar(){

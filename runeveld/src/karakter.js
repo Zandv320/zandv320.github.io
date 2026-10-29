@@ -1,5 +1,6 @@
 /* Runeveld – characterscherm (C) met uitrusting, stats en skills, en de winkel van Koopman Bram. */
 import {ITEMS,SLOTS,WINKEL} from './data.js';
+import {ico} from './iconen.js';
 import {BLADEN} from './bladen.js';
 import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {STATS,MAX_STAT,statKosten} from './regels/stats.js';
@@ -30,17 +31,17 @@ export function maakKarakter(P,A){
     const l=A.questLijst(),naam={nieuw:'Available',bezig:'In progress',klaar:'Ready to turn in',gedaan:'Completed'};
     $('#k-questlijst').innerHTML=l.length?l.map(x=>`<div class="quest ${x.st}"><div class="qkop"><b>${esc(x.q.titel)}</b><span class="qst">${naam[x.st]}</span></div>
       <small>${esc(x.q.gever)}${x.st==='gedaan'?'':' · '+esc(x.voortgang)}</small><p>${esc(x.st==='gedaan'?x.q.klaar:x.q.intro)}</p>
-      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>{const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&i.mage?i.mage:i.id;return ' · '+ITEMS[id].icoon+' '+esc(ITEMS[id].naam)+(i.n>1?' ×'+i.n:'')}).join('')}</div></div>`).join('')
+      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>{const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&i.mage?i.mage:i.id;return ' · '+ico(id,ITEMS[id].icoon,'klein')+' '+esc(ITEMS[id].naam)+(i.n>1?' ×'+i.n:'')}).join('')}</div></div>`).join('')
       :'<p class="ktip">No quests yet. Villagers with a <b class="qm nieuw">!</b> above their head have work for you.</p>';
   }
   function renderUitrusting(af){
     $('#k-stats').innerHTML=[['HP',`${Math.ceil(P.hp)} / ${af.hpMax}`],['SP',`${Math.floor(P.sp)} / ${af.spMax}`],['ATK',af.atk],['MATK',af.matk],['DEF',af.def],['EXP',`${P.exp} / ${A.expMax()}`],['Zeny',P.zeny]]
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
     $('#k-slots').innerHTML=SLOTS.map(([slot,naam])=>{const it=P.uitr[slot]&&ITEMS[P.uitr[slot]];
-      return it?`<button class="kslot" data-slot="${slot}" title="Click to unequip"><small>${naam}</small><b>${it.icoon} ${esc(it.naam)}</b><i>${statTekst(it)}</i></button>`
+      return it?`<button class="kslot" data-slot="${slot}" title="Click to unequip"><small>${naam}</small><b>${ico(P.uitr[slot],it.icoon,"klein")} ${esc(it.naam)}</b><i>${statTekst(it)}</i></button>`
                :`<button class="kslot leeg" data-slot="${slot}"><small>${naam}</small><b>— empty —</b></button>`}).join('');
     const n=P.tas.reduce((t,e)=>t+e.n,0);
-    $('#k-tas').innerHTML=`<button class="knop alt" data-inventaris="1">🎒 Open inventory (I)</button><span class="ktip">${n?`${n} item${n===1?'':'s'} in your bag.`:'Your bag is empty. Monsters sometimes drop gear, and Merchant Bram sells it.'}</span>`;
+    $('#k-tas').innerHTML=`<button class="knop alt" data-inventaris="1">${ico("ui_tas","🎒","klein")} Open inventory (I)</button><span class="ktip">${n?`${n} item${n===1?'':'s'} in your bag.`:'Your bag is empty. Monsters sometimes drop gear, and Merchant Bram sells it.'}</span>`;
     tekenPreview();
   }
   function renderStats(af,vrij){
@@ -60,7 +61,7 @@ export function maakKarakter(P,A){
     const rijen=rij(Math.max(...Object.values(boom).map(p=>p[1])));
     let html=`<div class="takken">${takken.map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="boom" style="grid-template-rows:repeat(${rijen},auto)">`;
     for(const[id,[x,y]]of Object.entries(boom)){const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id),open=kanLeren({...P.skills,[id]:0},id)||l>0;
-      html+=`<button class="tnode${l>0?' geleerd':open?' open':' dicht'}${kan?' kan':''}${l>=sk.max?' max':''}${gekozenSkill===id?' gekozen':''}" data-tskill="${id}" style="grid-column:${x+1};grid-row:${rij(y)}" title="${esc(sk.naam)}"><span class="ti">${sk.icoon}</span><span class="tl">${l}/${sk.max}</span><span class="tn">${esc(sk.naam)}</span>${sk.passief?'<span class="tp">passive</span>':''}</button>`}
+      html+=`<button class="tnode${l>0?' geleerd':open?' open':' dicht'}${kan?' kan':''}${l>=sk.max?' max':''}${gekozenSkill===id?' gekozen':''}" data-tskill="${id}" style="grid-column:${x+1};grid-row:${rij(y)}" title="${esc(sk.naam)}"><span class="ti">${ico(id,sk.icoon)}</span><span class="tl">${l}/${sk.max}</span><span class="tn">${esc(sk.naam)}</span>${sk.passief?'<span class="tp">passive</span>':''}</button>`}
     if(kl.tier===2)html+=`<div class="tdeel" style="grid-column:1/4;grid-row:4"><span>${esc(kl.naam)} · job ${P.job} / ${A.maxJob()}</span></div>`;
     html+=`<svg class="tlijnen"></svg></div><div class="tdetail" id="k-tdetail"></div>`;
     $('#k-skilllijst').innerHTML=html;
@@ -81,7 +82,7 @@ export function maakKarakter(P,A){
     const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
     const eis=Object.entries(sk.eis).map(([e,n])=>`${SKILLS[e].naam} ${n}`).join(', ');
     const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max level';
-    d.innerHTML=`<div class="tdkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="knop" data-tleer="${id}" ${kan?'':'disabled'}>${l>0?'Level up':'Learn'} (1 point)</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em>`;
+    d.innerHTML=`<div class="tdkop"><span class="kskillicoon">${ico(id,sk.icoon)}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="knop" data-tleer="${id}" ${kan?'':'disabled'}>${l>0?'Level up':'Learn'} (1 point)</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em>`;
   }
   function tekenPreview(){tekenHeld(ctx,heldLagen(P.uitr,P.haar),t)}
   el.addEventListener('click',e=>{
@@ -98,7 +99,7 @@ export function maakKarakter(P,A){
   /* ---------- winkel ---------- */
   function renderWinkel(){
     $('#w-lijst').innerHTML=WINKEL.map(id=>{const it=ITEMS[id];
-      return`<div class="rij"><span>${it.icoon} ${esc(it.naam)}<small class="wstat">${statTekst(it)||esc(it.beschr||'')}</small></span><button class="knop" data-item="${id}" ${P.zeny<it.prijs?'disabled':''}>${it.prijs} zeny</button></div>`}).join('')
+      return`<div class="rij"><span>${ico(id,it.icoon,"klein")} ${esc(it.naam)}<small class="wstat">${statTekst(it)||esc(it.beschr||'')}</small></span><button class="knop" data-item="${id}" ${P.zeny<it.prijs?'disabled':''}>${it.prijs} zeny</button></div>`}).join('')
       +'<p class="ktip">Open your inventory (I) while the shop is open to sell items for half their price.</p>';
     $('#w-zeny').textContent=P.zeny;
   }

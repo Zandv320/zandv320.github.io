@@ -4,18 +4,18 @@
    snelheid: eenheden per seconde; bereik: bereik van de gewone slag; hp/sp: factor op de maximale HP en SP. */
 export const KLASSEN={
   swordsman:{naam:'Swordsman',icoon:'⚔️',tier:1,basis:'swordsman',snelheid:4.6,bereik:1.5,hp:1,sp:1,
-    beschr:'Strong up close. Skills: Bash, Magnum Break, Provoke.',start:{hoofd:null,lichaam:'tuniek',wapen:'houtzwaard'}},
+    beschr:'Strong up close. Skills: Crushing Blow, Flame Sweep, War Cry.',start:{hoofd:null,lichaam:'tuniek',wapen:'houtzwaard'}},
   mage:{naam:'Mage',icoon:'🔮',tier:1,basis:'mage',snelheid:4.4,bereik:1.3,hp:.78,sp:1.7,
-    beschr:'Fragile, but deadly from a distance. Skills: Fire Bolt, Frost Nova, Arcane Barrier.',start:{hoofd:null,lichaam:'gewaad',wapen:'houtstaf'}},
+    beschr:'Fragile, but deadly from a distance. Skills: Ember Bolt, Frostburst, Mana Ward.',start:{hoofd:null,lichaam:'gewaad',wapen:'houtstaf'}},
   /* tweede klassen, te kiezen op job 20 bij een npc; job gaat terug naar 1 en loopt dan tot 50 */
   knight:{naam:'Knight',icoon:'🛡️',tier:2,basis:'swordsman',snelheid:4.7,bereik:1.5,hp:1.15,sp:1,gever:'Guard Rolf',uitrusting:'ridderharnas',
-    beschr:'Heavy armor and heavier blows. Pierce, Bowling Bash and Endure.'},
+    beschr:'Heavy armor and heavier blows. Piercing Thrust, Whirlwind Sweep and Spiral Lance.'},
   crusader:{naam:'Crusader',icoon:'✝️',tier:2,basis:'swordsman',snelheid:4.5,bereik:1.5,hp:1.1,sp:1.3,gever:'Guard Rolf',uitrusting:'kruisharnas',
-    beschr:'Holy steel: Holy Cross, Shield Charge and Heal.'},
+    beschr:'Blessed steel: Radiant Cross, Shield Rush and Mending Light.'},
   wizard:{naam:'Wizard',icoon:'⚡',tier:2,basis:'mage',snelheid:4.4,bereik:1.3,hp:.8,sp:2,gever:'Old Mette',uitrusting:'wizardgewaad',
-    beschr:'Raw elemental power: Jupitel Thunder, Storm Gust and Energy Coat.'},
+    beschr:'Raw elemental power: Thunderclap, Blizzard and Starfall.'},
   sage:{naam:'Sage',icoon:'📗',tier:2,basis:'mage',snelheid:4.5,bereik:1.3,hp:.95,sp:1.8,gever:'Old Mette',uitrusting:'sagegewaad',
-    beschr:'Scholar of magic: Earth Spike, Mana Spring and Heal.'},
+    beschr:'Scholar of magic: Stone Spires, Wellspring and Mending Light.'},
 };
 export const ADVANCEMENT={swordsman:['knight','crusader'],mage:['wizard','sage']};
 export const KLASSE=KLASSEN.swordsman;

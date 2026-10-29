@@ -6,7 +6,7 @@ export const STATS=[
   ['str','STR','Strength: more attack power'],
   ['agi','AGI','Agility: dodge and attack faster'],
   ['vit','VIT','Vitality: more HP, defense and HP recovery'],
-  ['int','INT','Intelligence: more SP, SP recovery, magic attack and a stronger Magnum Break'],
+  ['int','INT','Intelligence: more SP, SP recovery, magic attack and a stronger Flame Sweep'],
   ['dex','DEX','Dexterity: hit chance and some attack power'],
   ['luk','LUK','Luck: chance of critical hits'],
 ];

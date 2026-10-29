@@ -1,5 +1,6 @@
 /* Runeveld – inventory-venster (I): een raster van slots met stapels, met uitrusten, gebruiken, verkopen en weggooien. */
 import {ITEMS,TAS_SLOTS,VERKOOPDEEL} from './data.js';
+import {ico} from './iconen.js';
 import {esc} from './ui.js';
 import {statTekst} from './karakter.js';
 
@@ -17,7 +18,7 @@ export function maakInventaris(P,A){
     for(let i=0;i<TAS_SLOTS;i++){const e=P.tas[i];
       if(!e){slots.push('<div class="islot leeg"></div>');continue}
       const it=ITEMS[e.id];
-      slots.push(`<button class="islot ${gekozen===e.id?'gekozen':''}" data-id="${e.id}" title="${esc(it.naam)}"><span class="iicoon">${it.icoon}</span>${e.n>1?`<span class="iaantal">${e.n}</span>`:''}</button>`)}
+      slots.push(`<button class="islot ${gekozen===e.id?'gekozen':''}" data-id="${e.id}" title="${esc(it.naam)}"><span class="iicoon">${ico(e.id,it.icoon)}</span>${e.n>1?`<span class="iaantal">${e.n}</span>`:''}</button>`)}
     $('#i-raster').innerHTML=slots.join('');
     const d=$('#i-detail');
     if(!gekozen){d.innerHTML='<p class="ktip">Select an item to see what it does.</p>';return}
@@ -27,7 +28,7 @@ export function maakInventaris(P,A){
     if(it.gebruik)knoppen.push('<button class="knop" data-actie="gebruik">Use</button>');
     if(A.winkelOpen())knoppen.push(`<button class="knop alt" data-actie="verkoop">Sell for ${Math.floor(it.prijs*VERKOOPDEEL)} zeny</button>`);
     else knoppen.push('<button class="knop alt" data-actie="weggooi">Drop</button>');
-    d.innerHTML=`<div class="idetailkop"><span class="iicoon groot">${it.icoon}</span><div><b>${esc(it.naam)}</b>${e.n>1?` <small>×${e.n}</small>`:''}<small class="istat">${statTekst(it)||''}</small></div></div><p>${esc(it.beschr||'')}</p><div class="iknoppen">${knoppen.join('')}</div>`;
+    d.innerHTML=`<div class="idetailkop"><span class="iicoon groot">${ico(gekozen,it.icoon)}</span><div><b>${esc(it.naam)}</b>${e.n>1?` <small>×${e.n}</small>`:''}<small class="istat">${statTekst(it)||''}</small></div></div><p>${esc(it.beschr||'')}</p><div class="iknoppen">${knoppen.join('')}</div>`;
   }
   el.addEventListener('click',e=>{
     const s=e.target.closest('.islot[data-id]');if(s){gekozen=s.dataset.id;render();return}

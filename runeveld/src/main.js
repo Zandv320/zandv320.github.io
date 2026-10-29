@@ -12,6 +12,7 @@ import {maakDaglicht,daglicht,klokTekst,zetTijd,isNacht} from './daglicht.js';
 import {maakFx} from './fx.js';
 import {wek as wekGeluid,G,isAan as geluidAan,zetAan as zetGeluid} from './geluid.js';
 import {basisStats,afgeleid,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT} from './regels/stats.js';
+import {ico} from './iconen.js';
 import {SKILLS,SKILLS_VAN,MAX_JOB,MAX_JOB_TIER,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
 import {slag as regelSlag,spreuk,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
 import {BLADEN,laadBladen,laadLagenVoor,opLaagGeladen} from './bladen.js';
@@ -97,7 +98,7 @@ async function start(i){
     loopNaar:(x,z)=>{if(P.dood||!binnenWereld(x,z))return false;DL.sluit();P.bestemming=[x,z];P.naarNpc=false;P.target=null;P.wacht=null;UI.doelkader(null);if(P.zit)zitten(false);ring(x,z,0xffffff,.5,.1,.35,.7);return true}});
   $('#start').hidden=true;$('#hud').hidden=false;
   UI.sys(save.lvl?`Welcome back, ${naam}!`:`Welcome to Eldoria, ${naam}! The village of Runeveld is safe; the monsters roam the fields beyond the gates. Merchant Bram at the stall sells potions and gear. Old Mette by the well is looking for you.`);
-  if(P.klasse==='mage'&&!save.lvl)UI.sys('As a Mage you fight from a distance: click a monster and press 1 for Fire Bolt.');
+  if(P.klasse==='mage'&&!save.lvl)UI.sys('As a Mage you fight from a distance: click a monster and press 1 for Ember Bolt.');
   if(vrijeStat()>0||vrijeSkill()>0)UI.log(`<span class="lvl">You have ${vrijeStat()} stat points and ${vrijeSkill()} skill points to spend. Press C.</span>`);
   gestart=true;startNet();
   setInterval(bewaar,5000);addEventListener('pagehide',bewaar);
@@ -110,7 +111,7 @@ function bouwBalk(){
   const eerst=b.firstElementChild;
   const n=balk().length;b.classList.toggle('vol',n>6);document.body.classList.toggle('balk2',n>6);
   balk().forEach((id,i)=>{const sk=SKILLS[id],el=document.createElement('button');el.className='slot';el.dataset.skill=id;el.title=`${sk.naam}: ${sk.beschr}`;
-    el.innerHTML=`<kbd>${i+1}</kbd><span class="ic">${sk.icoon}</span><span class="nm">${UI.esc(sk.naam.split(' ')[0])}</span><i class="cd"></i>`;
+    el.innerHTML=`<kbd>${i+1}</kbd><span class="ic">${ico(id,sk.icoon)}</span><span class="nm">${UI.esc(sk.naam.split(' ')[0])}</span><i class="cd"></i>`;
     el.addEventListener('click',()=>vaardigheid(id));b.insertBefore(el,eerst)});
 }
 function maakNpc(){
@@ -341,14 +342,14 @@ function vaardigheid(id){
     P.sp-=sp;P.cd.beuk=t+sk.cd;if(P.zit)zitten(false);
     P.volgendeSlag=t+a.aanvalTijd;speelEens('aanval',.5);P.sprite.zetKijk(m.x-P.x,m.z-P.z);P.sprite.stoot(m.x-P.x,m.z-P.z,.25);G.skill();
     const r=regelSlag({...a,mult:sk.mult(l)},monsterGevecht(m.spec));const stun=!r.mis&&Math.random()<pas('doodslag','kans')?.8:0;
-    setTimeout(()=>{if(!m.dood){raak(m,r,'beuk');FX.speel('flits',m.x,m.z,{grootte:1.6,y:.6});if(stun){m.ijsTot=nu()+stun;net.stuur('ijs',{ids:[m.id],duur:stun});FX.speel('vonk',m.x,m.z,{grootte:1.6,y:.8});UI.getal(m.x,m.sprite.h+.3,m.z,camera,'Stun!','mis')}}},220);
+    setTimeout(()=>{if(!m.dood){raak(m,r,'beuk');FX.speel('slag',m.x,m.z,{grootte:2.2,y:.7,spiegel:m.x<P.x});if(stun){m.ijsTot=nu()+stun;net.stuur('ijs',{ids:[m.id],duur:stun});FX.speel('vonk',m.x,m.z,{grootte:1.6,y:.8});UI.getal(m.x,m.sprite.h+.3,m.z,camera,'Stun!','mis')}}},220);
   }
   if(id==='vuurkring'){
     P.sp-=sp;P.cd.vuurkring=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);
-    ring(P.x,P.z,0xff8c42,.4,sk.straal,.45,.9);G.skill();schud(.15,.2);FX.speel('vuurkring',P.x,P.z,{grootte:sk.straal*2.3,y:.1});
+    ring(P.x,P.z,0xff8c42,.4,sk.straal,.45,.9);G.skill();schud(.15,.2);FX.speel('vuurkring',P.x,P.z,{grootte:sk.straal*2.3,y:.1});vuurtjes(P.x,P.z,1.7,3,1.2);
     setTimeout(()=>{let n=0;for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;
       if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,regelSlag({...a,hit:999,mult:sk.mult(l)*a.skillBonus},monsterGevecht(m.spec)),'vuurkring');n++}}
-      if(!n)UI.sys('Magnum Break hit nothing.')},200);
+      if(!n)UI.sys(sk.naam+' hit nothing.')},200);
   }
   if(id==='vuurpijl'){
     if(!P.target||P.target.dood){UI.sys('Pick a target first: click a monster.');return}
@@ -364,65 +365,65 @@ function vaardigheid(id){
     setTimeout(()=>{let n=0;const ids=[];for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;
       if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,spreuk({matk:a.matk,mult:sk.mult(l)}),'vorstnova');m.ijsTot=nu()+sk.bevries(l);ids.push(m.id);n++}}
       if(ids.length)net.stuur('ijs',{ids,duur:sk.bevries(l)});
-      if(!n)UI.sys('Frost Nova hit nothing.')},200);
+      if(!n)UI.sys(sk.naam+' hit nothing.')},200);
   }
   if(id==='barriere'){
-    P.sp-=sp;P.cd.barriere=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xd8c0ff);
-    ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);G.skill();UI.sys(`Arcane Barrier: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`);
+    P.sp-=sp;P.cd.barriere=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xd8c0ff);FX.speel('knal',P.x,P.z,{grootte:2.4,y:1,tint:0xd8c0ff,volg:P});
+    ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);G.skill();UI.sys(`${sk.naam}: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`);
   }
   /* ---- tweede klassen ---- */
   const doelSlag=(soort,fn)=>{  /* een slag op het doel binnen bereik; fn maakt de uitkomst */
     if(!P.target||P.target.dood){UI.sys('Pick a target first: click a monster.');return false}
     const m=P.target,ber=sk.bereik||klasse().bereik;if(Math.hypot(m.x-P.x,m.z-P.z)>ber){P.wacht=id;return false}
     P.sp-=sp;P.cd[id]=t+sk.cd;if(P.zit)zitten(false);P.volgendeSlag=t+a.aanvalTijd;speelEens('aanval',.5);P.sprite.zetKijk(m.x-P.x,m.z-P.z);G.skill();return m};
-  if(id==='doorboor'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.35);
-    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'doorboor');FX.speel('slag',m.x,m.z,{grootte:2.4,y:.7,spiegel:m.x<P.x})}},200)}
+  if(id==='doorboor'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.5);
+    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'doorboor');FX.speel('knal',m.x,m.z,{grootte:2.6,y:.7,tint:0xffe0a0});FX.speel('flits',m.x,m.z,{grootte:2,y:.7,vertraging:.06})}},200)}
   if(id==='heiligkruis'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.25);ring(m.x,m.z,0xfff2b0,.2,1.2,.35,.9);
-    const r=regelSlag({...a,atk:a.atk+a.matk*.5,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'heiligkruis');FX.speel('flits',m.x,m.z,{grootte:2.4,y:.7,tint:0xfff0a0});FX.speel('sprankel',m.x,m.z,{grootte:2,voet:true,tint:0xfff4c0})}},200)}
+    const r=regelSlag({...a,atk:a.atk+a.matk*.5,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'heiligkruis');FX.speel('straal',m.x,m.z,{grootte:3.4,y:1.5,hoek:Math.PI/2,tint:0xfff0a0,volg:m});FX.speel('sprankel',m.x,m.z,{grootte:2,voet:true,tint:0xfff4c0,vertraging:.1})}},200)}
   if(id==='schildstoot'){const m=doelSlag();if(!m)return;
     /* stormloop: naar het doel toe springen */
-    const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz)||1;if(d>1.2){[P.x,P.z]=botsing(m.x-dx/d*1,m.z-dz/d*1)}P.sprite.stoot(dx,dz,.5);schud(.15,.15);
-    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'schildstoot');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)});FX.speel('vonk',m.x,m.z,{grootte:1.8,y:.6});FX.speel('vorst2',m.x,m.z,{grootte:2.6,y:.3})}},150)}
+    const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz)||1;FX.speel('rook',P.x,P.z,{grootte:1.8,voet:true});if(d>1.2){[P.x,P.z]=botsing(m.x-dx/d*1,m.z-dz/d*1)}P.sprite.stoot(dx,dz,.5);schud(.15,.15);
+    const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'schildstoot');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)});FX.speel('vonk',m.x,m.z,{grootte:1.8,y:.6});FX.speel('knal',m.x,m.z,{grootte:2.6,y:.6,tint:0xfff0b0})}},150)}
   if(id==='rolstoot'){
     P.sp-=sp;P.cd.rolstoot=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);ring(P.x,P.z,0xffd27a,.4,sk.straal,.4,.9);G.skill();schud(.2,.2);FX.speel('tweekleur',P.x,P.z,{grootte:sk.straal*2.4,y:.2});
-    setTimeout(()=>{let n=0;for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec)),'rolstoot');n++}}if(!n)UI.sys('Bowling Bash hit nothing.')},180);
+    setTimeout(()=>{let n=0;for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec)),'rolstoot');FX.speel('spat',m.x,m.z,{grootte:1.5,y:.6,tint:0xffd27a});n++}}if(!n)UI.sys(sk.naam+' hit nothing.')},180);
   }
-  if(id==='volharden'){P.sp-=sp;P.cd.volharden=t+sk.cd;P.endureTot=t+sk.duur(l);P.endureDef=sk.def(l);ring(P.x,P.z,0xd9b25a,.3,1.5,.5,.9);FX.speel('ring',P.x,P.z,{grootte:3,y:.2,tint:0xffd27a});G.skill();UI.sys(`Endure: DEF +${sk.def(l)}, nothing moves you for ${sk.duur(l)}s.`)}
+  if(id==='volharden'){P.sp-=sp;P.cd.volharden=t+sk.cd;P.endureTot=t+sk.duur(l);P.endureDef=sk.def(l);ring(P.x,P.z,0xd9b25a,.3,1.5,.5,.9);FX.speel('splash',P.x,P.z,{grootte:2.8,voet:true,tint:0xffd27a,volg:P});G.skill();UI.sys(`${sk.naam}: DEF +${sk.def(l)}, nothing moves you for ${sk.duur(l)}s.`)}
   if(id==='genezing'){if(P.hp>=hpMax()){UI.sys('You are at full health.');return}P.sp-=sp;P.cd.genezing=t+sk.cd;const h=Math.round(hpMax()*sk.deel(l));P.hp=Math.min(hpMax(),P.hp+h);
-    ring(P.x,P.z,0x7cf5a0,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h,'heal');G.drank();K.render();FX.speel('groenkring',P.x,P.z,{grootte:3.6,y:.2});FX.speel('sprankel',P.x,P.z,{grootte:2.2,voet:true,volg:P})}
+    ring(P.x,P.z,0x7cf5a0,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h,'heal');G.drank();K.render();FX.speel('groenkring',P.x,P.z,{grootte:3.6,y:.2});FX.speel('straal',P.x,P.z,{grootte:3.6,y:1.6,hoek:Math.PI/2,tint:0xfff4c0,volg:P});FX.speel('harten',P.x,P.z,{grootte:2.2,y:1.3,volg:P,tint:0xffe0a0,vertraging:.15})}
   if(id==='manabron'){if(P.sp>=spMax()){UI.sys('Your SP is full.');return}P.cd.manabron=t+sk.cd;const h=Math.round(spMax()*sk.deel(l));P.sp=Math.min(spMax(),P.sp+h);
-    ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h+' SP','mis');G.drank();K.render();FX.speel('groenkring',P.x,P.z,{grootte:3.2,y:.2,tint:0x7fb8ff});FX.speel('sprankel',P.x,P.z,{grootte:2.2,voet:true,volg:P,tint:0x9fd0ff})}
+    ring(P.x,P.z,0x8ad0ff,.3,1.6,.6,.9);UI.getal(P.x,P.sprite.h,P.z,camera,'+'+h+' SP','mis');G.drank();K.render();FX.speel('splash',P.x,P.z,{grootte:3,voet:true,tint:0x7fb8ff,volg:P});FX.speel('sprankel',P.x,P.z,{grootte:2.2,voet:true,volg:P,tint:0x9fd0ff,vertraging:.1})}
   if(id==='bliksem'){const m=doelSlag();if(!m)return;
     const r=spreuk({matk:a.matk,mult:sk.mult(l)});
-    FX.speel('bliksem',m.x,m.z,{grootte:5,voet:true,volg:m});
+    FX.speel('bliksem',m.x,m.z,{grootte:5,voet:true,volg:m});P.sprite.stoot(P.x-m.x,P.z-m.z,.12);
     setTimeout(()=>{if(!m.dood){raak(m,r,'bliksem');FX.speel('vonk',m.x,m.z,{grootte:2,y:.4});schud(.14,.18)}},300)}
   if(id==='aardspies'){const m=doelSlag();if(!m)return;
     const r=spreuk({matk:a.matk,mult:sk.mult(l)});
-    FX.speel('spiesen',m.x,m.z,{grootte:2.6,voet:true,volg:m});FX.speel('wortels',m.x,m.z,{grootte:2.2,voet:true,volg:m,vertraging:.1});
+    FX.speel('spiesen',m.x,m.z,{grootte:2.6,voet:true,volg:m});FX.speel('wortels',m.x,m.z,{grootte:2.2,voet:true,volg:m,vertraging:.1});FX.speel('rook',m.x,m.z,{grootte:2,voet:true,tint:0xc8a070,vertraging:.25});P.sprite.stoot(P.x-m.x,P.z-m.z,.12);
     setTimeout(()=>{if(!m.dood){raak(m,r,'aardspies');schud(.1,.15)}},350)}
   if(id==='stormvlaag'){
     P.sp-=sp;P.cd.stormvlaag=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.7);
     ring(P.x,P.z,0xbfe8ff,.4,sk.straal,.7,.9);ring(P.x,P.z,0xffffff,.2,sk.straal*.6,.5,.6);G.skill();schud(.2,.3);FX.speel('vorst2',P.x,P.z,{grootte:sk.straal*2.5,y:.3});FX.speel('vorst',P.x,P.z,{grootte:sk.straal*1.6,y:.2,vertraging:.15});
     setTimeout(()=>{let n=0;const ids=[];for(const m of M.values()){if(m.dood||!m.sprite.g.visible)continue;
-      if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,spreuk({matk:a.matk,mult:sk.mult(l)}),'stormvlaag');m.ijsTot=nu()+sk.bevries(l);ids.push(m.id);n++}}
-      if(ids.length)net.stuur('ijs',{ids,duur:sk.bevries(l)});if(!n)UI.sys('Storm Gust hit nothing.')},250);
+      if(Math.hypot(m.x-P.x,m.z-P.z)<=sk.straal){raak(m,spreuk({matk:a.matk,mult:sk.mult(l)}),'stormvlaag');FX.speel('spat',m.x,m.z,{grootte:1.5,y:.5,tint:0xdff4ff});m.ijsTot=nu()+sk.bevries(l);ids.push(m.id);n++}}
+      if(ids.length)net.stuur('ijs',{ids,duur:sk.bevries(l)});if(!n)UI.sys(sk.naam+' hit nothing.')},250);
   }
-  if(id==='energiemantel'){P.sp-=sp;P.cd.energiemantel=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xa8dcff);ring(P.x,P.z,0x5fb0ff,.3,1.8,.7,.9);G.skill();UI.sys(`Energy Coat: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`)}
-  if(id==='wapenversnelling'){P.sp-=sp;P.cd.wapenversnelling=t+sk.cd;P.quickenTot=t+sk.duur(l);P.quickenF=sk.factor(l);ring(P.x,P.z,0xffd27a,.3,1.6,.5,.9);FX.speel('ring',P.x,P.z,{grootte:3,y:.2,tint:0xfff0b0});G.skill();UI.sys(`Weapon Quicken: ${Math.round((1-sk.factor(l))*100)}% faster attacks for ${sk.duur(l)}s.`)}
+  if(id==='energiemantel'){P.sp-=sp;P.cd.energiemantel=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xa8dcff);ring(P.x,P.z,0x5fb0ff,.3,1.8,.7,.9);FX.speel('splash',P.x,P.z,{grootte:2.6,voet:true,tint:0x8ad0ff,volg:P});G.skill();UI.sys(`${sk.naam}: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`)}
+  if(id==='wapenversnelling'){P.sp-=sp;P.cd.wapenversnelling=t+sk.cd;P.quickenTot=t+sk.duur(l);P.quickenF=sk.factor(l);ring(P.x,P.z,0xffd27a,.3,1.6,.5,.9);FX.speel('sprankel',P.x,P.z,{grootte:2.2,voet:true,volg:P,tint:0xfff0b0});FX.speel('flits',P.x,P.z,{grootte:1.8,y:1.2,tint:0xfff0b0,volg:P});G.skill();UI.sys(`${sk.naam}: ${Math.round((1-sk.factor(l))*100)}% faster attacks for ${sk.duur(l)}s.`)}
   if(id==='ijsbout'){const m=doelSlag();if(!m)return;const r=spreuk({matk:a.matk,mult:sk.mult(l)});
-    projectiel(P.x,P.z,m,0x9ad8ff,()=>{if(!m.dood){raak(m,r,'ijsbout');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)});FX.speel('vorst2',m.x,m.z,{grootte:2.2,y:.3})}})}
+    projectiel(P.x,P.z,m,0x9ad8ff,()=>{if(!m.dood){raak(m,r,'ijsbout');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)});FX.speel('vorst2',m.x,m.z,{grootte:2.2,y:.3});FX.speel('spat',m.x,m.z,{grootte:1.4,y:.7,tint:0xe0f8ff})}});P.sprite.stoot(P.x-m.x,P.z-m.z,.12)}
   if(id==='zielsslag'){const m=doelSlag();if(!m)return;const n=sk.bouten(l);
-    for(let k=0;k<n;k++)setTimeout(()=>{if(m.dood||P.dood)return;const r=spreuk({matk:a.matk,mult:sk.mult(l)});projectiel(P.x,P.z,m,0xd8c8ff,()=>{if(!m.dood){raak(m,r,'zielsslag');FX.speel('flits',m.x,m.z,{grootte:1.3,y:.7,tint:0xd8c8ff})}})},k*170)}
+    for(let k=0;k<n;k++)setTimeout(()=>{if(m.dood||P.dood)return;const r=spreuk({matk:a.matk,mult:sk.mult(l)});projectiel(P.x,P.z,m,0xd8c8ff,()=>{if(!m.dood){raak(m,r,'zielsslag');FX.speel('sprankel',m.x,m.z,{grootte:1.6,voet:true,tint:0xd8c8ff})}})},k*170)}
   if(id==='spiraal'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.3);
-    for(let k=0;k<sk.slagen;k++)setTimeout(()=>{if(m.dood)return;const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));raak(m,r,'spiraal');FX.speel('slag',m.x,m.z,{grootte:2,y:.7,spiegel:k%2===1})},150+k*160)}
+    for(let k=0;k<sk.slagen;k++)setTimeout(()=>{if(m.dood)return;const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));raak(m,r,'spiraal');FX.speel('slag',m.x,m.z,{grootte:2,y:.7,spiegel:k%2===1});if(k===sk.slagen-1)FX.speel('knal',m.x,m.z,{grootte:2.4,y:.7,tint:0xffe0a0})},150+k*160)}
   if(id==='meteoor'){const m=doelSlag();if(!m)return;const tx=m.x,tz=m.z;
     FX.speel('komeet',tx-2.5,tz-4,{grootte:3.2,y:5,spiegel:false,loop:true}).stop();
     const kom=FX.speel('komeet',tx-3,tz,{grootte:3.4,y:6,loop:true});effecten.push({t:0,duur:.55,vlucht:{x0:tx-3,z0:tz,doel:{x:tx,z:tz},e:kom,fn:()=>{}}});
-    setTimeout(()=>{FX.speel('explosie',tx,tz,{grootte:sk.straal*2.6,voet:true,y:-.1});FX.speel('vuurkring',tx,tz,{grootte:sk.straal*2.2,y:.2,vertraging:.08});schud(.35,.35);G.raak(true);
+    setTimeout(()=>{FX.speel('paddenstoel',tx,tz,{grootte:sk.straal*3,voet:true,y:-.1});FX.speel('vuurkring',tx,tz,{grootte:sk.straal*2.2,y:.2,vertraging:.08});vuurtjes(tx,tz,1.8,4,2.2);schud(.35,.35);G.raak(true);
       for(const mm of M.values()){if(mm.dood||!mm.sprite.g.visible)continue;if(Math.hypot(mm.x-tx,mm.z-tz)<=sk.straal)raak(mm,spreuk({matk:a.matk,mult:sk.mult(l)}),'meteoor')}},600)}
   if(id==='provocatie'){
     P.sp-=sp;P.cd.provocatie=t+sk.cd;if(P.zit)zitten(false);speelEens('pijn',.3);
-    const straal=sk.straal(l);ring(P.x,P.z,0xff4d4d,.3,straal,.5,.7);FX.speel('ring',P.x,P.z,{grootte:3.2,y:.2,tint:0xff7070});
+    const straal=sk.straal(l);ring(P.x,P.z,0xff4d4d,.3,straal,.5,.7);FX.speel('ring',P.x,P.z,{grootte:3.2,y:.2,tint:0xff7070});FX.speel('knal',P.x,P.z,{grootte:2.4,y:1.4,tint:0xff6060,volg:P});
     let n=0;for(const m of M.values())if(!m.dood&&m.sprite.g.visible&&Math.hypot(m.x-P.x,m.z-P.z)<=straal)n++;
     net.stuur('prov',{x:+P.x.toFixed(2),z:+P.z.toFixed(2),straal});
     UI.sys(n?`You provoke ${n} monster${n===1?'':'s'}.`:'There is nobody to provoke.');
@@ -456,7 +457,7 @@ function beloning(d){
   d={...d,exp:Math.round(d.exp*ADMIN.expMult)};P.exp+=d.exp;P.zeny+=d.zeny;
   UI.getal(P.x,P.sprite.h+.4,P.z,camera,'+'+d.exp+' exp','exp');
   if(d.buit&&ITEMS[d.buit]){const it=ITEMS[d.buit];
-    G.buit();if(tasToevoegen(d.buit))UI.log('<span class="lvl">You found: '+it.icoon+' '+UI.esc(it.naam)+'!'+(it.slot?' Open your inventory (I) to equip it.':'')+'</span>');
+    G.buit();if(tasToevoegen(d.buit))UI.log('<span class="lvl">You found: '+ico(d.buit,it.icoon,'klein')+' '+UI.esc(it.naam)+'!'+(it.slot?' Open your inventory (I) to equip it.':'')+'</span>');
     else UI.sys(`Your bag is full, the ${it.naam.toLowerCase()} was left behind.`);I.render()}
   let up=false,jobUp=false;
   while(P.lvl<MAX_LVL&&P.exp>=expVoor(P.lvl)){P.exp-=expVoor(P.lvl);P.lvl++;up=true}
@@ -544,6 +545,8 @@ function herleefAlles(){if(!H)return;for(const m of M.values())if(m.dood)m.rt=0}
 
 /* ====================== effecten ====================== */
 const effecten=[];
+/* n vuurtjes in een kring met straal r rond (x,z), die na duur seconden doven */
+function vuurtjes(x,z,r,n,duur){for(let k=0;k<n;k++){const h=k/n*Math.PI*2+Math.random();const v=FX.speel('vuur',x+Math.cos(h)*r,z+Math.sin(h)*r,{grootte:1.3+Math.random()*.5,voet:true,loop:true,vertraging:.2+k*.07});if(v)setTimeout(()=>v.stop(),duur*1000+k*120)}}
 const ringGeo=new THREE.RingGeometry(.82,1,40);
 /* een projectiel: de komeet uit de effectsheets vliegt van de speler naar het monster, daarna fn() */
 function projectiel(x0,z0,m,kleur,fn){
@@ -632,7 +635,9 @@ function invoer(){
   $('#chatin').addEventListener('submit',e=>{e.preventDefault();const inp=$('#chattekst');const t=inp.value.trim();inp.value='';inp.blur();if(t&&net)net.stuur('c',{t:t.slice(0,120)})});
   $('#k-knop').onclick=()=>{if(K)K.toggle()};$('#i-knop').onclick=()=>{if(I)I.toggle()};$('#a-knop').onclick=()=>{if(ADM)ADM.toggle()};
   $('#m-knop').onclick=()=>{if(KT)KT.toggle()};
-  const gk=$('#g-knop');gk.textContent=geluidAan()?'🔊':'🔇';gk.onclick=()=>{zetGeluid(!geluidAan());gk.textContent=geluidAan()?'🔊':'🔇';G.klik()};
+  const gk=$('#g-knop');const zetGk=()=>{gk.innerHTML=ico('ui_geluid',geluidAan()?'🔊':'🔇');gk.classList.toggle('uit',!geluidAan())};zetGk();gk.onclick=()=>{zetGeluid(!geluidAan());zetGk();G.klik()};
+  /* vaste iconen in de HTML (knoppen, drank, zit, zeny) */
+  document.querySelectorAll('[data-ico]').forEach(e=>{e.innerHTML=ico(e.dataset.ico,e.dataset.emoji||'')});
   $('#m-chat').onclick=()=>{document.body.classList.add('chat-open');$('#chattekst').focus()};$('#chat-sluit').onclick=()=>{document.body.classList.remove('chat-open');$('#chattekst').blur()};
   $('#j-knop').onclick=()=>{if(!K)return;if(K.isOpen())K.sluit();else K.toon('quests')};
   $('#m-zoomin').onclick=()=>zoom(1);$('#m-zoomuit').onclick=()=>zoom(-1);
@@ -674,7 +679,7 @@ function stap(dt){
   updateBorden();
   if(FX)FX.update(dt,cam);
   if(DAG)DAG.update(cam,gestart&&!P.dood?[{x:P.x,z:P.z,y:.8,r:4,kleur:[255,240,220],sterkte:.4}]:[]);
-  klokT+=dt;if(klokT>1){klokT=0;$('#h-tijd').textContent=(daglicht()>.5?'☀️ ':'🌙 ')+klokTekst()}
+  klokT+=dt;if(klokT>1){klokT=0;$('#h-tijd').innerHTML=ico(daglicht()>.5?'ui_zon':'ui_maan',daglicht()>.5?'☀️':'🌙','klein')+' '+klokTekst()}
   renderer.render(scene,camera);
 }
 

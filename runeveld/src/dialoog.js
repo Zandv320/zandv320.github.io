@@ -1,5 +1,6 @@
 /* Runeveld – gespreksvenster met een npc: portret, tekst en keuzes (quests, winkel, afscheid). */
 import {esc} from './ui.js';
+import {ico} from './iconen.js';
 
 /* Q: de questmodule; A: {openWinkel(), gesloten()} */
 export function maakDialoog(Q,A){
@@ -19,7 +20,7 @@ export function maakDialoog(Q,A){
   function toon(tekst,keuzes){
     $('#dl-tekst').textContent=tekst;
     const k=$('#dl-keuzes');k.innerHTML='';
-    for(const[label,fn,klasse]of keuzes){const b=document.createElement('button');b.className='knop'+(klasse?' '+klasse:'');b.textContent=label;b.onclick=fn;k.appendChild(b)}
+    for(const[label,fn,klasse]of keuzes){const b=document.createElement('button');b.className='knop'+(klasse?' '+klasse:'');b.innerHTML=label;b.onclick=fn;k.appendChild(b)}
   }
   /* het hoofdmenu van een npc */
   function menu(){
@@ -31,7 +32,7 @@ export function maakDialoog(Q,A){
     }
     const adv=A.advancementOpties&&A.advancementOpties(n.naam);
     if(adv)keuzes.push(['I am ready to choose my path',()=>toon('You have learned everything your first calling could teach you. Choose wisely; there is no way back.',
-      adv.map(id=>{const k=A.klasseNaam(id);return[`${k.icoon} ${k.naam}`,()=>toon(`${k.naam}: ${k.beschr} Is this your path?`,[[`Become a ${k.naam}`,()=>{if(A.advance(id))sluit()}],['Not yet',menu,'alt']])]}).concat([['Not yet',menu,'alt']]))]);
+      adv.map(id=>{const k=A.klasseNaam(id);return[`${ico('k_'+id,k.icoon,'klein')} ${k.naam}`,()=>toon(`${k.naam}: ${k.beschr} Is this your path?`,[[`Become a ${k.naam}`,()=>{if(A.advance(id))sluit()}],['Not yet',menu,'alt']])]}).concat([['Not yet',menu,'alt']]))]);
     if(n.winkel)keuzes.push(['Let me see your wares',()=>{sluit();A.openWinkel()},'alt']);
     keuzes.push(['Goodbye',sluit,'alt']);
     toon(n.groet,keuzes);
