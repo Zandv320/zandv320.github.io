@@ -110,8 +110,10 @@ export function updateDorpelingen(dt,cam,camera,speler){
   }
 }
 
-/* aangeklikt: even naar de speler kijken en iets zeggen */
-export function spreek(n,speler){
-  n.sprite.zetKijk(speler.x-n.x,speler.z-n.z);n.pauze=Math.max(n.pauze,3);
-  UI.bubble(n.label,n.spec.praatjes[Math.floor(Math.random()*n.spec.praatjes.length)]);n.praatT=R(20,45);
+/* aangesproken: naar de speler kijken en even blijven staan; het gesprek zelf gaat via dialoog.js */
+export function spreek(n,speler,sec=4){
+  n.sprite.zetKijk(speler.x-n.x,speler.z-n.z);n.pauze=Math.max(n.pauze,sec);n.praatT=Math.max(n.praatT,sec+R(10,30));
 }
+export const dorpelingen=()=>lijst;
+/* de begroeting in het gesprek: het eerste praatje */
+export const groet=n=>n.spec.praatjes[0];

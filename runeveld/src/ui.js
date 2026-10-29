@@ -6,7 +6,7 @@ const _v=new THREE.Vector3();
 
 export function maakLabel(klasse,naam){
   const el=document.createElement('div');el.className='label '+klasse;
-  el.innerHTML='<div class="naam"></div><div class="hp" hidden><i></i></div>';
+  el.innerHTML='<div class="qm" hidden></div><div class="naam"></div><div class="hp" hidden><i></i></div>';
   el.querySelector('.naam').textContent=naam;labelsEl.appendChild(el);
   return{el,naam:el.querySelector('.naam'),hp:el.querySelector('.hp'),hpi:el.querySelector('.hp i'),bubble:null,timer:0};
 }
@@ -20,6 +20,8 @@ export function labelHp(l,hp,max,toon){
   l.hp.hidden=!toon;if(toon)l.hpi.style.transform=`scaleX(${Math.max(0,hp/max).toFixed(3)})`;
 }
 export function verwijderLabel(l){l.el.remove()}
+/* questmarker boven een npc: 'nieuw' (!), 'bezig' (grijze ?), 'klaar' (gouden ?) of null */
+export function questMarker(l,soort){const m=l.el.querySelector('.qm');m.hidden=!soort;m.className='qm '+(soort||'');m.textContent=soort==='nieuw'?'!':soort?'?':''}
 export function bubble(l,tekst){
   if(l.bubble)l.bubble.remove();const b=document.createElement('div');b.className='bubble';b.textContent=tekst;l.el.appendChild(b);l.bubble=b;
   clearTimeout(l.timer);l.timer=setTimeout(()=>{b.remove();if(l.bubble===b)l.bubble=null},6000);

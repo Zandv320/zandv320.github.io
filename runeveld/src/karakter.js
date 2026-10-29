@@ -20,9 +20,16 @@ export function maakKarakter(P,A){
     $('#k-naam').textContent=P.naam;$('#k-sub').textContent=`Level ${P.lvl} · Swordsman · Job ${P.job}`;
     const vs=A.vrijeStat(),vk=A.vrijeSkill();
     document.querySelectorAll('.ktab').forEach(b=>{b.classList.toggle('actief',b.dataset.tab===tab);
-      const n=b.dataset.tab==='stats'?vs:b.dataset.tab==='skills'?vk:0;b.querySelector('.kbadge').textContent=n>0?n:'';b.querySelector('.kbadge').hidden=n<=0});
-    $('#k-tab-uitrusting').hidden=tab!=='uitrusting';$('#k-tab-stats').hidden=tab!=='stats';$('#k-tab-skills').hidden=tab!=='skills';
-    if(tab==='uitrusting')renderUitrusting(af);else if(tab==='stats')renderStats(af,vs);else renderSkills(vk);
+      const n=b.dataset.tab==='stats'?vs:b.dataset.tab==='skills'?vk:b.dataset.tab==='quests'?A.questsKlaar():0;b.querySelector('.kbadge').textContent=n>0?n:'';b.querySelector('.kbadge').hidden=n<=0});
+    for(const t of['uitrusting','stats','skills','quests'])$('#k-tab-'+t).hidden=tab!==t;
+    if(tab==='uitrusting')renderUitrusting(af);else if(tab==='stats')renderStats(af,vs);else if(tab==='skills')renderSkills(vk);else renderQuests();
+  }
+  function renderQuests(){
+    const l=A.questLijst(),naam={nieuw:'Available',bezig:'In progress',klaar:'Ready to turn in',gedaan:'Completed'};
+    $('#k-questlijst').innerHTML=l.length?l.map(x=>`<div class="quest ${x.st}"><div class="qkop"><b>${esc(x.q.titel)}</b><span class="qst">${naam[x.st]}</span></div>
+      <small>${esc(x.q.gever)}${x.st==='gedaan'?'':' · '+esc(x.voortgang)}</small><p>${esc(x.st==='gedaan'?x.q.klaar:x.q.intro)}</p>
+      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>' · '+ITEMS[i.id].icoon+' '+esc(ITEMS[i.id].naam)+(i.n>1?' ×'+i.n:'')).join('')}</div></div>`).join('')
+      :'<p class="ktip">No quests yet. Villagers with a <b class="qm nieuw">!</b> above their head have work for you.</p>';
   }
   function renderUitrusting(af){
     $('#k-stats').innerHTML=[['HP',`${Math.ceil(P.hp)} / ${af.hpMax}`],['SP',`${Math.floor(P.sp)} / ${af.spMax}`],['ATK',af.atk],['DEF',af.def],['EXP',`${P.exp} / ${A.expMax()}`],['Zeny',P.zeny]]

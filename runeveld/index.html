@@ -22,6 +22,20 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 .label{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:3px;white-space:nowrap;will-change:transform}
 .label .naam{font-size:12px;font-weight:500;text-shadow:0 1px 2px #000;padding:1px 7px;border-radius:6px;background:rgba(0,0,0,.4)}
 .label.speler .naam{display:none}  /* je eigen naam staat al in de HUD; de ballon blijft boven je hoofd */.label.ander .naam{color:#bfe3ff}.label.monster .naam{color:#ffd1d1}.label.npc .naam{color:#ffe9a8}
+.label .qm{font-size:20px;font-weight:900;line-height:1;color:var(--goud);text-shadow:0 2px 0 #5a3d00,0 0 10px rgba(0,0,0,.6);animation:qm 1.2s ease-in-out infinite}
+.label .qm.bezig{color:#c9d3dd;text-shadow:0 2px 0 #223,0 0 10px rgba(0,0,0,.6);animation:none}
+@keyframes qm{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+#qtracker{position:absolute;left:max(12px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 104px);width:230px;padding:8px 12px;font-size:12px;display:flex;flex-direction:column;gap:5px}
+#qtracker .qt{display:flex;flex-direction:column}#qtracker .qt b{font-weight:500}#qtracker .qt span{color:var(--dim)}#qtracker .qt.klaar span{color:var(--goud)}
+@media (max-width:700px){#qtracker{display:none}}
+#dialoog{position:absolute;left:50%;bottom:max(96px,calc(env(safe-area-inset-bottom) + 96px));transform:translateX(-50%);width:min(520px,calc(100vw - 24px));padding:12px 14px;display:flex;gap:14px;z-index:4}
+#dialoog canvas{width:72px;height:96px;image-rendering:pixelated;flex:none;background:rgba(0,0,0,.25);border-radius:8px}
+#dialoog .dl-body{flex:1;min-width:0}#dialoog b{color:var(--goud);font-size:15px}#dialoog p{margin:4px 0 10px;line-height:1.4;font-size:13px}
+#dl-keuzes{display:flex;flex-wrap:wrap;gap:6px}#dl-keuzes .knop{padding:6px 12px;font-size:13px}
+.kquests{display:flex;flex-direction:column;gap:8px}.kquests .quest{background:rgba(255,255,255,.05);border:1px solid var(--rand);border-radius:10px;padding:8px 10px}
+.kquests .quest.klaar{border-color:rgba(255,200,87,.5)}.kquests .quest.gedaan{opacity:.55}
+.kquests .qkop{display:flex;justify-content:space-between;gap:8px}.kquests .qst{font-size:11px;color:var(--dim)}.kquests .quest.klaar .qst{color:var(--goud)}
+.kquests small{color:var(--dim)}.kquests p{margin:4px 0;font-size:13px;line-height:1.4}.kquests .qbel{font-size:12px;color:var(--dim)}
 .label .hp{width:46px;height:5px;background:rgba(0,0,0,.6);border-radius:3px;overflow:hidden}
 .label .hp i{display:block;height:100%;background:#4ade80;transform-origin:left}
 .label.monster .hp i{background:var(--rood)}
@@ -195,6 +209,7 @@ body.touch #mobiel{display:flex}
     <button class="paneel" id="k-knop" title="Character (C)">👤</button>
     <a class="paneel" href="../" title="Back to all games">⌂</a>
   </div>
+  <div id="qtracker" class="paneel" hidden></div>
   <div id="doelkader" class="paneel" hidden><b id="d-naam"></b> <small id="d-lvl"></small><div class="bar hp"><i id="d-hp"></i><span id="d-hpt"></span></div></div>
   <div id="melding"></div>
   <div id="chat">
@@ -213,7 +228,7 @@ body.touch #mobiel{display:flex}
 
 <div id="karakter" class="paneel" hidden>
   <div class="kkop"><div><h3 id="k-naam">—</h3><small id="k-sub"></small></div><button class="ksluit" id="k-sluit" title="Close (C)">✕</button></div>
-  <div class="ktabs"><button class="ktab actief" data-tab="uitrusting">Equipment<span class="kbadge" hidden></span></button><button class="ktab" data-tab="stats">Stats<span class="kbadge" hidden></span></button><button class="ktab" data-tab="skills">Skills<span class="kbadge" hidden></span></button></div>
+  <div class="ktabs"><button class="ktab actief" data-tab="uitrusting">Equipment<span class="kbadge" hidden></span></button><button class="ktab" data-tab="stats">Stats<span class="kbadge" hidden></span></button><button class="ktab" data-tab="skills">Skills<span class="kbadge" hidden></span></button><button class="ktab" data-tab="quests">Quests<span class="kbadge" hidden></span></button></div>
   <div class="kgrid" id="k-tab-uitrusting">
     <div class="kpreview"><canvas id="k-canvas" width="144" height="160"></canvas><div class="kstats" id="k-stats"></div></div>
     <div>
@@ -230,6 +245,12 @@ body.touch #mobiel{display:flex}
     <p class="ktip" id="k-skillpunten"></p>
     <div class="kskills" id="k-skilllijst"></div>
   </div>
+  <div id="k-tab-quests" hidden><div class="kquests" id="k-questlijst"></div></div>
+</div>
+
+<div id="dialoog" class="paneel" hidden>
+  <canvas id="dl-portret" width="48" height="64"></canvas>
+  <div class="dl-body"><b id="dl-naam"></b><p id="dl-tekst"></p><div id="dl-keuzes"></div></div>
 </div>
 
 <div id="admin" class="paneel" hidden>
@@ -257,7 +278,7 @@ body.touch #mobiel{display:flex}
     <input id="naam" maxlength="14" placeholder="e.g. Aria" spellcheck="false">
     <div class="klas"><div class="icoon">⚔️</div><div><b>Swordsman</b><small>Strong up close. Skills: Bash and Magnum Break.</small></div></div>
     <button id="speel" class="knop">Play</button>
-    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
+    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> skills · <kbd>4</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
     <a class="terug" href="../">← All games</a>
   </div>
 </div>

@@ -24,6 +24,10 @@ export const ITEMS={
   houtzwaard:{naam:'Wooden sword',slot:'wapen',laag:'wapen1',atk:4,prijs:25,icoon:'🪵',beschr:'A practice sword. The rabbits still mind it.'},
   ijzerzwaard:{naam:'Iron sword',slot:'wapen',laag:'wapen2',atk:11,prijs:400,icoon:'🗡️',beschr:'A proper blade with a proper edge.'},
   staalzwaard:{naam:'Steel sword',slot:'wapen',laag:'wapen3',atk:22,prijs:1800,icoon:'⚔️',beschr:'Forged for someone who means it.'},
+  /* buit voor quests; verkoopbaar voor een paar zeny */
+  konijnenpoot:{naam:'Rabbit foot',prijs:6,icoon:'🐾',stapel:99,beschr:'Lucky, allegedly. Not for the rabbit.'},
+  vossenstaart:{naam:'Fox tail',prijs:14,icoon:'🦊',stapel:99,beschr:'Bushy and still a little warm.'},
+  zwijnenhuid:{naam:'Boar hide',prijs:22,icoon:'🟫',stapel:99,beschr:'Thick, bristly and smelling of forest.'},
 };
 export const STARTUITRUSTING={hoofd:null,lichaam:'tuniek',wapen:'houtzwaard'};
 export const STARTTAS=[{id:'drank',n:5}];
@@ -34,9 +38,9 @@ export const VERKOOPDEEL=.5;
 /* De monsters volgen de dieren uit het Craftpix-pack "Hunt Animals": konijn, vos, everzwijn.
    `zone`: afstand tot het dorpsmidden waar ze leven (buiten de palissade); `buit`: kans per item dat het valt. */
 export const MONSTERS={
-  konijn:{naam:'Rabbit',lvl:1,hp:28,atk:4,exp:11,zeny:[2,7],snelheid:1.8,agressief:false,bereik:1.1,aggro:0,zone:[25,38],buit:{drank:.1,tuniek:.02,leren_kap:.03}},
-  vos:{naam:'Fox',lvl:3,hp:60,atk:8,exp:26,zeny:[6,14],snelheid:2.6,agressief:true,bereik:1.2,aggro:4.5,zone:[33,50],buit:{drank:.15,vest:.06,ijzerzwaard:.05,leren_kap:.05}},
-  zwijn:{naam:'Boar',lvl:6,hp:140,atk:14,exp:62,zeny:[12,30],snelheid:2.2,agressief:true,bereik:1.4,aggro:5,zone:[44,57],buit:{drank:.25,vest:.1,ijzerzwaard:.08,harnas:.05,staalzwaard:.04,ijzeren_helm:.06}},
+  konijn:{naam:'Rabbit',lvl:1,hp:28,atk:4,exp:11,zeny:[2,7],snelheid:1.8,agressief:false,bereik:1.1,aggro:0,zone:[25,38],buit:{konijnenpoot:.45,drank:.1,tuniek:.02,leren_kap:.03}},
+  vos:{naam:'Fox',lvl:3,hp:60,atk:8,exp:26,zeny:[6,14],snelheid:2.6,agressief:true,bereik:1.2,aggro:4.5,zone:[33,50],buit:{vossenstaart:.5,drank:.15,vest:.06,ijzerzwaard:.05,leren_kap:.05}},
+  zwijn:{naam:'Boar',lvl:6,hp:140,atk:14,exp:62,zeny:[12,30],snelheid:2.2,agressief:true,bereik:1.4,aggro:5,zone:[44,57],buit:{zwijnenhuid:.55,drank:.25,vest:.1,ijzerzwaard:.08,harnas:.05,staalzwaard:.04,ijzeren_helm:.06}},
 };
 /* Hoeveel van elk monster er rondlopen. */
 export const SPAWNS=[{soort:'konijn',n:14},{soort:'vos',n:8},{soort:'zwijn',n:4}];
