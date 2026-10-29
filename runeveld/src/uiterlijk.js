@@ -49,7 +49,7 @@ export function haarLaag(laag,kleur){
 export function heldLagen(uitr,haar){
   const T=BLADEN.held.lagen,lagen=basisLagen(uitr||{});
   if(!haar||haar==='standaard')return lagen;
-  return lagen.map(t=>{for(const l of['hoofd','hoofd1','hoofd2'])if(t===T[l])return haarLaag(l,haar);return t});
+  return lagen.map(t=>{for(const l of['hoofd','hoofd1','hoofd2','hoed1','hoed2'])if(t===T[l])return haarLaag(l,haar);return t});
 }
 /* tekent de held op een canvas: alleen het stuk van het frame waar het figuur staat, zodat hij groot in beeld komt.
    t: tijd in seconden voor de animatie; richting: 'onder' (naar de kijker) enz. */

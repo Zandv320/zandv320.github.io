@@ -12,6 +12,9 @@ export function slag({atk,hit,crit=0,mult=1},{flee},rng=Math.random){
   return{mis:false,dmg,crit:kritiek};
 }
 
+/* een spreuk: mist nooit, geen kritieke treffers; mult: vermenigvuldiger van de skill */
+export function spreuk({matk,mult=1},rng=Math.random){return{mis:false,dmg:Math.max(1,Math.round(matk*mult*(0.9+rng()*0.2))),crit:false,magie:true}}
+
 /* schade die overblijft na verdediging */
 export function naVerdediging(dmg,def){return Math.max(1,Math.round(dmg*100/(100+def*5)))}
 

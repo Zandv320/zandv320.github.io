@@ -6,6 +6,7 @@
                'item'   lever n van `item` in (wordt uit de tas gehaald bij inleveren)
                'bezoek' spreek `npc` aan
                'plek'   kom binnen `r` van (x,z); `naam` is de omschrijving in de tracker
+   Een beloningsitem kan per klasse verschillen: {id, n, mage: id-voor-magiërs}.
    Een quest kan een minimumlevel (`lvl`) en een voorafgaande quest (`na`) vereisen. */
 export const QUESTS={
   mette_welkom:{gever:'Old Mette',titel:'A warm welcome',lvl:1,
@@ -46,8 +47,8 @@ export const QUESTS={
   ragnar_huiden:{gever:'Smith Ragnar',titel:'Hides for the forge',lvl:6,na:'jorn_zwijnen',
     intro:'Jorn says you handle boars. Good. I need four boar hides for the bellows. Bring them and I will make it worth your while.',
     bezig:'Four boar hides. The boars are east of the village.',
-    klaar:'Four good hides. A deal is a deal: this helm has been waiting for a head that deserves it.',
-    doel:{soort:'item',item:'zwijnenhuid',n:4},beloning:{exp:400,zeny:300,items:[{id:'ijzeren_helm',n:1}]}},
+    klaar:'Four good hides. A deal is a deal: this has been waiting for someone who deserves it.',
+    doel:{soort:'item',item:'zwijnenhuid',n:4},beloning:{exp:400,zeny:300,items:[{id:'ijzeren_helm',n:1,mage:'sterrenhoed'}]}},
   /* ---- Whisperwood, level 8 tot 15 ---- */
   mette_altaar:{gever:'Old Mette',titel:'The old altar',lvl:8,na:'mette_welkom',
     intro:'When I was a girl we left bread at the old altar in Whisperwood, north past the gate. Nobody goes there any more. Go and see if it still stands. Follow the path and do not stray.',
@@ -67,13 +68,13 @@ export const QUESTS={
   ragnar_gewei:{gever:'Smith Ragnar',titel:'Antlers for the forge',lvl:10,na:'ragnar_huiden',
     intro:'Stag antler makes the best sword hilts. There are stags in Whisperwood. Two antlers. They will not give them up gladly.',
     bezig:'Two stag antlers. The stags graze deep in Whisperwood. They are peaceful until you are not.',
-    klaar:'Two antlers. Now this is hilt material. Take this vest, I have outgrown it.',
-    doel:{soort:'item',item:'gewei',n:2},beloning:{exp:800,zeny:400,items:[{id:'vest',n:1}]}},
+    klaar:'Two antlers. Now this is hilt material. Take this, I have no use for it.',
+    doel:{soort:'item',item:'gewei',n:2},beloning:{exp:800,zeny:400,items:[{id:'vest',n:1,mage:'zijden_gewaad'}]}},
   rolf_everzwijn:{gever:'Guard Rolf',titel:'The dire boar',lvl:13,na:'rolf_wolven',
     intro:'Something big has made its den on the stone circle at the end of the forest path. A boar, they say, the size of a cart. Nobody goes near the altar any more. Deal with it and I will give you my own steel.',
     bezig:'The dire boar lives on the stone circle at the old altar, at the end of the path through Whisperwood. Bring potions.',
-    klaar:'You killed it? By the gods. Here, as promised: my steel sword. Carry it better than I did.',
-    doel:{soort:'dood',monster:'everzwijn',n:1},beloning:{exp:1500,zeny:1200,items:[{id:'staalzwaard',n:1}]}},
+    klaar:'You killed it? By the gods. Here, as promised, the best I have. Carry it better than I did.',
+    doel:{soort:'dood',monster:'everzwijn',n:1},beloning:{exp:1500,zeny:1200,items:[{id:'staalzwaard',n:1,mage:'kristalstaf'}]}},
 };
 export const QUEST_VOLGORDE=Object.keys(QUESTS);
 

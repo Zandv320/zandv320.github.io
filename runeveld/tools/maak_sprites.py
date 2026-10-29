@@ -17,6 +17,7 @@ Uitvoer (allemaal pixel-art, 1 wereld-eenheid = 16 px, zie world.js):
     wapen1..3.png          zwaard vóór het lijf (incl. zwaai-effect), wapen1b..3b.png het deel achter het lijf
     konijn/vos/zwijn.png   32×32 frames, 6 kolommen, per animatie 4 rijen (onder, boven, links, rechts)
     hert/wolf/everzwijn.png bosdieren: hert uit het pack, wolf en reuzenzwijn herkleurd uit vos en zwijn
+    gewaad1..3/staf1..3(+b)/hoed1..2 magiër: gewaad, staf met bol en punthoed, afgeleid van de heldlagen
     koopman.png            32×32 frames, 4 kolommen, 1 rij
     grond.png              7 tegels van 32×32 naast elkaar: 3× gras, 2× keien, 2× pad
     <decor>.png            losse plaatjes op ware grootte
@@ -144,6 +145,9 @@ uit = stapel_lagen(lagen, 64, 64, 12)
 basis = naakt(uit[0])
 basis.save(UIT / 'held_lijf.png')
 uit[1].save(UIT / 'held_hoofd.png')
+for i, lvl in enumerate((1, 2, 3)):                   # kleding als verschil met het naakte lijf; zwaard vóór en achter
+    verschil(uit[2 + 3 * i], basis).save(UIT / f'harnas{lvl}.png')
+    uit[3 + 3 * i].save(UIT / f'wapen{lvl}.png'); uit[4 + 3 * i].save(UIT / f'wapen{lvl}b.png')
 
 # ---------- hoofddeksels: handgetekende pixel-art, per frame op het hoofd gezet ----------
 # Elk deksel heeft vier tekeningen (front, left, right, back) in tekens: . leeg, o omlijning, d donker, m midden, l licht, h glans.
@@ -277,6 +281,170 @@ def hoofddeksel(hoofd, front, right, back, kleuren, rand, fw=64, fh=64):
 
 hoofddeksel(uit[1], PET_FRONT, PET_RIGHT, PET_BACK, LEER, rand=8).save(UIT / 'hoofd1.png')      # leren pet
 hoofddeksel(uit[1], HELM_FRONT, HELM_RIGHT, HELM_BACK, IJZER, rand=8).save(UIT / 'hoofd2.png')  # ijzeren helm
+
+# ---------- magiër: gewaad, staf en punthoed, afgeleid van de heldlagen ----------
+# Het gewaad is de tuniek in een ander palet plus de benen van het lijf in de zoomkleur (een lang gewaad).
+# De staf volgt per frame de as van het houten zwaard (de hand is het eind dat het dichtst bij het lijf ligt) en
+# steekt daar voorbij omhoog met een bol op de top; de zwaai-boog wordt een lichtblauwe magie-boog.
+# De punthoed gaat net als de helmen per frame op de schedel.
+TUNIEK_GRIJS = [(45, 49, 43), (63, 67, 61), (94, 97, 90), (111, 115, 106), (134, 139, 124)]      # donker → licht
+GEWADEN = {
+    'gewaad1': [(24, 34, 76), (38, 54, 116), (58, 82, 158), (72, 100, 180), (104, 136, 210)],       # blauw
+    'gewaad2': [(80, 22, 30), (118, 32, 44), (160, 48, 60), (184, 66, 76), (214, 104, 108)],       # rood
+    'gewaad3': [(52, 22, 76), (78, 34, 112), (108, 52, 150), (130, 70, 176), (166, 110, 210)],     # paars
+}
+LIJF_OMLIJNING = {(85, 45, 36), (121, 80, 72), (81, 50, 46)}
+
+
+def gewaad(tuniek, lijf, palet, fw=64, fh=64):
+    out = Image.new('RGBA', tuniek.size, (0, 0, 0, 0))
+    t, l, o = tuniek.load(), lijf.load(), out.load()
+    kleur = dict(zip(TUNIEK_GRIJS, palet))
+    for r in range(tuniek.height // fh):
+        for c in range(tuniek.width // fw):
+            fr = tuniek.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)); bb = fr.getbbox()
+            if not bb:
+                continue
+            onder = r * fh + bb[3]                       # eerste rij onder de tuniek
+            lb = lijf.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
+            voet = r * fh + lb[3] if lb else onder
+            for y in range(r * fh, (r + 1) * fh):
+                for x in range(c * fw, (c + 1) * fw):
+                    p = t[x, y]
+                    if p[3] > 0:
+                        o[x, y] = kleur.get(p[:3], p[:3]) + (255,)
+                    elif onder <= y < voet - 1 and l[x, y][3] > 0 and l[x, y][:3] not in LIJF_OMLIJNING:
+                        o[x, y] = palet[1] + (255,)          # de benen onder de tuniek: de zoom van het gewaad
+    return out
+
+
+def lijn(px, x0, y0, x1, y1, kleur):
+    """Bresenham, inclusief eindpunten."""
+    dx, dy = abs(x1 - x0), -abs(y1 - y0); sx = 1 if x0 < x1 else -1; sy = 1 if y0 < y1 else -1; err = dx + dy
+    while True:
+        if 0 <= x0 < px.w and 0 <= y0 < px.h:
+            px.d[x0, y0] = kleur + (255,)
+        if x0 == x1 and y0 == y1:
+            break
+        e2 = 2 * err
+        if e2 >= dy: err += dy; x0 += sx
+        if e2 <= dx: err += dx; y0 += sy
+
+
+class _Px:
+    def __init__(self, im): self.d, self.w, self.h = im.load(), im.width, im.height
+
+
+def staf(zwaard, zwaard_b, lijf, k, fw=64, fh=64):
+    """k: {'hout','hout_l','orb_o','orb','orb_h','boog'}. Geeft (voor, achter)."""
+    voor = Image.new('RGBA', zwaard.size, (0, 0, 0, 0)); achter = voor.copy()
+    zv, zb, lf = zwaard.load(), zwaard_b.load(), lijf.load()
+    boog = lambda p: p[0] > 200 and p[1] > 200 and p[2] > 200
+    for r in range(zwaard.height // fh):
+        for c in range(zwaard.width // fw):
+            pv, pb, bg = [], [], []
+            for y in range(r * fh, (r + 1) * fh):
+                for x in range(c * fw, (c + 1) * fw):
+                    for src, lst in ((zv, pv), (zb, pb)):
+                        p = src[x, y]
+                        if p[3] == 0:
+                            continue
+                        (bg if boog(p[:3]) else lst).append((x, y, src is zb))
+            punten = pv + pb
+            doel = achter if len(pb) > len(pv) else voor
+            d = _Px(doel)
+            for x, y, b in bg:                                    # de zwaai-boog, lichtblauw, in zijn eigen laag
+                _Px(achter if b else voor).d[x, y] = k['boog'] + (255,)
+            if not punten:
+                continue
+            # as van het zwaard: de twee verst uiteenliggende pixels; de hand is het eind het dichtst bij het lijf
+            lb = lijf.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
+            cx, cy = (c * fw + (lb[0] + lb[2]) / 2, r * fh + (lb[1] + lb[3]) / 2) if lb else (c * fw + 32, r * fh + 38)
+            best, a, bpt = -1, None, None
+            for i in range(len(punten)):
+                for j in range(i + 1, len(punten)):
+                    dd = (punten[i][0] - punten[j][0]) ** 2 + (punten[i][1] - punten[j][1]) ** 2
+                    if dd > best:
+                        best, a, bpt = dd, punten[i], punten[j]
+            if a is None or best < 4:
+                continue
+            da = (a[0] - cx) ** 2 + (a[1] - cy) ** 2; db = (bpt[0] - cx) ** 2 + (bpt[1] - cy) ** 2
+            hand, tip = (a, bpt) if da <= db else (bpt, a)
+            # de staf staat rechtop in de hand: 9 px eronder (tot de grond) en 13 px erboven, de bol op de top
+            hx, hy = hand[0], hand[1]
+            lijn(d, hx + 1, hy + 9, hx + 1, hy - 13, k['hout_l'])
+            lijn(d, hx, hy + 9, hx, hy - 13, k['hout'])
+            ox, oy = hx, hy - 15
+            for yy in range(-1, 2):
+                for xx in range(-1, 2):
+                    rand = abs(xx) + abs(yy) == 2
+                    d.d[ox + xx, oy + yy] = (k['orb_o'] if rand else k['orb']) + (255,)
+            d.d[ox, oy - 1] = k['orb_o'] + (255,); d.d[ox - 1, oy] = k['orb_o'] + (255,); d.d[ox + 1, oy] = k['orb_o'] + (255,); d.d[ox, oy + 1] = k['orb_o'] + (255,)
+            d.d[ox, oy] = k['orb_h'] + (255,)
+    return voor, achter
+
+
+STAVEN = {
+    'staf1': dict(hout=(85, 45, 33), hout_l=(147, 97, 65), orb_o=(30, 80, 44), orb=(90, 200, 110), orb_h=(210, 255, 220), boog=(150, 200, 255)),
+    'staf2': dict(hout=(60, 34, 24), hout_l=(118, 76, 48), orb_o=(30, 50, 130), orb=(90, 140, 240), orb_h=(220, 236, 255), boog=(150, 200, 255)),
+    'staf3': dict(hout=(50, 52, 72), hout_l=(150, 156, 180), orb_o=(90, 30, 140), orb=(190, 110, 255), orb_h=(245, 225, 255), boog=(200, 170, 255)),
+}
+tuniek_laag = verschil(uit[2], basis)           # de tuniek (level 1) zonder het lijf
+for naam, palet in GEWADEN.items():
+    gewaad(tuniek_laag, basis, palet).save(UIT / f'{naam}.png')
+for naam, k in STAVEN.items():
+    v, a = staf(uit[3], uit[4], basis, k)
+    v.save(UIT / f'{naam}.png'); a.save(UIT / f'{naam}b.png')
+
+HOED_FRONT = """
+........oo........
+.......ohlo.......
+.......ohlo.......
+......ohmlo.......
+......ohmllo......
+.....ohmmllo......
+.....ohmmmlo......
+....ohmmmmllo.....
+....ohmmmmmlo.....
+...odmmmmmmllo....
+...oggggggggglo...
+..oooooooooooooo..
+.ollllmmmmmmmlllo.
+.oooooooooooooooo."""
+HOED_RIGHT = """
+....oo.........
+...ohlo........
+...ohlo........
+...ohmlo.......
+....ohmlo......
+....ohmmlo.....
+.....ohmmlo....
+.....ohmmmlo...
+......ohmmmlo..
+......odmmmmlo.
+.....ogggggggo.
+...oooooooooooo
+..ollmmmmmmmllo
+...oooooooooooo"""
+HOED_BACK = """
+........oo........
+.......ollo.......
+.......ollo.......
+......olllo.......
+......ollllo......
+.....ommmllo......
+.....ommmmlo......
+....ommmmmllo.....
+....ommmmmmlo.....
+...odmmmmmmllo....
+...oggggggggglo...
+..oooooooooooooo..
+.ollllmmmmmmmlllo.
+.oooooooooooooooo."""
+VILT = {'o': (26, 24, 52), 'd': (34, 50, 110), 'm': (56, 80, 160), 'l': (90, 124, 205), 'h': (140, 172, 235), 'g': (214, 172, 78)}
+ARCAAN = {'o': (36, 16, 52), 'd': (70, 30, 110), 'm': (104, 50, 156), 'l': (140, 86, 200), 'h': (190, 150, 236), 'g': (255, 214, 110)}
+hoofddeksel(uit[1], HOED_FRONT, HOED_RIGHT, HOED_BACK, VILT, rand=13).save(UIT / 'hoed1.png')
+hoofddeksel(uit[1], HOED_FRONT, HOED_RIGHT, HOED_BACK, ARCAAN, rand=13).save(UIT / 'hoed2.png')
 
 # ---------- dieren ----------
 for uit, map_, anims in (

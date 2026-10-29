@@ -3,10 +3,10 @@ import {ITEMS,SLOTS,WINKEL} from './data.js';
 import {BLADEN} from './bladen.js';
 import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {STATS,MAX_STAT,statKosten} from './regels/stats.js';
-import {SKILLS,SKILL_VOLGORDE,kanLeren,MAX_JOB,jobExpVoor} from './regels/skills.js';
+import {SKILLS,kanLeren,MAX_JOB,jobExpVoor} from './regels/skills.js';
 import {esc} from './ui.js';
 
-export function statTekst(it){const d=[];if(it.atk)d.push('ATK +'+it.atk);if(it.def)d.push('DEF +'+it.def);if(it.hp)d.push('HP +'+it.hp);return d.join(' · ')}
+export function statTekst(it){const d=[];if(it.atk)d.push('ATK +'+it.atk);if(it.matk)d.push('MATK +'+it.matk);if(it.def)d.push('DEF +'+it.def);if(it.hp)d.push('HP +'+it.hp);if(it.sp)d.push('SP +'+it.sp);if(it.klasse)d.push(it.klasse==='mage'?'Mage':'Swordsman');return d.join(' · ')}
 
 /* P: de speler; A: {af(), expMax(), vrijeStat(), vrijeSkill(), statOmhoog(k), skillOmhoog(id),
                      uitrusten(id), afdoen(slot), gebruikDrank(), koop(id), koopDrank()} */
@@ -18,7 +18,7 @@ export function maakKarakter(P,A){
 
   function render(){
     const af=A.af();
-    $('#k-naam').textContent=P.naam;$('#k-sub').textContent=`Level ${P.lvl} · Swordsman · Job ${P.job}`;
+    $('#k-naam').textContent=P.naam;$('#k-sub').textContent=`Level ${P.lvl} · ${A.klasse().naam} · Job ${P.job}`;
     const vs=A.vrijeStat(),vk=A.vrijeSkill();
     document.querySelectorAll('.ktab').forEach(b=>{b.classList.toggle('actief',b.dataset.tab===tab);
       const n=b.dataset.tab==='stats'?vs:b.dataset.tab==='skills'?vk:b.dataset.tab==='quests'?A.questsKlaar():0;b.querySelector('.kbadge').textContent=n>0?n:'';b.querySelector('.kbadge').hidden=n<=0});
@@ -29,11 +29,11 @@ export function maakKarakter(P,A){
     const l=A.questLijst(),naam={nieuw:'Available',bezig:'In progress',klaar:'Ready to turn in',gedaan:'Completed'};
     $('#k-questlijst').innerHTML=l.length?l.map(x=>`<div class="quest ${x.st}"><div class="qkop"><b>${esc(x.q.titel)}</b><span class="qst">${naam[x.st]}</span></div>
       <small>${esc(x.q.gever)}${x.st==='gedaan'?'':' · '+esc(x.voortgang)}</small><p>${esc(x.st==='gedaan'?x.q.klaar:x.q.intro)}</p>
-      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>' · '+ITEMS[i.id].icoon+' '+esc(ITEMS[i.id].naam)+(i.n>1?' ×'+i.n:'')).join('')}</div></div>`).join('')
+      <div class="qbel">Reward: ${x.q.beloning.exp} exp · ${x.q.beloning.zeny} zeny${(x.q.beloning.items||[]).map(i=>{const id=P.klasse==='mage'&&i.mage?i.mage:i.id;return ' · '+ITEMS[id].icoon+' '+esc(ITEMS[id].naam)+(i.n>1?' ×'+i.n:'')}).join('')}</div></div>`).join('')
       :'<p class="ktip">No quests yet. Villagers with a <b class="qm nieuw">!</b> above their head have work for you.</p>';
   }
   function renderUitrusting(af){
-    $('#k-stats').innerHTML=[['HP',`${Math.ceil(P.hp)} / ${af.hpMax}`],['SP',`${Math.floor(P.sp)} / ${af.spMax}`],['ATK',af.atk],['DEF',af.def],['EXP',`${P.exp} / ${A.expMax()}`],['Zeny',P.zeny]]
+    $('#k-stats').innerHTML=[['HP',`${Math.ceil(P.hp)} / ${af.hpMax}`],['SP',`${Math.floor(P.sp)} / ${af.spMax}`],['ATK',af.atk],['MATK',af.matk],['DEF',af.def],['EXP',`${P.exp} / ${A.expMax()}`],['Zeny',P.zeny]]
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
     $('#k-slots').innerHTML=SLOTS.map(([slot,naam])=>{const it=P.uitr[slot]&&ITEMS[P.uitr[slot]];
       return it?`<button class="kslot" data-slot="${slot}" title="Click to unequip"><small>${naam}</small><b>${it.icoon} ${esc(it.naam)}</b><i>${statTekst(it)}</i></button>`
@@ -46,12 +46,12 @@ export function maakKarakter(P,A){
     $('#k-statpunten').innerHTML=vrij>0?`You have <b>${vrij}</b> stat point${vrij===1?'':'s'} to spend.`:'No stat points left. Every level grants new ones.';
     $('#k-statlijst').innerHTML=STATS.map(([k,naam,uitleg])=>{const n=P.stats[k]||1,kost=statKosten(n),kan=vrij>=kost&&n<MAX_STAT;
       return`<div class="kstat" title="${esc(uitleg)}"><span class="kstatnaam">${naam}</span><b>${n}</b><button class="kplus" data-stat="${k}" ${kan?'':'disabled'} title="Costs ${kost} point${kost===1?'':'s'}">+<small>${kost}</small></button><em>${esc(uitleg.split(':')[1]||'')}</em></div>`}).join('');
-    $('#k-afgeleid').innerHTML=[['ATK',af.atk],['DEF',af.def],['Hit',af.hit],['Flee',af.flee],['Crit',af.crit.toFixed(1)+'%'],['Attacks/s',(1/af.aanvalTijd).toFixed(2)],['HP recovery',af.hpRegen.toFixed(1)+'/s'],['SP recovery',af.spRegen.toFixed(1)+'/s'],['Max HP',af.hpMax],['Max SP',af.spMax]]
+    $('#k-afgeleid').innerHTML=[['ATK',af.atk],['MATK',af.matk],['DEF',af.def],['Hit',af.hit],['Flee',af.flee],['Crit',af.crit.toFixed(1)+'%'],['Attacks/s',(1/af.aanvalTijd).toFixed(2)],['HP recovery',af.hpRegen.toFixed(1)+'/s'],['SP recovery',af.spRegen.toFixed(1)+'/s'],['Max HP',af.hpMax],['Max SP',af.spMax]]
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
   }
   function renderSkills(vrij){
     $('#k-skillpunten').innerHTML=`Job level <b>${P.job}</b>${P.job<MAX_JOB?` · job exp ${P.jobexp} / ${jobExpVoor(P.job)}`:' (max)'} · ${vrij>0?`<b>${vrij}</b> skill point${vrij===1?'':'s'} to spend`:'no skill points left'}`;
-    $('#k-skilllijst').innerHTML=SKILL_VOLGORDE.map(id=>{const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
+    $('#k-skilllijst').innerHTML=A.skillVolgorde().map(id=>{const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
       const eis=Object.entries(sk.eis).map(([e,n])=>`${SKILLS[e].naam} ${n}`).join(', ');
       const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max';
       return`<div class="kskill ${l>0?'':'dicht'}"><div class="kskillkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="kplus" data-skill="${id}" ${kan?'':'disabled'}>+</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em></div>`}).join('');

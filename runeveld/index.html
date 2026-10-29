@@ -208,7 +208,7 @@ body.touch #mobiel{display:flex}
 .maakgrid{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
 #start label{display:block;font-size:12px;color:var(--dim);margin:10px 0 6px}#start label:first-child{margin-top:0}
 #start input{width:100%;font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--rand);background:rgba(0,0,0,.35);color:#fff;outline:none}#start input:focus{border-color:var(--goud)}
-#start .klas{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--goud);border-radius:10px;background:rgba(255,200,87,.08)}#start .icoon{font-size:22px}#start .klas small{display:block;color:var(--dim);font-size:11px}
+#start .klassen{display:flex;flex-direction:column;gap:6px}#start .klas{display:flex;gap:10px;align-items:center;text-align:left;width:100%;padding:8px 10px;border:1px solid var(--rand);border-radius:10px;background:rgba(255,255,255,.04)}#start .klas:hover{background:rgba(255,255,255,.08)}#start .klas.actief{border-color:var(--goud);background:rgba(255,200,87,.1)}#start .icoon{font-size:22px}#start .klas small{display:block;color:var(--dim);font-size:11px}
 .haarkeuze{display:flex;gap:8px;flex-wrap:wrap}.haar{width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,0,0,.5);box-shadow:0 0 0 1px rgba(255,255,255,.2)}.haar.actief{border-color:#fff;box-shadow:0 0 0 2px var(--goud)}
 #start .fout{color:#ffb4b4;font-size:12px;min-height:16px;margin-top:8px}
 #start .rij{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}#wis p{color:var(--tekst);line-height:1.5}
@@ -331,7 +331,7 @@ body.touch #mobiel{display:flex}
           <label for="maak-naam">Name</label>
           <input id="maak-naam" maxlength="14" placeholder="e.g. Aria" spellcheck="false" autocomplete="off">
           <label>Class</label>
-          <div class="klas"><div class="icoon">⚔️</div><div><b>Swordsman</b><small>Strong up close. Skills: Bash, Magnum Break, Provoke.</small></div></div>
+          <div id="maak-klassen" class="klassen"></div>
           <label>Hair colour · <span id="maak-haarnaam"></span></label>
           <div id="maak-haar" class="haarkeuze"></div>
           <div id="maak-fout" class="fout"></div>
