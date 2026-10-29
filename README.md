@@ -5,7 +5,7 @@ Browsergames op [zandv320.github.io](https://zandv320.github.io), gebouwd met [V
 ## Spellen
 
 - **Velmora** – fantasy-MMORPG (three.js, multiplayer via MQTT): `velmora/`
-- **Runeveld** – top-down MMORPG in de stijl van Ragnarok Online (2D-sprites in een 3D-wereld, multiplayer via MQTT): `runeveld/`
+- **Eldoria: Chronicles of Magic** – top-down MMORPG in de stijl van Ragnarok Online; het startdorp heet Runeveld (2D-sprites in een 3D-wereld, multiplayer via MQTT): `runeveld/`
 
 ## Lokaal werken
 
@@ -25,7 +25,7 @@ npm run preview    # bekijk de productiebuild
 - `velmora/models/` – glTF-modellen (KayKit en Quaternius, CC0; zie de LICENSE-bestanden daar)
 - `public/` – statische bestanden die ongewijzigd worden gekopieerd (Speelhal-startpagina, covers)
 
-## Runeveld
+## Eldoria: Chronicles of Magic (map `runeveld/`)
 
 - `runeveld/index.html` – pagina, CSS en HUD
 - `runeveld/src/` – ES-modules: `data` (klasse, uitrusting, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `bouw` (de dorpsomgeving in pixel-3D: huizen, kramen, put, hekken, tonnen en kisten als dichte 3D-vormen bekleed met tegelbare pixeltexturen in het palet van de sprites (`sprites/tex/`, gegenereerd door het knipscript) en met een donkere omlijning, zoals in Ragnarok Online: 3D-omgeving met 2D-figuren), `net` (MQTT), `ui`, `karakter` (characterscherm en winkel), `inventaris` (inventory), `admin` (admin-paneel, Ctrl+Shift+A of `?admin`), `main` (spel)

@@ -120,7 +120,9 @@ h1,h2,h3{font-family:var(--kop);font-weight:700;letter-spacing:.04em}
 #menu .mk{width:40px;height:40px;border-radius:4px;background:linear-gradient(180deg,#232a40,#11141f);border:1px solid rgba(230,187,99,.3);display:flex;align-items:center;justify-content:center;font-size:18px;text-decoration:none;position:relative;transition:border-color .15s}
 #menu .mk:hover{border-color:var(--goud)}#menu .mk kbd{position:absolute;right:2px;bottom:1px;font:700 8px var(--ui);color:var(--goud)}
 #menu .mk.aandacht::after{content:'';position:absolute;right:-3px;top:-3px;width:9px;height:9px;border-radius:50%;background:var(--goud);box-shadow:0 0 0 1px #000,0 0 8px var(--goud)}
-#mobiel{display:none}
+#mobiel{display:none;gap:5px;padding:6px}
+#mobiel button{width:40px;height:40px;border-radius:4px;background:linear-gradient(180deg,#232a40,#11141f);border:1px solid rgba(230,187,99,.3);font-size:16px}#mobiel button:hover{border-color:var(--goud)}
+body.touch #mobiel{display:flex}body.touch #m-chat{display:none}
 
 /* ---------- chat (linksonder) ---------- */
 #chat{position:absolute;left:var(--veilig-links);bottom:var(--veilig-onder);width:340px;display:flex;flex-direction:column;gap:5px}
@@ -282,8 +284,8 @@ input,select,textarea{font:inherit}
   #balk{flex:1;justify-content:center;gap:5px;padding:5px}.slot{width:50px;height:50px;flex:0 1 50px}
   #menu{position:absolute;right:var(--veilig-rechts);bottom:calc(var(--veilig-onder) + var(--balk-h) + 10px);flex-direction:column;gap:5px;padding:5px;transform:none}
   #menu .mk{width:38px;height:38px;font-size:16px}#menu .mk kbd{display:none}#menu .alleen-desktop{display:none}
-  #mobiel{display:flex;flex-direction:column;gap:5px;position:absolute;left:var(--veilig-links);bottom:calc(var(--veilig-onder) + var(--balk-h) + 10px);padding:5px}
-  #mobiel button{width:38px;height:38px;border-radius:4px;background:linear-gradient(180deg,#232a40,#11141f);border:1px solid rgba(230,187,99,.3);font-size:16px}
+  #mobiel,body.touch #mobiel{display:flex;flex-direction:column;gap:5px;position:absolute;left:var(--veilig-links);bottom:calc(var(--veilig-onder) + var(--balk-h) + 10px);padding:5px}
+  #mobiel button{width:38px;height:38px}body.touch #m-chat{display:block}
   #chat{display:none;left:var(--veilig-links);right:var(--veilig-rechts);width:auto;bottom:calc(var(--veilig-onder) + var(--balk-h) + 10px)}
   body.chat-open #chat{display:flex}body.chat-open #mobiel,body.chat-open #menu,body.dialoog-open #mobiel,body.dialoog-open #menu{display:none!important}
   #chat-sluit{display:flex;align-items:center;justify-content:center;width:36px;border-radius:4px;border:1px solid rgba(230,187,99,.3);background:rgba(10,12,20,.75)}
@@ -310,18 +312,10 @@ input,select,textarea{font:inherit}
   #chat{display:none;width:min(360px,calc(100vw - 480px));bottom:calc(var(--veilig-onder) + var(--balk-h) + 8px)}body.chat-open #chat{display:flex}#log{max-height:70px}
   body.chat-open #mobiel,body.dialoog-open #mobiel{display:none!important}
   #chat-sluit{display:flex;align-items:center;justify-content:center;width:36px;border-radius:4px;border:1px solid rgba(230,187,99,.3);background:rgba(10,12,20,.75)}
-  #mobiel{display:flex;flex-direction:row;gap:5px;position:absolute;left:var(--veilig-links);bottom:var(--veilig-onder);padding:5px}
-  #mobiel button{width:36px;height:36px;border-radius:4px;background:linear-gradient(180deg,#232a40,#11141f);border:1px solid rgba(230,187,99,.3);font-size:15px}
+  #mobiel,body.touch #mobiel{display:flex;flex-direction:row;gap:5px;padding:5px}#mobiel button{width:36px;height:36px;font-size:15px}body.touch #m-chat{display:block}
   #dialoog{bottom:calc(var(--veilig-onder) + var(--balk-h) + 8px);padding:8px 10px}#dialoog canvas{width:48px;height:64px}
   .modal{left:8px;right:8px;top:8px;bottom:8px;transform:none;width:auto!important;max-width:none;max-height:none;padding:12px}
   #kaart.modal{display:flex}#kaart-canvas{max-height:calc(100dvh - 120px);width:auto!important;height:auto!important;object-fit:contain;margin:0 auto}
   #melding{top:20%}
   #sel.scherm{padding:10px 20px;gap:6px 16px}.logo{font-size:30px}#start .sub{margin-bottom:4px}#sel .hulp{display:none}
-}
-/* muisloos (touch) op grote schermen: de zoomknoppen ook tonen */
-body.touch #mobiel{display:flex}
-@media (min-width:701px) and (min-height:521px){
-  body.touch #mobiel{position:absolute;left:calc(var(--veilig-links) + 352px);bottom:var(--veilig-onder);flex-direction:row;gap:5px;padding:5px}
-  body.touch #mobiel button{width:36px;height:36px;border-radius:4px;background:linear-gradient(180deg,#232a40,#11141f);border:1px solid rgba(230,187,99,.3)}
-  body.touch #m-chat{display:none}
 }

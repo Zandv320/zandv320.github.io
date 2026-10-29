@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="Runeveld: a top-down MMORPG in your browser in the style of Ragnarok Online. Start as a swordsman on the village square, defeat monsters and play together with others.">
+<meta name="description" content="Eldoria: Chronicles of Magic. A top-down MMORPG in your browser in the style of Ragnarok Online. Start as a swordsman or mage in the village of Runeveld, defeat monsters and play together with others.">
 <meta name="theme-color" content="#0b0e16">
-<title>Runeveld</title>
+<title>Eldoria: Chronicles of Magic</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
@@ -41,6 +41,7 @@
     <form id="chatin" autocomplete="off"><input id="chattekst" maxlength="120" placeholder="Say something…"><button type="button" id="chat-sluit" title="Close chat">✕</button></form>
   </div>
   <div id="onder">
+    <div id="mobiel" class="frame plat"><button id="m-chat" title="Chat">💬</button><button id="m-zoomin" title="Zoom in">+</button><button id="m-zoomuit" title="Zoom out">−</button></div>
     <div id="balk" class="frame">
       <button class="slot" data-skill="drank" title="Red potion: restores 45 HP"><kbd>4</kbd><span class="ic">🧪</span><span class="nm">Potion</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
       <button class="slot" data-skill="zit" title="Sit: recover faster"><kbd>X</kbd><span class="ic">🪑</span><span class="nm">Sit</span><i class="cd"></i></button>
@@ -55,7 +56,6 @@
       <a class="mk alleen-desktop" href="../" title="Back to all games">⌂</a>
     </div>
   </div>
-  <div id="mobiel"><button id="m-chat" title="Chat">💬</button><button id="m-zoomin" title="Zoom in">+</button><button id="m-zoomuit" title="Zoom out">−</button></div>
 </div>
 
 <div id="karakter" class="paneel modal" hidden>
@@ -111,8 +111,8 @@
 <div id="start" hidden>
   <div id="sel" class="scherm">
     <div class="sel-links">
-      <h1 class="logo">Runeveld</h1>
-      <div class="sub">Top-down MMORPG · choose your hero</div>
+      <h1 class="logo">Eldoria</h1>
+      <div class="sub">Chronicles of Magic · choose your hero</div>
       <div class="sel-held"></div>
     </div>
     <div class="sel-rechts paneel"><h3>Characters</h3><div id="sel-lijst"></div></div>
@@ -148,7 +148,7 @@
     </div>
   </div>
 </div>
-<div id="laden">Loading Runeveld…</div>
+<div id="laden">Loading Eldoria…</div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
