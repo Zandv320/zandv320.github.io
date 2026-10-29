@@ -108,6 +108,7 @@ function toonNpcs(aan){npc.sprite.g.visible=aan;npc.label.el.hidden=!aan;toonDor
 function bouwBalk(){
   const b=$('#balk');b.querySelectorAll('.slot[data-skill]').forEach(s=>{if(s.dataset.skill!=='drank'&&s.dataset.skill!=='zit')s.remove()});
   const eerst=b.firstElementChild;
+  const n=balk().length;b.classList.toggle('vol',n>6);document.body.classList.toggle('balk2',n>6);
   balk().forEach((id,i)=>{const sk=SKILLS[id],el=document.createElement('button');el.className='slot';el.dataset.skill=id;el.title=`${sk.naam}: ${sk.beschr}`;
     el.innerHTML=`<kbd>${i+1}</kbd><span class="ic">${sk.icoon}</span><span class="nm">${UI.esc(sk.naam.split(' ')[0])}</span><i class="cd"></i>`;
     el.addEventListener('click',()=>vaardigheid(id));b.insertBefore(el,eerst)});
@@ -303,7 +304,7 @@ function updateSpeler(dt){
   if(P.regenT>=1){P.regenT-=1;const a=af(),f=P.zit?4:1;P.hp=Math.min(a.hpMax,P.hp+a.hpRegen*f);P.sp=Math.min(a.spMax,P.sp+a.spRegen*f)}
 }
 function slag(m){
-  const a=af();P.volgendeSlag=nu()+a.aanvalTijd;speelEens('aanval',Math.min(.45,a.aanvalTijd*.8));P.sprite.stoot(m.x-P.x,m.z-P.z,.18);G.zwaai();
+  const a=af(),q=nu()<(P.quickenTot||0)?P.quickenF:1;P.volgendeSlag=nu()+a.aanvalTijd*q;speelEens('aanval',Math.min(.45,a.aanvalTijd*q*.8));P.sprite.stoot(m.x-P.x,m.z-P.z,.18);G.zwaai();
   const r=regelSlag(a,monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood)raak(m,r,'')},220);
 }
 /* een klap op een monster: witte flits, squash en een duw van de aanvaller af */
@@ -315,7 +316,8 @@ function klap(m,dx,dz,kracht){
 function raak(m,r,soort){
   if(r.mis){UI.getal(m.x,m.sprite.h*.8,m.z,camera,'Miss','mis');G.mis();return}
   UI.getal(m.x,m.sprite.h*.8,m.z,camera,r.crit?r.dmg+'!':r.dmg,r.crit?'crit':soort?'skill':'eigen');
-  klap(m,m.x-P.x,m.z-P.z,soort==='rolstoot'?1.2:r.crit?.45:.28);G.raak(r.crit);if(r.crit&&!soort)FX.speel('flits',m.x,m.z,{grootte:1.4,y:.6,tint:0xffe6a0});if(r.crit)schud(.22,.2);else if(soort)schud(.1,.15);
+  klap(m,m.x-P.x,m.z-P.z,soort==='rolstoot'?1.2:r.crit?.45:.28);G.raak(r.crit);if(r.crit&&!soort)FX.speel('flits',m.x,m.z,{grootte:1.4,y:.6,tint:0xffe6a0});
+  if(r.magie&&P.skills.manaspiegel>0){P.sp=Math.min(spMax(),P.sp+r.dmg*SKILLS.manaspiegel.deel(P.skills.manaspiegel))}if(r.crit)schud(.22,.2);else if(soort)schud(.1,.15);
   if(!H)m.hp=Math.max(0,m.hp-r.dmg);
   net.stuur('h',{id:m.id,dmg:r.dmg});
 }
@@ -330,14 +332,16 @@ function vaardigheid(id){
   }
   const sk=SKILLS[id],l=P.skills[id]||0;if(!sk||sk.passief)return;
   if(l<=0){UI.sys(`You have not learned ${sk.naam} yet. Spend your skill points with C.`);return}
-  const a=af(),sp=sk.sp(l);
+  const a=af(),pas=(id2,fn)=>{const k=SKILLS[id2],n=P.skills[id2]||0;return k&&n>0&&k[fn]?k[fn](n):0};
+  const sp=Math.max(0,Math.round(sk.sp(l)*(1-pas('spreukfocus','korting'))));
   if(P.sp<sp){UI.sys('Not enough SP.');return}
   if(id==='beuk'){
     if(!P.target||P.target.dood){UI.sys('Pick a target first: click a monster.');return}
     const m=P.target;if(Math.hypot(m.x-P.x,m.z-P.z)>klasse().bereik){P.wacht='beuk';return}
     P.sp-=sp;P.cd.beuk=t+sk.cd;if(P.zit)zitten(false);
     P.volgendeSlag=t+a.aanvalTijd;speelEens('aanval',.5);P.sprite.zetKijk(m.x-P.x,m.z-P.z);P.sprite.stoot(m.x-P.x,m.z-P.z,.25);G.skill();
-    const r=regelSlag({...a,mult:sk.mult(l)},monsterGevecht(m.spec));setTimeout(()=>{if(!m.dood){raak(m,r,'beuk');FX.speel('flits',m.x,m.z,{grootte:1.6,y:.6})}},220);
+    const r=regelSlag({...a,mult:sk.mult(l)},monsterGevecht(m.spec));const stun=!r.mis&&Math.random()<pas('doodslag','kans')?.8:0;
+    setTimeout(()=>{if(!m.dood){raak(m,r,'beuk');FX.speel('flits',m.x,m.z,{grootte:1.6,y:.6});if(stun){m.ijsTot=nu()+stun;net.stuur('ijs',{ids:[m.id],duur:stun});FX.speel('vonk',m.x,m.z,{grootte:1.6,y:.8});UI.getal(m.x,m.sprite.h+.3,m.z,camera,'Stun!','mis')}}},220);
   }
   if(id==='vuurkring'){
     P.sp-=sp;P.cd.vuurkring=t+sk.cd;if(P.zit)zitten(false);speelEens('aanval',.6);
@@ -404,6 +408,18 @@ function vaardigheid(id){
       if(ids.length)net.stuur('ijs',{ids,duur:sk.bevries(l)});if(!n)UI.sys('Storm Gust hit nothing.')},250);
   }
   if(id==='energiemantel'){P.sp-=sp;P.cd.energiemantel=t+sk.cd;P.barriereTot=t+sk.duur(l);P.barriereDeel=sk.deel(l);aura(0xa8dcff);ring(P.x,P.z,0x5fb0ff,.3,1.8,.7,.9);G.skill();UI.sys(`Energy Coat: ${Math.round(sk.deel(l)*100)}% of damage is taken from your SP for ${sk.duur(l)}s.`)}
+  if(id==='wapenversnelling'){P.sp-=sp;P.cd.wapenversnelling=t+sk.cd;P.quickenTot=t+sk.duur(l);P.quickenF=sk.factor(l);ring(P.x,P.z,0xffd27a,.3,1.6,.5,.9);FX.speel('ring',P.x,P.z,{grootte:3,y:.2,tint:0xfff0b0});G.skill();UI.sys(`Weapon Quicken: ${Math.round((1-sk.factor(l))*100)}% faster attacks for ${sk.duur(l)}s.`)}
+  if(id==='ijsbout'){const m=doelSlag();if(!m)return;const r=spreuk({matk:a.matk,mult:sk.mult(l)});
+    projectiel(P.x,P.z,m,0x9ad8ff,()=>{if(!m.dood){raak(m,r,'ijsbout');m.ijsTot=nu()+sk.bevries(l);net.stuur('ijs',{ids:[m.id],duur:sk.bevries(l)});FX.speel('vorst2',m.x,m.z,{grootte:2.2,y:.3})}})}
+  if(id==='zielsslag'){const m=doelSlag();if(!m)return;const n=sk.bouten(l);
+    for(let k=0;k<n;k++)setTimeout(()=>{if(m.dood||P.dood)return;const r=spreuk({matk:a.matk,mult:sk.mult(l)});projectiel(P.x,P.z,m,0xd8c8ff,()=>{if(!m.dood){raak(m,r,'zielsslag');FX.speel('flits',m.x,m.z,{grootte:1.3,y:.7,tint:0xd8c8ff})}})},k*170)}
+  if(id==='spiraal'){const m=doelSlag();if(!m)return;P.sprite.stoot(m.x-P.x,m.z-P.z,.3);
+    for(let k=0;k<sk.slagen;k++)setTimeout(()=>{if(m.dood)return;const r=regelSlag({...a,hit:999,mult:sk.mult(l)},monsterGevecht(m.spec));raak(m,r,'spiraal');FX.speel('slag',m.x,m.z,{grootte:2,y:.7,spiegel:k%2===1})},150+k*160)}
+  if(id==='meteoor'){const m=doelSlag();if(!m)return;const tx=m.x,tz=m.z;
+    FX.speel('komeet',tx-2.5,tz-4,{grootte:3.2,y:5,spiegel:false,loop:true}).stop();
+    const kom=FX.speel('komeet',tx-3,tz,{grootte:3.4,y:6,loop:true});effecten.push({t:0,duur:.55,vlucht:{x0:tx-3,z0:tz,doel:{x:tx,z:tz},e:kom,fn:()=>{}}});
+    setTimeout(()=>{FX.speel('explosie',tx,tz,{grootte:sk.straal*2.6,voet:true,y:-.1});FX.speel('vuurkring',tx,tz,{grootte:sk.straal*2.2,y:.2,vertraging:.08});schud(.35,.35);G.raak(true);
+      for(const mm of M.values()){if(mm.dood||!mm.sprite.g.visible)continue;if(Math.hypot(mm.x-tx,mm.z-tz)<=sk.straal)raak(mm,spreuk({matk:a.matk,mult:sk.mult(l)}),'meteoor')}},600)}
   if(id==='provocatie'){
     P.sp-=sp;P.cd.provocatie=t+sk.cd;if(P.zit)zitten(false);speelEens('pijn',.3);
     const straal=sk.straal(l);ring(P.x,P.z,0xff4d4d,.3,straal,.5,.7);FX.speel('ring',P.x,P.z,{grootte:3.2,y:.2,tint:0xff7070});
@@ -421,6 +437,7 @@ function neemSchade(dmg,spec,van){
   dmg=naVerdediging(dmg,a.def+(nu()<(P.endureTot||0)?P.endureDef||0:0));
   if(nu()<P.barriereTot&&P.sp>0){const deel=Math.min(Math.floor(P.sp),Math.round(dmg*(P.barriereDeel||.3)));if(deel>0){P.sp-=deel;dmg-=deel;UI.getal(P.x,P.sprite.h+.3,P.z,camera,'-'+deel+' SP','mis')}}
   P.hp-=dmg;UI.getal(P.x,P.sprite.h,P.z,camera,dmg,'pijn');P.sprite.raak();
+  if(van&&!van.dood&&P.skills.heiligeschild>0){const terug=Math.round(dmg*SKILLS.heiligeschild.deel(P.skills.heiligeschild));if(terug>0){raak(van,{mis:false,dmg:terug,crit:false},'heiligeschild');FX.speel('flits',van.x,van.z,{grootte:1.2,y:.6,tint:0xfff0a0})}}
   const endure=nu()<(P.endureTot||0);
   if(!endure){if(van)P.sprite.stoot(P.x-van.x,P.z-van.z,.22);schud(Math.min(.35,.08+dmg/hpMax()*.8),.2)}UI.pijnFlits();G.pijn();
   if(nu()>=P.bezigTot)speelEens('pijn',.25);
@@ -604,7 +621,7 @@ function invoer(){
     if(chatActief()){if(e.key==='Escape')$('#chattekst').blur();return}
     if(!gestart)return;
     if(e.key==='Enter'){e.preventDefault();$('#chattekst').focus();return}
-    const dg=/^Digit([1-6])$/.exec(e.code);if(dg){const id=balk()[+dg[1]-1];if(id)vaardigheid(id)}else if(e.code==='KeyR')vaardigheid('drank');
+    const dg=/^Digit([1-9])$/.exec(e.code);if(dg){const id=balk()[+dg[1]-1];if(id)vaardigheid(id)}else if(e.code==='KeyR')vaardigheid('drank');
     else if(e.code==='KeyX')vaardigheid('zit');else if(e.code==='KeyC')K.toggle();else if(e.code==='KeyI')I.toggle();else if(e.code==='KeyJ'){if(K.isOpen())K.sluit();else K.toon('quests')}else if(e.code==='KeyM')KT.toggle();else if(e.code==='KeyA'&&e.ctrlKey&&e.shiftKey){e.preventDefault();ADM.toggle();return}
     else if(e.key==='Escape'){if(K.isOpen()||K.winkelOpen()||I.isOpen()||DL.isOpen()||KT.isOpen()){K.sluit();K.winkelSluit();I.sluit();DL.sluit();KT.sluit()}else{P.target=null;P.wacht=null;UI.doelkader(null)}}
     keys.add(e.code);
@@ -640,7 +657,7 @@ function stap(dt){
     updateSpeler(dt);if(H)hostTick(dt);updateMonsters(dt);updateAnderen(dt);stuurPresence();
     UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'),klasse().naam,P.job<maxJob()?jobExpVoor(P.job):0);
     portretT+=dt;if(portretT>.25){portretT=0;tekenHeld(portretCtx,heldLagen(P.uitr,P.haar),t)}
-    for(const id of balk()){UI.cooldown(id,((P.cd[id]||0)-t)/SKILLS[id].cd);UI.slotStatus(id,!(P.skills[id]>0),((id==='barriere'||id==='energiemantel')&&t<P.barriereTot)||(id==='volharden'&&t<(P.endureTot||0)))}
+    for(const id of balk()){UI.cooldown(id,((P.cd[id]||0)-t)/SKILLS[id].cd);UI.slotStatus(id,!(P.skills[id]>0),((id==='barriere'||id==='energiemantel')&&t<P.barriereTot)||(id==='volharden'&&t<(P.endureTot||0))||(id==='wapenversnelling'&&t<(P.quickenTot||0)))}
     UI.cooldown('drank',((P.cd.drank||0)-t)/ITEMS.drank.cd);
     UI.slotStatus('zit',false,P.zit);UI.slotStatus('drank',tasAantal('drank')<=0,false);
     doelRing.visible=!!P.target;if(P.target){doelRing.position.set(P.target.x,.03,P.target.z);doelRing.rotation.z+=dt*1.5;doelRing.scale.setScalar(1+.08*Math.sin(t*7))}

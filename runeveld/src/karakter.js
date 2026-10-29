@@ -3,7 +3,8 @@ import {ITEMS,SLOTS,WINKEL} from './data.js';
 import {BLADEN} from './bladen.js';
 import {heldLagen,tekenHeld} from './uiterlijk.js';
 import {STATS,MAX_STAT,statKosten} from './regels/stats.js';
-import {SKILLS,kanLeren,jobExpVoor} from './regels/skills.js';
+import {SKILLS,kanLeren,jobExpVoor,BOMEN,TAKKEN} from './regels/skills.js';
+import {KLASSEN} from './data.js';
 import {esc} from './ui.js';
 
 export function statTekst(it){const d=[];if(it.atk)d.push('ATK +'+it.atk);if(it.matk)d.push('MATK +'+it.matk);if(it.def)d.push('DEF +'+it.def);if(it.hp)d.push('HP +'+it.hp);if(it.sp)d.push('SP +'+it.sp);if(it.klasse)d.push(it.klasse==='mage'?'Mage':'Swordsman');return d.join(' · ')}
@@ -49,21 +50,50 @@ export function maakKarakter(P,A){
     $('#k-afgeleid').innerHTML=[['ATK',af.atk],['MATK',af.matk],['DEF',af.def],['Hit',af.hit],['Flee',af.flee],['Crit',af.crit.toFixed(1)+'%'],['Attacks/s',(1/af.aanvalTijd).toFixed(2)],['HP recovery',af.hpRegen.toFixed(1)+'/s'],['SP recovery',af.spRegen.toFixed(1)+'/s'],['Max HP',af.hpMax],['Max SP',af.spMax]]
       .map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join('');
   }
+  /* de talent tree: drie takken, rijen per niveau, lijnen langs de vereisten; klik een skill voor uitleg en leren */
+  let gekozenSkill=null;
   function renderSkills(vrij){
     $('#k-skillpunten').innerHTML=`Job level <b>${P.job}</b>${P.job<A.maxJob()?` · job exp ${P.jobexp} / ${jobExpVoor(P.job)}`:' (max)'} · ${vrij>0?`<b>${vrij}</b> skill point${vrij===1?'':'s'} to spend`:'no skill points left'}`;
-    $('#k-skilllijst').innerHTML=A.skillVolgorde().map(id=>{const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
-      const eis=Object.entries(sk.eis).map(([e,n])=>`${SKILLS[e].naam} ${n}`).join(', ');
-      const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max';
-      return`<div class="kskill ${l>0?'':'dicht'}"><div class="kskillkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="kplus" data-skill="${id}" ${kan?'':'disabled'}>+</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em></div>`}).join('');
+    const kl=A.klasse(),boom=BOMEN[P.klasse]||BOMEN.swordsman,takken=TAKKEN[P.klasse]||TAKKEN.swordsman;
+    /* een tweede klasse krijgt een scheidingsrij tussen de boom van de eerste klasse (rijen 0–2) en de eigen rijen */
+    const rij=y=>kl.tier===2&&y>=3?y+2:y+1;
+    const rijen=rij(Math.max(...Object.values(boom).map(p=>p[1])));
+    let html=`<div class="takken">${takken.map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="boom" style="grid-template-rows:repeat(${rijen},auto)">`;
+    for(const[id,[x,y]]of Object.entries(boom)){const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id),open=kanLeren({...P.skills,[id]:0},id)||l>0;
+      html+=`<button class="tnode${l>0?' geleerd':open?' open':' dicht'}${kan?' kan':''}${l>=sk.max?' max':''}${gekozenSkill===id?' gekozen':''}" data-tskill="${id}" style="grid-column:${x+1};grid-row:${rij(y)}" title="${esc(sk.naam)}"><span class="ti">${sk.icoon}</span><span class="tl">${l}/${sk.max}</span><span class="tn">${esc(sk.naam)}</span>${sk.passief?'<span class="tp">passive</span>':''}</button>`}
+    if(kl.tier===2)html+=`<div class="tdeel" style="grid-column:1/4;grid-row:4"><span>${esc(kl.naam)} · job ${P.job} / ${A.maxJob()}</span></div>`;
+    html+=`<svg class="tlijnen"></svg></div><div class="tdetail" id="k-tdetail"></div>`;
+    $('#k-skilllijst').innerHTML=html;
+    tekenLijnen(boom);renderDetail(vrij);
+  }
+  function tekenLijnen(boom){
+    const wrap=$('#k-skilllijst .boom'),svg=wrap.querySelector('.tlijnen');if(!wrap||!svg)return;
+    const r0=wrap.getBoundingClientRect();svg.setAttribute('viewBox',`0 0 ${r0.width} ${r0.height}`);svg.style.width=r0.width+'px';svg.style.height=r0.height+'px';
+    const mid=id=>{const el=wrap.querySelector(`[data-tskill="${id}"]`);if(!el)return null;const r=el.getBoundingClientRect();return[r.left-r0.left+r.width/2,r.top-r0.top+r.width/2]};
+    let d='';
+    for(const id of Object.keys(boom)){const sk=SKILLS[id];for(const[eis,n]of Object.entries(sk.eis)){if(!boom[eis])continue;const a=mid(eis),b=mid(id);if(!a||!b)continue;
+      const ok=(P.skills[eis]||0)>=n;d+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${ok?'aan':''}"/>`}}
+    svg.innerHTML=d;
+  }
+  function renderDetail(vrij){
+    const d=$('#k-tdetail');if(!d)return;const id=gekozenSkill;
+    if(!id||!SKILLS[id]){d.innerHTML='<p class="ktip">Click a skill in the tree to read what it does and to learn it.</p>';return}
+    const sk=SKILLS[id],l=P.skills[id]||0,kan=vrij>0&&kanLeren(P.skills,id);
+    const eis=Object.entries(sk.eis).map(([e,n])=>`${SKILLS[e].naam} ${n}`).join(', ');
+    const nu=l>0?sk.tekst(l):'not learned yet',volgende=l<sk.max?`next: ${sk.tekst(l+1)}`:'max level';
+    d.innerHTML=`<div class="tdkop"><span class="kskillicoon">${sk.icoon}</span><div><b>${esc(sk.naam)}${sk.passief?' <small>(passive)</small>':''}</b><small>Lv ${l} / ${sk.max}${eis?' · requires '+esc(eis):''}</small></div><button class="knop" data-tleer="${id}" ${kan?'':'disabled'}>${l>0?'Level up':'Learn'} (1 point)</button></div><p>${esc(sk.beschr)}</p><em>${esc(nu)} · ${esc(volgende)}</em>`;
   }
   function tekenPreview(){tekenHeld(ctx,heldLagen(P.uitr,P.haar),t)}
   el.addEventListener('click',e=>{
     const tb=e.target.closest('.ktab');if(tb){tab=tb.dataset.tab;render();return}
     const s=e.target.closest('.kslot');if(s&&!s.classList.contains('leeg')){A.afdoen(s.dataset.slot);render();return}
     if(e.target.closest('[data-inventaris]')){A.openInventaris();return}
+    const tn=e.target.closest('.tnode');if(tn){gekozenSkill=tn.dataset.tskill;render();return}
+    const tl=e.target.closest('[data-tleer]');if(tl&&!tl.disabled){A.skillOmhoog(tl.dataset.tleer);render();return}
     const p=e.target.closest('.kplus');if(p&&!p.disabled){if(p.dataset.stat)A.statOmhoog(p.dataset.stat);else if(p.dataset.skill)A.skillOmhoog(p.dataset.skill);render()}
   });
   $('#k-sluit').onclick=()=>sluit();
+  addEventListener('resize',()=>{if(open&&tab==='skills')render()});
 
   /* ---------- winkel ---------- */
   function renderWinkel(){

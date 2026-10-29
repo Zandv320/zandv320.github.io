@@ -30,7 +30,7 @@ export function afgeleid({lvl,stats,items=[],skills={},klasse={hp:1,sp:1}}){
   const spMax=Math.round((10+lvl*3+s.int*4)*(klasse.sp||1))+som('sp');
   const atk=Math.round(3+lvl*1.5+s.str*1.2+s.dex*.3+som('atk')+pas('zwaardbeheersing','atk'));
   const matk=Math.round(4+lvl*1.2+s.int*2+s.dex*.2+som('matk')+pas('stafbeheersing','matk'));
-  const def=Math.round(som('def')+s.vit*.4);
+  const def=Math.round(som('def')+s.vit*.4+pas('ijzerhuid','def'));
   return{
     hpMax,spMax,atk,matk,def,
     hit:20+lvl+s.dex,                           /* raakkans tegen het ontwijken van het doel */
