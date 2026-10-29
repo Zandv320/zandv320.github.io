@@ -14,7 +14,7 @@ import {SKILLS,MAX_JOB,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBestee
 import {slag as regelSlag,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
 import {BLADEN,laadBladen} from './bladen.js';
 import {heldLagen} from './uiterlijk.js';
-import {maakSelectie} from './selectie.js';
+import {maakSelectie,PODIUM} from './selectie.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
 import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld} from './world.js';
@@ -33,6 +33,7 @@ const P={naam:'',lvl:1,exp:0,job:1,jobexp:0,stats:basisStats(),skills:{},hp:60,s
 const M=new Map();      /* monsters: id → monster */
 const S=new Map();      /* andere spelers: peer-id → speler */
 const klikbaar=[];      /* meshes waar je op kunt klikken */
+let stdPx=0,stdTilt=0;
 let net=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null;
 /* schakelaars voor het admin-paneel (admin.js) */
 const ADMIN={god:false,snelheid:1,bevroren:false,noclip:false,expMult:1,dropMult:1};
@@ -48,12 +49,15 @@ async function init(){
   $('#laden').classList.add('weg');
   addEventListener('pointerdown',wekGeluid,{capture:true});addEventListener('keydown',wekGeluid,{capture:true});
   CH=leesChars();
-  SEL=maakSelectie({chars:()=>CH.lijst,bewaar:()=>schrijfChars(CH),start:i=>start(i),laatst:()=>CH.laatst,inDorp});
+  SEL=maakSelectie({chars:()=>CH.lijst,bewaar:()=>schrijfChars(CH),start:i=>start(i),laatst:()=>CH.laatst,inDorp,scene,cam,camera});
+  /* het selectiescherm kijkt ingezoomd naar het podium; bij Enter World gaat de camera terug naar de normale stand */
+  stdPx=cam.px;stdTilt=cam.tilt;zetZoom(ZOOMS[Math.min(ZOOMS.length-1,ZOOMS.indexOf(stdPx)+2)]);cam.yaw=PODIUM.yaw;cam.tilt=THREE.MathUtils.degToRad(PODIUM.tilt);const d0=SEL.cameraDoel();cam.doel.set(d0[0],d0[1],d0[2]);
   invoer();loop();SEL.toon();
 }
 /* de wereld in met held nummer i uit de lijst; een held zonder level is nieuw */
 function start(i){
   const save=CH.lijst[i];P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';CH.laatst=i;schrijfChars(CH);
+  zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;
   if(save.lvl){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,x:save.x,z:save.z});
     if(save.uitr)P.uitr={hoofd:null,lichaam:null,wapen:null,...save.uitr};
     if(Array.isArray(save.tas)){P.tas=[];for(const e of save.tas){if(typeof e==='string')tasToevoegen(e,1,true);else if(e&&ITEMS[e.id])tasToevoegen(e.id,e.n|0,true)}}
@@ -513,7 +517,8 @@ function stap(dt){
   if(Q){tasT+=dt;if(tasT>=.5){tasT=0;Q.opTas();Q.opPlek(P.x,P.z)}}
   if(SEL&&!gestart)SEL.tick(dt);
   const t=nu();
-  _doel.set(P.x,0,P.z);cam.doel.lerp(_doel,1-Math.exp(-8*dt));if(cam.schudT>0)cam.schudT-=dt;updateCamera();
+  if(!gestart&&SEL&&SEL.isOpen()){const d=SEL.cameraDoel();_doel.set(d[0],d[1],d[2])}else _doel.set(P.x,0,P.z);
+  cam.doel.lerp(_doel,1-Math.exp(-8*dt));if(cam.schudT>0)cam.schudT-=dt;updateCamera();
   if(gestart){
     updateSpeler(dt);if(H)hostTick(dt);updateMonsters(dt);updateAnderen(dt);stuurPresence();
     UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'));

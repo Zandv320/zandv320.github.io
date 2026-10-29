@@ -1,19 +1,25 @@
 /* Runeveld – characterselectie, zoals in WoW: een lijst van helden rechts, de gekozen held groot in beeld,
    onderaan Enter World / Create / Delete. Aanmaken met naam en haarkleur; verwijderen door de naam te typen. */
-import {heldLagen,tekenHeld,HAARKEUZE} from './uiterlijk.js';
+import {heldLagen,tekenHeld,HAARKEUZE} from './uiterlijk.js';   /* tekenHeld: de kleine avatars in de lijst */
 import {STARTUITRUSTING,KLASSE} from './data.js';
 import {inBos,BOS} from './gebied.js';
 import {esc} from './ui.js';
 import {BLADEN} from './bladen.js';
+import {Sprite2D} from './sprites.js';
+import * as THREE from 'three';
 
 export const MAX_CHARS=6;
-/* A: {chars() → lijst van saves, bewaar(), start(i), laatst() → index, inDorp(x,z)} */
+/* de plek waar de gekozen held staat: voor de put op het plein, met het gezicht naar de camera */
+export const PODIUM={x:0,z:4.5,yaw:0,tilt:36};
+/* A: {chars() → lijst van saves, bewaar(), start(i), laatst() → index, inDorp(x,z), scene, cam, camera, zoomPx} */
 export function maakSelectie(A){
   const $=s=>document.querySelector(s);
   const el=$('#start'),sel=$('#sel'),maak=$('#maak'),wis=$('#wis');
-  /* de canvassen op de resolutie van de sprites (2× in de gladde modus), zodat niets wazig wordt */
-  const k=BLADEN.held.fw/64,maat=(c,w,h)=>{c.width=w*k;c.height=h*k;return c};
-  const ctx=maat($('#sel-canvas'),144,160).getContext('2d'),mctx=maat($('#maak-canvas'),144,160).getContext('2d');
+  const k=BLADEN.held.fw/64;
+  /* de held staat echt in de wereld: een sprite op het podium, die de lagen van de gekozen held krijgt */
+  const held=new Sprite2D(BLADEN.held,{lagen:heldLagen(STARTUITRUSTING,'standaard')});held.g.position.set(PODIUM.x,0,PODIUM.z);held.g.visible=false;A.scene.add(held.g);
+  let heldKey='';const _v=new THREE.Vector3();
+  function zetHeld(lagen,key){if(key===heldKey)return;heldKey=key;held.zetLagen(lagen);held.speel('idle',true)}
   let i=A.laatst()||0,t=0,haar='standaard',open=false,scherm='sel';
   const lijst=()=>A.chars();
   const zone=c=>!c.lvl?'Never played':inBos(c.x||0,c.z||0)?BOS.naam:A.inDorp(c.x||0,c.z||0)?'Runeveld village':'Runeveld fields';
@@ -27,19 +33,26 @@ export function maakSelectie(A){
     const c=L[i];
     $('#sel-naam').textContent=c?c.naam:'No characters yet';$('#sel-sub').textContent=c?`Level ${c.lvl||1} ${KLASSE.naam} · ${zone(c)}`:'Create your first hero to begin.';
     $('#sel-speel').disabled=!c;$('#sel-wis').disabled=!c;$('#sel-nieuw').disabled=L.length>=MAX_CHARS;
-    $('#sel-canvas').style.visibility=c?'':'hidden';
   }
   function tick(dt){
     if(!open)return;t+=dt;const L=lijst();
-    if(scherm==='sel'&&L[i])tekenHeld(ctx,lagenVan(L[i]),t);
-    else if(scherm==='maak')tekenHeld(mctx,heldLagen(STARTUITRUSTING,haar),t);
+    const c=scherm==='sel'?L[i]:scherm==='maak'?{uitr:STARTUITRUSTING,haar}:L[i];
+    held.g.visible=!!c&&scherm!=='wis';
+    if(c){zetHeld(lagenVan(c),JSON.stringify([c.uitr||null,c.haar||null]));
+      /* naar de camera kijken, ook als die draait */
+      held.zetKijk(Math.sin(A.cam.yaw),Math.cos(A.cam.yaw));held.update(dt,A.cam)}
+    /* naam en level onder de voeten van de held */
+    const info=$('#sel-info');info.hidden=scherm!=='sel'||!c;
+    if(!info.hidden){_v.set(PODIUM.x,-.15,PODIUM.z).project(A.camera);info.style.transform=`translate(${((_v.x+1)/2*innerWidth).toFixed(1)}px,${((1-_v.y)/2*innerHeight).toFixed(1)}px) translate(-50%,0)`}
   }
+  /* waar de camera naar kijkt zolang het selectiescherm open is: de held iets links van het midden, op borsthoogte */
+  function cameraDoel(){const b=matchMedia('(max-width:760px)').matches;return[PODIUM.x+(b?0:2.4),.7,PODIUM.z]}
   function toonScherm(naam){scherm=naam;sel.hidden=naam!=='sel';maak.hidden=naam!=='maak';wis.hidden=naam!=='wis';if(naam==='sel')renderLijst()}
 
   /* ---- selectie ---- */
   $('#sel-lijst').addEventListener('click',e=>{const b=e.target.closest('.selkaart');if(!b)return;const k=+b.dataset.i;if(k===i){binnen();return}i=k;t=0;renderLijst()});
   $('#sel-lijst').addEventListener('dblclick',e=>{if(e.target.closest('.selkaart'))binnen()});
-  function binnen(){const L=lijst();if(!L[i])return;open=false;el.hidden=true;A.start(i)}
+  function binnen(){const L=lijst();if(!L[i])return;open=false;el.hidden=true;held.g.visible=false;$('#sel-info').hidden=true;A.start(i)}
   $('#sel-speel').onclick=binnen;
   $('#sel-nieuw').onclick=()=>{if(lijst().length>=MAX_CHARS)return;haar='standaard';$('#maak-naam').value='';$('#maak-fout').textContent='';renderHaar();toonScherm('maak');t=0;if(!matchMedia('(pointer:coarse)').matches)$('#maak-naam').focus()};
   $('#sel-wis').onclick=()=>{const c=lijst()[i];if(!c)return;$('#wis-naam').textContent=c.naam;$('#wis-typ').value='';$('#wis-ok').disabled=true;toonScherm('wis');$('#wis-typ').focus()};
@@ -76,5 +89,5 @@ export function maakSelectie(A){
   });
 
   function toon(){open=true;el.hidden=false;toonScherm(lijst().length?'sel':'maak');if(scherm==='maak'){haar='standaard';renderHaar();if(!matchMedia('(pointer:coarse)').matches)$('#maak-naam').focus()}}
-  return{toon,tick,isOpen:()=>open};
+  return{toon,tick,isOpen:()=>open,cameraDoel};
 }
