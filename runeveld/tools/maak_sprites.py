@@ -347,6 +347,7 @@ def staf(zwaard, zwaard_b, lijf, hoofd, k, fw=64, fh=64, rijen=4):
     voor = Image.new('RGBA', zwaard.size, (0, 0, 0, 0)); achter = voor.copy()
     zv, zb, lf = zwaard.load(), zwaard_b.load(), lijf.load()
     vorig = {}                                                # laatste greep per rij, voor frames zonder zwaard
+    richting = {}                                             # zwaardrichting van het vorige frame per rij
     boog = lambda p: p[0] > 200 and p[1] > 200 and p[2] > 200
     for r in range(zwaard.height // fh):
         aanval = (r // rijen) == 2                                   # derde animatie: aanval
@@ -381,8 +382,16 @@ def staf(zwaard, zwaard_b, lijf, hoofd, k, fw=64, fh=64, rijen=4):
             if punten:
                 if a is None or best < 4:
                     continue
-                da = (a[0] - cx) ** 2 + (a[1] - cy) ** 2; db = (bpt[0] - cx) ** 2 + (bpt[1] - cy) ** 2
-                heft, tip = (a, bpt) if da <= db else (bpt, a)
+                # welk eind is het heft? In het eerste frame van een rij het eind dat het dichtst bij het lijf ligt;
+                # daarna het eind waarbij de richting op die van het vorige frame lijkt, zodat de staf niet omklapt
+                # terwijl de hand tijdens het lopen op en neer gaat
+                if r in richting:
+                    rx, ry = richting[r]
+                    heft, tip = (a, bpt) if (bpt[0] - a[0]) * rx + (bpt[1] - a[1]) * ry >= 0 else (bpt, a)
+                else:
+                    da = (a[0] - cx) ** 2 + (a[1] - cy) ** 2; db = (bpt[0] - cx) ** 2 + (bpt[1] - cy) ** 2
+                    heft, tip = (a, bpt) if da <= db else (bpt, a)
+                richting[r] = (tip[0] - heft[0], tip[1] - heft[1])
                 # de hand: huidpixels van het lijf vlak bij het heft
                 hand, hd = None, 99
                 for y in range(max(r * fh, heft[1] - 4), min((r + 1) * fh, heft[1] + 5)):
@@ -400,8 +409,11 @@ def staf(zwaard, zwaard_b, lijf, hoofd, k, fw=64, fh=64, rijen=4):
                 ox, oy = round(gx + ux * 12.5), round(gy + uy * 12.5)
                 nx, ny = (1, 0) if abs(uy) >= abs(ux) else (0, 1)
             else:
-                # rechtop door de hand, de bol altijd net boven het hoofd (ook als de staf achter het lijf hangt)
-                uit = 1 if gx >= cx else -1
+                # rechtop door de hand, de bol altijd net boven het hoofd (ook als de staf achter het lijf hangt).
+                # In de zijaanzichten helt de staf naar voren (de kant waar het figuur heen kijkt), anders wisselt de
+                # helling per loopframe met de hand mee; van voren en van achteren helt hij naar de kant van de hand.
+                kijk = r % rijen                                                     # 0 front, 1 links, 2 rechts, 3 back
+                uit = -1 if kijk == 1 else 1 if kijk == 2 else (1 if gx >= cx else -1)
                 ox, oy = gx + uit * 3, hoofdTop - 3
                 vx, vy = ox - gx, oy - gy; L = max(1, (vx * vx + vy * vy) ** .5); vx, vy = vx / L, vy / L
                 x0, y0 = round(gx - vx * 9), round(gy - vy * 9); x1, y1 = round(ox - vx * 1.5), round(oy - vy * 1.5)
