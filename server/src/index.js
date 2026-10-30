@@ -107,8 +107,8 @@ export class Wereld {
       else if (m.k === 'nieuw') { const d = await S.nieuw(at.tok, m.c); stuur({k: 'chars', lijst: d.lijst, laatst: d.laatst}); }
       else if (m.k === 'wis') { const d = await S.wis(at.tok, String(m.naam)); stuur({k: 'chars', lijst: d.lijst, laatst: d.laatst}); }
       else if (m.k === 'speel') { const d = await S.laad(at.tok), c = geldigeNaam(m.naam) ? S.vind(d, m.naam) : null; if (!c) { stuur({k: 'fout', fout: 'onbekende held'}); return; } at.naam = c.naam; ws.serializeAttachment(at); stuur({k: 'char', c}); }
-      else if (m.k === 'save') { if (at.naam) await S.save(at.tok, at.naam, m.c); }
-      else if (m.k === 'a') { if (!at.naam) return; const c = await S.actie(at.tok, at.naam, String(m.t), m.d); if (c) stuur({k: 'char', c}); }
+      else if (m.k === 'save') { if (at.naam) await S.save(at.tok, at.naam, m.c); else stuur({k: 'fout', fout: 'geen held'}); }
+      else if (m.k === 'a') { if (!at.naam) { stuur({k: 'fout', fout: 'geen held'}); return; } const c = await S.actie(at.tok, at.naam, String(m.t), m.d); if (c) stuur({k: 'char', c}); }
     } catch (e) { stuur({k: 'fout', fout: 'serverfout'}); }
   }
   /* ---- partijen: uitnodigen, aannemen, verlaten, schoppen; de leden delen exp (met een bonus) en zeny ---- */

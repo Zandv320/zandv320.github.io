@@ -27,7 +27,7 @@ export function maakNet(){
   const hostId=()=>{if(ws)return 'server';let h=me;for(const id of spelers.keys())if(id<h)h=id;return h};
   const setConn=v=>{if(verbonden!==v){verbonden=v;connFns.forEach(f=>f(v))}};
   const firePeers=(weg=[])=>spelerFns.forEach(f=>{try{f(spelers,weg)}catch(e){console.error(e)}});
-  let ws=null,wereldFn=null,vraagNr=0;const vragen=new Map(),charFns=[],berichtFns={};   /* de WebSocket naar de eigen server, als die er is; wereldFn geeft de botsingscirkels voor de server */
+  let ws=null,wereldFn=null,vraagNr=0,eersteHallo=true;const vragen=new Map(),charFns=[],berichtFns={},herverbindFns=[];   /* de WebSocket naar de eigen server, als die er is; wereldFn geeft de botsingscirkels voor de server */
   function publish(k,obj){
     if(ws&&ws.readyState===1){if(k==='p')ws.send(JSON.stringify({k:'p',p:obj.p}));else if(k==='e')ws.send(JSON.stringify({k:'e',t:obj.t,d:obj.d,to:obj.to}));return}
     if(client&&client.connected)client.publish(TOPIC+k,JSON.stringify(obj),{qos:0})}
@@ -47,7 +47,8 @@ export function maakNet(){
     const to=setTimeout(()=>{if(!klaar){klaar=true;try{s.close()}catch(e){}res(false)}},8000);
     s.onopen=()=>{ws=s;s.send(JSON.stringify({k:'hi',f:me,p:myPres,tok:token()}))};
     s.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}if(!m||typeof m!=='object')return;
-      if(m.k==='hallo'){if(!klaar){klaar=true;clearTimeout(to);res(true)}for(const sp of m.spelers||[])verwerk('p',{f:sp.f,p:sp.p});elect();setConn(true);if(wereldFn)try{s.send(JSON.stringify({k:'wereld',obst:wereldFn()}))}catch(e){}}
+      if(m.k==='hallo'){if(!klaar){klaar=true;clearTimeout(to);res(true)}for(const sp of m.spelers||[])verwerk('p',{f:sp.f,p:sp.p});elect();setConn(true);if(wereldFn)try{s.send(JSON.stringify({k:'wereld',obst:wereldFn()}))}catch(e){}
+        if(!eersteHallo)herverbindFns.forEach(f=>{try{f()}catch(e){console.error(e)}});eersteHallo=false}
       else if(m.k==='p'||m.k==='x'||m.k==='e')verwerk(m.k,m)
       else if(m.i!==undefined&&vragen.has(m.i)){const v=vragen.get(m.i);vragen.delete(m.i);clearTimeout(v.timer);v.res(m)}
       else if(m.k==='char'&&m.c)charFns.forEach(f=>{try{f(m.c)}catch(e){console.error(e)}})
@@ -112,6 +113,8 @@ export function maakNet(){
     onChar(f){charFns.push(f)},
     /* andere berichten van de server (partij, uitnodiging, ...) */
     onBericht(k,f){berichtFns[k]=f},
+    /* na een herverbinding (de server is opnieuw gestart) moet de held zich opnieuw melden */
+    onHerverbind(f){herverbindFns.push(f)},
     party(actie,d){if(ws&&ws.readyState===1)try{ws.send(JSON.stringify({k:'party',actie,...(d||{})}))}catch(e){}},
   };
 }

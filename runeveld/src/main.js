@@ -160,6 +160,9 @@ function bewaar(){if(!gestart)return;if(net&&net.viaServer())net.save({hp:Math.r
 /* ====================== multiplayer ====================== */
 function startNet(){
   net=maakNet();net.onChar(neemRecord);
+  /* de server kent na een herstart niet meer welke held deze verbinding speelt: opnieuw melden */
+  const meld=()=>{if(gestart&&serverAccount)net.vraag({k:'speel',naam:P.naam}).then(r=>{if(r&&r.c)neemRecord(r.c)})};
+  net.onHerverbind(meld);net.onBericht('fout',m=>{if(m.fout==='geen held')meld()});
   net.onHost(v=>{if(v)wordHost();else H=null});
   net.onSpelers((spelers,weg)=>{
     for(const id of weg)verwijderSpeler(id);
