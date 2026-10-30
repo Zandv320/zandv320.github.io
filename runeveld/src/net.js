@@ -64,9 +64,9 @@ export function maakNet(){
   })}
 
   (async function start(){
-    elect(); /* alleen = host */
     const url=serverUrl();
     if(url&&await verbindServer(url)){brokerUrl=url;return}   /* eigen server; lukt dat niet, dan de publieke brokers */
+    elect(); /* zonder server: alleen = host */
     try{if(typeof mqtt==='undefined')await laadScript(MQTT_CDN)}catch(e){}
     while(!gesloten){
       if(typeof mqtt!=='undefined')for(const u of URLS){client=await verbind(u);if(client){brokerUrl=u;break}}
