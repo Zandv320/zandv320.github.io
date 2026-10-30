@@ -2,7 +2,7 @@
    winkel, drankjes, class advancement en quests. Pure functies op een heldrecord c = {naam, klasse, lvl, exp, job, jobexp,
    stats, skills, hp, sp, zeny, uitr, tas, quests}; ze veranderen c en geven true als het mocht. De server draait precies
    deze regels op zijn eigen record, zodat de client niets kan verzinnen; de client doet hetzelfde voor de directe reactie. */
-import {KLASSEN,ADVANCEMENT,ITEMS,expVoor,MAX_LVL,TAS_SLOTS,VERKOOPDEEL,MONSTERS} from '../data.js';
+import {KLASSEN,ADVANCEMENT,ITEMS,expVoor,MAX_LVL,TAS_SLOTS,VERKOOPDEEL,MONSTERS,LEGE_UITR} from '../data.js';
 import {SKILLS,MAX_JOB_TIER,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './skills.js';
 import {basisStats,statKosten,statPuntenVoor,statPuntenBesteed,MAX_STAT,afgeleid,STATS} from './stats.js';
 import {QUESTS,status,voltooid} from './quests.js';
@@ -12,6 +12,9 @@ export const maxJobVan=c=>MAX_JOB_TIER[klasseVan(c).tier]||20;
 export const vrijeStat=c=>statPuntenVoor(c.lvl)-statPuntenBesteed(c.stats);
 export const vrijeSkill=c=>(klasseVan(c).tier===2?skillPuntenVoor(MAX_JOB_TIER[1]):0)+skillPuntenVoor(c.job)-skillPuntenBesteed(c.skills);
 export const draagt=c=>Object.values(c.uitr||{}).map(id=>id&&ITEMS[id]).filter(Boolean);
+/* het slot waar dit voorwerp in gaat: een ring in de eerste vrije ringslot (of ring1) */
+export const slotVoor=(c,it)=>it.slot==='ring'?(!c.uitr.ring1?'ring1':!c.uitr.ring2?'ring2':'ring1'):it.slot;
+export const pastInSlot=(id,slot)=>!!ITEMS[id]&&(ITEMS[id].slot===slot||(ITEMS[id].slot==='ring'&&(slot==='ring1'||slot==='ring2')));
 export const afgeleidVan=c=>afgeleid({lvl:c.lvl,stats:c.stats,items:draagt(c),skills:c.skills,klasse:klasseVan(c)});
 /* de hoogste klap die deze held met één slag of spreuk kan uitdelen (ruim genomen): meer is bedrog */
 export function maxSchade(c){const a=afgeleidVan(c);return Math.round(Math.max(a.atk,a.matk)*7*1.6+50)}
@@ -55,7 +58,7 @@ export function uitrusten(c,id){
   const it=ITEMS[id];if(!it||!it.slot)return false;
   if(it.klasse&&it.klasse!==c.klasse&&it.klasse!==klasseVan(c).basis)return false;
   if(!tasVerwijderen(c,id))return false;
-  const oud=c.uitr[it.slot];c.uitr[it.slot]=id;if(oud)tasToevoegen(c,oud,1);
+  const slot=slotVoor(c,it);const oud=c.uitr[slot];c.uitr[slot]=id;if(oud)tasToevoegen(c,oud,1);
   c.hp=Math.min(c.hp,afgeleidVan(c).hpMax);return true;
 }
 export function afdoen(c,slot){const id=c.uitr[slot];if(!id)return false;if(!tasToevoegen(c,id))return false;c.uitr[slot]=null;c.hp=Math.min(c.hp,afgeleidVan(c).hpMax);return true}
@@ -87,7 +90,7 @@ export function questLever(c,id){
 
 /* ---- een nieuw record en het schoonmaken van een record dat van buiten komt ---- */
 export function nieuwRecord({naam,haar,klasse}){
-  const k=KLASSEN[klasse]&&KLASSEN[klasse].tier===1?klasse:'swordsman';const c={naam,haar:haar||'standaard',klasse:k,lvl:1,exp:0,job:1,jobexp:0,stats:basisStats(),skills:{},zeny:0,uitr:{...KLASSEN[k].start},tas:[{id:'drank',n:5}],quests:{},x:0,z:4};
+  const k=KLASSEN[klasse]&&KLASSEN[klasse].tier===1?klasse:'swordsman';const c={naam,haar:haar||'standaard',klasse:k,lvl:1,exp:0,job:1,jobexp:0,stats:basisStats(),skills:{},zeny:0,uitr:{...LEGE_UITR(),...KLASSEN[k].start},tas:[{id:'drank',n:5}],quests:{},x:0,z:4};
   const a=afgeleidVan(c);c.hp=a.hpMax;c.sp=a.spMax;return c;
 }
 const int=(v,lo,hi,d=lo)=>{v=Math.round(+v);return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d};
@@ -105,7 +108,7 @@ export function schoon(bron){
   for(const id in c.skills)if(!c.skills[id])delete c.skills[id];
   while(skillPuntenBesteed(c.skills)>Math.max(0,vrijeSkill({...c,skills:{}}))){const id=Object.keys(c.skills).reduce((a,b)=>c.skills[a]>=c.skills[b]?a:b);c.skills[id]--;if(!c.skills[id])delete c.skills[id]}
   c.zeny=int(bron.zeny,0,99999999,0);
-  c.uitr={hoofd:null,lichaam:null,wapen:null};for(const slot in c.uitr){const id=bron.uitr&&bron.uitr[slot];if(id&&ITEMS[id]&&ITEMS[id].slot===slot)c.uitr[slot]=id}
+  c.uitr=LEGE_UITR();for(const slot in c.uitr){const id=bron.uitr&&bron.uitr[slot];if(id&&pastInSlot(id,slot))c.uitr[slot]=id}
   c.tas=[];for(const e of Array.isArray(bron.tas)?bron.tas:[]){if(!e||!ITEMS[e.id])continue;tasToevoegen(c,e.id,int(e.n,1,ITEMS[e.id].stapel||1,1))}
   c.quests={};for(const[id,s]of Object.entries(bron.quests||{}))if(QUESTS[id]&&s&&(s.st==='bezig'||s.st==='gedaan'))c.quests[id]={st:s.st,n:int(s.n,0,QUESTS[id].doel.n||1,0)};
   const a=afgeleidVan(c);c.hp=int(bron.hp,1,a.hpMax,a.hpMax);c.sp=int(bron.sp,0,a.spMax,a.spMax);

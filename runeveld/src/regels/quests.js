@@ -105,7 +105,7 @@ export const QUESTS={
     intro:'His Majesty has heard of the bandit chief\'s end. He wishes to see the one who did it. Walk up to the keep and present yourself. Bow. Do not touch anything.',
     bezig:'Walk through the castle gate at the end of the main avenue and up the steps of the keep. The King stands before the doors.',
     klaar:'The King was pleased. That does not happen often. The crown\'s gratitude, in coin, and you are welcome in Aurelia for as long as you live.',
-    doel:{soort:'plek',x:-153,z:0,r:4.5,naam:'the King at the keep'},beloning:{exp:5000,zeny:4000,items:[{id:'grote_drank',n:5}]}},
+    doel:{soort:'plek',x:-153,z:0,r:4.5,naam:'the King at the keep'},beloning:{exp:5000,zeny:4000,items:[{id:'amulet_van_aurelia',n:1},{id:'grote_drank',n:5}]}},
 };
 export const QUEST_VOLGORDE=Object.keys(QUESTS);
 

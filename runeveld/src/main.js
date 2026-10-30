@@ -1,6 +1,6 @@
 /* Runeveld – hoofdspel: speler, monsters, gevechten, levels, multiplayer, invoer. */
 import * as THREE from 'three';
-import {KLASSEN,ADVANCEMENT,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL,WINKELS} from './data.js';
+import {KLASSEN,ADVANCEMENT,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL,WINKELS,LEGE_UITR} from './data.js';
 import {maakInventaris} from './inventaris.js';
 import {maakAdmin} from './admin.js';
 import {maakDorpelingen,updateDorpelingen,spreek,dorpelingen,groet,toonDorpelingen} from './dorpelingen.js';
@@ -87,7 +87,7 @@ async function laadHeldenVanServer(){
 function neemRecord(c){
   if(!gestart||!c||c.naam!==P.naam)return;
   const andereKlasse=c.klasse!==P.klasse,andereUitr=JSON.stringify(c.uitr)!==JSON.stringify(P.uitr);
-  Object.assign(P,{klasse:c.klasse,lvl:c.lvl,exp:c.exp,job:c.job,jobexp:c.jobexp,zeny:c.zeny,stats:c.stats,skills:c.skills,uitr:c.uitr,tas:c.tas,quests:c.quests});
+  Object.assign(P,{klasse:c.klasse,lvl:c.lvl,exp:c.exp,job:c.job,jobexp:c.jobexp,zeny:c.zeny,stats:c.stats,skills:c.skills,uitr:{...LEGE_UITR(),...c.uitr},tas:c.tas,quests:c.quests});
   P.hp=Math.min(P.hp,hpMax());P.sp=Math.min(P.sp,spMax());
   if(andereKlasse)bouwBalk();if(andereUitr||andereKlasse)vernieuwUiterlijk();
   K.render();I.render();if(Q)Q.vernieuw();
@@ -95,11 +95,11 @@ function neemRecord(c){
 /* de wereld in met held nummer i uit de lijst; een held zonder level is nieuw */
 async function start(i){
   let save=CH.lijst[i];
-  if(net.viaServer()&&serverAccount){const r=await net.vraag({k:'speel',naam:save.naam});if(r&&r.c){save={...save,...r.c};CH.lijst[i]=save}}P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...klasse().start};CH.laatst=i;schrijfChars(CH);
+  if(net.viaServer()&&serverAccount){const r=await net.vraag({k:'speel',naam:save.naam});if(r&&r.c){save={...save,...r.c};CH.lijst[i]=save}}P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...LEGE_UITR(),...klasse().start};CH.laatst=i;schrijfChars(CH);
   bouwBalk();
   zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;toonNpcs(true);
   if(save.lvl){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,x:save.x,z:save.z});
-    if(save.uitr)P.uitr={hoofd:null,lichaam:null,wapen:null,...save.uitr};
+    if(save.uitr)P.uitr={...LEGE_UITR(),...save.uitr};
     if(Array.isArray(save.tas)){P.tas=[];for(const e of save.tas){if(typeof e==='string')tasToevoegen(e,1,true);else if(e&&ITEMS[e.id])tasToevoegen(e.id,e.n|0,true)}}
     if(save.dranken>0)tasToevoegen('drank',save.dranken,true);   /* oude opslag: drankjes als los getal */
     if(save.quests&&typeof save.quests==='object')P.quests=save.quests;
@@ -558,7 +558,8 @@ function uitrusten(id){
   const it=ITEMS[id];if(!it||!it.slot)return;
   if(it.klasse&&it.klasse!==P.klasse&&it.klasse!==klasse().basis){UI.sys(`Only a ${KLASSEN[it.klasse].naam} can use the ${it.naam.toLowerCase()}.`);return}
   if(!tasVerwijderen(id))return;
-  const oud=P.uitr[it.slot];P.uitr[it.slot]=id;if(oud)tasToevoegen(oud,1,true);
+  const slot=it.slot==='ring'?(!P.uitr.ring1?'ring1':!P.uitr.ring2?'ring2':'ring1'):it.slot;
+  const oud=P.uitr[slot];P.uitr[slot]=id;if(oud)tasToevoegen(oud,1,true);
   vernieuwUiterlijk();UI.sys(`You equip the ${it.naam.toLowerCase()}.`);net.actie('uitrusten',{id});
 }
 function afdoen(slot){

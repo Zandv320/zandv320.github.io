@@ -26,7 +26,9 @@ export const expVoor=l=>Math.round(40*Math.pow(l,1.55)*(l<=30?1:1+Math.pow((l-30
 
 /* Voorwerpen. Uitrusting heeft een `slot` (hoofd, lichaam, wapen) en een `laag` (spritelaag van de held, bladen.js);
    `klasse` beperkt wie het kan dragen; verbruiksartikelen hebben `gebruik`. Alles stapelt tot `stapel` per inventory-slot. */
-export const SLOTS=[['hoofd','Head'],['lichaam','Body'],['wapen','Weapon']];
+/* de uitrustingsslots; een ring past in ring1 of ring2 */
+export const SLOTS=[['hoofd','Head'],['lichaam','Body'],['mantel','Cloak'],['wapen','Weapon'],['ketting','Necklace'],['ring1','Ring'],['ring2','Ring'],['riem','Belt'],['broek','Pants'],['laarzen','Boots']];
+export const LEGE_UITR=()=>({hoofd:null,lichaam:null,mantel:null,wapen:null,ketting:null,ring1:null,ring2:null,riem:null,broek:null,laarzen:null});
 export const TAS_SLOTS=20;
 export const ITEMS={
   drank:{naam:'Red potion',gebruik:'heal',heal:45,cd:1,prijs:25,icoon:'🧪',stapel:99,beschr:'Restores 45 HP.'},
@@ -58,6 +60,29 @@ export const ITEMS={
   wolfsvacht:{naam:'Wolf pelt',prijs:34,icoon:'🐺',stapel:99,beschr:'Grey, thick and warm. The wolf disagreed.'},
   gewei:{naam:'Stag antler',prijs:45,icoon:'🦌',stapel:99,beschr:'Heavy and branching. Good for hilts, says Ragnar.'},
   slagtand:{naam:'Dire tusk',prijs:140,icoon:'🦷',stapel:99,beschr:'As long as your forearm. Something to brag about.'},
+  /* mantels (zichtbaar op de held), ringen, kettingen, riemen, broeken en laarzen. plus: bonus op de basisstats */
+  reismantel:{naam:'Traveler\'s cloak',slot:'mantel',laag:'mantel1',def:2,prijs:150,icoon:'🧥',beschr:'Rust-brown wool, patched twice. Keeps the rain off.'},
+  wolmantel:{naam:'Wool cloak',slot:'mantel',laag:'mantel2',def:4,hp:25,prijs:600,icoon:'🧥',beschr:'Thick blue wool from the Kingsvale flocks.'},
+  schaduwmantel:{naam:'Shadow cloak',slot:'mantel',laag:'mantel3',def:6,flee:8,prijs:2000,icoon:'🧥',beschr:'Bandit-made. Dyed so dark it drinks the lantern light.'},
+  koningsmantel:{naam:'Royal cloak',slot:'mantel',laag:'mantel4',def:10,hp:60,plus:{str:1,agi:1,vit:1,int:1,dex:1,luk:1},prijs:6000,icoon:'🧥',beschr:'Crimson with a golden hem. Worn by the champions of Aurelia.'},
+  koperring:{naam:'Copper ring',slot:'ring',hp:20,prijs:300,icoon:'💍',beschr:'A plain band. Warm to the touch.'},
+  krachtring:{naam:'Ring of Might',slot:'ring',plus:{str:3},prijs:900,icoon:'💍',beschr:'A heavy silver band set with a red stone.'},
+  wijsheidsring:{naam:'Ring of Wisdom',slot:'ring',plus:{int:3},prijs:900,icoon:'💍',beschr:'A silver band set with a blue stone that hums faintly.'},
+  behendigheidsring:{naam:'Ring of Agility',slot:'ring',plus:{agi:3},flee:5,prijs:900,icoon:'💍',beschr:'A thin band set with a green stone. Light as air.'},
+  koningsring:{naam:'Royal signet',slot:'ring',plus:{str:2,agi:2,vit:2,int:2,dex:2,luk:2},prijs:4000,icoon:'💍',beschr:'The crossed-out crown of the bandit chief, turned back the right way up.'},
+  leren_koord:{naam:'Leather cord',slot:'ketting',hp:30,prijs:200,icoon:'📿',beschr:'A cord with a boar tusk on it. Farmers swear by it.'},
+  zilveren_ketting:{naam:'Silver necklace',slot:'ketting',sp:40,matk:4,prijs:1200,icoon:'📿',beschr:'Fine silver links from the Aurelia market.'},
+  wolfstand_ketting:{naam:'Wolf-fang necklace',slot:'ketting',atk:6,crit:3,prijs:1500,icoon:'📿',beschr:'Six fangs of a dire wolf on a strip of hide.'},
+  amulet_van_aurelia:{naam:'Amulet of Aurelia',slot:'ketting',hp:80,sp:80,prijs:4500,icoon:'📿',beschr:'The crown\'s thanks, in gold and sapphire.'},
+  leren_riem:{naam:'Leather belt',slot:'riem',def:1,hp:10,prijs:120,icoon:'🪢',beschr:'Holds your pants up and your potions close.'},
+  gespriem:{naam:'Buckled belt',slot:'riem',def:3,hp:30,prijs:700,icoon:'🪢',beschr:'A broad belt with a brass buckle.'},
+  ridderriem:{naam:'Knight\'s belt',slot:'riem',def:5,atk:4,prijs:2500,icoon:'🪢',beschr:'Studded with steel. Made for a sword and a scabbard.'},
+  linnen_broek:{naam:'Linen pants',slot:'broek',def:1,prijs:80,icoon:'👖',beschr:'Simple and comfortable.'},
+  leren_broek:{naam:'Leather pants',slot:'broek',def:4,prijs:500,icoon:'👖',beschr:'Stiff at first, then yours for life.'},
+  geschubde_broek:{naam:'Scaled pants',slot:'broek',def:8,hp:30,prijs:2200,icoon:'👖',beschr:'Overlapping steel scales on thick leather.'},
+  stoffen_schoenen:{naam:'Cloth shoes',slot:'laarzen',def:1,prijs:80,icoon:'👟',beschr:'Better than bare feet. Barely.'},
+  leren_laarzen:{naam:'Leather boots',slot:'laarzen',def:3,flee:3,prijs:450,icoon:'🥾',beschr:'Good soles for the Kingsroad.'},
+  ijzeren_laarzen:{naam:'Iron boots',slot:'laarzen',def:6,hp:20,prijs:1800,icoon:'🥾',beschr:'Heavy, loud, and nothing gets through them.'},
   /* Kingsvale */
   grote_drank:{naam:'Orange potion',gebruik:'heal',heal:160,cd:1,prijs:120,icoon:'🧪',stapel:99,beschr:'Brewed in Aurelia. Restores 160 HP.'},
   donkere_vacht:{naam:'Dire wolf pelt',prijs:70,icoon:'🐺',stapel:99,beschr:'Thick, dark and still a little warm.'},
@@ -71,32 +96,34 @@ export const WINKEL=['drank','tuniek','leren_kap','houtzwaard','houtstaf','gewaa
 export const WINKELS={
   bram:{naam:'Merchant Bram',tekst:'"Welcome to Runeveld, adventurer. A potion for the road, or something sturdier to wear?"',items:WINKEL},
   apotheek:{naam:'Apothecary Wren',tekst:'"Potions, tinctures and no questions. The orange ones are my own recipe."',items:['drank','grote_drank']},
-  wapensmid:{naam:'Armorer Gunnar',tekst:'"Steel from the royal forges. It costs what it costs."',items:['vest','ijzerzwaard','ijzeren_helm','harnas','staalzwaard','zijden_gewaad','eikenstaf','sterrenhoed','magiergewaad','kristalstaf']},
+  wapensmid:{naam:'Armorer Gunnar',tekst:'"Steel from the royal forges. It costs what it costs."',items:['vest','ijzerzwaard','ijzeren_helm','harnas','staalzwaard','zijden_gewaad','eikenstaf','sterrenhoed','magiergewaad','kristalstaf','gespriem','ridderriem','leren_broek','geschubde_broek','leren_laarzen','ijzeren_laarzen']},
+  kleermaker:{naam:'Tailor Maud',tekst:'"Wool, silk, and no patience for haggling. The cloaks are on the left."',items:['reismantel','wolmantel','linnen_broek','stoffen_schoenen','leren_riem']},
+  juwelier:{naam:'Jeweler Oswin',tekst:'"Rings and chains, friend. Every stone comes from the vale, every price from my heart."',items:['koperring','krachtring','wijsheidsring','behendigheidsring','leren_koord','zilveren_ketting']},
 };
 export const VERKOOPDEEL=.5;
 
 /* De monsters volgen de dieren uit het Craftpix-pack "Hunt Animals": konijn, vos, everzwijn.
    `zone`: afstand tot het dorpsmidden waar ze leven (buiten de palissade); `buit`: kans per item dat het valt. */
 export const MONSTERS={
-  konijn:{naam:'Rabbit',lvl:1,hp:28,atk:4,exp:11,zeny:[2,7],snelheid:1.8,agressief:false,bereik:1.1,aggro:0,zone:[25,38],buit:{konijnenpoot:.45,drank:.1,tuniek:.02,leren_kap:.03}},
-  vos:{naam:'Fox',lvl:3,hp:60,atk:8,exp:26,zeny:[6,14],snelheid:2.6,agressief:true,bereik:1.2,aggro:4.5,zone:[33,50],buit:{vossenstaart:.5,drank:.15,vest:.06,ijzerzwaard:.05,leren_kap:.05,punthoed:.03}},
-  zwijn:{naam:'Boar',lvl:6,hp:140,atk:14,exp:62,zeny:[12,30],snelheid:2.2,agressief:true,bereik:1.4,aggro:5,zone:[44,57],buit:{zwijnenhuid:.55,drank:.25,vest:.1,ijzerzwaard:.08,eikenstaf:.05,harnas:.05,staalzwaard:.04,ijzeren_helm:.06}},
+  konijn:{naam:'Rabbit',lvl:1,hp:28,atk:4,exp:11,zeny:[2,7],snelheid:1.8,agressief:false,bereik:1.1,aggro:0,zone:[25,38],buit:{konijnenpoot:.45,drank:.1,tuniek:.02,leren_kap:.03,leren_koord:.03}},
+  vos:{naam:'Fox',lvl:3,hp:60,atk:8,exp:26,zeny:[6,14],snelheid:2.6,agressief:true,bereik:1.2,aggro:4.5,zone:[33,50],buit:{vossenstaart:.5,drank:.15,vest:.06,ijzerzwaard:.05,leren_kap:.05,punthoed:.03,linnen_broek:.04,stoffen_schoenen:.04}},
+  zwijn:{naam:'Boar',lvl:6,hp:140,atk:14,exp:62,zeny:[12,30],snelheid:2.2,agressief:true,bereik:1.4,aggro:5,zone:[44,57],buit:{zwijnenhuid:.55,drank:.25,vest:.1,ijzerzwaard:.08,eikenstaf:.05,harnas:.05,staalzwaard:.04,ijzeren_helm:.06,leren_riem:.06}},
 };
 /* Hoeveel van elk monster er rondlopen. */
 /* Whisperwood (gebied.js): `gebied:'bos'` spawnt in het bos buiten het pad, 'plek' op de open plek bij het altaar. */
 export const BOS_MONSTERS={
-  wolf:{naam:'Grey Wolf',lvl:9,hp:260,atk:24,exp:120,zeny:[20,45],snelheid:3.2,agressief:true,bereik:1.3,aggro:6,gebied:'bos',nacht:{aggro:1.7,snelheid:1.15},buit:{wolfsvacht:.5,drank:.25,vest:.08,ijzerzwaard:.08,zijden_gewaad:.05}},
-  hert:{naam:'Stag',lvl:11,hp:380,atk:30,exp:170,zeny:[25,60],snelheid:3.4,agressief:false,bereik:1.4,aggro:0,gebied:'bos',buit:{gewei:.45,drank:.25,ijzeren_helm:.07,harnas:.05,sterrenhoed:.05}},
+  wolf:{naam:'Grey Wolf',lvl:9,hp:260,atk:24,exp:120,zeny:[20,45],snelheid:3.2,agressief:true,bereik:1.3,aggro:6,gebied:'bos',nacht:{aggro:1.7,snelheid:1.15},buit:{wolfsvacht:.5,drank:.25,vest:.08,ijzerzwaard:.08,zijden_gewaad:.05,leren_laarzen:.05}},
+  hert:{naam:'Stag',lvl:11,hp:380,atk:30,exp:170,zeny:[25,60],snelheid:3.4,agressief:false,bereik:1.4,aggro:0,gebied:'bos',buit:{gewei:.45,drank:.25,ijzeren_helm:.07,harnas:.05,sterrenhoed:.05,leren_broek:.05}},
   everzwijn:{naam:'Dire Boar',lvl:14,hp:900,atk:46,exp:520,zeny:[80,160],snelheid:2.4,agressief:true,bereik:1.6,aggro:7,gebied:'plek',respawn:[60,90],buit:{slagtand:.8,staalzwaard:.12,kristalstaf:.12,harnas:.1,magiergewaad:.1,drank:.5}},
 };
 Object.assign(MONSTERS,BOS_MONSTERS);
 /* Kingsvale (gebied.js): `gebied:'vale'` zwerft over de weiden buiten de stad, 'kamp' blijft bij het bandietenkamp.
    Bandieten zijn mensen: opgebouwd uit de lagen van de held (`mens`), net als de dorpelingen. `blad` hergebruikt een dierensheet, `tint` kleurt hem. */
 export const VALE_MONSTERS={
-  bandiet:{naam:'Bandit',lvl:16,hp:1050,atk:54,exp:650,zeny:[60,140],snelheid:3,agressief:true,bereik:1.4,aggro:6.5,gebied:'vale',mens:{kleding:'harnas2',hoofd:'hoofd1',wapen:'wapen1',haar:'zwart'},buit:{bandietenzegel:.5,drank:.3,grote_drank:.08,ijzerzwaard:.06,vest:.06,zijden_gewaad:.04}},
-  direwolf:{naam:'Dire Wolf',lvl:17,hp:1350,atk:60,exp:760,zeny:[50,120],snelheid:3.5,agressief:true,bereik:1.4,aggro:7,gebied:'vale',blad:'wolf',schaal:1.25,tint:0x9a8ab8,nacht:{aggro:1.6,snelheid:1.15},buit:{donkere_vacht:.55,drank:.3,grote_drank:.08,ijzeren_helm:.05,sterrenhoed:.05}},
-  bruut:{naam:'Bandit Brute',lvl:19,hp:1950,atk:72,exp:1150,zeny:[100,220],snelheid:2.7,agressief:true,bereik:1.5,aggro:6.5,gebied:'vale',mens:{kleding:'harnas2',hoofd:'hoofd2',wapen:'wapen2',haar:'rood',schaal:1.15},buit:{bandietenzegel:.7,grote_drank:.15,staalzwaard:.05,harnas:.05,kristalstaf:.04,magiergewaad:.04}},
-  hoofdman:{naam:'Bandit Chief Varek',lvl:22,hp:6500,atk:96,exp:4500,zeny:[400,800],snelheid:3,agressief:true,bereik:1.6,aggro:8,gebied:'kamp',respawn:[90,150],mens:{kleding:'harnas2',hoofd:'hoofd2',wapen:'wapen2',haar:'blond',schaal:1.3},buit:{bandietenzegel:1,grote_drank:.6,staalzwaard:.15,kristalstaf:.15,harnas:.12,magiergewaad:.12,ijzeren_helm:.1,sterrenhoed:.1}},
+  bandiet:{naam:'Bandit',lvl:16,hp:1050,atk:54,exp:650,zeny:[60,140],snelheid:3,agressief:true,bereik:1.4,aggro:6.5,gebied:'vale',mens:{kleding:'harnas2',hoofd:'hoofd1',wapen:'wapen1',haar:'zwart'},buit:{bandietenzegel:.5,drank:.3,grote_drank:.08,ijzerzwaard:.06,vest:.06,zijden_gewaad:.04,reismantel:.05,koperring:.04}},
+  direwolf:{naam:'Dire Wolf',lvl:17,hp:1350,atk:60,exp:760,zeny:[50,120],snelheid:3.5,agressief:true,bereik:1.4,aggro:7,gebied:'vale',blad:'wolf',schaal:1.25,tint:0x9a8ab8,nacht:{aggro:1.6,snelheid:1.15},buit:{donkere_vacht:.55,drank:.3,grote_drank:.08,ijzeren_helm:.05,sterrenhoed:.05,wolfstand_ketting:.06}},
+  bruut:{naam:'Bandit Brute',lvl:19,hp:1950,atk:72,exp:1150,zeny:[100,220],snelheid:2.7,agressief:true,bereik:1.5,aggro:6.5,gebied:'vale',mens:{kleding:'harnas2',hoofd:'hoofd2',wapen:'wapen2',haar:'rood',schaal:1.15},buit:{bandietenzegel:.7,grote_drank:.15,staalzwaard:.05,harnas:.05,kristalstaf:.04,magiergewaad:.04,schaduwmantel:.04,gespriem:.05}},
+  hoofdman:{naam:'Bandit Chief Varek',lvl:22,hp:6500,atk:96,exp:4500,zeny:[400,800],snelheid:3,agressief:true,bereik:1.6,aggro:8,gebied:'kamp',respawn:[90,150],mens:{kleding:'harnas2',hoofd:'hoofd2',wapen:'wapen2',haar:'blond',schaal:1.3},buit:{bandietenzegel:1,koningsring:.5,schaduwmantel:.3,koningsmantel:.25,grote_drank:.6,staalzwaard:.15,kristalstaf:.15,harnas:.12,magiergewaad:.12,ijzeren_helm:.1,sterrenhoed:.1}},
 };
 Object.assign(MONSTERS,VALE_MONSTERS);
 export const SPAWNS=[{soort:'konijn',n:14},{soort:'vos',n:8},{soort:'zwijn',n:4},{soort:'wolf',n:7},{soort:'hert',n:5},{soort:'everzwijn',n:1},{soort:'bandiet',n:10},{soort:'direwolf',n:7},{soort:'bruut',n:6},{soort:'hoofdman',n:1}];

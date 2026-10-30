@@ -8,7 +8,7 @@ import {SKILLS,kanLeren,jobExpVoor,BOMEN,TAKKEN} from './regels/skills.js';
 import {KLASSEN} from './data.js';
 import {esc} from './ui.js';
 
-export function statTekst(it){const d=[];if(it.atk)d.push('ATK +'+it.atk);if(it.matk)d.push('MATK +'+it.matk);if(it.def)d.push('DEF +'+it.def);if(it.hp)d.push('HP +'+it.hp);if(it.sp)d.push('SP +'+it.sp);if(it.klasse)d.push(it.klasse==='mage'?'Mage':'Swordsman');return d.join(' · ')}
+export function statTekst(it){const d=[];if(it.atk)d.push('ATK +'+it.atk);if(it.matk)d.push('MATK +'+it.matk);if(it.def)d.push('DEF +'+it.def);if(it.hp)d.push('HP +'+it.hp);for(const k in it.plus||{})d.push(k.toUpperCase()+' +'+it.plus[k]);if(it.flee)d.push('FLEE +'+it.flee);if(it.crit)d.push('CRIT +'+it.crit+'%');if(it.sp)d.push('SP +'+it.sp);if(it.klasse)d.push(it.klasse==='mage'?'Mage':'Swordsman');return d.join(' · ')}
 
 /* P: de speler; A: {af(), expMax(), vrijeStat(), vrijeSkill(), statOmhoog(k), skillOmhoog(id),
                      uitrusten(id), afdoen(slot), gebruikDrank(), koop(id), koopDrank()} */
@@ -22,7 +22,7 @@ export function maakKarakter(P,A){
     const af=A.af();
     $('#k-naam').textContent=P.naam;$('#k-sub').textContent=`Level ${P.lvl} · ${A.klasse().naam} · Job ${P.job}`;
     const vs=A.vrijeStat(),vk=A.vrijeSkill();
-    document.querySelectorAll('.ktab').forEach(b=>{b.classList.toggle('actief',b.dataset.tab===tab);
+    document.querySelectorAll('#karakter .ktab').forEach(b=>{b.classList.toggle('actief',b.dataset.tab===tab);
       const n=b.dataset.tab==='stats'?vs:b.dataset.tab==='skills'?vk:b.dataset.tab==='quests'?A.questsKlaar():0;b.querySelector('.kbadge').textContent=n>0?n:'';b.querySelector('.kbadge').hidden=n<=0});
     for(const t of['uitrusting','stats','skills','quests'])$('#k-tab-'+t).hidden=tab!==t;
     if(tab==='uitrusting')renderUitrusting(af);else if(tab==='stats')renderStats(af,vs);else if(tab==='skills')renderSkills(vk);else renderQuests();

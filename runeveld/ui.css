@@ -178,9 +178,9 @@ input,select,textarea{font:inherit}
 #k-canvas{width:144px;height:160px;image-rendering:pixelated;background:radial-gradient(circle at 50% 70%,rgba(230,187,99,.18),rgba(0,0,0,.25) 70%);border-radius:5px;border:1px solid rgba(230,187,99,.35)}
 .kstats{width:100%;font-size:12.5px;display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:8px 10px;border-radius:4px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.05)}
 .kstats span{color:var(--dim)}.kstats b{text-align:right;font-variant-numeric:tabular-nums}
-.kslots{display:flex;flex-direction:column;gap:6px}
+.kslots{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .kslot{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:4px;border:1px solid rgba(230,187,99,.25);background:rgba(255,255,255,.04);text-align:left;width:100%}
-.kslot small{width:64px;flex:none;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.kslot b{flex:1}.kslot i{font-style:normal;color:#9fe3b0;font-size:11px;white-space:nowrap}
+.kslot small{width:56px;flex:none;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.kslot b{flex:1}.kslot i{font-style:normal;color:#9fe3b0;font-size:11px;white-space:nowrap}
 .kslot.leeg b{color:var(--dim);font-weight:400}.kslot.leeg{cursor:default}
 .ktas h4{margin:12px 0 6px;font-size:11px;color:var(--goud);font-family:var(--kop);text-transform:uppercase;letter-spacing:.1em}
 .kitems{display:flex;flex-wrap:wrap;gap:6px}
@@ -319,6 +319,7 @@ input,select,textarea{font:inherit}
   :root{--balk-h:66px}
   #char{width:188px;padding:6px 8px 7px 6px;gap:7px}.portret{width:44px;height:44px}.portret canvas{width:56px;height:62px}.lvlbadge{height:17px;min-width:17px;font-size:10px}
   .charinfo b{font-size:12px}.charinfo small{font-size:9.5px}.bar{height:10px}.bar span{font-size:9px}.bar.exp{height:5px}
+  .kslots{grid-template-columns:1fr}
   #doelkader{width:188px;top:calc(var(--veilig-boven) + 72px);padding:6px 8px}#partij{width:188px;top:calc(var(--veilig-boven) + 124px);padding:5px 7px}#partij .plid .pn{font-size:11px}
   #rechtsboven{width:auto;gap:6px}#status{padding:4px 7px;font-size:11px;gap:5px}#status .online-tekst{display:none}
   #mm,#qtracker{display:none}

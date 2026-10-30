@@ -24,6 +24,7 @@ export function statPuntenBesteed(stats){let p=0;for(const[k]of STATS)for(let n=
    items: lijst met gedragen voorwerpen ({atk,def,hp}); skills: {id: level} */
 export function afgeleid({lvl,stats,items=[],skills={},klasse={hp:1,sp:1}}){
   const s={...basisStats(),...stats};
+  for(const it of items)for(const k in it.plus||{})s[k]=(s[k]||1)+it.plus[k];   /* ringen, kettingen, mantels: bonus op de stats */
   const som=k=>items.reduce((t,it)=>t+(it[k]||0),0);
   const pas=(id,fn)=>{const sk=SKILLS[id];const l=skills[id]||0;return sk&&l>0&&sk[fn]?sk[fn](l):0};
   const hpMax=Math.round((50+lvl*12+s.vit*6)*(1+s.vit/100)*(klasse.hp||1))+som('hp');
@@ -33,9 +34,9 @@ export function afgeleid({lvl,stats,items=[],skills={},klasse={hp:1,sp:1}}){
   const def=Math.round(som('def')+s.vit*.4+pas('ijzerhuid','def'));
   return{
     hpMax,spMax,atk,matk,def,
-    hit:20+lvl+s.dex,                           /* raakkans tegen het ontwijken van het doel */
-    flee:lvl+s.agi,                             /* ontwijken */
-    crit:Math.min(50,s.luk*.3),                 /* kans op kritieke treffer, in procenten */
+    hit:20+lvl+s.dex+som('hit'),                /* raakkans tegen het ontwijken van het doel */
+    flee:lvl+s.agi+som('flee'),                 /* ontwijken */
+    crit:Math.min(50,s.luk*.3+som('crit')),     /* kans op kritieke treffer, in procenten */
     aanvalTijd:Math.max(.4,.9-s.agi*.006),      /* seconden tussen gewone slagen */
     hpRegen:(1+lvl*.3+s.vit*.2)*(1+pas('hpherstel','regen')),   /* per seconde, staand */
     spRegen:(1+lvl*.2+s.int*.3)*(1+pas('meditatie','regen')),

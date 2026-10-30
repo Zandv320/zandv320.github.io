@@ -19,7 +19,7 @@ function dier(naam,{loop,aanval,schaal=1/16,hoogte=20}){return{url:`sprites/${na
 export const BLADEN={
   held:{fw:64,fh:64,schaal:1/16,voet:20,hoogte:26,richtingen:HELD_RICHTINGEN,
     lagen:{lijf:'sprites/held_lijf.png',hoofd:'sprites/held_hoofd.png',harnas1:'sprites/harnas1.png',harnas2:'sprites/harnas2.png',harnas3:'sprites/harnas3.png',
-      wapen1:'sprites/wapen1.png',wapen2:'sprites/wapen2.png',wapen3:'sprites/wapen3.png',wapen1b:'sprites/wapen1b.png',wapen2b:'sprites/wapen2b.png',wapen3b:'sprites/wapen3b.png',hoofd1:'sprites/hoofd1.png',hoofd2:'sprites/hoofd2.png',gewaad1:'sprites/gewaad1.png',gewaad2:'sprites/gewaad2.png',gewaad3:'sprites/gewaad3.png',staf1:'sprites/staf1.png',staf1b:'sprites/staf1b.png',staf2:'sprites/staf2.png',staf2b:'sprites/staf2b.png',staf3:'sprites/staf3.png',staf3b:'sprites/staf3b.png',hoed1:'sprites/hoed1.png',hoed2:'sprites/hoed2.png',harnas4:'sprites/harnas4.png',harnas5:'sprites/harnas5.png',gewaad4:'sprites/gewaad4.png',gewaad5:'sprites/gewaad5.png'},
+      wapen1:'sprites/wapen1.png',wapen2:'sprites/wapen2.png',wapen3:'sprites/wapen3.png',wapen1b:'sprites/wapen1b.png',wapen2b:'sprites/wapen2b.png',wapen3b:'sprites/wapen3b.png',hoofd1:'sprites/hoofd1.png',hoofd2:'sprites/hoofd2.png',gewaad1:'sprites/gewaad1.png',gewaad2:'sprites/gewaad2.png',gewaad3:'sprites/gewaad3.png',staf1:'sprites/staf1.png',staf1b:'sprites/staf1b.png',staf2:'sprites/staf2.png',staf2b:'sprites/staf2b.png',staf3:'sprites/staf3.png',staf3b:'sprites/staf3b.png',hoed1:'sprites/hoed1.png',hoed2:'sprites/hoed2.png',harnas4:'sprites/harnas4.png',harnas5:'sprites/harnas5.png',gewaad4:'sprites/gewaad4.png',gewaad5:'sprites/gewaad5.png',mantel1:'sprites/mantel1.png',mantel1b:'sprites/mantel1b.png',mantel2:'sprites/mantel2.png',mantel2b:'sprites/mantel2b.png',mantel3:'sprites/mantel3.png',mantel3b:'sprites/mantel3b.png',mantel4:'sprites/mantel4.png',mantel4b:'sprites/mantel4b.png'},
     anims:{idle:{rij:0,n:12,fps:8},loop:{rij:4,n:8,fps:13},aanval:{rij:8,n:8,fps:16,eens:true},pijn:{rij:12,n:5,fps:12,eens:true},dood:{rij:16,n:7,fps:9,eens:true}}},
   koopman:{url:'sprites/koopman.png',fw:32,fh:32,schaal:1/16,voet:2,hoogte:28,richtingen:{onder:0},anims:{idle:{rij:0,n:4,fps:5,perRichting:false}}},
   konijn:dier('konijn',{loop:5,aanval:6,hoogte:19}),
@@ -34,8 +34,9 @@ export const BLADEN={
 /* De laagnamen van een held met deze uitrusting ({hoofd,lichaam,wapen}: item-ids of null), achterste eerst.
    Een hoofddeksel is een complete hoofdlaag (hoofd + deksel, haar eronder weggehaald) en vervangt 'hoofd'. */
 export function heldLaagNamen(uitr){
-  const w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam],h=uitr.hoofd&&ITEMS[uitr.hoofd];
-  return[w&&w.laag+'b','lijf',l&&l.laag,h?h.laag:'hoofd',w&&w.laag].filter(Boolean);
+  const w=uitr.wapen&&ITEMS[uitr.wapen],l=uitr.lichaam&&ITEMS[uitr.lichaam],h=uitr.hoofd&&ITEMS[uitr.hoofd],m=uitr.mantel&&ITEMS[uitr.mantel];
+  /* de mantel hangt achter het lijf (laag ...b) en komt over de rug en de schouders (laag zonder b) */
+  return[w&&w.laag+'b',m&&m.laag+'b','lijf',l&&l.laag,m&&m.laag,h?h.laag:'hoofd',w&&w.laag].filter(Boolean);
 }
 /* De texturen van die lagen. Lagen die nog niet geladen zijn worden nu aangevraagd en ontbreken even;
    via opLaagGeladen() hoort het spel wanneer ze er zijn en zet het de sprites opnieuw. Zonder kleding staat de

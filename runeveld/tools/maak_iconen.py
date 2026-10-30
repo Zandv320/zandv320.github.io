@@ -66,6 +66,64 @@ KEUZE = {
     'ui_zon': ('klein', 3), 'ui_maan': ('klein', 2), 'ui_huis': ('klein', 61), 'ui_admin': ('klein', 54),
 }
 
+# ---- procedurele iconen voor wat de packs niet hebben: ringen, riemen, laarzen; en getinte varianten ----
+from PIL import ImageDraw
+import numpy as np
+LIJN = (12, 15, 42, 255)
+
+
+def omlijn(img):
+    a = np.array(img); al = a[:, :, 3] > 40; b = np.zeros_like(al)
+    b[1:, :] |= al[:-1, :]; b[:-1, :] |= al[1:, :]; b[:, 1:] |= al[:, :-1]; b[:, :-1] |= al[:, 1:]
+    a[b & ~al] = LIJN; return Image.fromarray(a)
+
+
+def ring(steen, band=((150, 120, 60), (214, 178, 90), (250, 230, 170))):
+    im = Image.new('RGBA', (32, 32), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.ellipse([7, 10, 25, 28], outline=band[0] + (255,), width=4); d.ellipse([8, 11, 24, 27], outline=band[1] + (255,), width=2)
+    d.arc([8, 11, 24, 27], 200, 320, fill=band[2] + (255,), width=2)
+    if steen:
+        d.polygon([(16, 3), (22, 8), (16, 13), (10, 8)], fill=steen[0] + (255,)); d.polygon([(16, 5), (19, 8), (16, 11), (13, 8)], fill=steen[1] + (255,)); d.point((15, 6), fill=(255, 255, 255, 255))
+    return omlijn(im)
+
+
+def riem(gesp=(214, 178, 90), leer=((70, 42, 24), (118, 76, 40))):
+    im = Image.new('RGBA', (32, 32), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([3, 12, 29, 20], radius=3, fill=leer[0] + (255,)); d.rectangle([4, 13, 28, 15], fill=leer[1] + (255,))
+    for x in range(7, 27, 5): d.point((x, 18), fill=leer[1] + (255,))
+    d.rectangle([12, 10, 19, 22], outline=gesp + (255,), width=2); d.rectangle([15, 13, 16, 19], fill=gesp + (255,))
+    return omlijn(im)
+
+
+def laarzen(leer=((70, 42, 24), (118, 76, 40), (160, 110, 60)), zool=(40, 30, 24)):
+    im = Image.new('RGBA', (32, 32), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    for dx in (0, 12):
+        d.rectangle([5 + dx, 5, 12 + dx, 22], fill=leer[1] + (255,)); d.rectangle([5 + dx, 18, 17 + dx, 26], fill=leer[1] + (255,))
+        d.rectangle([5 + dx, 24, 17 + dx, 27], fill=zool + (255,)); d.line([(6 + dx, 6), (6 + dx, 20)], fill=leer[2] + (255,)); d.line([(5 + dx, 12), (12 + dx, 12)], fill=leer[0] + (255,))
+    return omlijn(im)
+
+
+def tint(im, kleur):
+    """een icoon een kleurzweem geven (vermenigvuldigen), omlijning blijft"""
+    a = np.array(im).astype(np.int32); m = a[:, :, 3] > 0
+    for i, k in enumerate(kleur): a[:, :, i] = np.where(m & ~((a[:, :, 0] == LIJN[0]) & (a[:, :, 1] == LIJN[1]) & (a[:, :, 2] == LIJN[2])), np.clip(a[:, :, i] * k / 255, 0, 255), a[:, :, i])
+    return Image.fromarray(a.astype(np.uint8))
+
+
+EIGEN = {
+    'koperring': ring(None, ((120, 70, 40), (190, 110, 60), (240, 180, 130))), 'krachtring': ring(((140, 30, 40), (220, 70, 80))), 'wijsheidsring': ring(((30, 60, 150), (80, 130, 230))),
+    'behendigheidsring': ring(((30, 110, 50), (90, 200, 110))), 'koningsring': ring(((150, 40, 160), (220, 120, 240))),
+    'leren_riem': riem((160, 160, 170)), 'gespriem': riem(), 'ridderriem': riem((200, 205, 220), ((40, 44, 60), (80, 86, 110))),
+    'stoffen_schoenen': laarzen(((90, 90, 100), (150, 150, 160), (200, 200, 210)), (70, 70, 80)), 'leren_laarzen': laarzen(), 'ijzeren_laarzen': laarzen(((50, 54, 70), (110, 116, 140), (170, 176, 200)), (40, 40, 50)),
+}
+TINTEN = {'leren_broek': (200, 170, 130), 'geschubde_broek': (160, 180, 230), 'wolmantel': (150, 170, 255), 'schaduwmantel': (110, 110, 140), 'koningsmantel': (255, 120, 120), 'zilveren_ketting': (200, 210, 255), 'wolfstand_ketting': (240, 230, 200), 'amulet_van_aurelia': (255, 230, 150)}
+KEUZE.update({
+    'reismantel': ('klein', 35), 'wolmantel': ('klein', 35), 'schaduwmantel': ('klein', 35), 'koningsmantel': ('klein', 39),
+    'leren_koord': ('buit', 26), 'zilveren_ketting': ('buit', 26), 'wolfstand_ketting': ('loot', 34), 'amulet_van_aurelia': ('buit', 26),
+    'linnen_broek': ('klein', 38), 'leren_broek': ('klein', 38), 'geschubde_broek': ('klein', 38),
+})
+for n in EIGEN: KEUZE[n] = ('eigen', 0)
+
 KOL = 12
 namen = list(KEUZE)
 rijen = (len(namen) + KOL - 1) // KOL
@@ -73,7 +131,8 @@ atlas = Image.new('RGBA', (KOL * 32, rijen * 32), (0, 0, 0, 0))
 index = {}
 for i, naam in enumerate(namen):
     pack, n = KEUZE[naam]
-    im = Image.open(BRON[pack](n)).convert('RGBA')
+    im = EIGEN[naam] if pack == 'eigen' else Image.open(BRON[pack](n)).convert('RGBA')
+    if naam in TINTEN: im = tint(im, TINTEN[naam])
     if im.size != (32, 32):
         im = im.resize((32, 32), Image.NEAREST)
     atlas.paste(im, ((i % KOL) * 32, (i // KOL) * 32))

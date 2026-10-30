@@ -452,6 +452,87 @@ for naam, k in STAVEN.items():
     v, a = staf(uit[3], uit[4], basis, uit[1], k)
     v.save(UIT / f'{naam}.png'); a.save(UIT / f'{naam}b.png')
 
+# ---------- mantels: een cape afgeleid van het lijf en de tuniek, per frame ----------
+# De cape hangt achter het figuur (laag '...b', onder het lijf) en komt waar nodig vóór het lijf (laag zonder b):
+# van achteren gezien dekt hij de hele rug, van opzij de achterste schouder, van voren alleen de kraag met gesp.
+# Breedte en lengte volgen de tuniek en het lijf van dat frame, zodat de cape meebeweegt met lopen en slaan.
+MANTELS = {
+    'mantel1': dict(palet=[(62, 28, 18), (110, 40, 30), (158, 62, 46), (196, 96, 74)], zoom=None),             # reismantel: roestbruin
+    'mantel2': dict(palet=[(18, 28, 66), (34, 52, 116), (58, 84, 160), (96, 126, 204)], zoom=None),            # wolmantel: blauw
+    'mantel3': dict(palet=[(14, 12, 22), (32, 28, 42), (54, 48, 68), (82, 76, 100)], zoom=None),               # schaduwmantel
+    'mantel4': dict(palet=[(84, 10, 16), (136, 20, 30), (186, 38, 50), (226, 86, 88)], zoom=(222, 182, 70)),   # koningsmantel met gouden zoom
+}
+
+
+def mantel(lijf, tuniek, palet, zoom=None, fw=64, fh=64):
+    import numpy as np
+    L = np.array(lijf); T = np.array(tuniek)
+    H, W = L.shape[:2]; rows = H // fh; cols = W // fw
+    voor = np.zeros_like(L); achter = np.zeros_like(L)
+    outline, donker, midden, licht = [np.array(k + (255,), dtype=np.uint8) for k in palet]
+    goud = np.array(zoom + (255,), dtype=np.uint8) if zoom else None
+
+    def dilate(m):
+        d = m.copy(); d[1:, :] |= m[:-1, :]; d[:-1, :] |= m[1:, :]; d[:, 1:] |= m[:, :-1]; d[:, :-1] |= m[:, 1:]; return d
+
+    def kleur(mask, cx, hem, doel):
+        """mask inkleuren: licht van links, donker rechts, de onderste rij als zoom, en een omlijning eromheen"""
+        ys, xs = np.nonzero(mask)
+        if not len(ys): return
+        w = max(1, xs.max() - xs.min())
+        for y, x in zip(ys, xs):
+            if y >= hem - 1: k = goud if goud is not None else donker
+            elif x > cx + w * 0.22: k = donker
+            elif x < cx - w * 0.3: k = licht
+            else: k = midden
+            doel[y, x] = k
+        rand = dilate(mask) & ~mask
+        doel[rand] = outline
+
+    for r in range(rows):
+        d = r % 4; dood = r >= 16; anim_loop = 4 <= r < 12
+        for c in range(cols):
+            y0f, x0f = r * fh, c * fw
+            lm = L[y0f:y0f + fh, x0f:x0f + fw, 3] > 0; tm = T[y0f:y0f + fh, x0f:x0f + fw, 3] > 0
+            if not lm.any() or not tm.any(): continue
+            ys, xs = np.nonzero(lm); tys, txs = np.nonzero(tm)
+            ly1 = ys.max(); y0 = tys.min() + 1; tl, tr = txs.min(), txs.max(); tb = tys.max()
+            hem = min(ly1 - 1, int(y0 + (ly1 - y0) * 0.82)); cx = (tl + tr) / 2
+            if hem <= y0 + 2: continue
+            cape = np.zeros((fh, fw), bool)
+            sway = (1 if c % 2 else -1) if anim_loop else 0
+            for y in range(y0, hem + 1):
+                rowm = tm[y] | lm[y]
+                if rowm.any(): nz = np.nonzero(rowm)[0]; l, rr = min(nz[0], tl), max(nz[-1], tr)
+                else: l, rr = tl, tr
+                f = (y - y0) / max(1, hem - y0); spread = 1 + int(2.5 * f); s = sway if y > hem - 3 else 0
+                if d == 1: l2, r2 = l - 1, rr + spread + 1 + s          # kijkt naar links: de cape sleept rechts
+                elif d == 2: l2, r2 = l - spread - 1 + s, rr + 1
+                else: l2, r2 = l - spread + s, rr + spread + s
+                cape[y, max(0, l2):min(fw, r2 + 1)] = True
+            cape[hem, (np.arange(fw) + c) % 3 == 0] = False       # een licht geschulpte zoom
+            A = achter[y0f:y0f + fh, x0f:x0f + fw]; V = voor[y0f:y0f + fh, x0f:x0f + fw]
+            if dood:
+                kleur(cape, cx, hem, A); continue
+            if d == 3:                                   # van achteren: de hele cape over de rug
+                kleur(cape, cx, hem, V)
+            elif d == 0:                                 # van voren: cape erachter, kraag en gesp ervoor
+                kleur(cape, cx, hem, A)
+                kraag = np.zeros((fh, fw), bool); kraag[y0:y0 + 2, tl:tr + 1] = True
+                kleur(kraag, cx, hem, V); V[y0 + 1, int(cx)] = goud if goud is not None else np.array((214, 178, 70, 255), dtype=np.uint8)
+            else:                                        # van opzij: cape erachter, over de achterste schouder ervoor
+                kleur(cape, cx, hem, A)
+                schouder = np.zeros((fh, fw), bool)
+                if d == 1: schouder[y0:tb + 1, int(cx + (tr - tl) * 0.1):tr + 1] = cape[y0:tb + 1, int(cx + (tr - tl) * 0.1):tr + 1]
+                else: schouder[y0:tb + 1, tl:int(cx - (tr - tl) * 0.1) + 1] = cape[y0:tb + 1, tl:int(cx - (tr - tl) * 0.1) + 1]
+                kleur(schouder, cx, hem, V)
+    return Image.fromarray(voor), Image.fromarray(achter)
+
+
+for naam, k in MANTELS.items():
+    v, a = mantel(basis, tuniek_laag, k['palet'], k['zoom'])
+    v.save(UIT / f'{naam}.png'); a.save(UIT / f'{naam}b.png')
+
 # ---------- tweede klassen: Knight en Crusader (harnas in staalblauw / zilver met goud), Wizard en Sage (gewaad) ----------
 import colorsys
 GEWADEN['gewaad4'] = [(14, 20, 52), (24, 34, 84), (36, 52, 120), (50, 74, 150), (80, 110, 190)]        # wizard: middernacht
