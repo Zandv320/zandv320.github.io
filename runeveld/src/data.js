@@ -22,7 +22,8 @@ export const CLASSES = {
     tier: 1,
     base: "mage",
     speed: 4.4,
-    range: 1.3,
+    /* the reach of the basic attack: a bolt of magic (player.js) */
+    range: 6,
     hpFactor: 0.78,
     spFactor: 1.7,
     description: "Fragile, but deadly from a distance. Skills: Ember Bolt, Frostburst, Mana Ward.",
@@ -62,7 +63,8 @@ export const CLASSES = {
     tier: 2,
     base: "mage",
     speed: 4.4,
-    range: 1.3,
+    /* the reach of the basic attack: a bolt of magic (player.js) */
+    range: 6,
     hpFactor: 0.8,
     spFactor: 2,
     mentor: "Old Mette",
@@ -75,7 +77,8 @@ export const CLASSES = {
     tier: 2,
     base: "mage",
     speed: 4.5,
-    range: 1.3,
+    /* the reach of the basic attack: a bolt of magic (player.js) */
+    range: 6,
     hpFactor: 0.95,
     spFactor: 1.8,
     mentor: "Old Mette",

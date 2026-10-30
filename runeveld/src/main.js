@@ -121,6 +121,8 @@ import {
   isChatActive,
   setSitting,
   clearTarget,
+  selectTarget,
+  attackTarget,
   updatePlayer,
   hitMonster,
   takeDamage,
@@ -1276,7 +1278,13 @@ function cursorAt(clientX, clientY) {
   return data.node ? "gather" : "default";
 }
 
-function handleClick(clientX, clientY) {
+/**
+ * A click or tap in the world. `mode`: 'select' (left mouse button), 'attack' (right mouse button) or 'tap'
+ * (touch). On a monster: select only selects it, attack attacks it, a tap selects it and a second tap on the
+ * selected monster attacks. People, nodes and stations answer to every kind of click; the ground only to select
+ * and tap (walk there).
+ */
+function handleClick(clientX, clientY, mode = "select") {
   if (player.isDead) {
     return;
   }
@@ -1286,13 +1294,11 @@ function handleClick(clientX, clientY) {
   if (hits.length) {
     const data = hits[0].object.userData;
     if (data.monster && !data.monster.isDead) {
-      player.target = data.monster;
-      player.queuedSkill = null;
-      player.destination = null;
-      player.onArrive = null;
-      UI.setTargetFrame(data.monster);
-      if (player.isSitting) {
-        setSitting(false);
+      const isSecondTap = mode === "tap" && player.target === data.monster;
+      if (mode === "attack" || isSecondTap) {
+        attackTarget(data.monster);
+      } else {
+        selectTarget(data.monster);
       }
       return;
     }
@@ -1339,8 +1345,8 @@ function handleClick(clientX, clientY) {
       return;
     }
   }
-  /* click on the ground: walk there */
-  const point = groundPoint(clientX, clientY);
+  /* click on the ground: walk there (a right click on the ground does nothing) */
+  const point = mode === "attack" ? null : groundPoint(clientX, clientY);
   if (!point) {
     return;
   }
@@ -1414,7 +1420,14 @@ function setupPointerInput() {
       return;
     }
     if (event.button === 2) {
-      drag = { isRotating: true, x: event.clientX, y: event.clientY };
+      /* right button: drag to turn the camera, click to attack */
+      drag = {
+        isRotating: true,
+        x: event.clientX,
+        y: event.clientY,
+        startX: event.clientX,
+        startY: event.clientY,
+      };
       return;
     }
     if (event.button !== 0) {
@@ -1481,10 +1494,14 @@ function setupPointerInput() {
     const finished = drag;
     drag = null;
     if (finished.isRotating) {
+      const moved = Math.hypot(event.clientX - finished.startX, event.clientY - finished.startY);
+      if (moved < 6 && game.isStarted) {
+        handleClick(event.clientX, event.clientY, "attack");
+      }
       return;
     }
     if (!finished.hasMoved && game.isStarted) {
-      handleClick(event.clientX, event.clientY);
+      handleClick(event.clientX, event.clientY, event.pointerType === "mouse" ? "select" : "tap");
     }
   });
   canvas.addEventListener("pointercancel", (event) => {

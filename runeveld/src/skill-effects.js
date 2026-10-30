@@ -179,9 +179,14 @@ targetRing.visible = false;
 scene.add(targetRing);
 
 /** Shows the target ring under the player's target, slowly turning and pulsing. */
+/* the ring under the target: gold while it is only selected, red while the hero fights it */
+const SELECTED_COLOR = new THREE.Color(0xffd166);
+const ATTACKING_COLOR = new THREE.Color(0xff6b6b);
+
 export function updateTargetRing(dt, time) {
   targetRing.visible = !!player.target;
   if (player.target) {
+    targetRing.material.color.copy(player.isAttacking ? ATTACKING_COLOR : SELECTED_COLOR);
     targetRing.position.set(player.target.x, 0.03, player.target.z);
     targetRing.rotation.z += dt * 1.5;
     targetRing.scale.setScalar(1 + 0.08 * Math.sin(time * 7));

@@ -3,7 +3,7 @@
 import { CLASSES, ADVANCEMENTS, MAX_LEVEL, expForLevel, ITEMS } from "./data.js";
 import { statCost, MAX_STAT } from "./rules/stats.js";
 import { SKILLS, jobExpForLevel, JOB_EXP_SHARE, canLearn } from "./rules/skills.js";
-import { meleeHit, applyDefense, hitChance, monsterCombatStats } from "./rules/combat.js";
+import { meleeHit, spellHit, applyDefense, hitChance, monsterCombatStats } from "./rules/combat.js";
 import { sfx } from "./audio.js";
 import { icon } from "./icons.js";
 import { camera, cameraState, resolveCollision, FIELD_SIZE, shakeCamera } from "./world.js";
@@ -24,7 +24,7 @@ import {
 } from "./game-state.js";
 import { knockBack } from "./monsters.js";
 import { addToBag } from "./bag.js";
-import { groundRing } from "./skill-effects.js";
+import { groundRing, launchProjectile } from "./skill-effects.js";
 import { hitStop, buzz, flyToHud } from "./feel.js";
 import { useSkill } from "./abilities.js";
 
@@ -70,8 +70,33 @@ export function setSitting(isSitting) {
 /** Drops the current target and any skill waiting for it. */
 export function clearTarget() {
   player.target = null;
+  player.isAttacking = false;
   player.queuedSkill = null;
   UI.setTargetFrame(null);
+}
+
+/* Targeting works as in the classic MMOs: selecting a monster (left click, or a first tap) only shows it in the
+   target frame; attacking (right click, a second tap, or a skill) walks up to it and keeps fighting. */
+
+/** Selects a monster without attacking it. */
+export function selectTarget(monster) {
+  if (player.target !== monster) {
+    player.queuedSkill = null;
+  }
+  player.target = monster;
+  player.isAttacking = false;
+  UI.setTargetFrame(monster);
+}
+
+/** Selects a monster and attacks it: walk up to it and keep swinging (or casting). */
+export function attackTarget(monster) {
+  selectTarget(monster);
+  player.isAttacking = true;
+  player.destination = null;
+  player.onArrive = null;
+  if (player.isSitting) {
+    setSitting(false);
+  }
 }
 
 /* The arrival callback for the current destination runs once. */
@@ -140,7 +165,7 @@ function followTarget(time, isBusy) {
     const skillId = player.queuedSkill;
     player.queuedSkill = null;
     useSkill(skillId);
-  } else if (!isBusy && time >= player.nextAttackAt) {
+  } else if (player.isAttacking && !isBusy && time >= player.nextAttackAt) {
     basicAttack(monster);
   }
   return [0, 0];
@@ -164,10 +189,10 @@ export function updatePlayer(dt) {
   if (dx || dz) {
     player.destination = null;
     player.onArrive = null;
-    if (player.target) {
-      clearTarget();
-    }
-  } else if (player.target) {
+    /* walking away stops the fight; the monster stays selected */
+    player.isAttacking = false;
+    player.queuedSkill = null;
+  } else if (player.target && (player.isAttacking || player.queuedSkill)) {
     [dx, dz] = followTarget(time, isBusy);
   } else if (player.destination) {
     const toX = player.destination[0] - player.x;
@@ -225,12 +250,34 @@ export function updatePlayer(dt) {
   }
 }
 
-/** A basic attack on a monster in range; the hit lands a moment later, in the swing. */
+/* A mage's basic attack: a small bolt of raw magic, this share of MATK, that never misses */
+const MAGIC_BOLT_SHARE = 0.5;
+
+/** A basic attack on a monster in range; the hit lands a moment later, in the swing (or when the bolt arrives). */
 function basicAttack(monster) {
   const stats = derived();
   const quickening = now() < (player.quickenUntil || 0) ? player.quickenFactor : 1;
   player.nextAttackAt = now() + stats.attackInterval * quickening;
   playOnce("attack", Math.min(0.45, stats.attackInterval * quickening * 0.8));
+  if (heroClass().base === "mage") {
+    player.sprite.face(monster.x - player.x, monster.z - player.z);
+    sfx.cast();
+    const result = spellHit({ matk: stats.matk, mult: MAGIC_BOLT_SHARE });
+    launchProjectile(
+      player.x,
+      player.z,
+      monster,
+      0xbfd9ff,
+      () => {
+        if (!monster.isDead) {
+          hitMonster(monster, result, "");
+        }
+      },
+      "spirit",
+      1.1,
+    );
+    return;
+  }
   player.sprite.nudge(monster.x - player.x, monster.z - player.z, 0.18);
   sfx.swing();
   const result = meleeHit(stats, monsterCombatStats(monster.spec));

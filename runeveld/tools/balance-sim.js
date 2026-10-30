@@ -164,7 +164,9 @@ function fight(monsterId) {
     const cast = Math.max(bolt.cooldown || 1, 1);
     const castsPerSec = Math.min(1 / cast, (s.spRegen + s.spMax / 20) / cost);
     dps =
-      s.matk * mult * castsPerSec + ((s.atk * hitChance(s.hit, mc.flee)) / s.attackInterval) * 0.3;
+      s.matk * mult * castsPerSec +
+      /* between casts: magic bolts, half of MATK, never missing (player.js basicAttack) */
+      ((1 - Math.min(1, castsPerSec * cast)) * s.matk * 0.5) / s.attackInterval;
   } else {
     const l = skillLevel();
     const hit = hitChance(s.hit, mc.flee);

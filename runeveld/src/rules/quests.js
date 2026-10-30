@@ -79,7 +79,7 @@ export const QUESTS = {
   rolf_rabbits: {
     giver: "Guard Rolf",
     where: { monster: "rabbit" },
-    hint: "Rabbits hop around outside the gates. Tap one to attack: your hero keeps swinging by itself. Your skills sit on the hotbar at the bottom; drink a red potion when your health runs low.",
+    hint: "Rabbits hop around outside the gates. Click one to select it and right-click to attack (on a phone: tap it twice). Your hero keeps fighting by itself. Your skills sit on the hotbar at the bottom; drink a red potion when your health runs low.",
     tutorial: "combat",
     chapter: 1,
     main: true,

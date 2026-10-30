@@ -6,7 +6,7 @@ export const GUIDE_TOPICS = {
     title: "Welcome to Eldoria",
     icons: ["class_swordsman", "class_mage", "ui_map"],
     body: [
-      "<b>Tap or click the ground</b> to walk, <b>a person</b> to talk and <b>a monster</b> to fight.",
+      "<b>Click the ground</b> to walk and <b>a person</b> to talk. <b>Click a monster</b> to select it and <b>right-click</b> it to attack. On a phone: tap a monster to select it, tap it again to attack.",
       "The <b>gold panel</b> on the left always shows your next step in the story, and the <b>gold arrow</b> points the way. People with a glowing <b>★</b> above their head have the next part of your story.",
       "Old Mette is waiting for you by the well.",
     ],
@@ -24,7 +24,8 @@ export const GUIDE_TOPICS = {
     title: "Fighting",
     icons: ["crushing_blow", "red_potion", "ui_sit"],
     body: [
-      "Tap a monster to attack: your hero keeps swinging until it falls or you walk away.",
+      "Click a monster (or tap it) to select it, then right-click it (or tap it again) to attack. Your hero keeps fighting until it falls or you walk away; a skill on the selected monster starts the fight too.",
+      "Swordsmen fight up close. Mages strike from a distance with bolts of magic, so keep monsters at arm's length.",
       "Your <b>skills</b> are on the hotbar at the bottom (<kbd>1</kbd>–<kbd>9</kbd>). They cost SP, the blue bar.",
       "Low on health? Drink a <b>red potion</b> (<kbd>R</kbd>) or eat food from your bag. <b>Sitting</b> (<kbd>X</kbd>) restores health and SP four times faster.",
       "If you fall, you wake up at the well with half your health. Nothing is lost.",

@@ -123,6 +123,8 @@ function targetInRange(cast, range) {
     return null;
   }
   const monster = player.target;
+  /* a skill on the target starts the fight */
+  player.isAttacking = true;
   if (Math.hypot(monster.x - player.x, monster.z - player.z) > range) {
     player.queuedSkill = cast.id;
     return null;
