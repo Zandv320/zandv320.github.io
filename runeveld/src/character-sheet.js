@@ -397,7 +397,7 @@ export function createCharacterSheet(player, deps) {
           return `<div class="row"><span>${icon(id, item.icon, "small")} ${escapeHtml(item.name)}<small class="shop-stat">${stats}</small></span><button class="btn" data-item="${id}" ${player.zeny < item.price ? "disabled" : ""}>${item.price} zeny</button></div>`;
         })
         .join("") +
-      '<p class="hint">Open your inventory (I) while the shop is open to sell items for half their price.</p>';
+      '<p class="hint">Sell items from your inventory while the shop is open, for half their price.</p>';
     $("#shop-zeny").textContent = player.zeny;
   }
 
@@ -408,10 +408,13 @@ export function createCharacterSheet(player, deps) {
     renderShop();
     if (isOpenNow) render();
   });
-  $("#shop-close").onclick = () => {
+  const closeShop = () => {
     shopPanel.hidden = true;
     if (deps.onShopClosed) deps.onShopClosed();
   };
+  $("#shop-close").onclick = closeShop;
+  $("#shop-x").onclick = closeShop;
+  $("#shop-sell").onclick = () => deps.openInventory();
 
   function show(tab) {
     if (tab) activeTab = tab;

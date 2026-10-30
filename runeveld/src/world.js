@@ -112,16 +112,17 @@ export function refreshShadows() {
    pixels per world unit. At 16 every sprite pixel lands exactly on one rendered pixel. The camera snaps to the
    pixel grid (cameraState.right and cameraState.up are the screen axes), so nothing jitters while nothing moves. */
 export const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 200);
-/* Zoom steps in rendered pixels per unit. Default is 32 CSS pixels per unit: in pixel mode that is 16 rendered
-   pixels (half resolution), in smooth mode 32 × the screen's pixel ratio, so the 2x sprites are 1:1. */
-const pixelRatio = SMOOTH ? renderer.getPixelRatio() : 1;
-export const ZOOM_LEVELS = (SMOOTH ? [16, 24, 32, 48, 64] : [8, 12, 16, 24, 32]).map(
-  (level) => level * pixelRatio,
-);
+/* Zoom steps in rendered pixels per unit, the same in CSS pixels on every screen: 16, 24, 32, 48 and 64 CSS pixels
+   per unit. The renderer draws `renderer.getPixelRatio()` rendered pixels per CSS pixel (a half in pixel mode on a
+   desktop, the screen's own ratio on phones and in smooth mode), so a step is that many rendered pixels per unit.
+   The sprites (16 px per unit, 32 in smooth mode) stay on whole pixels at every step. Phones start a step further
+   out than desktops: 24 CSS pixels per unit shows enough of the world on a small screen. */
+const cssToRendered = renderer.getPixelRatio();
+export const ZOOM_LEVELS = [16, 24, 32, 48, 64].map((level) => level * cssToRendered);
 export const cameraState = {
   yaw: 0,
   tilt: THREE.MathUtils.degToRad(50),
-  px: (SMOOTH ? 32 : 16) * pixelRatio,
+  px: ZOOM_LEVELS[IS_PHONE ? 1 : 2],
   target: new THREE.Vector3(0, 0, 0),
   right: new THREE.Vector3(1, 0, 0),
   up: new THREE.Vector3(0, 1, 0),

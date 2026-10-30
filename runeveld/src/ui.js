@@ -158,6 +158,33 @@ export function chatMessage(who, text) {
 }
 
 let announceTimer = 0;
+let announcePlacer = 0;
+
+/* Below the frames at the top (player, target and party on the left; status, minimap and quests on the right)
+   when it would otherwise cover one of them. */
+function placeAnnouncement(el) {
+  el.style.top = "";
+  const box = el.getBoundingClientRect();
+  let top = box.top;
+  /* twice: moving below one frame can bring it next to the other */
+  for (let pass = 0; pass < 2; pass++) {
+    for (const selector of ["#top-left", "#top-right"]) {
+      const frame = $(selector);
+      const other = frame ? frame.getBoundingClientRect() : null;
+      if (!other || !other.width) {
+        continue;
+      }
+      const overlapsX = box.left < other.right && other.left < box.right;
+      const overlapsY = top < other.bottom && other.top < top + box.height;
+      if (overlapsX && overlapsY) {
+        top = other.bottom + 12;
+      }
+    }
+  }
+  if (top !== box.top) {
+    el.style.top = `${(top + box.height / 2).toFixed(0)}px`;
+  }
+}
 
 /** Large centred announcement (level up, quest done), cleared after a few seconds. */
 export function announce(title, subtitle = "") {
@@ -167,9 +194,14 @@ export function announce(title, subtitle = "") {
     html += '<div class="small">' + escapeHtml(subtitle) + "</div>";
   }
   el.innerHTML = html;
+  placeAnnouncement(el);
+  /* the frames can grow while it shows (a new target, a party): keep it clear of them */
+  clearInterval(announcePlacer);
+  announcePlacer = setInterval(() => placeAnnouncement(el), 200);
   clearTimeout(announceTimer);
   announceTimer = setTimeout(() => {
     el.innerHTML = "";
+    clearInterval(announcePlacer);
   }, 2600);
 }
 

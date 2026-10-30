@@ -138,13 +138,17 @@ export function createParty({ network, player, peers }) {
     const presence = peer.presence || {};
     const heroClass = CLASSES[presence.classId] || CLASSES.swordsman;
     playerCard.hidden = false;
-    playerCard.style.left = Math.min(innerWidth - 170, screenX + 8) + "px";
-    playerCard.style.top = Math.min(innerHeight - 90, screenY + 8) + "px";
     const inviteButton = isMember(id)
       ? ""
       : '<button data-card-action="invite">Invite to party</button>';
     playerCard.innerHTML = `<b>${escapeHtml(presence.name || "?")}</b><small>Level ${presence.level || 1} ${escapeHtml(heroClass.name)}</small><div class="row">${inviteButton}<button data-card-action="close">Close</button></div>`;
     playerCard.dataset.id = id;
+    /* next to the tap, but always fully on screen */
+    const margin = 10;
+    const left = Math.min(innerWidth - playerCard.offsetWidth - margin, screenX + 8);
+    const top = Math.min(innerHeight - playerCard.offsetHeight - margin, screenY + 8);
+    playerCard.style.left = Math.max(margin, left) + "px";
+    playerCard.style.top = Math.max(margin, top) + "px";
   }
 
   playerCard.addEventListener("click", (event) => {

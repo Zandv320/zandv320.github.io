@@ -206,6 +206,9 @@ async function init() {
     scene,
     cameraState,
     camera,
+    setZoom,
+    minZoom: () => defaultZoom,
+    pixelRatio: () => renderer.getPixelRatio(),
     onCreate: async (hero) => {
       const response = await game.network.request({ kind: "create_hero", hero });
       if (response && response.heroes) {

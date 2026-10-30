@@ -368,24 +368,40 @@ export function createWorldMap(deps) {
     g.restore();
   }
 
-  /* ---- the map panel: the whole world fits on screen; scrolling zooms in (up to 4×), dragging pans,
-     clicking walks there ---- */
+  /* ---- the map panel: at zoom 1 the whole world fits; zoom in up to 4× beyond what fills the panel with the
+     wheel, a pinch or the + and − buttons; drag to pan, click or tap to walk there. On a phone (or a short
+     screen) the map fills the screen and opens zoomed in on the player. ---- */
 
+  const WORLD_WIDTH = X1 - X0;
+  const WORLD_HEIGHT = Z1 - Z0;
+  const viewport = $("#world-map-viewport");
+  const fillsScreen = () => matchMedia("(max-width: 700px), (max-height: 520px)").matches;
   let zoom = 1;
   let centerX = (X0 + X1) / 2;
   let centerZ = (Z0 + Z1) / 2;
   let fitScale = 1;
   let pixelRatio = 1;
   let drag = null;
+  /* pointers on the canvas (two of them pinch) */
+  const pointers = new Map();
+  let pinch = null;
 
   function resizeCanvas() {
     pixelRatio = Math.min(2, devicePixelRatio || 1);
-    const maxWidth = Math.min(innerWidth - 48, 960);
-    const maxHeight = innerHeight - 150;
-    fitScale = Math.max(2, Math.min(maxWidth / (X1 - X0), maxHeight / (Z1 - Z0)));
-    const width = Math.round((X1 - X0) * fitScale);
-    const height = Math.round((Z1 - Z0) * fitScale);
-    if (canvas.style.width !== width + "px") {
+    let width;
+    let height;
+    if (fillsScreen()) {
+      width = Math.max(120, viewport.clientWidth);
+      height = Math.max(120, viewport.clientHeight);
+      fitScale = Math.min(width / WORLD_WIDTH, height / WORLD_HEIGHT);
+    } else {
+      const maxWidth = Math.min(innerWidth - 48, 960);
+      const maxHeight = innerHeight - 150;
+      fitScale = Math.max(2, Math.min(maxWidth / WORLD_WIDTH, maxHeight / WORLD_HEIGHT));
+      width = Math.round(WORLD_WIDTH * fitScale);
+      height = Math.round(WORLD_HEIGHT * fitScale);
+    }
+    if (canvas.style.width !== width + "px" || canvas.style.height !== height + "px") {
       canvas.style.width = width + "px";
       canvas.style.height = height + "px";
       canvas.width = Math.round(width * pixelRatio);
@@ -393,13 +409,43 @@ export function createWorldMap(deps) {
     }
   }
 
+  /* the zoom at which the map fills the whole canvas (no bands around the world) */
+  const coverZoom = () => {
+    const width = canvas.width / pixelRatio;
+    const height = canvas.height / pixelRatio;
+    return Math.max(width / WORLD_WIDTH, height / WORLD_HEIGHT) / fitScale;
+  };
+  const maxZoom = () => coverZoom() * 4;
+
+  /** Zoom by `factor`, keeping the world point under (clientX, clientY) in place. */
+  function zoomAt(factor, clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const [x, z] = toWorld({
+      clientX: clientX ?? rect.left + rect.width / 2,
+      clientY: clientY ?? rect.top + rect.height / 2,
+    });
+    const previousZoom = zoom;
+    zoom = Math.max(1, Math.min(maxZoom(), zoom * factor));
+    const shift = 1 - previousZoom / zoom;
+    centerX += (x - centerX) * shift;
+    centerZ += (z - centerZ) * shift;
+    render();
+  }
+
   /* Scale in canvas pixels per unit, and the top-left corner of the view in world coordinates. */
   function view() {
     const scale = fitScale * zoom * pixelRatio;
     const viewWidth = canvas.width / scale;
     const viewHeight = canvas.height / scale;
-    centerX = Math.max(X0 + viewWidth / 2, Math.min(X1 - viewWidth / 2, centerX));
-    centerZ = Math.max(Z0 + viewHeight / 2, Math.min(Z1 - viewHeight / 2, centerZ));
+    /* stay within the world; a view wider (or taller) than the world keeps it centred */
+    centerX =
+      viewWidth >= WORLD_WIDTH
+        ? (X0 + X1) / 2
+        : Math.max(X0 + viewWidth / 2, Math.min(X1 - viewWidth / 2, centerX));
+    centerZ =
+      viewHeight >= WORLD_HEIGHT
+        ? (Z0 + Z1) / 2
+        : Math.max(Z0 + viewHeight / 2, Math.min(Z1 - viewHeight / 2, centerZ));
     return {
       scale,
       worldX0: centerX - viewWidth / 2,
@@ -418,17 +464,26 @@ export function createWorldMap(deps) {
     const { scale, worldX0, worldZ0, viewWidth, viewHeight } = view();
     const layerScale = STATIC_SCALE * pixelRatio;
     context.imageSmoothingEnabled = true;
-    context.drawImage(
-      layer,
-      (worldX0 - X0) * layerScale,
-      (worldZ0 - Z0) * layerScale,
-      viewWidth * layerScale,
-      viewHeight * layerScale,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
+    context.fillStyle = COLORS.outside;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    /* the part of the world in view (the view may reach past the world's edges) */
+    const fromX = Math.max(X0, worldX0);
+    const fromZ = Math.max(Z0, worldZ0);
+    const toX = Math.min(X1, worldX0 + viewWidth);
+    const toZ = Math.min(Z1, worldZ0 + viewHeight);
+    if (toX > fromX && toZ > fromZ) {
+      context.drawImage(
+        layer,
+        (fromX - X0) * layerScale,
+        (fromZ - Z0) * layerScale,
+        (toX - fromX) * layerScale,
+        (toZ - fromZ) * layerScale,
+        (fromX - worldX0) * scale,
+        (fromZ - worldZ0) * scale,
+        (toX - fromX) * scale,
+        (toZ - fromZ) * scale,
+      );
+    }
     drawLiveLayer(context, scale, (worldX0 - X0) * scale, (worldZ0 - Z0) * scale, pixelRatio);
   }
 
@@ -458,19 +513,21 @@ export function createWorldMap(deps) {
     "wheel",
     (event) => {
       event.preventDefault();
-      const [x, z] = toWorld(event);
-      const previousZoom = zoom;
       const factor = Math.max(1 / 1.6, Math.min(1.6, Math.exp(-event.deltaY * 0.0025)));
-      zoom = Math.max(1, Math.min(4, zoom * factor));
-      /* The point under the mouse stays in place. */
-      const shift = 1 - previousZoom / zoom;
-      centerX += (x - centerX) * shift;
-      centerZ += (z - centerZ) * shift;
-      render();
+      zoomAt(factor, event.clientX, event.clientY);
     },
     { passive: false },
   );
   canvas.addEventListener("pointerdown", (event) => {
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    canvas.setPointerCapture(event.pointerId);
+    if (pointers.size === 2) {
+      /* a second finger: pinch instead of drag */
+      const [a, b] = [...pointers.values()];
+      pinch = { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
+      drag = null;
+      return;
+    }
     drag = {
       x: event.clientX,
       y: event.clientY,
@@ -481,6 +538,16 @@ export function createWorldMap(deps) {
     canvas.setPointerCapture(event.pointerId);
   });
   canvas.addEventListener("pointermove", (event) => {
+    if (pointers.has(event.pointerId)) {
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (pinch && pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      zoomAt(distance / pinch.distance, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      pinch.distance = distance;
+      return;
+    }
     if (drag) {
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
@@ -499,6 +566,14 @@ export function createWorldMap(deps) {
       `${Math.round(x)}, ${Math.round(z)} · ${regionNameAt(x, z)}`;
   });
   canvas.addEventListener("pointerup", (event) => {
+    pointers.delete(event.pointerId);
+    if (pinch) {
+      /* the pinch ends when a finger lifts; no walking from it */
+      if (pointers.size < 2) {
+        pinch = null;
+      }
+      return;
+    }
     if (!drag) {
       return;
     }
@@ -512,15 +587,26 @@ export function createWorldMap(deps) {
       close();
     }
   });
-  canvas.addEventListener("pointercancel", () => {
+  canvas.addEventListener("pointercancel", (event) => {
+    pointers.delete(event.pointerId);
+    pinch = null;
     drag = null;
   });
   $("#world-map-close").onclick = () => close();
+  $("#world-map-zoom-in").onclick = () => zoomAt(1.5);
+  $("#world-map-zoom-out").onclick = () => zoomAt(1 / 1.5);
+  addEventListener("resize", () => render());
 
   function show() {
     isOpenNow = true;
     panel.hidden = false;
-    if (zoom === 1) {
+    resizeCanvas();
+    if (fillsScreen()) {
+      /* a phone: fill the screen, centred on the player */
+      zoom = Math.min(maxZoom(), Math.max(1, coverZoom()));
+      centerX = deps.player.x;
+      centerZ = deps.player.z;
+    } else if (zoom === 1) {
       centerX = (X0 + X1) / 2;
       centerZ = (Z0 + Z1) / 2;
     }

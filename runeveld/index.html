@@ -34,31 +34,37 @@
 
     <!-- In-game HUD: player frame, party, target, status, minimap, chat, hotbar and menu. -->
     <div id="hud" hidden>
-      <div id="player-frame" class="frame">
-        <div class="portrait">
-          <canvas id="hud-portrait" width="72" height="80"></canvas
-          ><span class="level-badge" id="hud-level">1</span>
-        </div>
-        <div class="player-info">
-          <div class="header">
-            <b id="hud-name">—</b
-            ><small><span id="hud-class">Swordsman</span> · Job <span id="hud-job">1</span></small>
+      <!-- top left, one column: player, running elixirs, target, party -->
+      <div id="top-left">
+        <div id="player-frame" class="frame">
+          <div class="portrait">
+            <canvas id="hud-portrait" width="72" height="80"></canvas
+            ><span class="level-badge" id="hud-level">1</span>
           </div>
-          <div class="bar hp"><i id="hud-hp"></i><span id="hud-hp-text"></span></div>
-          <div class="bar sp"><i id="hud-sp"></i><span id="hud-sp-text"></span></div>
-          <div class="bar exp" id="hud-exp-bar" title="Experience"><i id="hud-exp"></i></div>
-          <div class="bar job" id="hud-job-bar" title="Job experience">
-            <i id="hud-job-exp"></i>
+          <div class="player-info">
+            <div class="header">
+              <b id="hud-name">—</b
+              ><small
+                ><span id="hud-class">Swordsman</span> · Job <span id="hud-job">1</span></small
+              >
+            </div>
+            <div class="bar hp"><i id="hud-hp"></i><span id="hud-hp-text"></span></div>
+            <div class="bar sp"><i id="hud-sp"></i><span id="hud-sp-text"></span></div>
+            <div class="bar exp" id="hud-exp-bar" title="Experience"><i id="hud-exp"></i></div>
+            <div class="bar job" id="hud-job-bar" title="Job experience">
+              <i id="hud-job-exp"></i>
+            </div>
           </div>
         </div>
+        <div id="hud-buffs"></div>
+        <div id="target-frame" class="frame flat" hidden>
+          <div class="header"><b id="target-name"></b><small id="target-level"></small></div>
+          <div class="bar hp"><i id="target-hp"></i><span id="target-hp-text"></span></div>
+        </div>
+        <div id="party-frame" class="frame flat" hidden></div>
       </div>
-      <div id="party-frame" class="frame flat" hidden></div>
       <div id="player-card" class="frame flat" hidden></div>
       <div id="party-invite" class="frame" hidden></div>
-      <div id="target-frame" class="frame flat" hidden>
-        <div class="header"><b id="target-name"></b><small id="target-level"></small></div>
-        <div class="bar hp"><i id="target-hp"></i><span id="target-hp-text"></span></div>
-      </div>
       <div id="top-right">
         <div id="status-bar" class="frame flat">
           <span title="Zeny"
@@ -84,7 +90,6 @@
           <div class="bar gather"><i id="gather-fill"></i></div>
         </div>
       </div>
-      <div id="hud-buffs"></div>
       <div id="chat">
         <div id="chat-log"></div>
         <form id="chat-form" autocomplete="off">
@@ -149,14 +154,14 @@
         <button class="close-btn" id="sheet-close" title="Close (C)">✕</button>
       </div>
       <div class="tabs">
-        <button class="tab active" data-tab="equipment">
-          Equipment<span class="tab-badge" hidden></span>
+        <button class="tab active" data-tab="equipment" data-short="Gear">
+          <span class="tab-label">Equipment</span><span class="tab-badge" hidden></span>
         </button>
         <button class="tab" data-tab="stats">Stats<span class="tab-badge" hidden></span></button>
         <button class="tab" data-tab="skills">Skills<span class="tab-badge" hidden></span></button>
         <button class="tab" data-tab="quests">Quests<span class="tab-badge" hidden></span></button>
-        <button class="tab" data-tab="professions">
-          Professions<span class="tab-badge" hidden></span>
+        <button class="tab" data-tab="professions" data-short="Crafts">
+          <span class="tab-label">Professions</span><span class="tab-badge" hidden></span>
         </button>
       </div>
       <div class="sheet-grid" id="sheet-tab-equipment">
@@ -203,13 +208,21 @@
         <div>
           <h3>World map</h3>
           <small
-            >Scroll to zoom · drag to pan · click to walk there ·
-            <span id="world-map-position">—</span></small
+            ><span class="hint-mouse"
+              >Scroll to zoom · drag to pan · click to walk there ·
+              <span id="world-map-position">—</span></span
+            ><span class="hint-touch">Pinch to zoom · drag to pan · tap to walk there</span></small
           >
         </div>
-        <button class="close-btn" id="world-map-close" title="Close (M)">✕</button>
+        <div class="map-zoom">
+          <button class="close-btn" id="world-map-zoom-out" title="Zoom out">−</button
+          ><button class="close-btn" id="world-map-zoom-in" title="Zoom in">+</button
+          ><button class="close-btn" id="world-map-close" title="Close (M)">✕</button>
+        </div>
       </div>
-      <canvas id="world-map-canvas"></canvas>
+      <div class="map-viewport" id="world-map-viewport">
+        <canvas id="world-map-canvas"></canvas>
+      </div>
       <div class="legend">
         <span><i style="background: #fff"></i>you</span
         ><span><i style="background: #7cc4ff"></i>players</span
@@ -262,12 +275,20 @@
 
     <!-- Shop window; filled by character-sheet.js. -->
     <div id="shop" class="panel modal" hidden>
-      <h3 id="shop-name">Merchant Bram</h3>
-      <p id="shop-greeting"></p>
+      <div class="panel-header">
+        <div>
+          <h3 id="shop-name">Merchant Bram</h3>
+          <small id="shop-greeting"></small>
+        </div>
+        <button class="close-btn" id="shop-x" title="Close">✕</button>
+      </div>
       <div id="shop-list"></div>
-      <div class="row">
+      <div class="shop-footer">
         <span>You have <b id="shop-zeny">0</b> zeny</span
-        ><button class="btn alt" id="shop-close">Close</button>
+        ><span class="shop-actions"
+          ><button class="btn alt" id="shop-sell">Sell items</button
+          ><button class="btn alt" id="shop-close">Close</button></span
+        >
       </div>
     </div>
 

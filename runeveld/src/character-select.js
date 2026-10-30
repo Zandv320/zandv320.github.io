@@ -18,7 +18,8 @@ const DEFAULT_CLASS = "swordsman";
 
 /**
  * @param {object} deps {heroes() → list of hero records, save(), start(index), lastIndex() → index,
- *   inVillage(x, z), scene, cameraState, camera, onCreate(hero), onDelete(name)}
+ *   inVillage(x, z), scene, cameraState, camera, setZoom(px), minZoom() → px, pixelRatio() → rendered pixels per
+ *   CSS pixel, onCreate(hero), onDelete(name)}
  * Screens: 'select', 'create', 'delete' and 'account' (account.js).
  */
 export function createCharacterSelect(deps) {
@@ -95,10 +96,25 @@ export function createCharacterSelect(deps) {
     $("#select-create").disabled = list.length >= MAX_HEROES;
   }
 
+  /* The hero about a quarter of the stage high (40 to 110 CSS pixels), zoomed in whole steps of the pixel art so
+     the pixels stay crisp; never further out than the game itself. */
+  function fitZoom() {
+    const rect = stageRect();
+    const heroUnits = SHEETS.hero.height * SHEETS.hero.scale;
+    const wantedCss = Math.max(40, Math.min(110, rect.height * 0.24, rect.width * 0.22));
+    const step = 16;
+    const px = Math.floor(((wantedCss / heroUnits) * deps.pixelRatio()) / step) * step;
+    const zoom = Math.max(deps.minZoom(), Math.min(px, 160));
+    if (zoom !== deps.cameraState.px) {
+      deps.setZoom(zoom);
+    }
+  }
+
   function tick(dt) {
     if (!isOpenNow) {
       return;
     }
+    fitZoom();
     const list = heroes();
     const hero =
       screen === "create"
@@ -129,10 +145,65 @@ export function createCharacterSelect(deps) {
     }
   }
 
-  /* What the camera looks at while the select screen is open: the hero a bit left of centre, at chest height. */
+  /* The part of the screen where the hero stands: the empty stage of the select screen, or the room beside (or
+     above, on a narrow screen) the card of the other screens. */
+  function stageRect() {
+    if (screen === "select") {
+      const stage = $(".select-hero").getBoundingClientRect();
+      if (stage.width > 60 && stage.height > 60) {
+        return stage;
+      }
+    }
+    const screenElement = { create: createScreen, delete: deleteScreen, account: accountScreen }[
+      screen
+    ];
+    const card = screenElement && screenElement.querySelector(".card");
+    const box = card ? card.getBoundingClientRect() : null;
+    if (!box || !box.width) {
+      return { left: 0, top: 0, width: innerWidth, height: innerHeight, bottom: innerHeight };
+    }
+    if (box.left >= 220) {
+      return { left: 0, top: 0, width: box.left, height: innerHeight, bottom: innerHeight * 0.62 };
+    }
+    return { left: 0, top: 0, width: innerWidth, height: box.top, bottom: box.top };
+  }
+
+  const feet = new THREE.Vector3();
+  const probe = new THREE.Vector3();
+  const awayFromCamera = new THREE.Vector3();
+  const toScreen = (point) => {
+    probe.copy(point).project(deps.camera);
+    return [((probe.x + 1) / 2) * innerWidth, ((1 - probe.y) / 2) * innerHeight];
+  };
+
+  /**
+   * What the camera looks at while the start screens are open: chosen so that the hero's feet land at the bottom of
+   * the stage (with room for the name below), whatever the size and shape of the screen. The camera is
+   * orthographic, so moving its target moves every point on screen by the same, linear amount.
+   */
   function cameraTarget() {
-    const isNarrow = matchMedia("(max-width:700px)").matches;
-    return isNarrow ? [PODIUM.x, 0.7, PODIUM.z + 3.6] : [PODIUM.x + 2.4, 0.7, PODIUM.z];
+    const { cameraState } = deps;
+    const target = cameraState.target;
+    const rect = stageRect();
+    const nameSpace = screen === "select" ? 66 : 14;
+    const wantX = rect.left + rect.width / 2;
+    const wantY = Math.max(rect.top + rect.height * 0.6, rect.bottom - nameSpace);
+    feet.set(PODIUM.x, 0, PODIUM.z);
+    const [x, y] = toScreen(feet);
+    const right = cameraState.right;
+    awayFromCamera.set(-Math.sin(cameraState.yaw), 0, -Math.cos(cameraState.yaw));
+    const perRight = toScreen(feet.clone().add(right))[0] - x;
+    const perAway = toScreen(feet.clone().add(awayFromCamera))[1] - y;
+    if (!perRight || !perAway) {
+      return [PODIUM.x, 0.7, PODIUM.z];
+    }
+    const alongRight = (x - wantX) / perRight;
+    const alongAway = (y - wantY) / perAway;
+    return [
+      target.x + right.x * alongRight + awayFromCamera.x * alongAway,
+      0.7,
+      target.z + right.z * alongRight + awayFromCamera.z * alongAway,
+    ];
   }
 
   function showScreen(name) {
