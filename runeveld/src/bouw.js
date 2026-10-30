@@ -33,9 +33,16 @@ const grondMat=(naam,w,h)=>new THREE.MeshLambertMaterial({map:tex(naam,w/tegelW(
 /* donkere omlijning langs scherpe randen, zoals de omlijning van de sprites */
 function omlijn(mesh,hoek=35){mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,hoek),lijnMat));return mesh}
 const doos=(w,h,d,m)=>{const b=omlijn(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m));b.position.y=h/2;return b};
-/* een doos waarvan elke zijde de textuur op ware grootte herhaalt */
+/* een doos waarvan elke zijde de textuur op ware grootte herhaalt. Eén materiaal voor alle zes zijden (één tekenopdracht in
+   plaats van zes): de uv's worden per zijde geschaald en de schaduwtint per zijde zit in de vertexkleuren. */
+const blokMats=new Map();
+function blokMat(naam){let m=blokMats.get(naam);if(!m){m=new THREE.MeshLambertMaterial({map:tex(naam,1,1),vertexColors:true,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});blokMats.set(naam,m)}return m}
 function blok(w,h,d,naam,tint=1){
-  return doos(w,h,d,[mat(naam,d,h,tint*.88),mat(naam,d,h,tint*.88),mat(naam,w,d,tint*.95),mat(naam,w,d,tint),mat(naam,w,h,tint),mat(naam,w,h,tint*.92)]);
+  const geo=new THREE.BoxGeometry(w,h,d),uv=geo.attributes.uv,tw=tegelW(naam),th=tegelH(naam);
+  const maten=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]],tints=[.88,.88,.95,1,1,.92],kleuren=[];   /* volgorde van BoxGeometry: +x −x +y −y +z −z */
+  for(let f=0;f<6;f++){const[a,c]=maten[f],t=tint*tints[f];for(let i=f*4;i<f*4+4;i++){uv.setXY(i,uv.getX(i)*a/tw,uv.getY(i)*c/th);kleuren.push(t,t,t)}}
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(kleuren,3));
+  const m=omlijn(new THREE.Mesh(geo,blokMat(naam)));m.position.y=h/2;return m;
 }
 function helling(w,L,naam,tint){const p=omlijn(new THREE.Mesh(new THREE.PlaneGeometry(w,L),mat(naam,w,L,tint)));p.material.side=THREE.DoubleSide;return p}
 
@@ -170,8 +177,13 @@ export function pad(breedte,lengte,{x=0,z=0,rot=0}={}){
 
 /* ====================== Aurelia: stadsmuren, torens, poorten, het kasteel en het stadsleven ====================== */
 /* kantelen langs een lengte L (langs x), op hoogte y, aan beide kanten van een dikte `dik` */
+/* als één instanced mesh: tientallen kantelen per muur kosten zo één tekenopdracht in plaats van zeven per kanteel */
+const kanteelGeo=new THREE.BoxGeometry(.7,.6,.3);
 function kantelen(g,L,y,dik){
-  for(let x=-L/2+.45;x<L/2-.2;x+=1.3)for(const t of[-1,1]){const k=blok(.7,.6,.3,'steen',.9);k.position.set(x,y,t*(dik/2-.15));g.add(k)}
+  const xs=[];for(let x=-L/2+.45;x<L/2-.2;x+=1.3)xs.push(x);
+  const im=new THREE.InstancedMesh(kanteelGeo,mat('steen',.7,.6,.9),xs.length*2);const m=new THREE.Matrix4();let i=0;
+  for(const x of xs)for(const t of[-1,1]){m.makeTranslation(x,y+.3,t*(dik/2-.15));im.setMatrixAt(i++,m)}
+  im.instanceMatrix.needsUpdate=true;g.add(im);
 }
 /* ---------- stadsmuur: een stenen segment (lengte L langs x) met plint en kantelen ---------- */
 export function muur(L=6,h=4,dik=1.4){

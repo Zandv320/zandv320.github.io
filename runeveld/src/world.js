@@ -34,8 +34,19 @@ zon.castShadow=true;zon.shadow.mapSize.set(TELEFOON?2048:4096,TELEFOON?2048:4096
 zon.position.set(20,40,-10);zon.target.position.set(0,0,-26);
 Object.assign(zon.shadow.camera,{left:-56,right:56,top:66,bottom:-66,near:1,far:160});
 /* de schaduwcamera reist mee met de speler (de wereld is te groot voor één schaduwkaart); op hele eenheden, anders flikkeren de randen */
-let zonX=0,zonZ=0;
-export function volgZon(x,z){x=Math.round(x);z=Math.round(z);if(x===zonX&&z===zonZ)return;zonX=x;zonZ=z;zon.position.set(x+20,40,z-10);zon.target.position.set(x,0,z-26)}
+/* De schaduwkaart wordt alleen opnieuw getekend als het zicht verschuift of de zoom verandert: alles wat slagschaduw
+   werpt staat stil (sprites hebben een eigen blobschaduw). De kaart dekt precies het zicht plus een rand. */
+renderer.shadowMap.autoUpdate=false;
+let zonX=1e9,zonZ=1e9,zonW=0,zonH=0;
+export function volgZon(x,z){
+  x=Math.round(x);z=Math.round(z);
+  const hw=Math.ceil((camera.right-camera.left)/2+14),hh=Math.ceil((camera.top-camera.bottom)/2/Math.sin(cam.tilt)+18);
+  if(x===zonX&&z===zonZ&&hw===zonW&&hh===zonH)return;
+  zonX=x;zonZ=z;zonW=hw;zonH=hh;zon.position.set(x+20,40,z-10);zon.target.position.set(x,0,z-26);
+  const sc=zon.shadow.camera;sc.left=-hw;sc.right=hw;sc.top=hh;sc.bottom=-hh;sc.updateProjectionMatrix();
+  renderer.shadowMap.needsUpdate=true;
+}
+export function schaduwVernieuwen(){renderer.shadowMap.needsUpdate=true}
 
 /* Pixelcamera: orthografisch, schuin van boven (zoals RO), met een vaste pixelschaal: cam.px gerenderde pixels per
    wereld-eenheid. Op 16 valt elke sprite-pixel precies op één gerenderde pixel. De camera klikt op het pixelraster vast
@@ -265,6 +276,6 @@ export async function bouwWereld(){
       P.push(prop(s,x,z,{r:dicht?.7:0,schaduw:1.8,schaal:1.3}))}}
   bouwBos({scene,prop,bouw,vrij,toeval,P});
   bouwStad({scene,prop,bouw,vrij,toeval,P,obstakels});
-  await Promise.all(P);
+  await Promise.all(P);renderer.shadowMap.needsUpdate=true;
 }
 export function updateBorden(){for(const b of borden)b.update(cam)}
