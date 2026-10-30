@@ -583,12 +583,120 @@ export function plaza(radius, textureName = "cobbles", tint = 1) {
   return mesh;
 }
 
-/** A straight dirt path of `width` × `length`, centred on (x, z) and turned by `rotation` around the y axis. */
+/* ---------- dirt roads: a texture drawn per road width, in the palette of the sprites ----------
+   One tile is the full width of the road (16 pixels per unit, like everything else) and ROAD_LENGTH units long,
+   repeating along the road. Packed earth with a little colour variation, two wheel ruts on real roads, pebbles,
+   grass in the middle strip, and ragged edges where the grass grows over (transparent pixels: the grass shows
+   through), with a darker rim. Everything that varies along the road is periodic, so the tile repeats without a
+   seam. */
+const ROAD_H = 64;
+const ROAD_LENGTH = ROAD_H / PPU;
+const roadCanvases = new Map();
+
+function roadImage(w) {
+  if (roadCanvases.has(w)) {
+    return roadCanvases.get(w);
+  }
+  const roadCanvas = document.createElement("canvas");
+  roadCanvases.set(w, roadCanvas);
+  roadCanvas.width = w;
+  roadCanvas.height = ROAD_H;
+  const ctx = roadCanvas.getContext("2d");
+  /* footpaths (to a door) are narrow: no ruts, less of everything */
+  const isRoad = w >= 38;
+  let seed = 4021 + w;
+  const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  const dot = (x, y, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(((x % w) + w) % w, ((y % ROAD_H) + ROAD_H) % ROAD_H, 1, 1);
+  };
+  /* packed earth, with patches of lighter and darker soil */
+  ctx.fillStyle = "#dc9462";
+  ctx.fillRect(0, 0, w, ROAD_H);
+  for (let i = 0; i < Math.round((26 * w) / 48); i++) {
+    const cx = random() * w;
+    const cy = random() * ROAD_H;
+    const color = random() < 0.5 ? "#e7a36d" : "#cf8656";
+    const r = 1.5 + random() * 3;
+    for (let y = -r; y <= r; y++) {
+      for (let x = -r * 1.4; x <= r * 1.4; x++) {
+        if ((x / 1.4) ** 2 + y * y <= r * r && random() < 0.85) {
+          dot(Math.round(cx + x), Math.round(cy + y), color);
+        }
+      }
+    }
+  }
+  /* two wheel ruts, a little wavy */
+  for (let y = 0; isRoad && y < ROAD_H; y++) {
+    const sway = Math.round(Math.sin((y / ROAD_H) * Math.PI * 4) * 0.6);
+    for (const center of [w * 0.3, w * 0.7]) {
+      const x = Math.round(center) + sway;
+      dot(x, y, "#c07a4e");
+      if (random() < 0.7) {
+        dot(x + 1, y, "#c98252");
+      }
+    }
+  }
+  /* pebbles */
+  for (let i = 0; i < Math.round((40 * w) / 48); i++) {
+    const x = Math.floor(random() * w);
+    const y = Math.floor(random() * ROAD_H);
+    dot(x, y, random() < 0.5 ? "#f2c08a" : "#a8694a");
+    if (random() < 0.3) {
+      dot(x + 1, y, "#b5754f");
+    }
+  }
+  /* grass in the middle strip, between the ruts */
+  for (let i = 0; isRoad && i < 18; i++) {
+    const x = Math.round(w / 2 + (random() - 0.5) * w * 0.18);
+    const y = Math.floor(random() * ROAD_H);
+    dot(x, y, "#a6b04f");
+    if (random() < 0.6) {
+      dot(x, y - 1, "#8c9a3f");
+    }
+  }
+  /* ragged edges: the grass reaches 1–5 pixels into the road, with a darker rim just inside */
+  const reach = isRoad ? 1 : 0.6;
+  const depth = (y, phase) =>
+    reach *
+    (2.6 +
+      1.3 * Math.sin((y / ROAD_H) * Math.PI * 2 * 3 + phase) +
+      0.9 * Math.sin((y / ROAD_H) * Math.PI * 2 * 7 + phase * 2));
+  for (let y = 0; y < ROAD_H; y++) {
+    const left = Math.max(1, Math.round(depth(y, 0.7)));
+    const right = Math.max(1, Math.round(depth(y, 2.9)));
+    ctx.clearRect(0, y, left, 1);
+    ctx.clearRect(w - right, y, right, 1);
+    dot(left, y, "#b5754f");
+    dot(w - right - 1, y, "#b5754f");
+  }
+  return roadCanvas;
+}
+
+const roadTextures = new Map();
+function roadMaterial(width, length) {
+  const pixels = Math.max(16, Math.round(width * PPU));
+  const repeat = length / ROAD_LENGTH;
+  const key = pixels + "|" + repeat.toFixed(3);
+  let map = roadTextures.get(key);
+  if (!map) {
+    map = new THREE.CanvasTexture(roadImage(pixels));
+    map.wrapS = THREE.ClampToEdgeWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat.set(1, repeat);
+    map.magFilter = THREE.NearestFilter;
+    map.minFilter = THREE.NearestFilter;
+    map.generateMipmaps = false;
+    map.colorSpace = THREE.SRGBColorSpace;
+    roadTextures.set(key, map);
+  }
+  /* alphaTest: the ragged edge is cut out pixel-sharp, the grass under it shows */
+  return new THREE.MeshLambertMaterial({ map, alphaTest: 0.5 });
+}
+
+/** A straight dirt road of `width` × `length`, centred on (x, z) and turned by `rotation` around the y axis. */
 export function path(width, length, { x = 0, z = 0, rotation = 0 } = {}) {
-  const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, length),
-    groundMaterial("path", width, length),
-  );
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, length), roadMaterial(width, length));
   mesh.userData.mapKind = { kind: "path", w: width, l: length };
   mesh.rotation.order = "YXZ";
   mesh.rotation.y = rotation;

@@ -25,7 +25,8 @@ import {
 import { knockBack } from "./monsters.js";
 import { addToBag } from "./bag.js";
 import { groundRing, launchProjectile } from "./skill-effects.js";
-import { hitStop, buzz, flyToHud } from "./feel.js";
+import { hitStop, buzz, flyToHud, screenFlash } from "./feel.js";
+import { burst } from "./particles.js";
 import { useSkill } from "./abilities.js";
 
 /** Keys held down (KeyboardEvent.code), filled by the input handlers in main.js. */
@@ -288,6 +289,53 @@ function basicAttack(monster) {
   }, 220);
 }
 
+/* The sparks of a hit, per skill: their colour, and for the big spells the colour of a flash over the screen. */
+const FIRE = 0xff8c42;
+const FROST = 0x9ad8ff;
+const HOLY = 0xffe08a;
+const STEEL = 0xfff0c4;
+const SKILL_SPARKS = {
+  crushing_blow: { color: STEEL },
+  flame_sweep: { color: FIRE, flash: "255, 140, 60" },
+  stunning_strike: { color: STEEL },
+  piercing_thrust: { color: STEEL },
+  whirlwind_sweep: { color: STEEL, flash: "255, 240, 200" },
+  spiral_lance: { color: 0xbfe3ff },
+  radiant_cross: { color: HOLY, flash: "255, 224, 138" },
+  shield_rush: { color: HOLY },
+  aegis_of_light: { color: HOLY },
+  ember_bolt: { color: FIRE },
+  frostburst: { color: FROST, flash: "154, 216, 255" },
+  ice_shard: { color: FROST },
+  spirit_volley: { color: 0xd8c8ff },
+  thunderclap: { color: 0xfff2a0, flash: "255, 242, 160" },
+  blizzard: { color: FROST, flash: "180, 225, 255" },
+  starfall: { color: 0xffb347, flash: "255, 180, 80" },
+  stone_spires: { color: 0xd0a878, flash: "210, 170, 120" },
+};
+
+/* sparks from a hit: a few for a blow, more for a critical hit, a shower in the skill's colour for a skill */
+function hitSparks(monster, result, kind) {
+  const y = monster.sprite.height * 0.5;
+  const skill = SKILL_SPARKS[kind];
+  if (skill) {
+    burst(monster.x, y, monster.z, { color: skill.color, count: 18, speed: 4.2, size: 2.4 });
+    if (skill.flash) {
+      screenFlash(skill.flash);
+    }
+  } else if (result.crit) {
+    burst(monster.x, y, monster.z, { color: 0xffe9a8, count: 16, speed: 4.5, size: 2.4 });
+  } else {
+    burst(monster.x, y, monster.z, {
+      color: result.magic ? 0xbfd9ff : STEEL,
+      count: 6,
+      speed: 3,
+      size: 1.8,
+      life: 0.4,
+    });
+  }
+}
+
 /**
  * Applies an attack result (rules/combat.js) to a monster: damage number, knockback, sound, and the hit event
  * to the host or server. `kind` is "" for a basic attack, otherwise the skill id.
@@ -304,6 +352,7 @@ export function hitMonster(monster, result, kind) {
   UI.floatingText(monster.x, numberHeight, monster.z, camera, text, style);
   const force = kind === "whirlwind_sweep" ? 1.2 : result.crit ? 0.45 : 0.28;
   knockBack(monster, monster.x - player.x, monster.z - player.z, force);
+  hitSparks(monster, result, kind);
   /* the blow lands: hero and monster hold for a moment, longer on a critical hit */
   hitStop([monster.sprite, kind ? null : player.sprite], result.crit ? 0.09 : 0.045);
   sfx.hit(result.crit);

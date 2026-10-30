@@ -57,6 +57,31 @@ export function buzz(kind) {
   }
 }
 
+/* A short flash over the whole screen in a spell's colour, from the edges inwards; at most one every 0.3 s. */
+let flashElement = null;
+let lastFlashAt = 0;
+export function screenFlash(color = "255, 240, 200") {
+  const time = performance.now();
+  if (time - lastFlashAt < 300) {
+    return;
+  }
+  lastFlashAt = time;
+  if (!flashElement) {
+    flashElement = document.createElement("div");
+    flashElement.className = "screen-flash";
+    document.body.appendChild(flashElement);
+  }
+  flashElement.style.background = `radial-gradient(ellipse at center, rgba(${color}, 0.05) 35%, rgba(${color}, 0.42) 100%)`;
+  /* only on screen while it flashes: a blended layer costs a phone something even when invisible */
+  flashElement.style.display = "block";
+  flashElement.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: 320,
+    easing: "ease-out",
+  }).onfinish = () => {
+    flashElement.style.display = "none";
+  };
+}
+
 /* the first of these that is on screen receives the flying icon */
 const TARGETS = {
   bag: ["#inventory-button"],

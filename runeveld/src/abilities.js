@@ -31,6 +31,7 @@ import {
   groundRing,
   wardAura,
 } from "./skill-effects.js";
+import { ringBurst } from "./particles.js";
 
 /** Uses a hotbar entry: "sit", "red_potion" or a skill id. */
 export function useSkill(id) {
@@ -217,6 +218,7 @@ function flameSweep(cast) {
   standUp();
   playOnce("attack", 0.6);
   groundRing(player.x, player.z, 0xff8c42, 0.4, skill.radius, 0.45, 0.9);
+  ringBurst(player.x, player.z, skill.radius, { color: 0xff8c42, count: 40 });
   sfx.skill();
   shakeCamera(0.15, 0.2);
   playEffect("fire_ring", player.x, player.z, { size: skill.radius * 2.3, y: 0.1 });
@@ -250,6 +252,7 @@ function warCry(cast) {
   playOnce("hurt", 0.3);
   const radius = skill.radius(level);
   groundRing(player.x, player.z, 0xff4d4d, 0.3, radius, 0.5, 0.7);
+  ringBurst(player.x, player.z, radius * 0.6, { color: 0xff6b6b, count: 28 });
   playEffect("shockwave", player.x, player.z, { size: radius * 2.2, y: 0.08, tint: 0xff6060 });
   playEffect("shockwave", player.x, player.z, {
     size: radius * 1.4,
@@ -323,6 +326,7 @@ function frostburst(cast) {
   standUp();
   playOnce("attack", 0.6);
   groundRing(player.x, player.z, 0x9ad8ff, 0.4, skill.radius, 0.5, 0.9);
+  ringBurst(player.x, player.z, skill.radius, { color: 0x9ad8ff, count: 40 });
   sfx.skill();
   shakeCamera(0.12, 0.2);
   runeCircle(0x9ad8ff, 0.6);
@@ -515,6 +519,7 @@ function whirlwindSweep(cast) {
   standUp();
   playOnce("attack", 0.6);
   groundRing(player.x, player.z, 0xffd27a, 0.4, skill.radius, 0.4, 0.9);
+  ringBurst(player.x, player.z, skill.radius, { color: 0xfff0c4, count: 44 });
   sfx.skill();
   shakeCamera(0.2, 0.2);
   stopAfter(
@@ -692,6 +697,7 @@ function blizzard(cast) {
   standUp();
   playOnce("attack", 0.7);
   groundRing(player.x, player.z, 0xbfe8ff, 0.4, skill.radius, 0.7, 0.9);
+  ringBurst(player.x, player.z, skill.radius, { color: 0xbfe8ff, count: 56, size: 2.4 });
   groundRing(player.x, player.z, 0xffffff, 0.2, skill.radius * 0.6, 0.5, 0.6);
   sfx.skill();
   shakeCamera(0.2, 0.3);
@@ -751,7 +757,7 @@ function starfall(cast) {
     loop: true,
   }).stop();
   const comet = playEffect("comet", impactX - 3, impactZ, { size: 3.4, y: 6, loop: true });
-  flyEffect(comet, impactX - 3, impactZ, { x: impactX, z: impactZ }, 0.55, () => {});
+  flyEffect(comet, impactX - 3, impactZ, { x: impactX, z: impactZ }, 0.55, () => {}, 0xffb347);
   setTimeout(() => {
     playEffect("mushroom_cloud", impactX, impactZ, {
       size: skill.radius * 3,

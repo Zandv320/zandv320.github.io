@@ -9,8 +9,11 @@ import {
   VALE,
   inVale,
   CAPITAL,
+  CASTLE,
   inCapital,
   inCastle,
+  BANDIT_CAMP,
+  ALTAR_CLEARING,
 } from "./regions.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
@@ -155,57 +158,86 @@ export function createWorldMap(deps) {
     const px = (x) => (x - X0) * scale;
     const pz = (z) => (z - Z0) * scale;
     const villageHalf = deps.VILLAGE_HALF_SIZE;
+    /* a fixed pseudo-random number per spot, so the map looks the same every time */
+    const hash = (x, z) => {
+      const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+      return n - Math.floor(n);
+    };
+    /* everything that stands casts a short shadow to the bottom right, like the sun in the world */
+    const SHADOW = "rgba(20, 30, 10, 0.32)";
+    const shadowOffset = scale * 0.35;
 
-    /* Ground: outside the world, the fields, the forest, the village. */
+    /* ---- ground: outside the world, fields, forest, meadows, the city, the village ---- */
     g.fillStyle = COLORS.outside;
     g.fillRect(0, 0, layer.width, layer.height);
-    /* The wavy shapes of fields and forest, per half unit. */
     const step = 0.5;
+    const regionAt = (x, z) => {
+      if (inFields(x, z)) {
+        return Math.abs(x) <= villageHalf && Math.abs(z) <= villageHalf ? "village" : "grass";
+      }
+      if (inForest(x, z)) {
+        return "forest";
+      }
+      if (inVale(x, z)) {
+        if (inCapital(x, z)) {
+          return inCastle(x, z) ? "castleGround" : "capital";
+        }
+        return "meadow";
+      }
+      return null;
+    };
     for (let z = Z0; z < Z1; z += step) {
       for (let x = X0; x < X1; x += step) {
-        const cellX = x + step / 2;
-        const cellZ = z + step / 2;
-        const isFields = inFields(cellX, cellZ);
-        const isForest = inForest(cellX, cellZ);
-        const isVale = inVale(cellX, cellZ);
-        if (!isFields && !isForest && !isVale) {
+        const region = regionAt(x + step / 2, z + step / 2);
+        if (!region) {
           continue;
         }
-        if (isFields) {
-          g.fillStyle = COLORS.grass;
-        } else if (isForest) {
-          g.fillStyle = COLORS.forest;
-        } else if (inCapital(cellX, cellZ)) {
-          g.fillStyle = inCastle(cellX, cellZ) ? COLORS.castleGround : COLORS.capital;
-        } else {
-          g.fillStyle = COLORS.meadow;
-        }
+        g.fillStyle = COLORS[region];
         g.fillRect(px(x), pz(z), step * scale + 0.5, step * scale + 0.5);
+        /* speckles: a lighter or darker fleck now and then, so the ground is not flat */
+        const fleck = hash(x, z);
+        if (fleck < 0.16) {
+          g.fillStyle = fleck < 0.08 ? "rgba(255, 255, 220, 0.10)" : "rgba(0, 30, 0, 0.12)";
+          g.fillRect(px(x), pz(z), step * scale * 0.6, step * scale * 0.6);
+        }
+        /* a darker rim where one region meets another (or the edge of the world) */
+        const above = regionAt(x + step / 2, z - step / 2);
+        const left = regionAt(x - step / 2, z + step / 2);
+        if (above !== region || left !== region) {
+          g.fillStyle = "rgba(20, 35, 10, 0.28)";
+          g.fillRect(px(x), pz(z), step * scale + 0.5, step * scale + 0.5);
+        }
       }
     }
-    g.fillStyle = COLORS.village;
-    g.fillRect(
-      px(-villageHalf),
-      pz(-villageHalf),
-      2 * villageHalf * scale,
-      2 * villageHalf * scale,
-    );
 
-    /* Ground planes: plaza, roads, clearing. */
+    /* ---- ground planes: roads and streets with a darker edge, the plaza and clearings ---- */
+    const planeRect = (plane, grow, color) => {
+      g.save();
+      g.translate(px(plane.x), pz(plane.z));
+      g.rotate(-plane.rotation);
+      g.fillStyle = color;
+      g.fillRect(
+        (-plane.w / 2 - grow) * scale,
+        (-plane.l / 2 - grow) * scale,
+        (plane.w + grow * 2) * scale,
+        (plane.l + grow * 2) * scale,
+      );
+      g.restore();
+    };
+    const roads = features.planes.filter(
+      (plane) => plane.kind === "path" || plane.kind === "street",
+    );
+    for (const plane of roads) {
+      planeRect(plane, 0.35, plane.kind === "path" ? "#9c7448" : "#7c7062");
+    }
     for (const plane of features.planes) {
       if (plane.kind === "path" || plane.kind === "street") {
-        g.save();
-        g.translate(px(plane.x), pz(plane.z));
-        g.rotate(-plane.rotation);
-        g.fillStyle = COLORS[plane.kind];
-        g.fillRect(
-          (-plane.w / 2) * scale,
-          (-plane.l / 2) * scale,
-          plane.w * scale,
-          plane.l * scale,
-        );
-        g.restore();
+        planeRect(plane, 0, COLORS[plane.kind]);
       } else {
+        g.fillStyle = plane.kind === "plaza" ? "#b87447" : "#6f6e68";
+        g.beginPath();
+        g.arc(px(plane.x), pz(plane.z), (plane.r + 0.35) * scale, 0, Math.PI * 2);
+        g.fill();
         g.fillStyle = COLORS[plane.kind] || COLORS.plaza;
         g.beginPath();
         g.arc(px(plane.x), pz(plane.z), plane.r * scale, 0, Math.PI * 2);
@@ -213,82 +245,224 @@ export function createWorldMap(deps) {
       }
     }
 
-    /* Built objects as their bounding box. */
+    /* ---- built objects ---- */
+    const outlineWidth = Math.max(1, scale * 0.18);
     for (const building of features.buildings) {
       const width = (building.x1 - building.x0) * scale;
       const height = (building.z1 - building.z0) * scale;
       const x = px(building.x0);
       const y = pz(building.z0);
-      if (building.kind === "house") {
-        /* Houses in the forest are huts. */
-        const isHut = building.z < FOREST.z1;
-        g.fillStyle = isHut ? COLORS.hut : COLORS.house;
-        g.fillRect(x, y, width, height);
-        g.strokeStyle = COLORS.houseOutline;
-        g.lineWidth = Math.max(1, scale * 0.25);
-        g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
-      } else if (building.kind === "fence") {
+      const kind = building.kind;
+      if (kind === "fence") {
         g.fillStyle = COLORS.fence;
         g.fillRect(x, y, Math.max(width, scale * 0.4), Math.max(height, scale * 0.4));
-      } else if (building.kind === "stall") {
+        continue;
+      }
+      if (ROUND_KINDS.has(kind)) {
+        const cx = px(building.x);
+        const cz = pz(building.z);
+        const isWater = kind === "pond" || kind === "fountain";
+        if (!isWater) {
+          g.fillStyle = SHADOW;
+          g.beginPath();
+          g.ellipse(cx + shadowOffset, cz + shadowOffset, width / 2, height / 2, 0, 0, Math.PI * 2);
+          g.fill();
+        }
+        g.fillStyle = isWater ? "#7d7a72" : COLORS[kind];
+        g.beginPath();
+        g.ellipse(cx, cz, width / 2, height / 2, 0, 0, Math.PI * 2);
+        g.fill();
+        if (isWater) {
+          /* water inside a stone rim, a lighter shine at the top left */
+          g.fillStyle = COLORS.pond;
+          g.beginPath();
+          g.ellipse(cx, cz, width / 2 - scale * 0.45, height / 2 - scale * 0.45, 0, 0, Math.PI * 2);
+          g.fill();
+          g.strokeStyle = "rgba(255, 255, 255, 0.45)";
+          g.lineWidth = Math.max(1, scale * 0.15);
+          g.beginPath();
+          g.ellipse(
+            cx,
+            cz,
+            width / 2 - scale * 1.1,
+            height / 2 - scale * 1.1,
+            0,
+            Math.PI * 1.05,
+            Math.PI * 1.45,
+          );
+          g.stroke();
+        } else {
+          g.strokeStyle = COLORS.houseOutline;
+          g.lineWidth = outlineWidth;
+          g.stroke();
+        }
+        continue;
+      }
+      /* everything else: a shadow, the body, an outline */
+      g.fillStyle = SHADOW;
+      g.fillRect(x + shadowOffset, y + shadowOffset, width, height);
+      if (kind === "house") {
+        /* a roof: two halves along the long side, one in the light and one in the shade, with a ridge */
+        const isHut = building.z < FOREST.z1;
+        const roof = isHut ? COLORS.hut : COLORS.house;
+        g.fillStyle = roof;
+        g.fillRect(x, y, width, height);
+        g.fillStyle = "rgba(0, 0, 0, 0.22)";
+        if (width >= height) {
+          g.fillRect(x, y + height / 2, width, height / 2);
+          g.fillStyle = "rgba(255, 255, 255, 0.35)";
+          g.fillRect(x, y + height / 2 - scale * 0.1, width, Math.max(1, scale * 0.2));
+        } else {
+          g.fillRect(x + width / 2, y, width / 2, height);
+          g.fillStyle = "rgba(255, 255, 255, 0.35)";
+          g.fillRect(x + width / 2 - scale * 0.1, y, Math.max(1, scale * 0.2), height);
+        }
+      } else if (kind === "garden") {
+        /* tilled soil with rows of crops */
+        g.fillStyle = COLORS.garden;
+        g.fillRect(x, y, width, height);
+        g.fillStyle = "rgba(214, 190, 90, 0.75)";
+        for (let row = y + scale * 0.5; row < y + height - scale * 0.3; row += scale * 0.75) {
+          g.fillRect(x + scale * 0.3, row, width - scale * 0.6, Math.max(1, scale * 0.28));
+        }
+      } else if (kind === "stall") {
         g.fillStyle = building.x < 0 ? COLORS.stall : COLORS.stallEast;
         g.fillRect(x, y, width, height);
-      } else if (ROUND_KINDS.has(building.kind)) {
-        g.fillStyle = COLORS[building.kind];
+        g.fillStyle = "rgba(255, 255, 255, 0.55)";
+        for (let stripe = x; stripe < x + width; stripe += scale * 0.7) {
+          g.fillRect(stripe, y, Math.max(1, scale * 0.3), height);
+        }
+      } else if (kind === "tent") {
+        g.fillStyle = COLORS.tent;
         g.beginPath();
-        g.ellipse(px(building.x), pz(building.z), width / 2, height / 2, 0, 0, Math.PI * 2);
+        g.moveTo(x + width / 2, y);
+        g.lineTo(x + width, y + height);
+        g.lineTo(x, y + height);
+        g.closePath();
         g.fill();
       } else {
-        g.fillStyle = COLORS[building.kind] || COLORS.small;
+        g.fillStyle = COLORS[kind] || COLORS.small;
         g.fillRect(x, y, width, height);
+      }
+      if (kind !== "tent") {
+        g.strokeStyle = COLORS.houseOutline;
+        g.lineWidth = outlineWidth;
+        g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
       }
     }
 
-    /* Trees, bushes, rocks, lanterns ("tree2" draws as "tree"). */
+    /* ---- trees, bushes, rocks, nodes, lanterns ("tree2" draws as "tree") ---- */
+    const blob = (x, z, radius, color, highlight) => {
+      const cx = px(x);
+      const cz = pz(z);
+      const r = radius * scale;
+      g.fillStyle = SHADOW;
+      g.beginPath();
+      g.arc(cx + shadowOffset, cz + shadowOffset, r, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = color;
+      g.beginPath();
+      g.arc(cx, cz, r, 0, Math.PI * 2);
+      g.fill();
+      if (highlight && r > 2) {
+        g.fillStyle = highlight;
+        g.beginPath();
+        g.arc(cx - r * 0.3, cz - r * 0.3, r * 0.45, 0, Math.PI * 2);
+        g.fill();
+      }
+      if (r > 2.5) {
+        g.strokeStyle = "rgba(12, 15, 42, 0.55)";
+        g.lineWidth = Math.max(1, scale * 0.1);
+        g.beginPath();
+        g.arc(cx, cz, r, 0, Math.PI * 2);
+        g.stroke();
+      }
+    };
     for (const prop of features.props) {
       const kind = prop.kind.replace(/\d$/, "").replace(/_.*$/, "");
-      if (kind === "tree" || kind === "pine") {
-        g.fillStyle = COLORS[kind];
-        g.beginPath();
-        g.arc(px(prop.x), pz(prop.z), (0.95 * scale * prop.scale) / 1.3, 0, Math.PI * 2);
-        g.fill();
+      if (kind === "tree") {
+        blob(prop.x, prop.z, (0.95 * prop.scale) / 1.3, COLORS.tree, "rgba(190, 230, 110, 0.45)");
+      } else if (kind === "pine") {
+        blob(prop.x, prop.z, (0.85 * prop.scale) / 1.3, COLORS.pine, "rgba(140, 200, 120, 0.35)");
       } else if (kind === "bush") {
-        g.fillStyle = COLORS.bush;
-        g.beginPath();
-        g.arc(px(prop.x), pz(prop.z), 0.5 * scale, 0, Math.PI * 2);
-        g.fill();
+        blob(prop.x, prop.z, 0.5, COLORS.bush, "rgba(200, 240, 140, 0.4)");
       } else if (kind === "rock") {
-        g.fillStyle = COLORS.rock;
-        g.beginPath();
-        g.arc(px(prop.x), pz(prop.z), 0.55 * scale, 0, Math.PI * 2);
-        g.fill();
+        blob(prop.x, prop.z, 0.55, COLORS.rock, "rgba(255, 255, 255, 0.35)");
       } else if (kind === "ore" || kind === "herb") {
         /* gathering nodes (rules/gather-nodes.js): ore veins and herbs */
-        g.fillStyle = COLORS[kind];
-        g.beginPath();
-        g.arc(px(prop.x), pz(prop.z), 0.45 * scale, 0, Math.PI * 2);
-        g.fill();
+        blob(prop.x, prop.z, 0.45, COLORS[kind], null);
       } else if (kind === "lantern") {
+        g.fillStyle = "rgba(255, 210, 122, 0.35)";
+        g.beginPath();
+        g.arc(px(prop.x), pz(prop.z), scale * 0.7, 0, Math.PI * 2);
+        g.fill();
         g.fillStyle = COLORS.lantern;
         g.fillRect(px(prop.x) - scale * 0.2, pz(prop.z) - scale * 0.2, scale * 0.4, scale * 0.4);
       }
     }
 
-    /* Region names. */
+    /* the minimap draws this layer small: names and the compass only on the big map */
+    if (scale < 6) {
+      return layer;
+    }
+
+    /* ---- names: regions in the heading font, places smaller ---- */
     g.textAlign = "center";
-    g.fillStyle = "rgba(255,255,255,.85)";
-    g.strokeStyle = "rgba(0,0,0,.6)";
-    g.lineWidth = 3;
     g.lineJoin = "round";
-    const drawName = (text, x, z, size) => {
-      g.font = `700 ${size}px Rubik,sans-serif`;
+    const drawName = (text, x, z, size, isPlace = false) => {
+      g.font = isPlace ? `600 ${size}px Rubik, sans-serif` : `700 ${size}px Cinzel, Rubik, serif`;
+      g.lineWidth = Math.max(2, size * 0.22);
+      g.strokeStyle = "rgba(20, 16, 10, 0.7)";
       g.strokeText(text, px(x), pz(z));
+      g.fillStyle = isPlace ? "rgba(255, 244, 214, 0.92)" : "#ffe9a8";
       g.fillText(text, px(x), pz(z));
     };
-    drawName("Runeveld", 0, -villageHalf - 3, scale * 2.6);
-    drawName(FOREST.name, 0, FOREST.z0 + 5, scale * 2.6);
-    drawName(VALE.name, VALE.cx, VALE.z0 + 8, scale * 2.6);
-    drawName(CAPITAL.name, CAPITAL.cx, CAPITAL.z0 - 3, scale * 2.2);
+    drawName("Runeveld", 0, -villageHalf - 3, scale * 2.8);
+    drawName(FOREST.name, 0, FOREST.z0 + 5, scale * 2.8);
+    drawName(VALE.name, VALE.cx, VALE.z0 + 8, scale * 2.8);
+    drawName(CAPITAL.name, CAPITAL.cx, CAPITAL.z0 - 3, scale * 2.4);
+    const placeSize = scale * 1.9;
+    drawName("Old Altar", ALTAR_CLEARING[0], ALTAR_CLEARING[1] + 7.5, placeSize, true);
+    drawName("Bandit Camp", BANDIT_CAMP[0], BANDIT_CAMP[1] - 6, placeSize, true);
+    drawName("Mill", -78, 24.5, placeSize, true);
+    drawName("Farm", -76, -18.5, placeSize, true);
+    drawName("Castle", CASTLE.cx, CASTLE.z0 - 1.5, placeSize, true);
+    drawName("Lake", -118, 64, placeSize, true);
+    drawName("Farmland", 32.5, -8.5, placeSize, true);
+
+    /* ---- a compass rose in the bottom left corner ---- */
+    const rx = layer.width * 0.06;
+    const rz = layer.height * 0.93;
+    const rr = scale * 3.2;
+    g.save();
+    g.translate(rx, rz);
+    for (const [angle, color] of [
+      [0, "#ffe9a8"],
+      [Math.PI / 2, "#d6c08a"],
+      [Math.PI, "#d6c08a"],
+      [-Math.PI / 2, "#d6c08a"],
+    ]) {
+      g.save();
+      g.rotate(angle);
+      g.fillStyle = color;
+      g.strokeStyle = "rgba(20, 16, 10, 0.8)";
+      g.lineWidth = Math.max(1, scale * 0.12);
+      g.beginPath();
+      g.moveTo(0, -rr);
+      g.lineTo(rr * 0.22, 0);
+      g.lineTo(-rr * 0.22, 0);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.restore();
+    }
+    g.font = `700 ${scale * 1.3}px Cinzel, serif`;
+    g.fillStyle = "#ffe9a8";
+    g.strokeStyle = "rgba(20, 16, 10, 0.8)";
+    g.lineWidth = Math.max(2, scale * 0.25);
+    g.strokeText("N", 0, -rr - scale * 0.5);
+    g.fillText("N", 0, -rr - scale * 0.5);
+    g.restore();
     return layer;
   }
 

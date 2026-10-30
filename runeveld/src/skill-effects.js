@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { scene, camera } from "./world.js";
 import { player, playEffect } from "./game-state.js";
+import { trail } from "./particles.js";
 
 /* running ground rings and projectile flights, advanced by updateSkillEffects() */
 const activeEffects = [];
@@ -71,8 +72,12 @@ export function screenAngle(x0, z0, x1, z1) {
  * Moves `effect` in an arc from (x0, z0) to `target` (anything with x and z, followed while it moves) in
  * `duration` seconds, then stops the effect and calls `onArrive`.
  */
-export function flyEffect(effect, x0, z0, target, duration, onArrive) {
-  activeEffects.push({ time: 0, duration, flight: { x0, z0, target, onArrive, effect } });
+export function flyEffect(effect, x0, z0, target, duration, onArrive, trailColor = null) {
+  activeEffects.push({
+    time: 0,
+    duration,
+    flight: { x0, z0, target, onArrive, effect, trailColor },
+  });
 }
 
 /** A projectile: the comet from the effect sheets (or another effect) flies from (x0, z0) to the monster, then onHit(). */
@@ -87,7 +92,8 @@ export function launchProjectile(x0, z0, monster, color, onHit, name = "comet", 
     tint,
   });
   const duration = Math.max(0.14, Math.hypot(monster.x - x0, monster.z - z0) / 20);
-  flyEffect(effect, x0, z0, monster, duration, onHit);
+  /* a spark trail behind it, in its colour */
+  flyEffect(effect, x0, z0, monster, duration, onHit, color);
 }
 
 /** A flat ring on the ground that grows from startRadius to endRadius and fades out. */
@@ -138,6 +144,10 @@ export function updateSkillEffects(dt) {
           0.9 + Math.sin(progress * Math.PI) * 0.4,
           flight.z0 + (targetZ - flight.z0) * progress,
         );
+        if (flight.trailColor !== null) {
+          const position = flight.effect.group.position;
+          trail(position.x, position.y, position.z, flight.trailColor);
+        }
       }
       if (progress >= 1) {
         if (flight.effect) {

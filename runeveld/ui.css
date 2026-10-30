@@ -3934,3 +3934,16 @@ body.rpg-cursor #game[data-cursor="talk"] {
 body.rpg-cursor #game[data-cursor="gather"] {
   cursor: var(--cursor-gather);
 }
+
+/* a spell's flash over the whole screen (feel.js screenFlash) */
+.screen-flash {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+}

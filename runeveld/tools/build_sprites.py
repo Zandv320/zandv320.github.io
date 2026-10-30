@@ -273,13 +273,15 @@ def mirror(im):
 EYE_COLORS = {(63, 106, 212), (17, 11, 0)}  # iris and pupil: the stable anchor for the height
 
 
-def headgear(head, front, right, back, colors, brim, fw=64, fh=64):
+def headgear(head, body, front, right, back, colors, brim, fw=64, fh=64):
     """Put the right piece of headgear on the head in every frame. Row r within an animation: 0 front, 1 left,
     2 right, 3 back.
 
     Horizontally: the centre of the skull (the top four rows of hair; flowing hair does not count).
-    Vertically: the brim of the piece (`brim` = row index of the lowest brim row) goes one pixel above the eyes;
-    without eyes in view (back view) the top connects to the hair."""
+    Vertically: the brim of the piece (`brim` = row index of the lowest brim row) goes one pixel above the eyes.
+    Without eyes in view (back view) the eyes are taken to be two pixels above the neck (the top of the body under
+    the skull), as they are in every front frame. The top of the hair is no anchor: walking away, the spiky hair
+    stretches while the head bobs, and the hat would stand still on a moving head."""
     art = {
         0: pixel_drawing(front, colors),
         1: mirror(pixel_drawing(right, colors)),
@@ -290,6 +292,7 @@ def headgear(head, front, right, back, colors, brim, fw=64, fh=64):
     # hair on and above the brim is removed, so no tufts stick through the helmet
     out = head.copy()
     src, dst = head.load(), out.load()
+    body_px = body.load()
     for r in range(head.height // fh):
         piece = art[r % 4]
         for c in range(head.width // fw):
@@ -309,7 +312,13 @@ def headgear(head, front, right, back, colors, brim, fw=64, fh=64):
             skull = [x for x, y in hair if y <= top + 3]
             xc = (min(skull) + max(skull)) / 2
             x0 = int(xc - piece.width / 2 + 1)
-            y0 = (min(y for _, y in eyes) - 1 - brim) if eyes else top - 1
+            if eyes:
+                eye_y = min(y for _, y in eyes)
+            else:
+                columns = range(int(round(xc)) - 2, int(round(xc)) + 3)
+                neck = [y for y in range(r * fh, (r + 1) * fh) for x in columns if body_px[x, y][3] > 0]
+                eye_y = (min(neck) - 2) if neck else top + 9
+            y0 = eye_y - 1 - brim
             for x, y in hair:
                 if y <= y0 + brim:
                     dst[x, y] = TRANSPARENT
@@ -781,8 +790,8 @@ ARCANE = {
 def build_class_gear(stacked, body, out_dir):
     """Headgear, robes, staffs, cloaks and second-class armour, all derived from the hero layers."""
     head = stacked[1]
-    headgear(head, CAP_FRONT, CAP_RIGHT, CAP_BACK, LEATHER, brim=8).save(out_dir / "cap.png")
-    headgear(head, HELM_FRONT, HELM_RIGHT, HELM_BACK, IRON, brim=8).save(out_dir / "helm.png")
+    headgear(head, body, CAP_FRONT, CAP_RIGHT, CAP_BACK, LEATHER, brim=8).save(out_dir / "cap.png")
+    headgear(head, body, HELM_FRONT, HELM_RIGHT, HELM_BACK, IRON, brim=8).save(out_dir / "helm.png")
 
     tunic_layer = layer_difference(stacked[2], body)  # the level-1 tunic without the body
     for name, palette in ROBES.items():
@@ -803,8 +812,8 @@ def build_class_gear(stacked, body, out_dir):
     hsv_layer(armor3_layer, knight_steel).save(out_dir / "armor4.png")
     hsv_layer(armor3_layer, crusader_silver).save(out_dir / "armor5.png")
 
-    headgear(head, HAT_FRONT, HAT_RIGHT, HAT_BACK, FELT, brim=13).save(out_dir / "hat1.png")
-    headgear(head, HAT_FRONT, HAT_RIGHT, HAT_BACK, ARCANE, brim=13).save(out_dir / "hat2.png")
+    headgear(head, body, HAT_FRONT, HAT_RIGHT, HAT_BACK, FELT, brim=13).save(out_dir / "hat1.png")
+    headgear(head, body, HAT_FRONT, HAT_RIGHT, HAT_BACK, ARCANE, brim=13).save(out_dir / "hat2.png")
 
 
 # ---------- animals ----------

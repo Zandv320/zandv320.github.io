@@ -45,6 +45,7 @@ import { createWorldMap } from "./world-map.js";
 import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight.js";
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
+import { initParticles, updateParticles } from "./particles.js";
 import { createSettings } from "./settings.js";
 import { setupCursors, setWorldCursor } from "./cursors.js";
 import { createEffects } from "./effects.js";
@@ -202,6 +203,7 @@ async function init() {
     lights: createWorldLights(),
   });
   game.ambience = createAmbience(scene, { smokeSources, waterSpots, spinners });
+  initParticles(scene);
   warmUpGpu();
   $("#loading").classList.add("away");
   addEventListener("pointerdown", unlockAudio, { capture: true });
@@ -1817,6 +1819,7 @@ function step(dt) {
   }
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
+  updateParticles(dt, cameraState.px);
   updateBillboards();
   if (game.ambience) {
     /* dust behind everyone walking near the camera; villagers too, they make the streets feel alive */
