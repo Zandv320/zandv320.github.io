@@ -5,7 +5,7 @@ Browsergames op [zandv320.github.io](https://zandv320.github.io), gebouwd met [V
 ## Spellen
 
 - **Velmora** – fantasy-MMORPG (three.js, multiplayer via MQTT): `velmora/`
-- **Eldoria: Chronicles of Magic** – top-down MMORPG in de stijl van Ragnarok Online; het startdorp heet Runeveld (2D-sprites in een 3D-wereld, multiplayer via MQTT): `runeveld/`
+- **Eldoria: Chronicles of Magic** – top-down MMORPG in de stijl van Ragnarok Online; het startdorp heet Runeveld (2D-sprites in een 3D-wereld, multiplayer via een eigen server op Cloudflare): `runeveld/` en `server/`
 
 ## Lokaal werken
 
@@ -25,13 +25,33 @@ npm run preview    # bekijk de productiebuild
 - `velmora/models/` – glTF-modellen (KayKit en Quaternius, CC0; zie de LICENSE-bestanden daar)
 - `public/` – statische bestanden die ongewijzigd worden gekopieerd (Speelhal-startpagina, covers)
 
-## Eldoria: Chronicles of Magic (map `runeveld/`)
+## Eldoria: Chronicles of Magic (map `runeveld/` en `server/`)
 
-- `runeveld/index.html` – pagina, CSS en HUD
-- `runeveld/src/` – ES-modules: `data` (klasse, uitrusting, monsters), `sprites` (spritesheets als billboards), `bladen` (indeling van de sheets), `world` (camera, grond, decor), `bouw` (de dorpsomgeving in pixel-3D: huizen, kramen, put, hekken, tonnen en kisten als dichte 3D-vormen bekleed met tegelbare pixeltexturen in het palet van de sprites (`sprites/tex/`, gegenereerd door het knipscript) en met een donkere omlijning, zoals in Ragnarok Online: 3D-omgeving met 2D-figuren), `net` (MQTT), `ui`, `karakter` (characterscherm en winkel), `inventaris` (inventory), `admin` (admin-paneel, Ctrl+Shift+A of `?admin`), `main` (spel)
-- `runeveld/src/regels/` – pure spelregels zonder browser- of netwerkcode (stats, skills, gevecht), zodat een server later dezelfde regels kan draaien
-- `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies; `sprites/glad/` is dezelfde set 2× opgeschaald met Scale2x voor de gladde weergave (standaard uit; schakelaar in het admin-paneel, net als de pixelgrootte van de weergave) (Swordsman 1–3 Level, Hunt Animals, Village Pixel Tileset, Medieval Fortress kit) door `runeveld/tools/maak_sprites.py`
-- `runeveld/_download/` – de gedownloade Craftpix-zips (niet gecommit); uitpakken en `python3 -I runeveld/tools/maak_sprites.py <map-met-packs>` draaien om `sprites/` opnieuw te maken
+De code is Engels en volgt standaardconventies: Prettier voor JS, CSS en HTML (`.prettierrc.json`), ESLint
+(`eslint.config.js`), en black + ruff voor de Python-tools (`pyproject.toml`). Zonder lokale Node draaien ze in Docker:
+
+```
+docker run --rm -v "$PWD":/w -w /w node:22-alpine npm run format      # of: npm run lint
+docker run --rm -v "$PWD":/w -w /w python:3.12-slim sh -c "pip install -q black ruff && black runeveld/tools && ruff check runeveld/tools"
+```
+
+- `runeveld/index.html` en `runeveld/ui.css` – pagina, HUD en stijl
+- `runeveld/src/` – ES-modules. Kern: `main.js` (opstarten en hoofdlus), `game-state.js`, `player.js`, `monsters.js`,
+  `abilities.js` en `skill-effects.js` (skills en hun effecten), `bag.js`, `storage.js` (opslag in de browser, met de
+  eenmalige omzetting van oude saves). Wereld: `world.js`, `builders.js` (pixel-3D-bouwsels), `forest.js`,
+  `capital.js`, `regions.js`, `daylight.js`, `effects.js`, `sprites.js`, `sheets.js`, `appearance.js`. Interface:
+  `ui.js`, `character-sheet.js`, `inventory.js`, `quest-log.js`, `dialogue.js`, `character-select.js`,
+  `world-map.js`, `party.js`, `account.js`, `admin.js` (Ctrl+Shift+A), `icons.js` + `icon-index.js` (gegenereerd).
+  Netwerk: `network.js`.
+- `runeveld/src/rules/` – pure spelregels zonder browser- of netwerkcode (stats, skills, combat, quests, progression,
+  legacy-migratie); de server draait precies deze regels
+- `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies door `runeveld/tools/build_sprites.py` (met
+  `build_effects.py` voor de procedurele effecten) en `build_icons.py` voor de iconen; `sprites/smooth/` is dezelfde
+  set 2× opgeschaald met Scale2x voor de gladde weergave
+- `runeveld/_download/` – de gedownloade Craftpix-zips (niet gecommit); uitpakken en
+  `python3 -I runeveld/tools/build_sprites.py <map-met-packs>` draaien om `sprites/` opnieuw te maken
+- `server/` – de spelserver op Cloudflare Workers: `World` (wereld, monsters, party's), `HeroStore` (de helden per
+  account) en `Accounts` (gebruikersnaam en wachtwoord), uitgerold door `.github/workflows/server.yml`
 
 ## Nieuwe items en uitrusting toevoegen
 
