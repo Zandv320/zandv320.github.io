@@ -121,6 +121,35 @@ export function followSun(x, z) {
   renderer.shadowMap.needsUpdate = true;
 }
 
+/**
+ * Uploads every texture and compiles every shader the scene holds, hidden things included, while the loading
+ * screen is still up. Otherwise that happens the first time each thing comes into view, and on a phone every
+ * such upload or compile is a visible hitch (walking into the capital, the first night, a depleted node).
+ */
+export function warmUpGpu() {
+  const hidden = [];
+  const textures = new Set();
+  scene.traverse((object) => {
+    if (!object.visible) {
+      hidden.push(object);
+      object.visible = true;
+    }
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (material && material.map && material.map.isTexture) {
+        textures.add(material.map);
+      }
+    }
+  });
+  for (const texture of textures) {
+    renderer.initTexture(texture);
+  }
+  renderer.compile(scene, camera);
+  for (const object of hidden) {
+    object.visible = false;
+  }
+}
+
 export function refreshShadows() {
   renderer.shadowMap.needsUpdate = true;
 }

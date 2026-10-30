@@ -71,8 +71,12 @@ export function hazeColor(light = daylight()) {
  */
 export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights }) {
   const overlay = document.getElementById("night-overlay");
-  const ctx = overlay.getContext("2d");
   const projected = new THREE.Vector3();
+  /* At full resolution the haze is a pass in WebGL (hazeMesh); a canvas over the page with mix-blend-mode is costly
+     on phones, which have to redraw and blend it every frame. In the low-resolution pixel mode the canvas stays,
+     so the light holes keep their smooth edges. */
+  const hazeMesh = renderer.getPixelRatio() >= 1 ? createHazeMesh(scene) : null;
+  const ctx = hazeMesh ? null : overlay.getContext("2d");
 
   /* glow in the scene: a soft round sprite, additive */
   const glowCanvas = document.createElement("canvas");
@@ -132,26 +136,33 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
     if (night < 0.01) {
       if (lastNight !== 0) {
         overlay.style.display = "none";
+        if (hazeMesh) {
+          hazeMesh.visible = false;
+        }
         lastNight = 0;
       }
       return;
     }
-    overlay.style.display = "block";
     lastNight = night;
     const width = innerWidth;
     const height = innerHeight;
+    const [r, g, b] = hazeColor(light);
+    const pxPerUnit = cameraState.px / renderer.getPixelRatio(); /* CSS pixels per unit */
+    if (hazeMesh) {
+      updateHazeMesh(hazeMesh, [r, g, b], lights.concat(extraLights), pxPerUnit, night);
+      return;
+    }
+    overlay.style.display = "block";
     if (overlay.width !== width || overlay.height !== height) {
       overlay.width = width;
       overlay.height = height;
     }
-    const [r, g, b] = hazeColor(light);
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = `rgb(${r},${g},${b})`;
     ctx.fillRect(0, 0, width, height);
 
     /* warm holes at the light sources: brighten where lamps stand */
     ctx.globalCompositeOperation = "lighter";
-    const pxPerUnit = cameraState.px / renderer.getPixelRatio(); /* CSS pixels per unit */
     for (const source of lights.concat(extraLights)) {
       projected.set(source.x, source.y ?? 0.8, source.z).project(camera);
       if (projected.z > 1 || Math.abs(projected.x) > 1.5 || Math.abs(projected.y) > 1.5) {
@@ -172,5 +183,102 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
     }
   }
 
+  /* The light sources on screen into the haze pass: position and radius in CSS pixels, as the canvas draws them. */
+  function updateHazeMesh(mesh, haze, sources, pxPerUnit, night) {
+    const uniforms = mesh.material.uniforms;
+    uniforms.uHaze.value.set(haze[0] / 255, haze[1] / 255, haze[2] / 255);
+    uniforms.uPixelRatio.value = renderer.getPixelRatio();
+    uniforms.uHeight.value = renderer.domElement.height;
+    let count = 0;
+    for (const source of sources) {
+      if (count === MAX_HAZE_LIGHTS) {
+        break;
+      }
+      projected.set(source.x, source.y ?? 0.8, source.z).project(camera);
+      if (projected.z > 1 || Math.abs(projected.x) > 1.5 || Math.abs(projected.y) > 1.5) {
+        continue;
+      }
+      uniforms.uLights.value[count].set(
+        ((projected.x + 1) / 2) * innerWidth,
+        ((1 - projected.y) / 2) * innerHeight,
+        source.radius * pxPerUnit * 1.15,
+        (source.strength ?? 0.8) * night,
+      );
+      uniforms.uColors.value[count].set(
+        source.color[0] / 255,
+        source.color[1] / 255,
+        source.color[2] / 255,
+      );
+      count++;
+    }
+    uniforms.uCount.value = count;
+    mesh.visible = true;
+  }
+
   return { update };
+}
+
+/* the most light holes the haze pass draws at once (more than ever fit on a screen) */
+const MAX_HAZE_LIGHTS = 48;
+
+/* The night haze as the last thing drawn: a quad over the whole screen that multiplies the picture with the haze
+   colour, brightened around the light sources. Exactly what the canvas does (fill with the haze, add a radial
+   gradient per light with "lighter", multiply over the page), but on the GPU. */
+function createHazeMesh(scene) {
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uHaze: { value: new THREE.Color(1, 1, 1) },
+      uCount: { value: 0 },
+      uLights: { value: Array.from({ length: MAX_HAZE_LIGHTS }, () => new THREE.Vector4()) },
+      uColors: { value: Array.from({ length: MAX_HAZE_LIGHTS }, () => new THREE.Vector3()) },
+      uPixelRatio: { value: 1 },
+      uHeight: { value: 1 },
+    },
+    vertexShader: /* glsl */ `
+      void main() {
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      #define MAX_LIGHTS ${MAX_HAZE_LIGHTS}
+      uniform vec3 uHaze;
+      uniform int uCount;
+      uniform vec4 uLights[MAX_LIGHTS];
+      uniform vec3 uColors[MAX_LIGHTS];
+      uniform float uPixelRatio;
+      uniform float uHeight;
+      void main() {
+        /* this pixel in CSS pixels from the top left, like the canvas */
+        vec2 point = vec2(gl_FragCoord.x, uHeight - gl_FragCoord.y) / uPixelRatio;
+        vec3 color = uHaze;
+        for (int i = 0; i < MAX_LIGHTS; i++) {
+          if (i >= uCount) {
+            break;
+          }
+          vec4 light = uLights[i];
+          float t = length(point - light.xy) / light.z;
+          /* the gradient's stops: .85 in the middle, .45 at 40 %, 0 at the edge */
+          float alpha = t < 0.4 ? mix(0.85, 0.45, t / 0.4) : mix(0.45, 0.0, min(1.0, (t - 0.4) / 0.6));
+          color += uColors[i] * alpha * light.w;
+        }
+        gl_FragColor = vec4(min(color, vec3(1.0)), 1.0);
+      }
+    `,
+    /* multiply: the result is the picture times this colour; the alpha stays */
+    blending: THREE.CustomBlending,
+    blendEquation: THREE.AddEquation,
+    blendSrc: THREE.DstColorFactor,
+    blendDst: THREE.ZeroFactor,
+    blendSrcAlpha: THREE.ZeroFactor,
+    blendDstAlpha: THREE.OneFactor,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 10000;
+  mesh.visible = false;
+  scene.add(mesh);
+  return mesh;
 }

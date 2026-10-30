@@ -43,6 +43,7 @@ import {
 } from "./regions.js";
 import { createWorldMap } from "./world-map.js";
 import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight.js";
+import { createPerfOverlay } from "./perf-overlay.js";
 import { createEffects } from "./effects.js";
 import { unlockAudio, sfx, isSoundOn, setSoundOn } from "./audio.js";
 import { baseStats } from "./rules/stats.js";
@@ -68,6 +69,7 @@ import {
   VILLAGE_HALF_SIZE,
   inVillage,
   canvas,
+  warmUpGpu,
   groundPoint,
   screenRay,
   updateBillboards,
@@ -190,6 +192,7 @@ async function init() {
     hemiLight,
     lights: createWorldLights(),
   });
+  warmUpGpu();
   $("#loading").classList.add("away");
   addEventListener("pointerdown", unlockAudio, { capture: true });
   addEventListener("keydown", unlockAudio, { capture: true });
@@ -1590,12 +1593,30 @@ function setupInput() {
 
 const cameraFocus = new THREE.Vector3();
 let lastFrameTime = now();
+/* Touch devices draw a steady 60 frames per second. Many phones have a 90 or 120 Hz screen: drawing on every
+   refresh there doubles the work, misses frames unevenly (which reads as stutter) and heats the phone until it
+   slows down. A frame is drawn once at least FRAME_INTERVAL has passed, with some slack for timing jitter. */
+const FRAME_INTERVAL = matchMedia("(pointer: coarse)").matches ? 1 / 60 : 0;
+let nextFrameAt = 0;
+const perfOverlay = createPerfOverlay(renderer);
 function loop() {
   requestAnimationFrame(loop);
   const time = now();
+  if (FRAME_INTERVAL) {
+    if (time < nextFrameAt - 0.006) {
+      return;
+    }
+    nextFrameAt = time + FRAME_INTERVAL;
+  }
   const dt = Math.min(0.05, time - lastFrameTime);
   lastFrameTime = time;
+  if (perfOverlay) {
+    perfOverlay.begin();
+  }
   step(dt);
+  if (perfOverlay) {
+    perfOverlay.end();
+  }
 }
 
 let questCheckTimer = 0;

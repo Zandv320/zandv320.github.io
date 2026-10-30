@@ -8,6 +8,42 @@ const fxLayer = $("#fx-layer");
 const chatLog = $("#chat-log");
 const projected = new THREE.Vector3();
 
+/* DOM writes only when something changes: writing the same text or style again still makes the browser restyle
+   and lay out the page, which on a phone costs a good part of every frame. */
+const writtenStyles = new WeakMap();
+
+/** Sets an element's text when it differs. */
+export function writeText(el, text) {
+  text = String(text);
+  if (el.textContent !== text) {
+    el.textContent = text;
+  }
+}
+
+/** Sets an inline style property when it differs from what this function wrote last. */
+export function writeStyle(el, property, value) {
+  let styles = writtenStyles.get(el);
+  if (!styles) {
+    styles = {};
+    writtenStyles.set(el, styles);
+  }
+  if (styles[property] !== value) {
+    styles[property] = value;
+    el.style[property] = value;
+  }
+}
+
+/* elements looked up once */
+const elements = new Map();
+function cached(selector) {
+  let el = elements.get(selector);
+  if (!el || !el.isConnected) {
+    el = $(selector);
+    elements.set(selector, el);
+  }
+  return el;
+}
+
 /** Projects a world point to screen space; the result is in `projected` (x/y in -1..1, z > 1 behind the camera). */
 function project(x, y, z, camera) {
   projected.set(x, y, z).project(camera);
@@ -43,21 +79,28 @@ export function createLabel(kind, name) {
 export function positionLabel(label, x, y, z, camera) {
   project(x, y, z, camera);
   const isOffScreen = projected.z > 1 || Math.abs(projected.x) > 1.3 || Math.abs(projected.y) > 1.3;
+  /* display is also set elsewhere (gathering.js), so compare with the element itself */
   if (isOffScreen) {
-    label.el.style.display = "none";
+    if (label.el.style.display !== "none") {
+      label.el.style.display = "none";
+    }
     return;
   }
-  label.el.style.display = "";
+  if (label.el.style.display !== "") {
+    label.el.style.display = "";
+  }
   const screenX = (((projected.x + 1) / 2) * innerWidth).toFixed(1);
   const screenY = (((1 - projected.y) / 2) * innerHeight).toFixed(1);
-  label.el.style.transform = `translate(${screenX}px,${screenY}px) translate(-50%,-100%)`;
+  writeStyle(label.el, "transform", `translate(${screenX}px,${screenY}px) translate(-50%,-100%)`);
 }
 
 /** Shows or hides the small hp bar under a label and sets its fill. */
 export function setLabelHp(label, hp, max, isVisible) {
-  label.hp.hidden = !isVisible;
+  if (label.hp.hidden !== !isVisible) {
+    label.hp.hidden = !isVisible;
+  }
   if (isVisible) {
-    label.hpFill.style.transform = `scaleX(${Math.max(0, hp / max).toFixed(3)})`;
+    writeStyle(label.hpFill, "transform", `scaleX(${Math.max(0, hp / max).toFixed(3)})`);
   }
 }
 
@@ -225,33 +268,43 @@ export function updateHud(
   className,
   jobExpToNextLevel,
 ) {
-  $("#hud-name").textContent = player.name;
-  $("#hud-level").textContent = player.level;
-  $("#hud-job").textContent = player.jobLevel;
+  writeText(cached("#hud-name"), player.name);
+  writeText(cached("#hud-level"), player.level);
+  writeText(cached("#hud-job"), player.jobLevel);
   if (className) {
-    $("#hud-class").textContent = className;
+    writeText(cached("#hud-class"), className);
   }
 
-  $("#hud-hp").style.transform = `scaleX(${(player.hp / hpMax).toFixed(3)})`;
-  $("#hud-hp-text").textContent = Math.ceil(player.hp) + " / " + hpMax;
-  $("#hud-sp").style.transform = `scaleX(${(player.sp / spMax).toFixed(3)})`;
-  $("#hud-sp-text").textContent = Math.floor(player.sp) + " / " + spMax;
-  $("#hud-exp").style.transform = `scaleX(${(player.exp / expToNextLevel).toFixed(3)})`;
-  $("#hud-exp-bar").title = "Experience: " + player.exp + " / " + expToNextLevel;
+  writeStyle(cached("#hud-hp"), "transform", `scaleX(${(player.hp / hpMax).toFixed(3)})`);
+  writeText(cached("#hud-hp-text"), Math.ceil(player.hp) + " / " + hpMax);
+  writeStyle(cached("#hud-sp"), "transform", `scaleX(${(player.sp / spMax).toFixed(3)})`);
+  writeText(cached("#hud-sp-text"), Math.floor(player.sp) + " / " + spMax);
+  writeStyle(
+    cached("#hud-exp"),
+    "transform",
+    `scaleX(${(player.exp / expToNextLevel).toFixed(3)})`,
+  );
+  const expTitle = "Experience: " + player.exp + " / " + expToNextLevel;
+  if (cached("#hud-exp-bar").title !== expTitle) {
+    cached("#hud-exp-bar").title = expTitle;
+  }
 
   if (jobExpToNextLevel !== undefined) {
     const jobFill = jobExpToNextLevel
       ? Math.min(1, player.jobExp / jobExpToNextLevel).toFixed(3)
       : 1;
-    $("#hud-job-exp").style.transform = `scaleX(${jobFill})`;
-    $("#hud-job-bar").title = jobExpToNextLevel
+    writeStyle(cached("#hud-job-exp"), "transform", `scaleX(${jobFill})`);
+    const jobTitle = jobExpToNextLevel
       ? "Job experience: " + player.jobExp + " / " + jobExpToNextLevel
       : "Job level at maximum";
+    if (cached("#hud-job-bar").title !== jobTitle) {
+      cached("#hud-job-bar").title = jobTitle;
+    }
   }
 
-  $("#hud-zeny").textContent = player.zeny;
-  $("#hud-potions").textContent = potionCount;
-  $("#shop-zeny").textContent = player.zeny;
+  writeText(cached("#hud-zeny"), player.zeny);
+  writeText(cached("#hud-potions"), potionCount);
+  writeText(cached("#shop-zeny"), player.zeny);
 }
 
 let targetLabel = null;
@@ -278,16 +331,16 @@ export function setTargetFrame(monster) {
 
 /** Sets the cooldown shade of a hotbar slot; `fraction` 1 is fully covered, 0 is ready. */
 export function setCooldown(skill, fraction) {
-  const shade = document.querySelector(`.slot[data-skill="${skill}"] .cooldown`);
+  const shade = cached(`.slot[data-skill="${skill}"] .cooldown`);
   if (shade) {
     const clamped = Math.max(0, Math.min(1, fraction));
-    shade.style.transform = `scaleY(${clamped.toFixed(3)})`;
+    writeStyle(shade, "transform", `scaleY(${clamped.toFixed(3)})`);
   }
 }
 
 /** Dims a hotbar slot when it cannot be used, and highlights it while it is active. */
 export function setSlotState(skill, isUnavailable, isActive) {
-  const slot = document.querySelector(`.slot[data-skill="${skill}"]`);
+  const slot = cached(`.slot[data-skill="${skill}"]`);
   if (!slot) {
     return;
   }

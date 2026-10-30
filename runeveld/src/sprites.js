@@ -112,27 +112,23 @@ function addBlobShadow(group, diameter) {
   return shadow;
 }
 
-/* White silhouette version of a sheet, for the hit flash; one per source texture. */
-function whiteTexture(source) {
-  if (source.userData.white) {
-    return source.userData.white;
-  }
-  const img = source.image;
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0);
-  ctx.globalCompositeOperation = "source-in";
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.magFilter = source.magFilter;
-  texture.minFilter = source.minFilter;
-  texture.generateMipmaps = false;
-  texture.colorSpace = source.colorSpace;
-  source.userData.white = texture;
-  return texture;
+/* The hit flash: a uniform that turns a figure into its silhouette in the material colour (white unless tinted), in
+   the shader. No white copy of every sheet is needed: no extra memory, and no stall to make and upload one on the
+   first hit of a fight. */
+function makeFlashable(material) {
+  const flash = { value: 0 };
+  material.userData.flash = flash;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uFlash = flash;
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform float uFlash;")
+      .replace(
+        "#include <map_fragment>",
+        "#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, diffuse, uFlash);",
+      );
+  };
+  material.customProgramCacheKey = () => "eldoria-flash";
+  return material;
 }
 
 /* How far sprites lean back towards the camera (1 = facing the camera exactly). */
@@ -249,30 +245,27 @@ export class Sprite2D {
     sources.forEach((source, i) => {
       let layer = this.layers[i];
       if (!layer) {
-        const material = new THREE.MeshBasicMaterial({
-          transparent: true,
-          alphaTest: 0.5,
-          side: THREE.DoubleSide,
-        });
+        const material = makeFlashable(
+          new THREE.MeshBasicMaterial({
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+          }),
+        );
         const mesh = new THREE.Mesh(this.geometry, material);
         /* a tiny offset per layer keeps the draw order stable */
         mesh.position.z = 0.004 * (i + 1);
         this.group.add(mesh);
-        layer = { mesh, source: null, texture: null, white: null };
+        layer = { mesh, source: null, texture: null };
         this.layers.push(layer);
       }
       if (layer.source !== source) {
         if (layer.texture) {
           layer.texture.dispose();
         }
-        if (layer.white) {
-          layer.white.dispose();
-        }
         layer.source = source;
         layer.texture = source.clone();
         layer.texture.needsUpdate = true;
-        /* the white flash version is made on the first hit (flashHit): most figures are never hit */
-        layer.white = null;
         layer.mesh.material.map = layer.texture;
         layer.mesh.material.needsUpdate = true;
       }
@@ -420,13 +413,7 @@ export class Sprite2D {
     this.flashTime = 0.09;
     this.punch = 1;
     for (const layer of this.layers) {
-      if (!layer.white) {
-        layer.white = whiteTexture(layer.source).clone();
-        layer.white.needsUpdate = true;
-      }
-      layer.white.repeat.copy(layer.texture.repeat);
-      layer.white.offset.copy(layer.texture.offset);
-      layer.mesh.material.map = layer.white;
+      layer.mesh.material.userData.flash.value = 1;
     }
   }
 
@@ -468,7 +455,7 @@ export class Sprite2D {
       this.flashTime -= dt;
       if (this.flashTime <= 0) {
         for (const layer of this.layers) {
-          layer.mesh.material.map = layer.texture;
+          layer.mesh.material.userData.flash.value = 0;
         }
       }
     }
@@ -570,10 +557,6 @@ export class Sprite2D {
         mirror ? (column + 1) * cellWidth : column * cellWidth,
         1 - (row + 1) * cellHeight,
       );
-      if (layer.white) {
-        layer.white.repeat.copy(layer.texture.repeat);
-        layer.white.offset.copy(layer.texture.offset);
-      }
     }
     if (this.tool && this.tool.front.visible && anim.work) {
       /* the work sheet: a column per frame, the direction's row in front, 4 rows lower behind the body */
