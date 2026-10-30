@@ -3,7 +3,8 @@ name: Rol de spelserver uit naar Cloudflare
 on:
   push:
     branches: [master]
-    paths: ['server/**', '.github/workflows/server.yml']
+    # de server bundelt ook de spelregels en spelgegevens van de client mee
+    paths: ['server/**', '.github/workflows/server.yml', 'runeveld/src/data.js', 'runeveld/src/gebied.js', 'runeveld/src/regels/**']
   workflow_dispatch:
 
 jobs:
