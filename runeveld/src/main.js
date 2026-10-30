@@ -18,6 +18,7 @@ import {slag as regelSlag,spreuk,naVerdediging,raakKans,monsterGevecht} from './
 import {BLADEN,laadBladen,laadLagenVoor,opLaagGeladen} from './bladen.js';
 import {heldLagen,tekenHeld,herkleur,HAAR_BRON,HAAR} from './uiterlijk.js';
 import {maakSelectie,PODIUM} from './selectie.js';
+import {maakAccount} from './account.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
 import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld,zon,hemi,volgZon} from './world.js';
@@ -67,6 +68,7 @@ async function init(){
     nieuw:async c=>{const r=await net.vraag({k:'nieuw',c});if(r&&r.lijst)neemLijst(r)},wis:async naam=>{const r=await net.vraag({k:'wis',naam});if(r&&r.lijst)neemLijst(r)}});
   /* het selectiescherm kijkt ingezoomd naar het podium; bij Enter World gaat de camera terug naar de normale stand */
   stdPx=cam.px;stdTilt=cam.tilt;zetZoom(ZOOMS[Math.min(ZOOMS.length-1,ZOOMS.indexOf(stdPx)+2)]);cam.yaw=PODIUM.yaw;cam.tilt=THREE.MathUtils.degToRad(PODIUM.tilt);const d0=SEL.cameraDoel();cam.doel.set(d0[0],d0[1],d0[2]);
+  maakAccount({toonScherm:s=>SEL.toonScherm(s),herlaad:()=>location.reload()});
   invoer();loop();SEL.toon();
 }
 /* de helden staan op de server (per account-token); de browser houdt een kopie voor als de server er niet is.

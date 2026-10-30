@@ -14,7 +14,15 @@ binding = "VERSIE"
 name = "WERELD"
 class_name = "Wereld"
 
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Accounts"
+
 # het gratis plan vereist SQLite-backed Durable Objects
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Wereld"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Accounts"]

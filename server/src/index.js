@@ -12,6 +12,7 @@
    hun klappen ('h'), bevriezingen ('ijs') en provocaties ('prov'). De botsingscirkels van de wereld stuurt de client
    mee ({k:'wereld',obst:[[x,z,r],...]}), omdat de wereld in de browser wordt gebouwd. */
 import {maakSim} from './sim.js';
+export {Accounts} from './accounts.js';
 import {maakSpelers, geldigToken, geldigeNaam} from './spelers.js';
 import {maxSchade} from '../../runeveld/src/regels/progressie.js';
 
@@ -127,9 +128,15 @@ export class Wereld {
   }
 }
 
+const CORS = {'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type'};
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (req.method === 'OPTIONS') return new Response(null, {status: 204, headers: CORS});
+    if (url.pathname.startsWith('/account/')) {
+      const r = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('main')).fetch(req);
+      return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'application/json'}});
+    }
     if (url.pathname === '/ws' || url.pathname === '/status') {
       const naam = (url.searchParams.get('wereld') || 'v1').slice(0, 32);
       const id = env.WERELD.idFromName(naam);

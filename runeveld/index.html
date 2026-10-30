@@ -116,7 +116,8 @@
       <div class="sub">Chronicles of Magic · choose your hero</div>
       <div class="sel-held"></div>
     </div>
-    <div class="sel-rechts paneel"><h3>Characters</h3><div id="sel-lijst"></div></div>
+    <div class="sel-rechts paneel"><h3>Characters</h3><div id="sel-lijst"></div>
+      <div id="sel-account"><span id="acc-status">Guest account</span><button class="knop alt klein" id="acc-knop">Log in</button></div></div>
     <div class="sel-knoppen"><button class="knop groot" id="sel-speel">Enter World</button><button class="knop alt" id="sel-nieuw">Create New Character</button><button class="knop alt rood" id="sel-wis">Delete Character</button></div>
     <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd>–<kbd>9</kbd> skills · <kbd>R</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>M</kbd> map · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
     <a class="terug" href="../">← All games</a>
@@ -137,6 +138,26 @@
         </div>
       </div>
       <div class="rij"><button class="knop alt" id="maak-terug">Back</button><button class="knop" id="maak-ok">Create</button></div>
+    </div>
+  </div>
+  <div id="account" class="scherm" hidden>
+    <div class="kaart paneel maakkaart">
+      <h2 id="acc-titel">Account</h2>
+      <p class="ktip" id="acc-uitleg">Your heroes are saved on the server under a secret key in this browser. With an account you can log in on any device and never lose them.</p>
+      <div class="acctabs"><button class="ktab actief" data-acc="login">Log in</button><button class="ktab" data-acc="registreer">Create account</button><button class="ktab" data-acc="herstel">Recover</button></div>
+      <form id="acc-form" autocomplete="on">
+        <label for="acc-naam">Username</label><input id="acc-naam" maxlength="16" autocomplete="username" spellcheck="false">
+        <div id="acc-code-rij" hidden><label for="acc-code">Recovery code</label><input id="acc-code" maxlength="19" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX"></div>
+        <label for="acc-ww" id="acc-ww-label">Password</label><input id="acc-ww" type="password" maxlength="72" autocomplete="current-password">
+        <div id="acc-fout" class="fout"></div>
+        <div class="rij"><button type="button" class="knop alt" id="acc-terug">Back</button><button type="submit" class="knop" id="acc-ok">Log in</button></div>
+      </form>
+      <div id="acc-klaar" hidden>
+        <p id="acc-klaar-tekst"></p>
+        <div class="herstelcode" id="acc-herstelcode"></div>
+        <p class="ktip">Write this recovery code down. There is no e-mail reset: this code is the only way to set a new password. It is shown once.</p>
+        <div class="rij"><button type="button" class="knop" id="acc-door">Continue</button></div>
+      </div>
     </div>
   </div>
   <div id="wis" class="scherm" hidden>

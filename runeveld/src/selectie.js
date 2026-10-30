@@ -49,7 +49,8 @@ export function maakSelectie(A){
   }
   /* waar de camera naar kijkt zolang het selectiescherm open is: de held iets links van het midden, op borsthoogte */
   function cameraDoel(){const b=matchMedia('(max-width:700px)').matches;return b?[PODIUM.x,.7,PODIUM.z+3.6]:[PODIUM.x+2.4,.7,PODIUM.z]}
-  function toonScherm(naam){scherm=naam;sel.hidden=naam!=='sel';maak.hidden=naam!=='maak';wis.hidden=naam!=='wis';if(naam==='sel')renderLijst()}
+  const account=$('#account');
+  function toonScherm(naam){scherm=naam;sel.hidden=naam!=='sel';maak.hidden=naam!=='maak';wis.hidden=naam!=='wis';account.hidden=naam!=='account';if(naam==='sel')renderLijst()}
 
   /* ---- selectie ---- */
   $('#sel-lijst').addEventListener('click',e=>{const b=e.target.closest('.selkaart');if(!b)return;const k=+b.dataset.i;if(k===i){binnen();return}i=k;t=0;renderLijst()});
@@ -95,5 +96,5 @@ export function maakSelectie(A){
   });
 
   function toon(){open=true;el.hidden=false;toonScherm(lijst().length?'sel':'maak');if(scherm==='maak'){haar='standaard';kl='swordsman';renderKlasse();renderHaar();if(!matchMedia('(pointer:coarse)').matches)$('#maak-naam').focus()}}
-  return{toon,tick,isOpen:()=>open,cameraDoel};
+  return{toon,tick,isOpen:()=>open,cameraDoel,toonScherm};
 }
