@@ -2,7 +2,7 @@
    niet, dan via een publieke MQTT-broker. In beide gevallen stuurt iedereen zijn eigen positie en simuleert de speler
    die het langst online is ("host") de monsters. Zonder verbinding werkt het spel gewoon alleen.
    SERVER: de workers.dev-adres van de server; te overschrijven met localStorage 'runeveld.server' (leeg = geen server). */
-export const SERVER='';
+export const SERVER='https://eldoria-server.zandv320.workers.dev';
 const URLS=['wss://broker.hivemq.com:8884/mqtt','wss://broker.emqx.io:8084/mqtt','wss://test.mosquitto.org:8081/mqtt'];
 const TOPIC='zandv320/runeveld/v1/';
 const MQTT_CDN='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';
