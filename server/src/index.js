@@ -25,6 +25,7 @@ export class Wereld {
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"k":"ping"}', '{"k":"pong"}'));
     this.sim = maakSim((t, d) => { this.zend(null, {k: 'e', f: 'server', t, d}); if (t === 'k') this.opDood(d); });
     this.spelers_ = maakSpelers(this.ctx.storage);
+    this.versie = env.VERSIE && env.VERSIE.id || '';
     this.loop = null; this.laatst = 0;
     this.ctx.blockConcurrencyWhile(async () => { const o = await this.ctx.storage.get('obst'); if (o) this.sim.zetObstakels(o); });
   }
@@ -43,10 +44,14 @@ export class Wereld {
     }, TICK);
   }
   async fetch(req) {
+    /* een object dat al draait blijft na een uitrol op de oude code zolang er spelers zijn; als de Worker (altijd nieuw)
+       een andere versie meldt, herstart het object zichzelf en verbinden de spelers opnieuw */
+    const v = req.headers.get('x-versie');
+    if (v && this.versie && v !== this.versie) setTimeout(() => this.ctx.abort(), 50);
     if (req.headers.get('Upgrade') !== 'websocket') {
       const spelers = [];
       for (const ws of this.ctx.getWebSockets()) { const a = ws.deserializeAttachment(); if (a && a.f) spelers.push({f: a.f, n: a.p && a.p.n, l: a.p && a.p.l}); }
-      return json({wereld: 'v1', online: spelers.length, spelers});
+      return json({wereld: new URL(req.url).searchParams.get('wereld') || 'v1', versie: this.versie, online: spelers.length, spelers});
     }
     const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
@@ -128,7 +133,8 @@ export default {
     if (url.pathname === '/ws' || url.pathname === '/status') {
       const naam = (url.searchParams.get('wereld') || 'v1').slice(0, 32);
       const id = env.WERELD.idFromName(naam);
-      return env.WERELD.get(id).fetch(req);
+      const r = new Request(req); r.headers.set('x-versie', env.VERSIE && env.VERSIE.id || '');
+      return env.WERELD.get(id).fetch(r);
     }
     return new Response('Eldoria: Chronicles of Magic – game server. Connect to /ws, status at /status.', {headers: {'content-type': 'text/plain', 'access-control-allow-origin': '*'}});
   },

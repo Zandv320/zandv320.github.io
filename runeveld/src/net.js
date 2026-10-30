@@ -4,7 +4,7 @@
    SERVER: de workers.dev-adres van de server; te overschrijven met localStorage 'runeveld.server' (leeg = geen server). */
 export const SERVER='https://eldoria-server.zandv320.workers.dev';
 /* lokaal testen gebeurt in een eigen wereld ('dev'), los van de spelers op de echte site */
-const WERELD=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'dev':'v1';
+const WERELD=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'lokaal':'v1';
 /* het account: een geheim token dat de browser één keer aanmaakt; de helden op de server hangen eraan */
 export function token(){let t=null;try{t=localStorage.getItem('runeveld.token')}catch(e){}
   if(!t||!/^[a-z0-9]{20,48}$/.test(t)){t=(crypto.randomUUID?crypto.randomUUID().replace(/-/g,''):Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''));try{localStorage.setItem('runeveld.token',t)}catch(e){}}

@@ -6,6 +6,10 @@ main = "src/index.js"
 compatibility_date = "2025-10-01"
 workers_dev = true
 
+# de versie van de uitrol, zodat een draaiend object merkt dat er nieuwe code is en zichzelf herstart
+[version_metadata]
+binding = "VERSIE"
+
 [[durable_objects.bindings]]
 name = "WERELD"
 class_name = "Wereld"
