@@ -1,11 +1,16 @@
-/* Eldoria – a small performance readout for testing on real devices: open the game with ?perf in the address.
+/* Eldoria – a small performance readout for testing on real devices: open the game with ?perf in the address, or
+   switch it on in the settings ('eldoria.perf' in localStorage).
    Once per second it shows the frames drawn, the slowest frame (the stutter), the time the main thread and the GPU
    spent per frame (the GPU only where the browser can measure it), the draw calls, the render size and the
    graphics chip. */
 
-/** Returns null unless ?perf is in the address; otherwise {begin(), end()} to wrap around each drawn frame. */
+/** Returns null unless it is wanted (see above); otherwise {begin(), end()} to wrap around each drawn frame. */
 export function createPerfOverlay(renderer) {
-  if (!/[?&]perf\b/.test(location.search)) {
+  let isWanted = /[?&]perf\b/.test(location.search);
+  try {
+    isWanted = isWanted || localStorage.getItem("eldoria.perf") === "1";
+  } catch (e) {}
+  if (!isWanted) {
     return null;
   }
   const gl = renderer.getContext();

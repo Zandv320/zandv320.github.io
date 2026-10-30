@@ -38,8 +38,9 @@
       <div id="top-left">
         <div id="player-frame" class="frame">
           <div class="portrait">
-            <canvas id="hud-portrait" width="72" height="80"></canvas
-            ><span class="level-badge" id="hud-level">1</span>
+            <span class="portrait-image"
+              ><canvas id="hud-portrait" width="72" height="80"></canvas></span
+            ><span class="level-badge" id="hud-level" title="Level">1</span>
           </div>
           <div class="player-info">
             <div class="header">
@@ -136,7 +137,13 @@
           <button class="menu-btn" id="map-button" title="Map (M)">
             <i data-icon="ui_map" data-emoji="🗺️"></i><kbd>M</kbd>
           </button>
-          <button class="menu-btn desktop-only" id="sound-button" title="Sound">🔊</button>
+          <button class="menu-btn" id="settings-button" title="Settings (O)">
+            <svg class="gear" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+              <path
+                d="M4 0h2v1h1v1h1v-1h1v2h-1v1h2v2h-2v1h1v2h-1v-1h-1v1h-1v1h-2v-1h-1v1h-1v-1h-1v-2h1v-1h-2v-2h2v-1h-1v-2h1v1h1v-1h1zM4 3v1h-1v2h1v1h2v-1h1v-2h-1v-1z"
+              />
+            </svg>
+          </button>
           <button class="menu-btn" id="admin-button" title="Admin (Ctrl+Shift+A)" hidden>
             <i data-icon="ui_admin" data-emoji="🛠️"></i>
           </button>
@@ -271,12 +278,32 @@
             <span id="inventory-zeny">0</span> zeny</small
           >
         </div>
-        <button class="close-btn" id="inventory-close" title="Close (I)">✕</button>
+        <span class="panel-header-actions"
+          ><button
+            class="btn alt small"
+            id="inventory-sort"
+            title="Sort: gear, then usables, then materials"
+          >
+            Sort</button
+          ><button class="close-btn" id="inventory-close" title="Close (I)">✕</button></span
+        >
       </div>
       <div class="inventory-layout">
         <div class="item-grid" id="inventory-grid"></div>
         <div class="item-detail" id="inventory-detail"></div>
       </div>
+    </div>
+
+    <!-- Settings window; filled by settings.js. -->
+    <div id="settings" class="panel modal" hidden>
+      <div class="panel-header">
+        <div>
+          <h3>Settings</h3>
+          <small>Saved on this device</small>
+        </div>
+        <button class="close-btn" id="settings-close" title="Close (O)">✕</button>
+      </div>
+      <div id="settings-body"></div>
     </div>
 
     <!-- Shop window; filled by character-sheet.js. -->

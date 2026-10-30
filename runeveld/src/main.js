@@ -45,8 +45,9 @@ import { createWorldMap } from "./world-map.js";
 import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight.js";
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
+import { createSettings } from "./settings.js";
 import { createEffects } from "./effects.js";
-import { unlockAudio, sfx, isSoundOn, setSoundOn } from "./audio.js";
+import { unlockAudio, sfx } from "./audio.js";
 import { baseStats } from "./rules/stats.js";
 import { icon } from "./icons.js";
 import { SKILLS, SKILLS_BY_CLASS, jobExpForLevel } from "./rules/skills.js";
@@ -137,6 +138,7 @@ import {
   buy,
   sell,
   drop,
+  sortBag,
 } from "./bag.js";
 import { groundRing, updateSkillEffects, updateTargetRing } from "./skill-effects.js";
 import { createGathering } from "./gathering.js";
@@ -532,6 +534,7 @@ function createPanels(name) {
     readyQuestCount: () => (game.questLog ? game.questLog.readyCount() : 0),
     showGuide: (topicId) => game.guide.showCard(topicId),
   });
+  game.settings = createSettings();
   game.inventory = createInventory(player, {
     equip,
     use: (id) => {
@@ -543,6 +546,7 @@ function createPanels(name) {
     },
     sell,
     drop,
+    sort: sortBag,
     isShopOpen: () => game.characterSheet.isShopOpen(),
   });
   game.adminPanel = createAdminPanel({
@@ -1354,7 +1358,8 @@ function isAnyPanelOpen() {
     game.inventory.isOpen() ||
     game.dialogue.isOpen() ||
     game.worldMap.isOpen() ||
-    game.workbench.isOpen()
+    game.workbench.isOpen() ||
+    game.settings.isOpen()
   );
 }
 
@@ -1365,6 +1370,7 @@ function closeAllPanels() {
   game.dialogue.close();
   game.worldMap.close();
   game.workbench.close();
+  game.settings.close();
 }
 
 /* Mouse and touch on the game canvas: click or tap to walk, target or talk; drag to walk along; right drag to
@@ -1502,6 +1508,8 @@ function setupKeyboardInput() {
       toggleQuestTab();
     } else if (event.code === "KeyM") {
       game.worldMap.toggle();
+    } else if (event.code === "KeyO") {
+      game.settings.toggle();
     } else if (event.code === "KeyA" && event.ctrlKey && event.shiftKey) {
       event.preventDefault();
       game.adminPanel.toggle();
@@ -1556,17 +1564,7 @@ function setupButtons() {
     }
   };
 
-  const soundButton = $("#sound-button");
-  const showSoundState = () => {
-    soundButton.innerHTML = icon("ui_sound", isSoundOn() ? "🔊" : "🔇");
-    soundButton.classList.toggle("off", !isSoundOn());
-  };
-  showSoundState();
-  soundButton.onclick = () => {
-    setSoundOn(!isSoundOn());
-    showSoundState();
-    sfx.click();
-  };
+  $("#settings-button").onclick = () => game.settings.toggle();
 
   /* fixed icons in the HTML (buttons, potion, sit, zeny) */
   document.querySelectorAll("[data-icon]").forEach((element) => {

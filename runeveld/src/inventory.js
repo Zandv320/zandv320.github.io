@@ -2,14 +2,27 @@
 import { ITEMS, BAG_SIZE } from "./data.js";
 import { icon } from "./icons.js";
 import { escapeHtml } from "./ui.js";
-import { itemStatText, modsText, modsBadge } from "./character-sheet.js";
+import { itemStatText, modsText, modsBadge, compareHtml } from "./character-sheet.js";
 import { sellPrice } from "./rules/progression.js";
-import { displayName, applyMods } from "./rules/item-mods.js";
+import { displayName, applyMods, modsOf } from "./rules/item-mods.js";
+
+/* the slot an item goes into, as the line under its name says it */
+const SLOT_NAMES = {
+  weapon: "Weapon",
+  head: "Headgear",
+  body: "Body armour",
+  cloak: "Cloak",
+  pants: "Pants",
+  boots: "Boots",
+  belt: "Belt",
+  necklace: "Necklace",
+  ring: "Ring",
+};
 
 /**
  * @param {object} player the hero record of the player (player.bag = [{id, count}])
  * @param {object} deps callbacks from main.js: equip(id, index), use(id), sell(id, index), drop(id, index),
- *   isShopOpen()
+ *   sort(), isShopOpen()
  */
 export function createInventory(player, deps) {
   const $ = (selector) => document.querySelector(selector);
@@ -36,14 +49,40 @@ export function createInventory(player, deps) {
     $("#inventory-grid").innerHTML = slots.join("");
   }
 
+  /* a second tap confirms dropping, or selling something valuable; {action, index} while waiting for it */
+  let pending = null;
+  let pendingTimer = 0;
+  const VALUABLE_PRICE = 300;
+
+  function ask(action, index) {
+    pending = { action, index };
+    clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(() => {
+      pending = null;
+      render();
+    }, 3000);
+  }
+
+  const isPending = (action) =>
+    pending && pending.action === action && pending.index === selectedIndex;
+
+  /* what kind of thing an item is, for the line under its name */
+  function kindOf(item) {
+    if (item.slot) {
+      return SLOT_NAMES[item.slot] || "Equipment";
+    }
+    return item.use ? "Usable" : "Material";
+  }
+
   function renderDetail() {
     const detail = $("#inventory-detail");
     const entry = player.bag[selectedIndex];
     if (!entry) {
-      detail.innerHTML = '<p class="hint">Select an item to see what it does.</p>';
+      detail.innerHTML = '<p class="hint">Tap an item to see what it does.</p>';
       return;
     }
     const item = ITEMS[entry.id];
+    const salePrice = sellPrice(entry.id, entry);
 
     const buttons = [];
     if (item.slot) {
@@ -54,16 +93,22 @@ export function createInventory(player, deps) {
     }
     // While a shop is open the bag sells instead of dropping.
     if (deps.isShopOpen()) {
-      const salePrice = sellPrice(entry.id, entry);
       buttons.push(
-        `<button class="btn alt" data-action="sell">Sell for ${salePrice} zeny</button>`,
+        isPending("sell")
+          ? `<button class="btn danger" data-action="sell">Sell for ${salePrice} zeny?</button>`
+          : `<button class="btn alt" data-action="sell">Sell for ${salePrice} zeny</button>`,
       );
     } else {
-      buttons.push('<button class="btn alt" data-action="drop">Drop</button>');
+      buttons.push(
+        isPending("drop")
+          ? '<button class="btn danger" data-action="drop">Tap again to drop</button>'
+          : '<button class="btn alt" data-action="drop">Drop</button>',
+      );
     }
 
     const countText = entry.count > 1 ? ` <small>×${entry.count}</small>` : "";
-    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b>${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-stats">${itemStatText(applyMods(item, entry)) || ""}</small></div></div>${modsText(entry)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
+    const stats = itemStatText(applyMods(item, entry));
+    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b>${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
   }
 
   function render() {
@@ -89,6 +134,7 @@ export function createInventory(player, deps) {
     if (slot) {
       selectedIndex = +slot.dataset.index;
       selectedId = player.bag[selectedIndex] ? player.bag[selectedIndex].id : null;
+      pending = null;
       render();
       return;
     }
@@ -98,6 +144,14 @@ export function createInventory(player, deps) {
     const id = entry.id;
     const index = selectedIndex;
     const action = button.dataset.action;
+    /* dropping always asks first; selling only for something valuable (refined, enchanted or pricey) */
+    const isValuable = !!modsOf(entry) || sellPrice(id, entry) >= VALUABLE_PRICE;
+    if ((action === "drop" || (action === "sell" && isValuable)) && !isPending(action)) {
+      ask(action, index);
+      render();
+      return;
+    }
+    pending = null;
     if (action === "equip") deps.equip(id, index);
     else if (action === "use") deps.use(id);
     else if (action === "sell") deps.sell(id, index);
@@ -105,6 +159,13 @@ export function createInventory(player, deps) {
     render();
   });
   $("#inventory-close").onclick = () => close();
+  $("#inventory-sort").onclick = () => {
+    pending = null;
+    deps.sort();
+    /* the selected item moved: keep it selected where it went */
+    selectedIndex = selectedId ? player.bag.findIndex((entry) => entry.id === selectedId) : -1;
+    render();
+  };
 
   function show() {
     isOpenNow = true;

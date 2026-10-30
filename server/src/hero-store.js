@@ -159,6 +159,9 @@ export class HeroStore extends DurableObject {
       case "drop":
         changed = progression.drop(hero, id, index);
         break;
+      case "sort_bag":
+        changed = progression.sortBag(hero);
+        break;
       case "equip":
         changed = progression.equip(hero, id, index);
         break;

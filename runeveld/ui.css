@@ -15,6 +15,7 @@
   --bg: #0b0e16;
   --frame: linear-gradient(180deg, rgba(32, 36, 52, 0.94), rgba(16, 18, 30, 0.96));
   --frame-border: rgba(230, 187, 99, 0.55);
+  --panel-solid: linear-gradient(180deg, #202436, #10121c);
   --ui: "Rubik", system-ui, sans-serif;
   --heading-font: "Cinzel", "Rubik", serif;
   --safe-top: max(10px, env(safe-area-inset-top));
@@ -196,6 +197,9 @@ h3 {
 }
 #admin {
   z-index: 25;
+}
+#settings {
+  z-index: 26;
 }
 #guide-card {
   z-index: 26;
@@ -671,6 +675,15 @@ h3 {
     0 0 0 1px rgba(0, 0, 0, 0.8),
     0 0 0 3px rgba(230, 187, 99, 0.18),
     inset 0 0 12px rgba(0, 0, 0, 0.7);
+}
+/* only the picture is clipped to the circle; the level badge sits on the rim, over it */
+.portrait-image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 50%;
   overflow: hidden;
 }
 .portrait canvas {
@@ -684,8 +697,8 @@ h3 {
 }
 .level-badge {
   position: absolute;
-  right: -3px;
-  bottom: -3px;
+  right: -6px;
+  bottom: -5px;
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
@@ -1052,8 +1065,11 @@ body.hotbar-two-rows {
     transform 0.08s,
     border-color 0.15s;
 }
-.slot:hover {
-  border-color: var(--gold);
+/* hover only where there is a mouse: on a touch screen it would stick after a tap */
+@media (hover: hover) {
+  .slot:hover {
+    border-color: var(--gold);
+  }
 }
 .slot:active {
   transform: scale(0.94);
@@ -1123,8 +1139,10 @@ body.hotbar-two-rows {
   position: relative;
   transition: border-color 0.15s;
 }
-#menu .menu-btn:hover {
-  border-color: var(--gold);
+@media (hover: hover) {
+  #menu .menu-btn:hover {
+    border-color: var(--gold);
+  }
 }
 #menu .menu-btn kbd {
   position: absolute;
@@ -1159,8 +1177,10 @@ body.hotbar-two-rows {
   border: 1px solid rgba(230, 187, 99, 0.3);
   font-size: 16px;
 }
-#mobile-buttons button:hover {
-  border-color: var(--gold);
+@media (hover: hover) {
+  #mobile-buttons button:hover {
+    border-color: var(--gold);
+  }
 }
 body.touch #mobile-buttons {
   display: flex;
@@ -1245,10 +1265,19 @@ body.touch #mobile-chat {
   top: 50%;
   transform: translate(-50%, -50%);
   max-height: calc(100vh - 24px);
-  max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);
   overflow: auto;
   padding: 16px;
+  /* windows are solid: the names and speech bubbles of the world must not show through them */
+  background: var(--panel-solid);
+}
+.modal:not([hidden]) {
+  animation: panel-in 0.14s ease-out;
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+  }
 }
 .panel-header {
   display: flex;
@@ -1278,8 +1307,10 @@ body.touch #mobile-chat {
   background: rgba(255, 255, 255, 0.04);
   font-size: 14px;
 }
-.close-btn:hover {
-  border-color: var(--gold);
+@media (hover: hover) {
+  .close-btn:hover {
+    border-color: var(--gold);
+  }
 }
 .btn {
   background: linear-gradient(180deg, #ffe08a, #e0a52e 60%, #b57a14);
@@ -1295,12 +1326,23 @@ body.touch #mobile-chat {
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
-.btn:hover {
-  filter: brightness(1.08);
+@media (hover: hover) {
+  .btn:hover {
+    filter: brightness(1.08);
+  }
 }
 .btn:disabled {
   filter: grayscale(1) opacity(0.5);
   cursor: default;
+}
+/* pressed: every button gives way a little under a finger or a click */
+.btn:active:not(:disabled),
+.menu-btn:active,
+.close-btn:active,
+#mobile-buttons button:active,
+.switch:active {
+  transform: translateY(1px);
+  filter: brightness(0.9);
 }
 .btn.alt {
   background: linear-gradient(180deg, #2a3148, #171b2a);
@@ -1497,9 +1539,11 @@ textarea {
   color: #9fe3b0;
   font-size: 11px;
 }
-.sheet-item:hover,
-.equip-slot:not(.empty):hover {
-  border-color: var(--gold);
+@media (hover: hover) {
+  .sheet-item:hover,
+  .equip-slot:not(.empty):hover {
+    border-color: var(--gold);
+  }
 }
 .shop-stat {
   display: block;
@@ -1737,8 +1781,10 @@ textarea {
 .tree-node .node-icon {
   position: relative;
 }
-.tree-node:hover .node-icon {
-  transform: scale(1.06);
+@media (hover: hover) {
+  .tree-node:hover .node-icon {
+    transform: scale(1.06);
+  }
 }
 .tree-node.selected .node-icon {
   transform: scale(1.08);
@@ -1873,8 +1919,10 @@ textarea {
   border-style: dashed;
   border-color: rgba(230, 187, 99, 0.15);
 }
-.bag-slot:not(.empty):hover {
-  border-color: var(--gold);
+@media (hover: hover) {
+  .bag-slot:not(.empty):hover {
+    border-color: var(--gold);
+  }
 }
 .bag-slot.selected {
   border-color: var(--gold);
@@ -1919,6 +1967,54 @@ textarea {
 .item-detail-header .item-stats {
   display: block;
   color: #9fe3b0;
+  font-size: 11px;
+}
+.item-detail-header .item-kind {
+  display: block;
+  color: var(--dim);
+  font-size: 11px;
+}
+/* gains and losses against what is worn (character-sheet.js compareHtml) */
+.compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin: 6px 0 2px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.compare small {
+  flex-basis: 100%;
+  font-size: 10.5px;
+  color: var(--dim);
+}
+.compare b {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.compare .up {
+  color: #7ee39a;
+}
+.compare .down {
+  color: #ff8a8a;
+}
+.compare.locked {
+  color: #ff8a8a;
+}
+.compare.new {
+  color: #9fe3b0;
+}
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#shop-list .row.locked {
+  opacity: 0.55;
+}
+.shop-owned {
+  display: block;
+  color: var(--dim);
   font-size: 11px;
 }
 .item-detail p {
@@ -2148,8 +2244,10 @@ body.touch #world-map .hint-touch {
   background: rgba(255, 255, 255, 0.06);
   white-space: nowrap;
 }
-.admin-btn:hover {
-  border-color: var(--gold);
+@media (hover: hover) {
+  .admin-btn:hover {
+    border-color: var(--gold);
+  }
 }
 .admin-btn.danger {
   border-color: rgba(248, 113, 113, 0.5);
@@ -2360,8 +2458,10 @@ body.touch #world-map .hint-touch {
   background: rgba(255, 255, 255, 0.03);
   width: 100%;
 }
-.hero-card:hover {
-  background: rgba(255, 255, 255, 0.08);
+@media (hover: hover) {
+  .hero-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 .hero-card.active {
   border-color: var(--gold);
@@ -2491,8 +2591,10 @@ body.touch #world-map .hint-touch {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
 }
-#start .class-option:hover {
-  background: rgba(255, 255, 255, 0.08);
+@media (hover: hover) {
+  #start .class-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 #start .class-option.active {
   border-color: var(--gold);
@@ -2549,8 +2651,10 @@ body.touch #world-map .hint-touch {
   font-size: 12px;
   text-decoration: none;
 }
-.back:hover {
-  color: #fff;
+@media (hover: hover) {
+  .back:hover {
+    color: #fff;
+  }
 }
 #loading {
   position: fixed;
@@ -3711,5 +3815,101 @@ body.touch #world-map .hint-touch {
 }
 /* keyboard hints mean nothing on a touch screen */
 body.touch #select .help {
+  display: none;
+}
+
+/* ---------- settings (settings.js) ---------- */
+#settings {
+  width: min(420px, calc(100vw - 24px));
+}
+.settings-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 14px 0 6px;
+  font-family: var(--heading-font);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+.settings-section:first-child {
+  margin-top: 2px;
+}
+.settings-section small {
+  font-family: var(--ui);
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--dim);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.settings-row b {
+  display: block;
+  font-size: 13.5px;
+}
+.settings-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--dim);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.settings-row input[type="range"] {
+  flex: 0 0 46%;
+  accent-color: var(--gold);
+}
+.settings-reload {
+  width: 100%;
+  margin-top: 10px;
+}
+/* an on/off switch: a pill with a knob that slides to the right when on */
+.switch {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 26px;
+  padding: 0;
+  border-radius: 13px;
+  border: 1px solid rgba(230, 187, 99, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.15s;
+}
+.switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #cfc8b6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s;
+}
+.switch[aria-checked="true"] {
+  background: linear-gradient(#d9a640, #a8741a);
+  border-color: var(--gold);
+}
+.switch[aria-checked="true"] i {
+  transform: translateX(20px);
+  background: #fff6dc;
+}
+/* the gear of the settings button, drawn as pixels like the icons */
+.gear {
+  width: 22px;
+  height: 22px;
+  fill: #e8d7a6;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.8));
+}
+/* names above heads switched off (settings.js); quest marks, health bars and speech stay */
+body.hide-names .label .name {
   display: none;
 }

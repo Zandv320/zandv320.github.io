@@ -14,6 +14,7 @@ import {
   professionOf,
   professionExpForLevel,
 } from "./rules/professions.js";
+import { classOf, slotFor } from "./rules/progression.js";
 
 const TABS = ["equipment", "stats", "skills", "quests", "professions"];
 
@@ -43,6 +44,64 @@ export function itemStatText(item) {
   if (item.sp) parts.push("SP +" + item.sp);
   if (item.forClass) parts.push(item.forClass === "mage" ? "Mage" : "Swordsman");
   return parts.join(" · ");
+}
+
+/* the stats a comparison looks at, as [field, label, unit] */
+const COMPARED_STATS = [
+  ["atk", "ATK", ""],
+  ["matk", "MATK", ""],
+  ["def", "DEF", ""],
+  ["hp", "HP", ""],
+  ["sp", "SP", ""],
+  ["flee", "FLEE", ""],
+  ["crit", "CRIT", "%"],
+];
+
+/**
+ * What wearing this item (bag entry or shop item, `source` holds its refine/enchantment) would change compared
+ * with what the hero wears in that slot now, as HTML: green gains, red losses. Items for another class say so.
+ * Uses the same rules as equipping (rules/progression.js: class check and ring slot).
+ */
+export function compareHtml(hero, id, source = null) {
+  const item = ITEMS[id];
+  if (!item || !item.slot) {
+    return "";
+  }
+  if (item.forClass && item.forClass !== hero.classId && item.forClass !== classOf(hero).base) {
+    return `<span class="compare locked">${item.forClass === "mage" ? "Mages" : "Swordsmen"} only</span>`;
+  }
+  const slot = slotFor(hero, item);
+  const wornId = hero.equipment[slot];
+  if (!wornId) {
+    return '<span class="compare new">Nothing worn here yet</span>';
+  }
+  const worn = applyMods(ITEMS[wornId], (hero.equipmentMods || {})[slot]);
+  const next = applyMods(item, source);
+  const rows = COMPARED_STATS.map(([field, label, unit]) => [
+    label,
+    (next[field] || 0) - (worn[field] || 0),
+    unit,
+  ]);
+  const bonusKeys = new Set([...Object.keys(next.bonus || {}), ...Object.keys(worn.bonus || {})]);
+  for (const key of bonusKeys) {
+    rows.push([
+      key.toUpperCase(),
+      ((next.bonus || {})[key] || 0) - ((worn.bonus || {})[key] || 0),
+      "",
+    ]);
+  }
+  const changes = rows
+    .filter(([, delta]) => delta !== 0)
+    .map(([label, delta, unit]) =>
+      delta > 0
+        ? `<b class="up">▲ ${label} +${delta}${unit}</b>`
+        : `<b class="down">▼ ${label} −${-delta}${unit}</b>`,
+    );
+  const wornName = escapeHtml(displayName(wornId, (hero.equipmentMods || {})[slot]));
+  if (!changes.length) {
+    return `<span class="compare same">The same as your ${wornName}</span>`;
+  }
+  return `<span class="compare"><small>vs ${wornName}</small>${changes.join("")}</span>`;
 }
 
 /** A small "+7" badge (coloured by the enchantment) for a bag slot or equipment slot, or "". */
@@ -426,7 +485,14 @@ export function createCharacterSheet(player, deps) {
         .map((id) => {
           const item = ITEMS[id];
           const stats = itemStatText(item) || escapeHtml(item.description || "");
-          return `<div class="row"><span>${icon(id, item.icon, "small")} ${escapeHtml(item.name)}<small class="shop-stat">${stats}</small></span><button class="btn" data-item="${id}" ${player.zeny < item.price ? "disabled" : ""}>${item.price} zeny</button></div>`;
+          const compare = compareHtml(player, id);
+          /* gear for the other class stays visible (it can be sold on), but dimmed */
+          const isLocked = compare.includes("compare locked");
+          const owned = player.bag
+            .filter((entry) => entry.id === id)
+            .reduce((total, entry) => total + entry.count, 0);
+          const ownedText = owned ? `<small class="shop-owned">You have ${owned}</small>` : "";
+          return `<div class="row ${isLocked ? "locked" : ""}"><span>${icon(id, item.icon, "small")} ${escapeHtml(item.name)}<small class="shop-stat">${stats}</small>${compare}${ownedText}</span><button class="btn" data-item="${id}" ${player.zeny < item.price ? "disabled" : ""}>${item.price} zeny</button></div>`;
         })
         .join("") +
       '<p class="hint">Sell items from your inventory while the shop is open, for half their price.</p>';

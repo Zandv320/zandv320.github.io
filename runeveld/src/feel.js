@@ -1,13 +1,31 @@
 /* Eldoria – game feel: the small touches that make a blow land and a reward count.
    - hitStop: attacker and target hold their pose for a few hundredths of a second when a blow lands
-   - buzz: a short vibration on phones (taking a hit, a critical hit, a level up), with the sound setting
+   - buzz: a short vibration on phones (taking a hit, a critical hit, a level up), unless switched off
    - flyToHud: a found item or coin flies from where it was found to the bag or the zeny counter, which then bumps
    All of it is presentation only: nothing here changes the game state. */
 import * as THREE from "three";
-import { isSoundOn } from "./audio.js";
 import { icon } from "./icons.js";
 
-const IS_TOUCH = matchMedia("(pointer: coarse)").matches;
+export const IS_TOUCH = matchMedia("(pointer: coarse)").matches;
+const VIBRATION_KEY = "eldoria.vibration";
+
+let vibrationOn = (() => {
+  try {
+    return localStorage.getItem(VIBRATION_KEY) !== "0";
+  } catch (e) {
+    return true;
+  }
+})();
+
+export const isVibrationOn = () => vibrationOn;
+
+export function setVibrationOn(isOn) {
+  vibrationOn = isOn;
+  try {
+    localStorage.setItem(VIBRATION_KEY, isOn ? "1" : "0");
+  } catch (e) {}
+}
+
 const projected = new THREE.Vector3();
 
 /** Freezes the animation of these sprites for `seconds` (a crit holds longer). */
@@ -27,9 +45,9 @@ const BUZZ = {
   death: [80, 60, 160],
 };
 
-/** A short vibration on touch devices that have it, when the sound is on. */
+/** A short vibration on touch devices that have it, unless switched off in the settings. */
 export function buzz(kind) {
-  if (!IS_TOUCH || !isSoundOn() || !navigator.vibrate) {
+  if (!IS_TOUCH || !vibrationOn || !navigator.vibrate) {
     return;
   }
   try {

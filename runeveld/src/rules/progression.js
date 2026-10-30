@@ -408,6 +408,54 @@ export function drop(hero, id, index) {
   return !!ITEMS[id] && !!takeFromBag(hero, id, index);
 }
 
+/* the order of a sorted bag: equipment (in slot order), then things to use, then materials */
+const SLOT_ORDER = [
+  "weapon",
+  "head",
+  "body",
+  "cloak",
+  "pants",
+  "boots",
+  "belt",
+  "necklace",
+  "ring",
+];
+function bagRank(entry) {
+  const item = ITEMS[entry.id];
+  if (!item) {
+    return [9, 0];
+  }
+  if (item.slot) {
+    return [0, SLOT_ORDER.indexOf(item.slot)];
+  }
+  return [item.use ? 1 : 2, 0];
+}
+
+/**
+ * Sorts the bag: equipment by slot, then usable items, then materials; within a group by name, refined copies
+ * first. The client and the server sort the same way, so bag positions keep matching.
+ */
+export function sortBag(hero) {
+  if (!Array.isArray(hero.bag) || hero.bag.length < 2) {
+    return false;
+  }
+  const before = JSON.stringify(hero.bag);
+  hero.bag.sort((a, b) => {
+    const [groupA, slotA] = bagRank(a);
+    const [groupB, slotB] = bagRank(b);
+    if (groupA !== groupB || slotA !== slotB) {
+      return groupA - groupB || slotA - slotB;
+    }
+    const nameA = ITEMS[a.id] ? ITEMS[a.id].name : a.id;
+    const nameB = ITEMS[b.id] ? ITEMS[b.id].name : b.id;
+    if (nameA !== nameB) {
+      return nameA < nameB ? -1 : 1;
+    }
+    return ((modsOf(b) || {}).refine || 0) - ((modsOf(a) || {}).refine || 0);
+  });
+  return JSON.stringify(hero.bag) !== before;
+}
+
 /** Drink a healing potion from the bag; not allowed at full HP. */
 export function drinkPotion(hero, id) {
   const item = ITEMS[id];

@@ -128,6 +128,14 @@ export function sell(id, index) {
   game.network.heroAction("sell", { id, index: at });
 }
 
+/** Sorts the bag (equipment, usables, materials), here and on the server. */
+export function sortBag() {
+  if (progression.sortBag(player)) {
+    game.inventory.render();
+    game.network.heroAction("sort_bag", {});
+  }
+}
+
 export function drop(id, index) {
   if (!ITEMS[id]) {
     return;

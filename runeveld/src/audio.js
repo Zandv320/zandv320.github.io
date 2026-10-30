@@ -2,6 +2,7 @@
    Everything runs through one master volume; 'eldoria.sound' = '0' in localStorage turns it off. */
 
 const SOUND_KEY = "eldoria.sound";
+const VOLUME_KEY = "eldoria.volume";
 const MASTER_VOLUME = 0.5;
 
 let audioContext = null;
@@ -15,6 +16,18 @@ let soundOn = (() => {
     return true;
   }
 })();
+
+/* the player's volume, 0..1, on top of MASTER_VOLUME */
+let volume = (() => {
+  try {
+    const stored = parseFloat(localStorage.getItem(VOLUME_KEY));
+    return stored >= 0 && stored <= 1 ? stored : 1;
+  } catch (e) {
+    return 1;
+  }
+})();
+
+const masterLevel = () => (soundOn ? MASTER_VOLUME * volume : 0);
 
 /* Browsers only allow audio after the first click or key press, so this is called from those handlers. */
 export function unlockAudio() {
@@ -30,7 +43,7 @@ export function unlockAudio() {
   }
   audioContext = new AudioContextClass();
   masterGain = audioContext.createGain();
-  masterGain.gain.value = soundOn ? MASTER_VOLUME : 0;
+  masterGain.gain.value = masterLevel();
   masterGain.connect(audioContext.destination);
 
   // Half a second of white noise, reused by every noise burst.
@@ -53,7 +66,20 @@ export function setSoundOn(isOn) {
     localStorage.setItem(SOUND_KEY, isOn ? "1" : "0");
   } catch (e) {}
   if (masterGain) {
-    masterGain.gain.setTargetAtTime(isOn ? MASTER_VOLUME : 0, audioContext.currentTime, 0.02);
+    masterGain.gain.setTargetAtTime(masterLevel(), audioContext.currentTime, 0.02);
+  }
+}
+
+export const getVolume = () => volume;
+
+/** The player's volume, 0..1. */
+export function setVolume(value) {
+  volume = Math.max(0, Math.min(1, value));
+  try {
+    localStorage.setItem(VOLUME_KEY, String(volume));
+  } catch (e) {}
+  if (masterGain) {
+    masterGain.gain.setTargetAtTime(masterLevel(), audioContext.currentTime, 0.02);
   }
 }
 
