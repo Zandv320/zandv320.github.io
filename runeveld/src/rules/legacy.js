@@ -4,6 +4,7 @@
    (apart from dropping ids that no longer exist). */
 import { ITEMS, emptyEquipment } from "../data.js";
 import { SKILLS } from "./skills.js";
+import { catchUpMainStory } from "./quests.js";
 
 /* Old id → new id, per kind of id. */
 export const LEGACY_IDS = {
@@ -316,6 +317,11 @@ export function migrateHero(record) {
     if (!isOldField && !(key in hero)) {
       hero[key] = value;
     }
+  }
+  /* heroes from before the main story (or before a step was added) skip what they are already past */
+  if (hero.quests && typeof hero.quests === "object") {
+    hero.quests = { ...hero.quests };
+    catchUpMainStory(hero.quests);
   }
   return hero;
 }

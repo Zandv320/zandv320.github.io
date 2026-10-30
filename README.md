@@ -44,7 +44,8 @@ docker run --rm -v "$PWD":/w -w /w python:3.12-slim sh -c "pip install -q black 
   `world-map.js`, `party.js`, `account.js`, `admin.js` (Ctrl+Shift+A), `icons.js` + `icon-index.js` (gegenereerd).
   Beroepen: `gathering.js` (verzamelen, stations, acties), `workbench.js` (craften, refinen, enchanten),
   `profession-sites.js` (nodes, vijvers en stations in de wereld), `work-animation.js` (de beroepsanimaties met
-  effecten, geluid en vislijn). Netwerk: `network.js`.
+  effecten, geluid en vislijn). Verhaal: `guide.js` (doelpaneel, wijzer en kompas, kaartster, uitlegkaarten) met de
+  teksten in `guide-topics.js`; de hoofdverhaallijn (Saga I) staat in `rules/quests.js`. Netwerk: `network.js`.
 - `runeveld/src/rules/` – pure spelregels zonder browser- of netwerkcode (stats, skills, combat, quests, progression,
   legacy-migratie, en voor de beroepen `professions.js` met recepten en stations, `crafting.js` met de acties,
   `item-mods.js` voor refine en enchant, `gather-nodes.js` met de verzamelplekken); de server draait precies deze

@@ -320,12 +320,21 @@ export function createWorldMap(deps) {
       const color = monster.spec.aggressive ? COLORS.monster : COLORS.monsterPassive;
       drawDot(g, px(monster.x), pz(monster.z), 2.2 * pixelRatio, color, "rgba(0,0,0,.5)");
     }
-    /* crafting stations as their emoji */
+    /* crafting stations as their emoji; the guide's objective as a gold star (`color`) */
     g.save();
-    g.font = `${11 * pixelRatio}px sans-serif`;
     g.textAlign = "center";
     g.textBaseline = "middle";
     for (const marker of deps.markers ? deps.markers() : []) {
+      if (marker.color) {
+        g.font = `900 ${16 * pixelRatio}px sans-serif`;
+        g.lineWidth = 3 * pixelRatio;
+        g.strokeStyle = "rgba(0,0,0,.75)";
+        g.strokeText(marker.emoji, px(marker.x), pz(marker.z));
+        g.fillStyle = marker.color;
+      } else {
+        g.font = `${11 * pixelRatio}px sans-serif`;
+        g.fillStyle = "#fff";
+      }
       g.fillText(marker.emoji, px(marker.x), pz(marker.z));
     }
     g.restore();

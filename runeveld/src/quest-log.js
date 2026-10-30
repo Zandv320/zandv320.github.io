@@ -1,5 +1,6 @@
-/* Eldoria – the player's quest progress: accepting, tracking (kills, items, visits), turning in, the markers above
-   npcs, the tracker in the HUD and the list for the character sheet. */
+/* Eldoria – the player's quest progress: accepting, tracking (kills, items, visits, and through the shared rules
+   also purchases, gathering, crafting and enchanting), turning in, the markers above npcs, the tracker in the HUD
+   (side quests; the main story has the objective panel of guide.js) and the list for the character sheet. */
 import {
   QUESTS,
   QUEST_ORDER,
@@ -7,7 +8,9 @@ import {
   isQuestComplete,
   questsFrom,
   progressText,
+  turnInNpc,
 } from "./rules/quests.js";
+import * as progression from "./rules/progression.js";
 import { icon } from "./icons.js";
 import { ITEMS, MONSTERS } from "./data.js";
 import * as UI from "./ui.js";
@@ -22,7 +25,7 @@ const LIST_ORDER = { ready: 0, active: 1, available: 2, done: 3 };
 /**
  * @param {object} player the player (player.quests holds the progress records `{state, count}`)
  * @param {object} deps {heroAction, bagCount, removeFromBag, addToBag, grantReward({exp, zeny}),
- *   forEachNpc(fn(name, label)), render(), playEffect(name)}
+ *   forEachNpc(fn(name, label)), render(), playEffect(name), onAccepted(id), onTurnedIn(id)}
  */
 export function createQuestLog(player, deps) {
   const tracker = document.querySelector("#quest-tracker");
@@ -40,27 +43,42 @@ export function createQuestLog(player, deps) {
   };
   const logLevelMessage = (html) => UI.logMessage(`<span class="level-msg">${html}</span>`);
 
-  /* Everything an npc has to tell: new quests, running ones and ones ready to turn in. */
+  /* Everything an npc has to tell: the quests it gives (new and running) and the ones handed in to it when they
+     are ready. A quest handed in elsewhere shows at its giver while it runs, and at the other npc when ready. */
   function fromNpc(npcName) {
     return questsFrom(npcName)
       .map((id) => ({ id, quest: QUESTS[id], state: state(id) }))
-      .filter((entry) => entry.state !== "locked" && entry.state !== "done");
+      .filter((entry) => {
+        if (entry.state === "locked" || entry.state === "done") {
+          return false;
+        }
+        const takesItIn = turnInNpc(entry.id) === npcName;
+        if (entry.state === "ready") {
+          return takesItIn;
+        }
+        return entry.quest.giver === npcName;
+      });
   }
 
   function accept(id) {
-    if (state(id) !== "available") {
+    if (!progression.acceptQuest(player, id)) {
       return false;
     }
-    player.quests[id] = { state: "active", count: 0 };
     if (deps.heroAction) {
       deps.heroAction("quest", { id, step: "accept" });
     }
-    const goal = QUESTS[id].goal;
-    if (goal.type === "item") {
-      player.quests[id].count = Math.min(goal.count, deps.bagCount(goal.item));
+    const quest = QUESTS[id];
+    logLevelMessage(`Quest accepted: ${UI.escapeHtml(quest.title)}`);
+    for (const given of quest.gives || []) {
+      const item = ITEMS[given.id];
+      UI.logMessage(
+        `<span class="loot-msg">${UI.escapeHtml(quest.giver)} gives you ${icon(given.id, item.icon, "small")} ${UI.escapeHtml(item.name)}.</span>`,
+      );
     }
-    logLevelMessage(`Quest accepted: ${UI.escapeHtml(QUESTS[id].title)}`);
     refresh();
+    if (deps.onAccepted) {
+      deps.onAccepted(id);
+    }
     return true;
   }
 
@@ -103,6 +121,9 @@ export function createQuestLog(player, deps) {
       deps.playEffect("sparkle");
     }
     refresh();
+    if (deps.onTurnedIn) {
+      deps.onTurnedIn(id);
+    }
     return true;
   }
 
@@ -123,7 +144,7 @@ export function createQuestLog(player, deps) {
         changed = true;
         if (record.count >= goal.count) {
           logLevelMessage(
-            `${UI.escapeHtml(QUESTS[id].title)}: done! Return to ${UI.escapeHtml(QUESTS[id].giver)}.`,
+            `${UI.escapeHtml(QUESTS[id].title)}: done! Return to ${UI.escapeHtml(turnInNpc(id))}.`,
           );
         }
       }
@@ -147,12 +168,21 @@ export function createQuestLog(player, deps) {
         record.count = 1;
         changed = true;
         reportProgress(id);
-        logLevelMessage(
-          `${UI.escapeHtml(QUESTS[id].title)}: done! Return to ${UI.escapeHtml(QUESTS[id].giver)}.`,
-        );
+        if (turnInNpc(id) !== npcName) {
+          logLevelMessage(
+            `${UI.escapeHtml(QUESTS[id].title)}: done! Return to ${UI.escapeHtml(turnInNpc(id))}.`,
+          );
+        }
       }
     }
     if (changed) {
+      refresh();
+    }
+  }
+
+  /* Quests that ask for a state (wear something, raise a stat, learn a skill): checked against the player. */
+  function onStateChanged() {
+    if (progression.syncStateQuests(player)) {
       refresh();
     }
   }
@@ -172,7 +202,7 @@ export function createQuestLog(player, deps) {
         changed = true;
         reportProgress(id);
         logLevelMessage(
-          `${UI.escapeHtml(QUESTS[id].title)}: you found ${UI.escapeHtml(goal.label)}. Return to ${UI.escapeHtml(QUESTS[id].giver)}.`,
+          `${UI.escapeHtml(QUESTS[id].title)}: you found ${UI.escapeHtml(goal.label)}. Return to ${UI.escapeHtml(turnInNpc(id))}.`,
         );
       }
     }
@@ -194,7 +224,7 @@ export function createQuestLog(player, deps) {
       if (count !== record.count) {
         if (count >= goal.count && record.count < goal.count) {
           logLevelMessage(
-            `${UI.escapeHtml(QUESTS[id].title)}: you have everything. Return to ${UI.escapeHtml(QUESTS[id].giver)}.`,
+            `${UI.escapeHtml(QUESTS[id].title)}: you have everything. Return to ${UI.escapeHtml(turnInNpc(id))}.`,
           );
         }
         record.count = count;
@@ -207,46 +237,55 @@ export function createQuestLog(player, deps) {
   }
 
   /* Markers above the npcs: ! new, ? in progress (grey) or ready (gold). A ready quest wins over a new one, a new one
-     over one in progress. The marker kinds double as CSS classes on the marker. */
+     over one in progress; a ready quest shows at the npc it is handed in to. The main story's markers glow
+     ("main"). The marker kinds double as CSS classes on the marker. */
   function updateMarkers() {
-    const markerByGiver = {};
+    const markerByNpc = {};
+    const isMainFor = {};
     for (const id of QUEST_ORDER) {
       const questStatus = state(id);
       if (questStatus === "locked" || questStatus === "done") {
         continue;
       }
-      const giver = QUESTS[id].giver;
+      const npc = questStatus === "ready" ? turnInNpc(id) : QUESTS[id].giver;
       if (questStatus === "ready") {
-        markerByGiver[giver] = "ready";
-      } else if (questStatus === "available" && markerByGiver[giver] !== "ready") {
-        markerByGiver[giver] = "new";
+        markerByNpc[npc] = "ready";
+      } else if (questStatus === "available" && markerByNpc[npc] !== "ready") {
+        markerByNpc[npc] = "new";
       } else {
-        markerByGiver[giver] = markerByGiver[giver] || "in-progress";
+        markerByNpc[npc] = markerByNpc[npc] || "in-progress";
+      }
+      if (QUESTS[id].main && questStatus !== "active") {
+        isMainFor[npc] = true;
       }
     }
-    deps.forEachNpc((name, label) => UI.setQuestMarker(label, markerByGiver[name] || null));
+    deps.forEachNpc((name, label) =>
+      UI.setQuestMarker(label, markerByNpc[name] || null, !!isMainFor[name]),
+    );
   }
 
   function progress(id) {
     return progressText(id, player.quests[id], monsterName, itemName);
   }
 
+  /* the side quests; the main story has its own objective panel */
   function renderTracker() {
     const running = QUEST_ORDER.filter(
-      (id) => player.quests[id] && player.quests[id].state !== "done",
+      (id) => player.quests[id] && player.quests[id].state !== "done" && !QUESTS[id].main,
     );
     tracker.hidden = !running.length;
     const rows = running.map((id) => {
       const isReady = state(id) === "ready";
       const detail = isReady
-        ? "Return to " + UI.escapeHtml(QUESTS[id].giver)
+        ? "Return to " + UI.escapeHtml(turnInNpc(id))
         : UI.escapeHtml(progress(id));
       return `<div class="tracker-quest${isReady ? " ready" : ""}"><b>${UI.escapeHtml(QUESTS[id].title)}</b><span>${detail}</span></div>`;
     });
-    tracker.innerHTML = '<div class="tracker-title">Quests</div>' + rows.join("");
+    tracker.innerHTML = '<div class="tracker-title">Side quests</div>' + rows.join("");
   }
 
   function refresh() {
+    progression.syncStateQuests(player);
     updateMarkers();
     renderTracker();
     deps.render();
@@ -275,6 +314,7 @@ export function createQuestLog(player, deps) {
     onVisit,
     onBagChanged,
     onPosition,
+    onStateChanged,
     refresh,
     list,
     readyCount,

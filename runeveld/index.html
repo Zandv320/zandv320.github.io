@@ -57,6 +57,8 @@
           </div>
         </div>
         <div id="hud-buffs"></div>
+        <!-- the main story's next step (guide.js); tap for the tip -->
+        <div id="objective" class="frame flat" hidden></div>
         <div id="target-frame" class="frame flat" hidden>
           <div class="header"><b id="target-name"></b><small id="target-level"></small></div>
           <div class="bar hp"><i id="target-hp"></i><span id="target-hp-text"></span></div>
@@ -83,6 +85,7 @@
         <div id="quest-tracker" class="frame flat" hidden></div>
       </div>
       <div id="announcement"></div>
+      <div id="waypoint" hidden><i>▼</i><small></small></div>
       <div id="gather-bar" class="frame flat" hidden>
         <span id="gather-icon"></span>
         <div>
@@ -234,6 +237,9 @@
     </div>
 
     <!-- Conversation with a villager; filled by dialogue.js. -->
+    <!-- Guide cards (guide.js, guide-topics.js). -->
+    <div id="guide-card" class="panel" hidden></div>
+
     <div id="dialogue" class="panel" hidden>
       <canvas id="dialogue-portrait" width="48" height="64"></canvas>
       <div class="dialogue-body">

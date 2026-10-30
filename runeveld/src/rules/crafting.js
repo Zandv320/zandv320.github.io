@@ -29,6 +29,7 @@ import {
   derivedStatsOf,
   setSlotMods,
   syncItemQuests,
+  recordQuestEvent,
 } from "./progression.js";
 
 const fail = (reason) => ({ ok: false, reason });
@@ -106,6 +107,7 @@ export function gather(hero, resourceId, rng = Math.random) {
     }
   }
   const levelUps = grantProfessionExp(hero, resource.profession, resource.exp);
+  recordQuestEvent(hero, "gather", resourceId, count);
   syncItemQuests(hero);
   return {
     ok: true,
@@ -197,6 +199,7 @@ export function craft(hero, recipeId, times = 1) {
     return fail("Your bag is full.");
   }
   const levelUps = grantProfessionExp(hero, recipe.profession, exp);
+  recordQuestEvent(hero, "craft", recipe.output, made);
   syncItemQuests(hero);
   return {
     ok: true,
@@ -292,6 +295,7 @@ export function refine(hero, target, rng = Math.random) {
   resolved.setMods({ ...resolved.mods, refine: newRefine });
   const exp = (success ? 15 : 5) * info.target;
   const levelUps = grantProfessionExp(hero, "enchanting", exp);
+  recordQuestEvent(hero, "refine", resolved.id);
   hero.hp = Math.min(hero.hp, derivedStatsOf(hero).hpMax);
   return {
     ok: true,
@@ -362,6 +366,7 @@ export function disenchant(hero, index) {
   }
   const exp = Math.round(10 + (item.price || 0) / 40);
   const levelUps = grantProfessionExp(hero, "enchanting", exp);
+  recordQuestEvent(hero, "disenchant", entry.id);
   return {
     ok: true,
     item: entry.id,

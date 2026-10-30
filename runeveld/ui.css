@@ -182,6 +182,9 @@ h3 {
 #admin {
   z-index: 25;
 }
+#guide-card {
+  z-index: 26;
+}
 #start {
   z-index: 30;
 }
@@ -2507,6 +2510,240 @@ body.touch #world-map .hint-touch {
   pointer-events: none;
 }
 
+/* ---------- the guide: objective panel, waypoint, guide cards (guide.js) ---------- */
+#objective {
+  padding: 7px 10px 8px;
+  border-color: rgba(255, 211, 77, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 0 14px rgba(255, 200, 70, 0.18);
+  cursor: pointer;
+}
+.objective-chapter {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.objective-title {
+  font-family: var(--heading-font);
+  font-size: 13px;
+  color: #ffd34d;
+  margin: 1px 0 3px;
+}
+.objective-goal {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+.objective-goal span {
+  flex: 1;
+  min-width: 0;
+}
+.objective-goal small {
+  flex: none;
+  color: #ffd34d;
+  font-weight: 700;
+  font-size: 11px;
+}
+.objective-arrow {
+  flex: none;
+  font-style: normal;
+  color: #ffd34d;
+  display: inline-block;
+  font-size: 11px;
+}
+.objective-hint {
+  margin: 5px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #cfd6de;
+}
+.objective-toggle {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+#hud > #waypoint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  will-change: transform;
+  z-index: 1;
+}
+#waypoint i {
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  color: #ffd34d;
+  text-shadow:
+    0 2px 0 #5a3d00,
+    0 0 10px rgba(255, 200, 70, 0.8);
+  animation: waypoint-bob 1s ease-in-out infinite;
+}
+#waypoint small {
+  order: -1;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff3c8;
+  text-shadow: 0 1px 2px #000;
+}
+/* out of view: a compass arrow circling the hero, with the distance beside it */
+#hud > #waypoint.compass {
+  flex-direction: row;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 14px;
+  background: rgba(10, 12, 20, 0.65);
+  border: 1px solid rgba(255, 211, 77, 0.55);
+}
+#waypoint.compass i {
+  font-size: 14px;
+  animation: none;
+  /* the ▼ points down; its rotation (set by guide.js) turns it towards the target */
+  transform-origin: 50% 50%;
+}
+@keyframes waypoint-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+.guide-pulse {
+  animation: guide-pulse 1.2s ease-in-out infinite;
+}
+@keyframes guide-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 211, 77, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(255, 211, 77, 0);
+  }
+}
+.label .quest-mark.main {
+  color: #ffd34d;
+  text-shadow:
+    0 2px 0 #5a3d00,
+    0 0 12px rgba(255, 200, 70, 0.9);
+}
+#dialogue-choices .btn.main:not(.alt) {
+  background: linear-gradient(180deg, #fff1a8, #ffc93d 60%, #c88a12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 10px rgba(255, 200, 70, 0.45);
+}
+#dialogue-choices .btn.alt.main {
+  color: #ffd34d;
+  border-color: rgba(255, 211, 77, 0.6);
+}
+#guide-card {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 18px 20px 16px;
+  border-color: rgba(255, 211, 77, 0.7);
+}
+#guide-card h3 {
+  margin: 8px 0 8px;
+  font-size: 19px;
+  color: #ffd34d;
+}
+#guide-card p {
+  margin: 0 0 9px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e2e6ea;
+}
+#guide-card kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(230, 187, 99, 0.3);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 11px;
+}
+.guide-icons {
+  display: flex;
+  gap: 6px;
+}
+.guide-icons .ico {
+  --icon-size: 32px;
+}
+.guide-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.guide-book {
+  margin-top: 14px;
+}
+.guide-book h4 {
+  margin: 0 0 6px;
+  color: var(--gold-light);
+}
+.guide-book .topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.saga-progress {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 211, 77, 0.45);
+  background: rgba(255, 211, 77, 0.06);
+}
+.saga-progress b {
+  color: #ffd34d;
+  font-family: var(--heading-font);
+}
+.saga-progress small {
+  display: block;
+  color: var(--dim);
+  margin-top: 2px;
+}
+.saga-chapters {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.saga-chapters span {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.saga-chapters span.done {
+  background: #ffd34d;
+}
+.saga-chapters span.current {
+  background: linear-gradient(90deg, #ffd34d 50%, rgba(255, 255, 255, 0.12) 50%);
+}
+.quest.main .quest-header b::before {
+  content: "★ ";
+  color: #ffd34d;
+}
+
 /* ---------- narrow screens: nothing overlaps ---------- */
 /* medium width: the chat moves above the hotbar so the two do not touch */
 @media (max-width: 1360px) {
@@ -2555,6 +2792,18 @@ body.touch #world-map .hint-touch {
   body:has(#party-invite:not([hidden])) #mobile-buttons,
   body:has(#party-invite:not([hidden])) #menu {
     display: none !important;
+  }
+  #objective {
+    padding: 6px 8px 7px;
+  }
+  .objective-title {
+    font-size: 12px;
+  }
+  .objective-goal {
+    font-size: 11px;
+  }
+  .objective-hint {
+    font-size: 10.5px;
   }
   /* the gather bar fits between the button columns on the left and right */
   #gather-bar {

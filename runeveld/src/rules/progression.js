@@ -35,7 +35,12 @@ import {
   deriveStats,
   STATS,
 } from "./stats.js";
-import { QUESTS, questState, isQuestComplete } from "./quests.js";
+import {
+  QUESTS,
+  questState,
+  isQuestComplete,
+  recordQuestEvent as recordQuestEventIn,
+} from "./quests.js";
 import { migrateHero } from "./legacy.js";
 import { applyMods, modsOf, validModsFor, priceFactor } from "./item-mods.js";
 import { sanitizeProfessions } from "./professions.js";
@@ -266,6 +271,7 @@ export function raiseStat(hero, key) {
   }
   hero.stats[key] = value + 1;
   hero.hp = Math.min(hero.hp, derivedStatsOf(hero).hpMax);
+  syncStateQuests(hero);
   return true;
 }
 
@@ -274,6 +280,7 @@ export function raiseSkill(hero, id) {
     return false;
   }
   hero.skills[id] = (hero.skills[id] || 0) + 1;
+  syncStateQuests(hero);
   return true;
 }
 
@@ -332,6 +339,7 @@ export function equip(hero, id, index) {
     addToBag(hero, previous, 1, previousMods);
   }
   hero.hp = Math.min(hero.hp, derivedStatsOf(hero).hpMax);
+  syncStateQuests(hero);
   return true;
 }
 
@@ -371,6 +379,7 @@ export function buy(hero, id) {
     return false;
   }
   hero.zeny -= item.price;
+  recordQuestEvent(hero, "buy", id);
   return true;
 }
 
@@ -421,12 +430,52 @@ export function acceptQuest(hero, id) {
     return false;
   }
   hero.quests[id] = { state: "active", count: 0 };
+  /* what the giver hands over (a tool, a badge) */
+  for (const given of QUESTS[id].gives || []) {
+    addToBag(hero, given.id, given.count || 1);
+  }
   const goal = QUESTS[id].goal;
-  /* items already in the bag count straight away */
+  /* items already in the bag count straight away, and so does a state goal already met */
   if (goal.type === "item") {
     hero.quests[id].count = Math.min(goal.count, bagCount(hero, goal.item));
   }
+  syncStateQuests(hero);
   return true;
+}
+
+/** Count something the hero did (bought, gathered, crafted, disenchanted, refined) for the quests waiting for it. */
+export const recordQuestEvent = (hero, kind, item, amount = 1) =>
+  recordQuestEventIn(hero.quests, kind, item, amount);
+
+/* is the hero's state what this goal asks for? */
+function meetsStateGoal(hero, goal) {
+  if (goal.type === "equip") {
+    return !!(hero.equipment && hero.equipment[goal.slot]);
+  }
+  if (goal.type === "stat") {
+    return statPointsSpent(hero.stats || {}) > 0;
+  }
+  if (goal.type === "skill") {
+    return skillPointsSpent(hero.skills || {}) > 0;
+  }
+  return false;
+}
+
+/** Bring the quests that ask for a state (wear something, raise a stat, learn a skill) in line with the hero. */
+export function syncStateQuests(hero) {
+  let changed = false;
+  for (const [id, progress] of Object.entries(hero.quests || {})) {
+    const goal = QUESTS[id] && QUESTS[id].goal;
+    if (!goal || progress.state !== "active" || !["equip", "stat", "skill"].includes(goal.type)) {
+      continue;
+    }
+    const count = meetsStateGoal(hero, goal) ? 1 : 0;
+    if (count > (progress.count || 0)) {
+      progress.count = count;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /** Progress the server cannot see for itself: an npc visited or a place reached. */

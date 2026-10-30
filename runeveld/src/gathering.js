@@ -386,6 +386,9 @@ export function createGathering(deps) {
     }
     game.characterSheet.render();
     game.inventory.render();
+    if (game.questLog) {
+      game.questLog.refresh();
+    }
   }
 
   /* ---- talking to the server ---- */
@@ -633,6 +636,7 @@ export function createGathering(deps) {
     clickStation,
     perform,
     workAt,
+    isDepleted,
     reportProgress,
     useItem,
     cancel,

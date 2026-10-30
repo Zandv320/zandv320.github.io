@@ -135,6 +135,7 @@ import {
 import { groundRing, updateSkillEffects, updateTargetRing } from "./skill-effects.js";
 import { createGathering } from "./gathering.js";
 import { createWorkbench } from "./workbench.js";
+import { createGuide } from "./guide.js";
 import { validModsFor } from "./rules/item-mods.js";
 import { sanitizeProfessions } from "./rules/professions.js";
 
@@ -480,9 +481,22 @@ async function start(index) {
     );
   }
   game.isStarted = true;
+  /* a new hero: how to play, and where the story starts */
+  if (!Object.keys(player.quests || {}).length) {
+    game.guide.teach("welcome");
+  }
   sendPresence();
   setInterval(saveProgress, 5000);
   addEventListener("pagehide", saveProgress);
+}
+
+/** Where an npc stands (the merchant or a villager), for the guide: {x, z, height} or null. */
+function npcPosition(name) {
+  if (name === MERCHANT_NAME && game.merchant) {
+    return { x: game.merchant.x, z: game.merchant.z, height: game.merchant.sprite.height };
+  }
+  const villager = villagers().find((candidate) => candidate.spec.name === name);
+  return villager ? { x: villager.x, z: villager.z, height: villager.sprite.height } : null;
 }
 
 /* The UI panels of the hero: character sheet, inventory, admin, quest log, dialogue and world map. */
@@ -508,6 +522,7 @@ function createPanels(name) {
     onShopClosed: () => game.inventory.render(),
     questList: () => (game.questLog ? game.questLog.list() : []),
     readyQuestCount: () => (game.questLog ? game.questLog.readyCount() : 0),
+    showGuide: (topicId) => game.guide.showCard(topicId),
   });
   game.inventory = createInventory(player, {
     equip,
@@ -599,6 +614,16 @@ function createPanels(name) {
         visit(villager.spec.name, villager.label);
       }
     },
+    onAccepted: (id) => game.guide.onAccepted(id),
+    onTurnedIn: (id) => game.guide.onTurnedIn(id),
+  });
+  game.guide = createGuide({
+    player,
+    monsters,
+    camera,
+    questLog: game.questLog,
+    npcPosition,
+    isDepleted: (nodeId) => game.gathering.isDepleted(nodeId),
   });
   game.dialogue = createDialogue(game.questLog, {
     openShop,
@@ -625,7 +650,7 @@ function createPanels(name) {
         label: villager.label,
       })),
     ],
-    markers: () => game.gathering.markers(),
+    markers: () => [...game.gathering.markers(), ...game.guide.markers()],
     walkTo,
   });
 }
@@ -1684,7 +1709,9 @@ function step(dt) {
       questCheckTimer = 0;
       game.questLog.onBagChanged();
       game.questLog.onPosition(player.x, player.z);
+      game.questLog.onStateChanged();
     }
+    game.guide.update();
   }
   if (game.characterSelect && !game.isStarted) {
     game.characterSelect.tick(dt);
@@ -1772,6 +1799,8 @@ window.eldoria = {
   dialogue: () => game.dialogue,
   worldMap: () => game.worldMap,
   gathering: () => game.gathering,
+  guide: () => game.guide,
+  merchant: () => game.merchant,
   workbench: () => game.workbench,
   effects: () => game.effects,
   talkTo,

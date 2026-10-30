@@ -97,12 +97,16 @@ export function buy(id) {
     UI.systemMessage("Not enough zeny. Defeat monsters to earn zeny.");
     return;
   }
-  if (!addToBag(id)) {
+  /* the shared rule also counts the purchase for a quest that asks for it */
+  if (!progression.buy(player, id)) {
+    UI.systemMessage("Your bag is full.");
     return;
   }
-  player.zeny -= item.price;
   UI.systemMessage(`You bought a ${item.name.toLowerCase()}.`);
   game.inventory.render();
+  if (game.questLog) {
+    game.questLog.refresh();
+  }
   game.network.heroAction("buy", { id });
 }
 

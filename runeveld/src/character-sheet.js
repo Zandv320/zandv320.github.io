@@ -6,6 +6,8 @@ import { STATS, MAX_STAT, statCost } from "./rules/stats.js";
 import { SKILLS, canLearn, jobExpForLevel, SKILL_TREES, TREE_BRANCHES } from "./rules/skills.js";
 import { escapeHtml } from "./ui.js";
 import { ENCHANTMENTS, applyMods, displayName, modsOf } from "./rules/item-mods.js";
+import { SAGA, CHAPTERS, MAIN_QUESTS, QUESTS, mainStoryStep } from "./rules/quests.js";
+import { GUIDE_TOPICS, GUIDE_ORDER } from "./guide-topics.js";
 import {
   PROFESSIONS,
   MAX_PROFESSION_LEVEL,
@@ -132,23 +134,48 @@ export function createCharacterSheet(player, deps) {
     return " · " + icon(id, ITEMS[id].icon, "small") + " " + escapeHtml(ITEMS[id].name) + count;
   }
 
-  function renderQuests() {
-    const entries = deps.questList();
-    if (!entries.length) {
-      $("#sheet-quest-list").innerHTML =
-        '<p class="hint">No quests yet. Villagers with a <b class="quest-mark new">!</b> above their head have work for you.</p>';
-      return;
-    }
-    $("#sheet-quest-list").innerHTML = entries
-      .map(({ quest, state, progress }) => {
-        const isDone = state === "done";
-        const reward = quest.reward;
-        const rewardItems = (reward.items || []).map(rewardItemHtml).join("");
-        return `<div class="quest ${state}"><div class="quest-header"><b>${escapeHtml(quest.title)}</b><span class="quest-state">${QUEST_STATE_LABELS[state]}</span></div>
-      <small>${escapeHtml(quest.giver)}${isDone ? "" : " · " + escapeHtml(progress)}</small><p>${escapeHtml(isDone ? quest.completeText : quest.intro)}</p>
-      <div class="quest-reward">Reward: ${reward.exp} exp · ${reward.zeny} zeny${rewardItems}</div></div>`;
+  /* the main story at a glance: the current chapter and a bar per chapter */
+  function sagaProgressHtml() {
+    const step = mainStoryStep(player.quests || {}, player.level);
+    const doneCount = MAIN_QUESTS.filter((id) => player.quests?.[id]?.state === "done").length;
+    const chapter = step ? step.quest.chapter : Object.keys(CHAPTERS).length + 1;
+    const bars = Object.keys(CHAPTERS)
+      .map((number) => {
+        const state = +number < chapter ? "done" : +number === chapter ? "current" : "";
+        return `<span class="${state}" title="${escapeHtml(CHAPTERS[number])}"></span>`;
       })
       .join("");
+    const where = step
+      ? `Chapter ${step.quest.chapter}: ${escapeHtml(CHAPTERS[step.quest.chapter])}`
+      : "Complete. The story continues in Saga II.";
+    return `<div class="saga-progress"><b>${escapeHtml(SAGA.title)}: ${escapeHtml(SAGA.name)}</b><small>${where} · ${doneCount} / ${MAIN_QUESTS.length} steps</small><div class="saga-chapters">${bars}</div></div>`;
+  }
+
+  /* every guide card, to read again */
+  function guideBookHtml() {
+    const topics = GUIDE_ORDER.map(
+      (id) =>
+        `<button class="btn alt small" data-guide-topic="${id}">${escapeHtml(GUIDE_TOPICS[id].title)}</button>`,
+    ).join("");
+    return `<div class="guide-book"><h4>Adventurer's guide</h4><div class="topics">${topics}</div></div>`;
+  }
+
+  function renderQuests() {
+    const entries = deps.questList();
+    const list = entries.length
+      ? entries
+          .map(({ id, quest, state, progress }) => {
+            const isDone = state === "done";
+            const reward = quest.reward;
+            const rewardItems = (reward.items || []).map(rewardItemHtml).join("");
+            const kind = QUESTS[id].main ? " main" : "";
+            return `<div class="quest ${state}${kind}"><div class="quest-header"><b>${escapeHtml(quest.title)}</b><span class="quest-state">${QUEST_STATE_LABELS[state]}</span></div>
+      <small>${escapeHtml(quest.giver)}${isDone ? "" : " · " + escapeHtml(progress)}</small><p>${escapeHtml(isDone ? quest.completeText : quest.intro)}</p>
+      <div class="quest-reward">Reward: ${reward.exp} exp · ${reward.zeny} zeny${rewardItems}</div></div>`;
+          })
+          .join("")
+      : '<p class="hint">No quests yet. Villagers with a <b class="quest-mark new">!</b> above their head have work for you.</p>';
+    $("#sheet-quest-list").innerHTML = sagaProgressHtml() + list + guideBookHtml();
   }
 
   function renderProfessions() {
@@ -342,6 +369,11 @@ export function createCharacterSheet(player, deps) {
   }
 
   panel.addEventListener("click", (event) => {
+    const topicButton = event.target.closest("[data-guide-topic]");
+    if (topicButton) {
+      deps.showGuide(topicButton.dataset.guideTopic);
+      return;
+    }
     const tabButton = event.target.closest(".tab");
     if (tabButton) {
       activeTab = tabButton.dataset.tab;

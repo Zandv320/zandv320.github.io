@@ -186,6 +186,10 @@ export class HeroStore extends DurableObject {
         changed = true;
         break;
     }
+    /* quests that ask for a state (wear something, raise a stat, learn a skill) */
+    if (progression.syncStateQuests(hero)) {
+      changed = true;
+    }
     if (changed) {
       await this.#persist(token, roster);
     }

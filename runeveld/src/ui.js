@@ -83,11 +83,12 @@ export function setLowHp(isLow) {
  * @param {object} label label from createLabel
  * @param {'new'|'in-progress'|'ready'|null} kind '!' for a new quest, a grey '?' while one is in progress,
  *   a gold '?' when one is ready to turn in, or null for no marker
+ * @param {boolean} [isMain] the marker belongs to the main story: it glows
  */
-export function setQuestMarker(label, kind) {
+export function setQuestMarker(label, kind, isMain = false) {
   const marker = label.el.querySelector(".quest-mark");
   marker.hidden = !kind;
-  marker.className = "quest-mark " + (kind || "");
+  marker.className = "quest-mark " + (kind || "") + (isMain ? " main" : "");
   if (kind === "new") {
     marker.textContent = "!";
   } else {

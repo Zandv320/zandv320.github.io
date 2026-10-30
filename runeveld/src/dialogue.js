@@ -95,9 +95,12 @@ export function createDialogue(questLog, deps) {
     const current = npc;
     const choices = [];
     for (const { id, quest, state } of questLog.fromNpc(current.name)) {
+      /* the main story: a gold star */
+      const mark = quest.main ? "★ " : state === "available" ? "! " : "? ";
+      const mainClass = quest.main ? " main" : "";
       if (state === "available") {
         choices.push([
-          "! " + quest.title,
+          mark + quest.title,
           () =>
             show(quest.intro, [
               [
@@ -109,23 +112,25 @@ export function createDialogue(questLog, deps) {
               ],
               ["Not now", mainMenu, "alt"],
             ]),
+          mainClass.trim(),
         ]);
       } else if (state === "ready") {
         choices.push([
-          "? " + quest.title,
+          mark + quest.title,
           () => {
             show(quest.completeText, [["Thank you", mainMenu]]);
             questLog.turnIn(id);
           },
+          mainClass.trim(),
         ]);
       } else {
         choices.push([
-          "? " + quest.title,
+          mark + quest.title,
           () =>
             show(quest.progressText + " (" + questLog.progress(id) + ")", [
               ["I am on it", mainMenu, "alt"],
             ]),
-          "alt",
+          "alt" + mainClass,
         ]);
       }
     }
