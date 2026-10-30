@@ -93,6 +93,16 @@ h1,h2,h3{font-family:var(--kop);font-weight:700;letter-spacing:.04em}
 
 /* ---------- doelframe (onder het spelerframe) ---------- */
 #doelkader{position:absolute;left:var(--veilig-links);top:calc(var(--veilig-boven) + 86px);width:268px;padding:7px 10px}
+/* de partij: onder het doelkader, een rij per lid met naam, level en hp */
+#partij{position:absolute;left:var(--veilig-links);top:calc(var(--veilig-boven) + 146px);width:268px;padding:6px 8px 7px}
+#partij .pkop{display:flex;justify-content:space-between;align-items:center;font-family:var(--kop);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--goud-l);margin-bottom:4px}
+#partij .pkop button,#spelerkaart button,#uitnodiging button{font:inherit;font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid rgba(230,187,99,.35);background:linear-gradient(180deg,#232a40,#11141f);color:var(--tekst);cursor:pointer}
+#partij .plid{display:grid;grid-template-columns:1fr auto;gap:2px 6px;align-items:center;padding:3px 0;border-top:1px solid rgba(255,255,255,.06)}
+#partij .plid .pn{font-size:12px;color:#e8ecf6;display:flex;gap:4px;align-items:center}#partij .plid .pn .ico{--is:16px}#partij .plid small{color:var(--dim);font-size:10px}
+#partij .plid .bar{height:7px;grid-column:1/3}#partij .plid.ik .pn{color:var(--goud-l)}#partij .plid.weg{opacity:.45}#partij .plid .kroon{color:var(--goud);font-size:11px}
+#partij .plid .ps{justify-self:end;font-size:10px;color:var(--dim)}
+#spelerkaart{position:absolute;z-index:12;padding:8px 10px;min-width:150px}#spelerkaart b{display:block;font-family:var(--kop);font-size:13px;color:#dfe8ff}#spelerkaart small{display:block;color:var(--dim);margin-bottom:6px}#spelerkaart .rij{display:flex;gap:6px}
+#uitnodiging{position:absolute;left:50%;top:calc(var(--veilig-boven) + 16px);transform:translateX(-50%);z-index:12;padding:10px 14px;text-align:center}#uitnodiging b{color:var(--goud-l)}#uitnodiging .rij{display:flex;gap:8px;justify-content:center;margin-top:8px}
 #doelkader .kop{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:4px}
 #doelkader b{font-family:var(--kop);font-size:13px;color:#ffd1d1;letter-spacing:.03em}#doelkader small{color:var(--dim);font-size:10.5px}
 #doelkader .bar{height:10px}#doelkader .bar.hp{--c1:#ffb0b0;--c2:#e04848;--c3:#7a1a1a}
@@ -309,7 +319,7 @@ input,select,textarea{font:inherit}
   :root{--balk-h:66px}
   #char{width:188px;padding:6px 8px 7px 6px;gap:7px}.portret{width:44px;height:44px}.portret canvas{width:56px;height:62px}.lvlbadge{height:17px;min-width:17px;font-size:10px}
   .charinfo b{font-size:12px}.charinfo small{font-size:9.5px}.bar{height:10px}.bar span{font-size:9px}.bar.exp{height:5px}
-  #doelkader{width:188px;top:calc(var(--veilig-boven) + 72px);padding:6px 8px}
+  #doelkader{width:188px;top:calc(var(--veilig-boven) + 72px);padding:6px 8px}#partij{width:188px;top:calc(var(--veilig-boven) + 124px);padding:5px 7px}#partij .plid .pn{font-size:11px}
   #rechtsboven{width:auto;gap:6px}#status{padding:4px 7px;font-size:11px;gap:5px}#status .online-tekst{display:none}
   #mm,#qtracker{display:none}
   #onder{left:var(--veilig-links);right:var(--veilig-rechts);transform:none;width:auto}
@@ -339,7 +349,7 @@ input,select,textarea{font:inherit}
 @media (max-height:520px) and (min-width:701px){
   :root{--balk-h:62px}
   #char{width:220px;padding:6px 8px;gap:7px}.portret{width:44px;height:44px}.portret canvas{width:56px;height:62px}.bar{height:10px}.bar span{font-size:9px}
-  #doelkader{width:220px;top:calc(var(--veilig-boven) + 66px)}
+  #doelkader{width:220px;top:calc(var(--veilig-boven) + 66px)}#partij{width:220px;top:calc(var(--veilig-boven) + 116px);padding:5px 7px}
   #rechtsboven{width:auto}#status{font-size:11px;padding:4px 7px}#status .online-tekst{display:none}#mm{display:none}#qtracker{display:none}
   .slot{width:42px;height:44px}.slot .nm{display:none}#menu .mk{width:36px;height:36px}#menu .mk kbd{display:none}#balk.vol{flex-wrap:nowrap;width:auto}body.balk2{--balk-h:62px}
   #chat{display:none;width:min(360px,calc(100vw - 480px));bottom:calc(var(--veilig-onder) + var(--balk-h) + 8px)}body.chat-open #chat{display:flex}#log{max-height:70px}

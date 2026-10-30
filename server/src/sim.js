@@ -58,7 +58,7 @@ export function maakSim(zend) {
   function sterf(m, door) {
     m.dood = true; m.hp = 0; m.st = 3; m.doel = null; const rs = m.spec.respawn || RESPAWN; m.rt = R(rs[0], rs[1]);
     const sp = m.spec; let buit = null; for (const [id, kans] of Object.entries(sp.buit || {})) if (Math.random() < kans) { buit = id; break; }
-    zend('k', {id: m.id, door, exp: sp.exp, zeny: Math.round(R(sp.zeny[0], sp.zeny[1])), buit});
+    zend('k', {id: m.id, door, exp: sp.exp, zeny: Math.round(R(sp.zeny[0], sp.zeny[1])), buit, x: +m.x.toFixed(1), z: +m.z.toFixed(1)});
   }
   function tick(dt, spelers) {
     for (const m of M.values()) {

@@ -11,7 +11,7 @@ const KLEUR={
   huis:'#5d6c9c',huisRand:'#0c0f2a',hut:'#a6713c',hek:'#6b4a2a',put:'#8f8e89',kraam:'#c9473d',kraam2:'#4f9a4f',
   klein:'#8a5a2a',hooi:'#d9b25a',vijver:'#58a6d8',moestuin:'#7a5536',altaar:'#b4b2aa',menhir:'#86857f',
   boom:'#3b8a3c',den:'#2d6b3a',struik:'#67ad4c',rots:'#9b9b95',lantaarn:'#ffd27a',
-  speler:'#ffffff',ander:'#7cc4ff',monster:'#f87171',monsterRustig:'#ffd1a6',npc:'#ffc857',quest:'#ffe9a8',
+  speler:'#ffffff',ander:'#7cc4ff',partij:'#7cf5a0',monster:'#f87171',monsterRustig:'#ffd1a6',npc:'#ffc857',quest:'#ffe9a8',
 };
 const X0=VALE.x0-4,X1=70,Z0=BOS.z0,Z1=70;        /* de wereld: Kingsvale in het westen, het veld, het bos erboven */
 
@@ -80,7 +80,7 @@ export function maakKaart(A){
     for(const m of A.M.values()){if(m.dood||!m.sprite.g.visible)continue;stip(g,px(m.x),pz(m.z),2.2*dpr,m.spec.agressief?KLEUR.monster:KLEUR.monsterRustig,'rgba(0,0,0,.5)')}
     for(const n of A.npcs()){stip(g,px(n.x),pz(n.z),2.6*dpr,KLEUR.npc,'rgba(0,0,0,.6)');
       const q=n.label&&n.label.el.querySelector('.qm');if(q&&!q.hidden){g.font=`900 ${11*dpr}px Rubik,sans-serif`;g.textAlign='center';g.fillStyle=q.classList.contains('bezig')?'#c9d3dd':KLEUR.quest;g.strokeStyle='#000';g.lineWidth=2*dpr;g.strokeText(q.textContent,px(n.x),pz(n.z)-4*dpr);g.fillText(q.textContent,px(n.x),pz(n.z)-4*dpr)}}
-    for(const s of A.S.values())stip(g,px(s.x),pz(s.z),3*dpr,KLEUR.ander,'#000');
+    for(const[id,s]of A.S)stip(g,px(s.x),pz(s.z),3*dpr,A.partijLid&&A.partijLid(id)?KLEUR.partij:KLEUR.ander,'#000');
     /* de speler: een pijl in de kijkrichting */
     const P=A.P,k=P.sprite?P.sprite.kijk:{x:0,y:1},a=Math.atan2(k.x,-k.y);
     g.save();g.translate(px(P.x),pz(P.z));g.rotate(a);g.fillStyle=KLEUR.speler;g.strokeStyle='#000';g.lineWidth=1.5*dpr;

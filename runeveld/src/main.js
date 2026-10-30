@@ -19,6 +19,7 @@ import {BLADEN,laadBladen,laadLagenVoor,opLaagGeladen} from './bladen.js';
 import {heldLagen,tekenHeld,herkleur,HAAR_BRON,HAAR} from './uiterlijk.js';
 import {maakSelectie,PODIUM} from './selectie.js';
 import {maakAccount} from './account.js';
+import {maakPartij} from './partij.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
 import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld,zon,hemi,volgZon} from './world.js';
@@ -38,7 +39,7 @@ const M=new Map();      /* monsters: id → monster */
 const S=new Map();      /* andere spelers: peer-id → speler */
 const klikbaar=[];      /* meshes waar je op kunt klikken */
 let stdPx=0,stdTilt=0;
-let net=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null,DAG=null,FX=null;
+let net=null,PARTIJ=null,H=null,npc=null,gestart=false,K=null,I=null,ADM=null,Q=null,DL=null,KT=null,SEL=null,CH=null,DAG=null,FX=null;
 /* schakelaars voor het admin-paneel (admin.js) */
 const ADMIN={god:false,snelheid:1,bevroren:false,noclip:false,expMult:1,dropMult:1};
 /* alles wat uit level, stats, uitrusting en skills volgt (regels/stats.js) */
@@ -63,7 +64,7 @@ async function init(){
   DAG=maakDaglicht({scene,camera,renderer,zon,hemi,lichten});
   $('#laden').classList.add('weg');
   addEventListener('pointerdown',wekGeluid,{capture:true});addEventListener('keydown',wekGeluid,{capture:true});
-  CH=leesChars();startNet();await laadHeldenVanServer();
+  CH=leesChars();startNet();PARTIJ=maakPartij({net,P,S});P.hpMax=hpMax;await laadHeldenVanServer();
   SEL=maakSelectie({chars:()=>CH.lijst,bewaar:()=>schrijfChars(CH),start:i=>start(i),laatst:()=>CH.laatst,inDorp,scene,cam,camera,
     nieuw:async c=>{const r=await net.vraag({k:'nieuw',c});if(r&&r.lijst)neemLijst(r)},wis:async naam=>{const r=await net.vraag({k:'wis',naam});if(r&&r.lijst)neemLijst(r)}});
   /* het selectiescherm kijkt ingezoomd naar het podium; bij Enter World gaat de camera terug naar de normale stand */
@@ -121,7 +122,7 @@ async function start(i){
   Q=maakQuests(P,{actie:(t,d)=>net.actie(t,d),tasAantal,tasVerwijderen,tasToevoegen,beloning:d=>beloning({...d,buit:null}),render:()=>{K.render();I.render()},fx:naam=>FX.speel(naam,P.x,P.z,{grootte:2.6,voet:true,volg:P,tint:0xffe6a0}),
     elkeNpc:f=>{f('Merchant Bram',npc.label);for(const n of dorpelingen())f(n.spec.naam,n.label)}});
   DL=maakDialoog(Q,{openWinkel,advancementOpties,advance,klasseNaam:id=>KLASSEN[id]});Q.vernieuw();
-  KT=maakKaart({scene,borden,P,M,S,VELD,DORP,PLEIN,inDorp,npcs:()=>[npc,...dorpelingen().map(n=>({naam:n.spec.naam,x:n.x,z:n.z,label:n.label}))],
+  KT=maakKaart({scene,borden,P,M,S,VELD,DORP,PLEIN,inDorp,partijLid:id=>PARTIJ.isLid(id),npcs:()=>[npc,...dorpelingen().map(n=>({naam:n.spec.naam,x:n.x,z:n.z,label:n.label}))],
     loopNaar:(x,z)=>{if(P.dood||!binnenWereld(x,z))return false;DL.sluit();P.bestemming=[x,z];P.naarNpc=false;P.target=null;P.wacht=null;UI.doelkader(null);if(P.zit)zitten(false);ring(x,z,0xffffff,.5,.1,.35,.7);return true}});
   $('#start').hidden=true;$('#hud').hidden=false;
   UI.sys(save.lvl?`Welcome back, ${naam}!`:`Welcome to Eldoria, ${naam}! The village of Runeveld is safe; the monsters roam the fields beyond the gates. Merchant Bram at the stall sells potions and gear. Old Mette by the well is looking for you.`);
@@ -163,7 +164,7 @@ function startNet(){
   net.onSpelers((spelers,weg)=>{
     for(const id of weg)verwijderSpeler(id);
     for(const[id,p]of spelers){if(!p||!p.n)continue;let s=S.get(id);
-      if(!s){s={sprite:new Sprite2D(BLADEN.held,{lagen:heldLagen(p.u||{},p.h)}),label:UI.maakLabel('ander',p.n),x:p.x||0,z:p.y||0,tx:0,tz:0,pres:p,seq:p.s,bezigTot:0,uKey:JSON.stringify([p.u||{},p.h])};scene.add(s.sprite.g);S.set(id,s);UI.sys(`${p.n} is online.`)}
+      if(!s){s={sprite:new Sprite2D(BLADEN.held,{lagen:heldLagen(p.u||{},p.h)}),label:UI.maakLabel('ander',p.n),x:p.x||0,z:p.y||0,tx:0,tz:0,pres:p,seq:p.s,bezigTot:0,uKey:JSON.stringify([p.u||{},p.h])};scene.add(s.sprite.g);s.sprite.mesh.userData.speler=id;klikbaar.push(s.sprite.mesh);S.set(id,s);UI.sys(`${p.n} is online.`)}
       const uKey=JSON.stringify([p.u||{},p.h]);if(uKey!==s.uKey){s.uKey=uKey;s.sprite.zetLagen(heldLagen(p.u||{},p.h))}
       s.pres=p;s.tx=p.x||0;s.tz=p.y||0;s.label.naam.textContent=`${p.n} · Lv ${p.l||1}`}
     UI.online(net.verbonden(),net.aantal());
@@ -172,7 +173,7 @@ function startNet(){
   net.aan('h',(d,f,isMe)=>{if(H)hostHit(d,f);
     if(!isMe){const m=M.get(d.id);if(m&&!m.dood){UI.getal(m.x,m.sprite.h*.8*m.schaal,m.z,camera,d.dmg,'');const s=S.get(f);klap(m,s?m.x-s.x:0,s?m.z-s.z:1,.25);if(!H)m.hp=Math.max(0,m.hp-d.dmg)}}});
   net.aan('ijs',(d,f)=>{const tot=nu()+(d.duur||1.5);for(const id of d.ids||[]){const m=M.get(id);if(m&&!m.dood)m.ijsTot=tot}});
-  net.aan('k',(d,f)=>{if(f!==net.hostId())return;const m=M.get(d.id);if(m)sterfMonster(m);if(d.door===net.me){beloning(d);Q.opDood(d.id.split('#')[0])}});
+  net.aan('k',(d,f)=>{if(f!==net.hostId())return;const m=M.get(d.id);if(m)sterfMonster(m);const mijn=d.aandeel?d.aandeel[net.me]:(d.door===net.me?{exp:d.exp,zeny:d.zeny}:null);if(mijn){beloning({...d,exp:mijn.exp,zeny:mijn.zeny,buit:d.door===net.me?d.buit:null});Q.opDood(d.id.split('#')[0])}});
   net.aan('ma',(d,f)=>{if(f!==net.hostId())return;const m=M.get(d.id);if(m&&!m.dood){m.sprite.speel('aanval',true);m.aanvalT=nu()+.5;const w=d.to===net.me?P:S.get(d.to);if(w)m.sprite.stoot(w.x-m.x,w.z-m.z,.22)}if(d.to===net.me&&m)neemSchade(d.dmg,m.spec,m)});
   net.aan('prov',(d,f)=>{if(!H)return;for(const m of M.values())if(!m.dood&&Math.hypot(m.x-d.x,m.z-d.z)<=d.straal)m.doel=f});
   net.aan('m',(d,f)=>{if(f!==net.hostId()||H)return;snapshot(d)});
@@ -181,7 +182,7 @@ function startNet(){
   net.wereld(()=>obstakels.map(o=>[+o.x.toFixed(2),+o.z.toFixed(2),+o.r.toFixed(2)]));   /* de server simuleert de monsters en kent de wereld alleen als cirkels */
   if(net.isHost())wordHost();   /* zonder server: de eerste speler is host */
 }
-function verwijderSpeler(id){const s=S.get(id);if(!s)return;s.sprite.verwijder();UI.verwijderLabel(s.label);S.delete(id);UI.sys(`${s.pres.n||'Someone'} left.`)}
+function verwijderSpeler(id){const s=S.get(id);if(!s)return;const ki=klikbaar.indexOf(s.sprite.mesh);if(ki>=0)klikbaar.splice(ki,1);s.sprite.verwijder();UI.verwijderLabel(s.label);S.delete(id);UI.sys(`${s.pres.n||'Someone'} left.`)}
 let presT=0,lastPres='';
 function stuurPresence(){
   const t=nu();if(t-presT<.2)return;
@@ -643,10 +644,11 @@ function klik(cx,cy){
   if(hits.length){const u=hits[0].object.userData;
     if(u.m&&!u.m.dood){P.target=u.m;P.wacht=null;P.bestemming=null;P.naarNpc=false;UI.doelkader(u.m);if(P.zit)zitten(false);return}
     if(u.dorpeling){const n=u.dorpeling;gesprek({naam:n.spec.naam,groet:groet(n),sprite:n.sprite,winkel:n.spec.winkel,x:n.x,z:n.z},n.x,n.z,()=>spreek(n,P,8));return}
+    if(u.speler!==undefined){PARTIJ.spelerKaart(u.speler,cx,cy);return}
     if(u.npc){gesprek({naam:'Merchant Bram',groet:BRAM_GROET,sprite:npc.sprite,winkel:'bram',x:npc.x,z:npc.z},npc.x,npc.z,()=>npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z));return}
   }
   const p=grondPunt(cx,cy);if(!p)return;
-  DL.sluit();P.bestemming=[p.x,p.z];P.naarNpc=false;P.target=null;P.wacht=null;UI.doelkader(null);if(P.zit)zitten(false);
+  DL.sluit();PARTIJ.sluitKaart();P.bestemming=[p.x,p.z];P.naarNpc=false;P.target=null;P.wacht=null;UI.doelkader(null);if(P.zit)zitten(false);
   ring(p.x,p.z,0xffffff,.5,.1,.35,.7);
 }
 /* zoomen in vaste stappen (pixels per eenheid), zodat de pixelschaal altijd heel blijft */
@@ -684,7 +686,7 @@ function invoer(){
   addEventListener('keyup',e=>keys.delete(e.code));
   addEventListener('blur',()=>keys.clear());
   document.querySelectorAll('.slot[data-skill="drank"],.slot[data-skill="zit"]').forEach(b=>b.addEventListener('click',()=>vaardigheid(b.dataset.skill)));
-  $('#chatin').addEventListener('submit',e=>{e.preventDefault();const inp=$('#chattekst');const t=inp.value.trim();inp.value='';inp.blur();if(t&&net)net.stuur('c',{t:t.slice(0,120)})});
+  $('#chatin').addEventListener('submit',e=>{e.preventDefault();const inp=$('#chattekst');const t=inp.value.trim();inp.value='';inp.blur();if(t&&net&&!PARTIJ.opdracht(t))net.stuur('c',{t:t.slice(0,120)})});
   $('#k-knop').onclick=()=>{if(K)K.toggle()};$('#i-knop').onclick=()=>{if(I)I.toggle()};$('#a-knop').onclick=()=>{if(ADM)ADM.toggle()};
   $('#m-knop').onclick=()=>{if(KT)KT.toggle()};
   const gk=$('#g-knop');const zetGk=()=>{gk.innerHTML=ico('ui_geluid',geluidAan()?'🔊':'🔇');gk.classList.toggle('uit',!geluidAan())};zetGk();gk.onclick=()=>{zetGeluid(!geluidAan());zetGk();G.klik()};
@@ -727,7 +729,7 @@ function stap(dt){
     if(zone&&zn!==zone)UI.melding(ZONES[zn][0],ZONES[zn][1]);
     const zoneNaam=()=>zn==='stad'?(inKasteel(P.x,P.z)?'Aurelia Castle':STAD.naam):zn==='vale'?VALE.naam:zn==='bos'?BOS.naam:inDorp(P.x,P.z)?'Runeveld':'Runeveld fields';
     if(zn!==zone){zone=zn;$('#mm-zone').textContent=zoneNaam()}else if(tasT===0)$('#mm-zone').textContent=zoneNaam();
-    K.tick(dt);ADM.tick(dt);KT.render();KT.renderMini();
+    K.tick(dt);ADM.tick(dt);PARTIJ.tick(dt);KT.render();KT.renderMini();
   }
   if(gestart){npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera)}
   updateDorpelingen(dt,cam,camera,P);
@@ -739,5 +741,5 @@ function stap(dt){
   renderer.render(scene,camera);
 }
 
-window.RV={P,M,S,cam,camera,renderer,scene,zon,obstakels,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
+window.RV={P,M,S,cam,camera,renderer,scene,zon,obstakels,ADMIN,PARTIJ:()=>PARTIJ,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
 init().catch(e=>{console.error(e);$('#laden').textContent='Loading failed: '+e.message});

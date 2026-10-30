@@ -24,7 +24,8 @@ export class Wereld {
     this.ctx = ctx; this.env = env;
     /* pings beantwoorden zonder het object te wekken */
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"k":"ping"}', '{"k":"pong"}'));
-    this.sim = maakSim((t, d) => { this.zend(null, {k: 'e', f: 'server', t, d}); if (t === 'k') this.opDood(d); });
+    this.sim = maakSim((t, d) => { if (t === 'k') d = this.metAandeel(d); this.zend(null, {k: 'e', f: 'server', t, d}); if (t === 'k') this.opDood(d); });
+    this.partijen = new Map(); this.uitn = new Map(); this.partijNr = 0;   /* partijen leven zolang het object leeft */
     this.spelers_ = maakSpelers(this.ctx.storage);
     this.versie = env.VERSIE && env.VERSIE.id || '';
     this.loop = null; this.laatst = 0;
@@ -75,6 +76,7 @@ export class Wereld {
       return;
     }
     if (!at.f) return;
+    if (m.k === 'party') { this.partij(ws, at, m); return; }
     if (m.k === 'laad' || m.k === 'import' || m.k === 'nieuw' || m.k === 'wis' || m.k === 'speel' || m.k === 'save' || m.k === 'a') { this.account(ws, at, m); return; }
     if (m.k === 'wereld') {   /* de botsingscirkels van de wereld, één keer per versie van de wereld */
       if (!Array.isArray(m.obst) || m.obst.length > 6000) return;
@@ -109,17 +111,62 @@ export class Wereld {
       else if (m.k === 'a') { if (!at.naam) return; const c = await S.actie(at.tok, at.naam, String(m.t), m.d); if (c) stuur({k: 'char', c}); }
     } catch (e) { stuur({k: 'fout', fout: 'serverfout'}); }
   }
-  /* een monster is gedood: de doder krijgt exp, zeny en buit op zijn record */
+  /* ---- partijen: uitnodigen, aannemen, verlaten, schoppen; de leden delen exp (met een bonus) en zeny ---- */
+  socketVan(f) { for (const ws of this.ctx.getWebSockets()) { const a = ws.deserializeAttachment(); if (a && a.f === f) return {ws, a}; } return null; }
+  partijVan(f) { for (const p of this.partijen.values()) if (p.leden.includes(f)) return p; return null; }
+  stuurPartij(p) {
+    const leden = p.leden.map(f => { const s = this.socketVan(f), q = s && s.a.p || {}; return {f, n: q.n || '?', k: q.k || 'swordsman', l: q.l || 1}; });
+    const msg = JSON.stringify({k: 'partij', p: {id: p.id, leider: p.leider, leden}});
+    for (const f of p.leden) { const s = this.socketVan(f); if (s) try { s.ws.send(msg); } catch (e) {} }
+  }
+  verlaatPartij(f) {
+    const p = this.partijVan(f); if (!p) return;
+    p.leden = p.leden.filter(x => x !== f); const s = this.socketVan(f); if (s) try { s.ws.send('{"k":"partij","p":null}'); } catch (e) {}
+    if (!p.leden.length) { this.partijen.delete(p.id); return; }
+    if (p.leider === f) p.leider = p.leden[0]; this.stuurPartij(p);
+  }
+  partij(ws, at, m) {
+    const info = tekst => { try { ws.send(JSON.stringify({k: 'partijinfo', tekst})); } catch (e) {} };
+    const actie = m.actie;
+    if (actie === 'uitnodig') {
+      const doel = this.socketVan(String(m.naar)); if (!doel || doel.a.f === at.f || !doel.a.p || !doel.a.p.n) return info('That player is not here.');
+      if (this.partijVan(doel.a.f)) return info(`${doel.a.p.n} is already in a party.`);
+      let p = this.partijVan(at.f);
+      if (!p) { p = {id: 'p' + (++this.partijNr), leider: at.f, leden: [at.f]}; this.partijen.set(p.id, p); this.stuurPartij(p); }
+      else if (p.leider !== at.f) return info('Only the party leader can invite.');
+      if (p.leden.length >= 6) return info('The party is full (6).');
+      this.uitn.set(doel.a.f, {partij: p.id, van: at.f, t: Date.now()});
+      try { doel.ws.send(JSON.stringify({k: 'uitnodiging', van: {f: at.f, n: at.p && at.p.n || '?'}, partij: p.id})); } catch (e) {}
+      info(`You invited ${doel.a.p.n} to your party.`);
+    } else if (actie === 'accepteer') {
+      const u = this.uitn.get(at.f); if (!u || Date.now() - u.t > 60000) return info('That invitation has expired.');
+      this.uitn.delete(at.f); const p = this.partijen.get(u.partij); if (!p || p.leden.length >= 6) return info('That party no longer exists.');
+      this.verlaatPartij(at.f); p.leden.push(at.f); this.stuurPartij(p);
+    } else if (actie === 'weiger') { const u = this.uitn.get(at.f); this.uitn.delete(at.f); if (u) { const s = this.socketVan(u.van); if (s) try { s.ws.send(JSON.stringify({k: 'partijinfo', tekst: `${at.p && at.p.n || 'Someone'} declined your invitation.`})); } catch (e) {} } }
+    else if (actie === 'verlaat') this.verlaatPartij(at.f);
+    else if (actie === 'schop') { const p = this.partijVan(at.f); if (!p || p.leider !== at.f) return; const wie = String(m.wie); if (p.leden.includes(wie) && wie !== at.f) this.verlaatPartij(wie); }
+  }
+  /* het aandeel van elk partijlid in de buurt (40 eenheden) in de exp en zeny van een dood monster; samen levert 10% per extra lid op */
+  metAandeel(d) {
+    const aandeel = {}, p = this.partijVan(d.door);
+    if (!p) { aandeel[d.door] = {exp: d.exp, zeny: d.zeny}; return {...d, aandeel}; }
+    const dichtbij = p.leden.filter(f => { const s = this.socketVan(f); return s && s.a.p && s.a.p.n && !s.a.p.dd && Math.hypot((+s.a.p.x || 0) - d.x, (+s.a.p.y || 0) - d.z) <= 40; });
+    if (!dichtbij.includes(d.door)) dichtbij.push(d.door);
+    const n = dichtbij.length, bonus = 1 + .1 * (n - 1);
+    for (const f of dichtbij) aandeel[f] = {exp: Math.round(d.exp * bonus / n), zeny: Math.round(d.zeny / n)};
+    return {...d, aandeel};
+  }
+  /* een monster is gedood: ieder met een aandeel krijgt zijn exp en zeny op zijn record; de buit gaat naar de doder */
   async opDood(d) {
-    for (const ws of this.ctx.getWebSockets()) { const a = ws.deserializeAttachment(); if (!a || a.f !== d.door || !a.tok || !a.naam) continue;
-      try { const c = await this.spelers_.dood(a.tok, a.naam, {soort: String(d.id).split('#')[0], exp: d.exp, zeny: d.zeny, buit: d.buit}); if (c) ws.send(JSON.stringify({k: 'char', c})); } catch (e) {} }
+    for (const [f, deel] of Object.entries(d.aandeel || {})) { const s = this.socketVan(f); if (!s || !s.a.tok || !s.a.naam) continue;
+      try { const c = await this.spelers_.dood(s.a.tok, s.a.naam, {soort: String(d.id).split('#')[0], exp: deel.exp, zeny: deel.zeny, buit: f === d.door ? d.buit : null}); if (c) s.ws.send(JSON.stringify({k: 'char', c})); } catch (e) {} }
   }
   webSocketClose(ws) { this.weg(ws); }
   webSocketError(ws) { this.weg(ws); }
   weg(ws) {
     const a = ws.deserializeAttachment();
     try { ws.close(1000, 'bye'); } catch (e) {}
-    if (a && a.f) this.zend(ws, {k: 'x', f: a.f});
+    if (a && a.f) { this.verlaatPartij(a.f); this.uitn.delete(a.f); this.zend(ws, {k: 'x', f: a.f}); }
   }
   /* naar iedereen behalve `van` */
   zend(van, obj) {
