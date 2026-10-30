@@ -5,7 +5,8 @@
    HTTP, JSON:  POST /account/registreer {naam, ww, token}   → {ok, naam, herstelcode}
                 POST /account/login      {naam, ww}          → {ok, naam, token}
                 POST /account/herstel    {naam, code, ww}    → {ok, naam, token, herstelcode}
-                POST /account/wie        {token}             → {ok, naam|null} */
+                POST /account/wie        {token}             → {ok, naam|null}
+                POST /account/verwijder  {naam, ww}          → {ok, naam, token}   (helden blijven bij het token) */
 const ITER = 60000, MAX_POGINGEN = 6, VENSTER = 10 * 60 * 1000;
 const enc = new TextEncoder();
 const hex = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
@@ -59,6 +60,13 @@ export class Accounts {
       const nieuw = maakCode(); acc.salt = random(16); acc.hash = await hash(b.ww, acc.salt); acc.codeSalt = random(16); acc.codeHash = await hash(nieuw, acc.codeSalt);
       await this.ctx.storage.put(sleutel, acc); this.pogingen.delete(sleutel);
       return json({ok: true, naam: acc.naam, token: acc.token, herstelcode: nieuw});
+    }
+    if (pad === 'verwijder') {   /* account opheffen; de helden blijven bij het token, dat daarna weer vrij is voor een nieuw account */
+      if (this.teVaak(sleutel)) return json({ok: false, fout: 'Too many attempts. Try again in ten minutes.'});
+      const acc = await this.ctx.storage.get(sleutel);
+      if (!acc || !geldigWw(b.ww) || !gelijk(await hash(b.ww, acc.salt), acc.hash)) { this.mislukt(sleutel); return json({ok: false, fout: 'Unknown username or wrong password.'}); }
+      await this.ctx.storage.delete(sleutel); await this.ctx.storage.delete('tok:' + acc.token);
+      return json({ok: true, naam: acc.naam, token: acc.token});
     }
     return json({ok: false, fout: 'onbekend'}, 404);
   }
