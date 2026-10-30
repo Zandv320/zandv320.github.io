@@ -11,7 +11,9 @@ import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } fro
    outfit: 'armor1' tunic (recolourable with tunicColor), 'armor2' leather vest, 'armor3' plate armor;
    headgear: 'cap' or 'helm'; weapon: 'sword1'..'sword3'. speed in units per second, pause [min, max] seconds at
    each route point, loop: walk the route in a circle instead of back and forth, facing: direction when standing,
-   hammers: plays the attack animation now and then (smiths, recruits), shop: SHOPS key. */
+   hammers: plays the attack animation now and then (recruits), work: a profession animation (sheets.js WORK:
+   smith, fish, harvest, brew, cook, chop) played while standing at a route point, facing workFacing,
+   shop: SHOPS key. */
 const VILLAGERS = [
   {
     name: "Guard Rolf",
@@ -140,6 +142,7 @@ const VILLAGERS = [
     headgear: "cap",
     route: [[3, 15.5]],
     facing: [1, 0],
+    work: "fish",
     lines: [
       "Shh. You will scare the fish.",
       "Not a single bite all morning.",
@@ -154,7 +157,7 @@ const VILLAGERS = [
     headgear: "cap",
     route: [[-7.8, 9.2]],
     facing: [-1, -1],
-    hammers: true,
+    work: "smith",
     lines: [
       "Bring me iron and I will make it sing.",
       "Mind the sparks.",
@@ -367,6 +370,7 @@ const VILLAGERS = [
     route: [[-154, -34.3]],
     facing: [0, 1],
     shop: "apothecary",
+    work: "brew",
     lines: [
       "Orange potions. My own recipe. Do not ask.",
       "Dire wolf pelt keeps a brew warm for days.",
@@ -381,7 +385,7 @@ const VILLAGERS = [
     route: [[-166, -34.3]],
     facing: [0, 1],
     shop: "armorer",
-    hammers: true,
+    work: "smith",
     lines: [
       "Royal steel. Costs what it costs.",
       "That dent? That is character.",
@@ -450,6 +454,7 @@ const VILLAGERS = [
     tunicColor: "cream",
     route: [[-162.7, -32.6]],
     facing: [0, 1],
+    work: "cook",
     lines: [
       "Rooms upstairs, ale downstairs, no singing after midnight.",
       "The Gilded Boar: finest inn in Aurelia. The only one, too.",
@@ -623,7 +628,7 @@ const VILLAGERS = [
     ],
     speed: 1.2,
     pause: [6, 12],
-    hammers: true,
+    work: "chop",
     lines: [
       "Measure twice, cut once, swear thrice.",
       "The inn roof again. Rosa, I swear.",
@@ -637,7 +642,7 @@ const VILLAGERS = [
     headgear: "cap",
     route: [[-125.2, 14]],
     facing: [-1, -1],
-    hammers: true,
+    work: "smith",
     lines: [
       "Gunnar sells it. I make it.",
       "Hot. Everything here is hot.",
@@ -747,6 +752,8 @@ const VILLAGERS = [
     ],
     speed: 1.3,
     pause: [5, 12],
+    work: "harvest",
+    workFacing: [0, -1],
     lines: [
       "Bandits camp north of my fields. They took my best cow. The COW.",
       "Beets, turnips, and a view of the castle.",
@@ -768,6 +775,27 @@ const VILLAGERS = [
     ],
   },
 ];
+
+VILLAGERS.push({
+  name: "Farmhand Tess",
+  hair: "brown",
+  outfit: "armor1",
+  tunicColor: "green",
+  headgear: "cap",
+  route: [
+    [29.6, -0.5],
+    [35.4, -0.5],
+  ],
+  speed: 1.1,
+  pause: [6, 12],
+  work: "harvest",
+  workFacing: [0, -1],
+  lines: [
+    "The grain is good this year. The crows think so too.",
+    "Jorn says the scarecrow works. The crows disagree.",
+    "Mind the rows, please. They were straight this morning.",
+  ],
+});
 
 const randomBetween = (min, max) => min + Math.random() * (max - min);
 const villagerList = [];
@@ -827,6 +855,7 @@ export function createVillagers(scene, clickables) {
       pause: randomBetween(1, 4),
       chatTimer: randomBetween(10, 60),
       busyUntil: 0,
+      talkUntil: 0,
       hammerTimer: randomBetween(1, 3),
     };
     sprite.mesh.userData.villager = villager;
@@ -894,7 +923,15 @@ export function updateVillagers(dt, cameraState, camera, player) {
     if (spec.route.length > 1 && time >= villager.busyUntil) {
       isWalking = walkRoute(villager, dt);
     }
-    /* The smith hammers now and then (the attack animation without a weapon). */
+    /* At work while standing (not while someone is talking to them) */
+    if (spec.work && !isWalking && time >= villager.busyUntil && time >= villager.talkUntil) {
+      if (spec.workFacing && sprite.animName !== spec.work) {
+        sprite.face(spec.workFacing[0], spec.workFacing[1]);
+      }
+      sprite.play(spec.work);
+      villager.busyUntil = time + 0.2;
+    }
+    /* Recruits swing now and then (the attack animation). */
     if (spec.hammers) {
       villager.hammerTimer -= dt;
       if (villager.hammerTimer <= 0) {
@@ -928,6 +965,7 @@ export function updateVillagers(dt, cameraState, camera, player) {
 export function faceSpeaker(villager, player, seconds = 4) {
   villager.sprite.face(player.x - villager.x, player.z - villager.z);
   villager.pause = Math.max(villager.pause, seconds);
+  villager.talkUntil = performance.now() / 1000 + seconds;
   villager.chatTimer = Math.max(villager.chatTimer, seconds + randomBetween(10, 30));
 }
 

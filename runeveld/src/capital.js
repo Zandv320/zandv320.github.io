@@ -1,6 +1,7 @@
 /* Eldoria – Kingsvale and Aurelia: the meadow plain west of the field with the capital. A walled city with three
    gates, a main avenue to the castle, a square with a fountain and a statue, four quarters (market, temple,
    residential, barracks) and outside the walls farms, a mill, a lake and the bandit camp in the north. */
+import * as THREE from "three";
 import * as builders from "./builders.js";
 import {
   VALE,
@@ -19,7 +20,16 @@ import {
  * Builds the capital and its surroundings. context (from world.js): {scene, prop(name, x, z, options),
  * place(group, x, z, options), isFree(x, z, r), seededRandom(seed), pending (load promises), obstacles}.
  */
-export function buildCapital({ scene, prop, place, isFree, seededRandom, pending, obstacles }) {
+export function buildCapital({
+  scene,
+  prop,
+  place,
+  isFree,
+  seededRandom,
+  pending,
+  obstacles,
+  spinners,
+}) {
   const random = seededRandom(9001);
   const { x0, x1, z0, z1, cx } = CAPITAL;
   const lantern = (x, z) => pending.push(prop("lantern", x, z, { radius: 0.25 }));
@@ -480,8 +490,8 @@ export function buildCapital({ scene, prop, place, isFree, seededRandom, pending
     -11,
     { radius: 3.7 },
   );
-  place(builders.garden(7, 4.5), -66, -12, { radius: 4 });
-  place(builders.garden(7, 4.5), -86, -11.5, { radius: 4 });
+  place(builders.garden(7, 4.5, { crops: true }), -66, -12, { radius: 4 });
+  place(builders.garden(7, 4.5, { crops: true }), -86, -11.5, { radius: 4 });
   for (const [x, z] of [
     [-71, -5.6],
     [-69.5, -4.6],
@@ -497,18 +507,21 @@ export function buildCapital({ scene, prop, place, isFree, seededRandom, pending
     prop("lantern", -73.8, -7.4, { radius: 0.25 }),
   );
 
-  /* the mill: a tall tower with four sails (flags with a stretched cloth) */
-  const mill = builders.tower(2.2, 7, { hasRoof: true });
-  place(mill, -78, 18, { radius: 2.6 });
+  /* the mill: a tall tower with four sails (flags with a stretched cloth) on a hub that turns in the wind; the
+     hub is not part of the tower, which is merged with the rest of the static scenery */
+  place(builders.tower(2.2, 7, { hasRoof: true }), -78, 18, { radius: 2.6 });
+  const sails = new THREE.Group();
+  sails.position.set(-78, 7.2, 20.5);
   for (let i = 0; i < 4; i++) {
     const sail = builders.flag(0.1, "cloth_green");
     const sailCloth = sail.children[1];
     sailCloth.scale.set(4.6, 1.3, 1);
     sailCloth.position.set(2.6, 0, 0);
     sail.rotation.z = (i * Math.PI) / 2;
-    sail.position.set(0, 7.2, 2.5);
-    mill.add(sail);
+    sails.add(sail);
   }
+  scene.add(sails);
+  spinners.push({ object: sails, speed: 0.45 });
   place(builders.hayBale(), -74.5, 21, { radius: 0.7 });
   place(builders.chest(), -81.5, 21.6, { radius: 0.5, rotation: 0.6 });
 

@@ -575,6 +575,11 @@ const dynamicBillboards = [];
 const staticBillboards = [];
 /* The pixel-3D builds, merged into a few meshes once the world is built. */
 const placedGroups = [];
+/* Life in the scenery for ambience.js: chimney tops (world points that smoke), water surfaces ({x, y, z, r}) and
+   parts that turn ({object, speed} in radians per second around their z axis, like mill sails). */
+export const smokeSources = [];
+export const waterSpots = [];
+export const spinners = [];
 
 /* Billboards (trees, bushes, small objects): village objects (32 px kit) at scale .65, trees and rocks (16 px kit)
    at 1.3; then they match the 24 px hero. Static ones (the default) are drawn in batches (batching.js) and resolve
@@ -620,6 +625,16 @@ function place(group, x, z, { rotation = 0, radius = 0 } = {}) {
   });
   scene.add(group);
   placedGroups.push(group);
+  if (group.userData.smoke || group.userData.water) {
+    group.updateMatrixWorld(true);
+    for (const point of group.userData.smoke || []) {
+      smokeSources.push(group.localToWorld(point.clone()));
+    }
+    for (const spot of group.userData.water || []) {
+      const center = group.localToWorld(new THREE.Vector3(spot.x, spot.y, spot.z));
+      waterSpots.push({ x: center.x, y: center.y, z: center.z, r: spot.r });
+    }
+  }
   if (radius > 0) {
     obstacles.push({ x, z, r: radius });
   }
@@ -838,6 +853,22 @@ export async function buildWorld() {
     place(builders.fence(FENCE_STEP), VILLAGE_HALF_SIZE, i, { radius: 1.2, rotation: Math.PI / 2 });
   }
 
+  /* ----- the farmland east of the village: two plots of grain, a scarecrow, hay; placed before the trees, which
+     then grow around it ----- */
+  place(builders.garden(8, 4.5, { crops: true }), 32.5, -3.6, { radius: 4.4 });
+  place(builders.garden(8, 4.5, { crops: true }), 32.5, 2.6, { radius: 4.4 });
+  place(builders.scarecrow(), 38.2, -0.5, { radius: 0.5, rotation: -0.4 });
+  place(builders.hayBale(), 27.4, -7.2, { radius: 0.7, rotation: 0.3 });
+  place(builders.hayBale(), 26.6, -5.9, { radius: 0.7, rotation: -0.5 });
+
+  /* lanterns along the roads out of the village, so the way to the forest and to Aurelia is lit at night */
+  for (const [index, x] of [-31, -44, -57, -70, -86].entries()) {
+    lantern(x, index % 2 ? -2.5 : 2.5);
+  }
+  for (const [index, z] of [-31, -43, -54, 31, 44].entries()) {
+    lantern(index % 2 ? -2.6 : 2.6, z);
+  }
+
   /* ----- outside the village: fields and forest ----- */
   const random = seededRandom(777);
   const outsideVillage = (x, z, margin) =>
@@ -911,7 +942,7 @@ export async function buildWorld() {
     }
   }
 
-  const context = { scene, prop, place, isFree, seededRandom, pending, obstacles };
+  const context = { scene, prop, place, isFree, seededRandom, pending, obstacles, spinners };
   buildForest(context);
   buildCapital(context);
   buildProfessionSites(context);

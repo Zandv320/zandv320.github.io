@@ -268,6 +268,8 @@ export function house({
     const stack = block(0.7, roofHeight * 0.95, 0.7, "stone");
     stack.position.set(w / 2 - 1.1, h + roofHeight * 0.25, -d * 0.15);
     group.add(stack);
+    /* where the smoke comes out (ambience.js) */
+    group.userData.smoke = [new THREE.Vector3(w / 2 - 1.1, h + roofHeight * 0.725, -d * 0.15)];
   }
   group.userData.mapKind = "house";
   return group;
@@ -469,16 +471,33 @@ export function pond(r = 2.4) {
   innerWall.material.side = THREE.BackSide;
   group.add(innerWall);
   group.userData.mapKind = "pond";
+  /* the water surface, for the glints on it (ambience.js) */
+  group.userData.water = [{ x: 0, y: 0.3, z: 0, r }];
   return group;
 }
 
-/* ---------- vegetable garden: tilled soil with a low fence around it ---------- */
-export function garden(w = 4, d = 3) {
+/* ---------- vegetable garden: tilled soil with a low fence around it, optionally rows of grain ---------- */
+export function garden(w = 4, d = 3, { crops = false } = {}) {
   const group = new THREE.Group();
   const soil = new THREE.Mesh(new THREE.PlaneGeometry(w, d), groundMaterial("soil", w, d));
   soil.rotation.x = -Math.PI / 2;
   soil.position.y = 0.025;
   group.add(soil);
+  if (crops) {
+    /* rows along x, a sheaf of grain every 0.55 units, each a little taller or shorter */
+    let seed = Math.round(w * 97 + d * 31);
+    const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    for (let z = -d / 2 + 0.55; z < d / 2 - 0.3; z += 0.75) {
+      for (let x = -w / 2 + 0.45; x < w / 2 - 0.3; x += 0.48) {
+        const height = 0.5 + random() * 0.25;
+        /* golden and without an outline: a field reads as one mass of grain, not as a grid of boxes */
+        const sheaf = block(0.42, height, 0.4, "hay", 1.12 + random() * 0.14);
+        sheaf.remove(sheaf.children[0]);
+        sheaf.position.set(x, height / 2, z);
+        group.add(sheaf);
+      }
+    }
+  }
   const segmentsX = Math.max(2, Math.round(w / 1.3));
   const segmentsZ = Math.max(2, Math.round(d / 1.3));
   for (let i = 0; i < segmentsX; i++) {
@@ -499,6 +518,29 @@ export function garden(w = 4, d = 3) {
     }
   }
   group.userData.mapKind = "garden";
+  return group;
+}
+
+/* ---------- scarecrow: a post with a crossbar, a sack head with a hat and a coat ---------- */
+export function scarecrow() {
+  const group = new THREE.Group();
+  group.add(box(0.14, 2, 0.14, material("wood_dark", 0.14, 2)));
+  const arms = box(1.8, 0.12, 0.12, material("wood_dark", 1.8, 0.12));
+  arms.position.y = 1.45;
+  group.add(arms);
+  const coat = block(0.75, 0.75, 0.4, "cloth_red", 0.85);
+  coat.position.y = 1.2;
+  group.add(coat);
+  const head = block(0.45, 0.45, 0.42, "hay", 0.95);
+  head.position.y = 1.85;
+  group.add(head);
+  const brim = block(0.8, 0.06, 0.7, "wood_dark", 0.9);
+  brim.position.y = 2.1;
+  group.add(brim);
+  const crown = block(0.42, 0.3, 0.38, "wood_dark", 0.8);
+  crown.position.y = 2.28;
+  group.add(crown);
+  group.userData.mapKind = "small";
   return group;
 }
 
@@ -795,6 +837,7 @@ export function fountain(r = 2.6) {
   spire.position.y = 3.05;
   group.add(spire);
   group.userData.mapKind = "fountain";
+  group.userData.water = [{ x: 0, y: 0.42, z: 0, r: r - 0.2 }];
   return group;
 }
 
@@ -939,6 +982,7 @@ export function forge() {
   const chimney = block(0.7, 1.4, 0.6, "stone", 0.86);
   chimney.position.set(0, 2.75, -0.45);
   group.add(chimney);
+  group.userData.smoke = [new THREE.Vector3(0, 3.45, -0.45)];
   const trough = block(0.9, 0.45, 0.5, "wood_dark");
   trough.position.set(1.45, 0, 0.25);
   group.add(trough);

@@ -71,6 +71,9 @@ import {
   inVillage,
   canvas,
   warmUpGpu,
+  smokeSources,
+  waterSpots,
+  spinners,
   groundPoint,
   screenRay,
   updateBillboards,
@@ -193,7 +196,7 @@ async function init() {
     hemiLight,
     lights: createWorldLights(),
   });
-  game.ambience = createAmbience(scene);
+  game.ambience = createAmbience(scene, { smokeSources, waterSpots, spinners });
   warmUpGpu();
   $("#loading").classList.add("away");
   addEventListener("pointerdown", unlockAudio, { capture: true });
