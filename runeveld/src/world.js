@@ -27,6 +27,7 @@ import {
 } from "./regions.js";
 import { buildForest } from "./forest.js";
 import { buildCapital } from "./capital.js";
+import { buildProfessionSites } from "./profession-sites.js";
 
 export { insideWorld };
 
@@ -823,6 +824,7 @@ export async function buildWorld() {
   const context = { scene, prop, place, isFree, seededRandom, pending, obstacles };
   buildForest(context);
   buildCapital(context);
+  buildProfessionSites(context);
   await Promise.all(pending);
   renderer.shadowMap.needsUpdate = true;
 }

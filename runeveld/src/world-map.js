@@ -51,6 +51,9 @@ const COLORS = {
   pine: "#2d6b3a",
   bush: "#67ad4c",
   rock: "#9b9b95",
+  station: "#c08a4a",
+  ore: "#d58a4a",
+  herb: "#c8e66a",
   lantern: "#ffd27a",
   player: "#ffffff",
   otherPlayer: "#7cc4ff",
@@ -78,7 +81,8 @@ const MINIMAP_SIZE = 156;
 
 /**
  * @param {object} deps {scene, billboards, player, monsters, peers, npcs() → [{name, x, z, label}],
- *   VILLAGE_HALF_SIZE, inVillage(x, z), walkTo(x, z), isPartyMember(id)}
+ *   markers() → [{x, z, emoji, title}] (crafting stations), VILLAGE_HALF_SIZE, inVillage(x, z), walkTo(x, z),
+ *   isPartyMember(id)}
  */
 export function createWorldMap(deps) {
   const $ = (selector) => document.querySelector(selector);
@@ -237,7 +241,7 @@ export function createWorldMap(deps) {
 
     /* Trees, bushes, rocks, lanterns ("tree2" draws as "tree"). */
     for (const prop of features.props) {
-      const kind = prop.kind.replace(/\d$/, "");
+      const kind = prop.kind.replace(/\d$/, "").replace(/_.*$/, "");
       if (kind === "tree" || kind === "pine") {
         g.fillStyle = COLORS[kind];
         g.beginPath();
@@ -252,6 +256,12 @@ export function createWorldMap(deps) {
         g.fillStyle = COLORS.rock;
         g.beginPath();
         g.arc(px(prop.x), pz(prop.z), 0.55 * scale, 0, Math.PI * 2);
+        g.fill();
+      } else if (kind === "ore" || kind === "herb") {
+        /* gathering nodes (rules/gather-nodes.js): ore veins and herbs */
+        g.fillStyle = COLORS[kind];
+        g.beginPath();
+        g.arc(px(prop.x), pz(prop.z), 0.45 * scale, 0, Math.PI * 2);
         g.fill();
       } else if (kind === "lantern") {
         g.fillStyle = COLORS.lantern;
@@ -310,6 +320,15 @@ export function createWorldMap(deps) {
       const color = monster.spec.aggressive ? COLORS.monster : COLORS.monsterPassive;
       drawDot(g, px(monster.x), pz(monster.z), 2.2 * pixelRatio, color, "rgba(0,0,0,.5)");
     }
+    /* crafting stations as their emoji */
+    g.save();
+    g.font = `${11 * pixelRatio}px sans-serif`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    for (const marker of deps.markers ? deps.markers() : []) {
+      g.fillText(marker.emoji, px(marker.x), pz(marker.z));
+    }
+    g.restore();
     for (const npc of deps.npcs()) {
       drawDot(g, px(npc.x), pz(npc.z), 2.6 * pixelRatio, COLORS.npc, "rgba(0,0,0,.6)");
       const marker = npc.label && npc.label.el.querySelector(".quest-mark");

@@ -10,6 +10,7 @@ import {
   inFields,
   forestEdge,
 } from "./regions.js";
+import { GATHER_NODES, FISHING_PONDS } from "./rules/gather-nodes.js";
 
 /**
  * Builds the forest. context (from world.js): {scene, prop(name, x, z, options), place(group, x, z, options),
@@ -71,8 +72,14 @@ export function buildForest({ scene, prop, place, isFree, seededRandom, pending 
 
   /* dense pines: a grid with some randomness, not on the path, the clearing or near the hut */
   const forestTrees = ["pine", "pine", "pine", "pine2", "pine2", "tree", "tree2"];
+  /* room for the gathering nodes and the fishing pond of the professions (rules/gather-nodes.js) */
+  const forestNodes = Object.values(GATHER_NODES).filter((node) => inForest(node.x, node.z));
+  const isProfessionSite = (x, z) =>
+    forestNodes.some((node) => Math.hypot(node.x - x, node.z - z) < 1.8) ||
+    FISHING_PONDS.some(([pondX, pondZ, r]) => Math.hypot(pondX - x, pondZ - z) < r + 1.6);
   const isOpenGround = (x, z) =>
     distanceToPath(x, z) > 2.6 &&
+    !isProfessionSite(x, z) &&
     Math.hypot(x - clearingX, z - clearingZ) > 8.2 &&
     !(x > -19.5 && x < -11 && z > -88.5 && z < -79.5) &&
     !(Math.abs(x) < 3.4 && z > -64);

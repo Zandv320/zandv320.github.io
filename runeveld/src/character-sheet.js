@@ -5,8 +5,15 @@ import { heroLayers, drawHero } from "./appearance.js";
 import { STATS, MAX_STAT, statCost } from "./rules/stats.js";
 import { SKILLS, canLearn, jobExpForLevel, SKILL_TREES, TREE_BRANCHES } from "./rules/skills.js";
 import { escapeHtml } from "./ui.js";
+import { ENCHANTMENTS, applyMods, displayName, modsOf } from "./rules/item-mods.js";
+import {
+  PROFESSIONS,
+  MAX_PROFESSION_LEVEL,
+  professionOf,
+  professionExpForLevel,
+} from "./rules/professions.js";
 
-const TABS = ["equipment", "stats", "skills", "quests"];
+const TABS = ["equipment", "stats", "skills", "quests", "professions"];
 
 const QUEST_STATE_LABELS = {
   available: "Available",
@@ -34,6 +41,36 @@ export function itemStatText(item) {
   if (item.sp) parts.push("SP +" + item.sp);
   if (item.forClass) parts.push(item.forClass === "mage" ? "Mage" : "Swordsman");
   return parts.join(" · ");
+}
+
+/** A small "+7" badge (coloured by the enchantment) for a bag slot or equipment slot, or "". */
+export function modsBadge(source) {
+  const mods = modsOf(source);
+  if (!mods) {
+    return "";
+  }
+  const label = mods.refine ? "+" + mods.refine : "";
+  const element = mods.enchant ? icon("ench_" + mods.enchant, "", "tiny") : "";
+  return `<span class="mods-badge ${mods.enchant || ""}">${label}${element}</span>`;
+}
+
+/** Lines that explain the refine and enchantment of an item, as HTML (empty without modifiers). */
+export function modsText(source) {
+  const mods = modsOf(source);
+  if (!mods) {
+    return "";
+  }
+  const lines = [];
+  if (mods.refine) {
+    lines.push(`Refined to <b>+${mods.refine}</b>`);
+  }
+  if (mods.enchant) {
+    const enchantment = ENCHANTMENTS[mods.enchant];
+    lines.push(
+      `<span class="ench ${mods.enchant}">Enchanted with ${escapeHtml(enchantment.name)}: ${escapeHtml(enchantment.effect)}</span>`,
+    );
+  }
+  return `<p class="item-mods">${lines.join("<br>")}</p>`;
 }
 
 /** Label/value pairs as the <span>/<b> rows of a stat table. */
@@ -83,6 +120,7 @@ export function createCharacterSheet(player, deps) {
     if (activeTab === "equipment") renderEquipment(derived);
     else if (activeTab === "stats") renderStats(derived, freeStats);
     else if (activeTab === "skills") renderSkills(freeSkills);
+    else if (activeTab === "professions") renderProfessions();
     else renderQuests();
   }
 
@@ -113,6 +151,22 @@ export function createCharacterSheet(player, deps) {
       .join("");
   }
 
+  function renderProfessions() {
+    const groups = { gathering: [], crafting: [] };
+    for (const [id, profession] of Object.entries(PROFESSIONS)) {
+      const { level, exp } = professionOf(player, id);
+      const isMax = level >= MAX_PROFESSION_LEVEL;
+      const needed = professionExpForLevel(level);
+      const fill = isMax ? 1 : Math.min(1, exp / needed);
+      const progress = isMax ? "max" : `${exp} / ${needed}`;
+      groups[profession.kind].push(
+        `<div class="profession" title="${escapeHtml(profession.description)}"><span class="item-icon">${icon("prof_" + id, profession.emoji)}</span><div class="profession-body"><div class="profession-header"><b>${profession.name}</b><span>Lv <b>${level}</b></span></div><div class="bar prof"><i style="transform:scaleX(${fill.toFixed(3)})"></i><span>${progress}</span></div><small>${escapeHtml(profession.description)}</small></div></div>`,
+      );
+    }
+    $("#sheet-profession-list").innerHTML =
+      `<h4>Gathering</h4>${groups.gathering.join("")}<h4>Crafting</h4>${groups.crafting.join("")}`;
+  }
+
   function renderEquipment(derived) {
     $("#sheet-stats").innerHTML = statRows([
       ["HP", `${Math.ceil(player.hp)} / ${derived.hpMax}`],
@@ -130,7 +184,9 @@ export function createCharacterSheet(player, deps) {
       if (!item) {
         return `<button class="equip-slot empty" data-slot="${slot}"><small>${label}</small><b>— empty —</b></button>`;
       }
-      return `<button class="equip-slot" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} ${escapeHtml(item.name)}</b><i>${itemStatText(item)}</i></button>`;
+      const mods = player.equipmentMods && player.equipmentMods[slot];
+      const name = displayName(itemId, mods);
+      return `<button class="equip-slot ${modsOf(mods) ? "modded" : ""}" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} ${escapeHtml(name)}</b><i>${itemStatText(applyMods(item, mods))}</i></button>`;
     }).join("");
 
     const itemCount = player.bag.reduce((total, entry) => total + entry.count, 0);

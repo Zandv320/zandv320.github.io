@@ -7,6 +7,7 @@
    World objects call the public methods below over Durable Object RPC. */
 import { DurableObject } from "cloudflare:workers";
 import * as progression from "../../runeveld/src/rules/progression.js";
+import * as crafting from "../../runeveld/src/rules/crafting.js";
 import { migrateHero } from "../../runeveld/src/rules/legacy.js";
 import { ITEMS } from "../../runeveld/src/data.js";
 
@@ -17,6 +18,8 @@ export const LEGACY_STORAGE_PREFIX = "t:";
 /* the worlds that may still hold heroes from before HeroStore ("lokaal" was the old local development world) */
 const LEGACY_WORLDS = ["v1", "lokaal"];
 const DEFAULT_POTION = "red_potion";
+/* share of the gather time that must have passed since the previous gather (network jitter) */
+const GATHER_TIME_TOLERANCE = 0.75;
 
 export const isValidToken = (token) => typeof token === "string" && /^[a-z0-9]{20,48}$/.test(token);
 export const isValidHeroName = (name) =>
@@ -137,6 +140,8 @@ export class HeroStore extends DurableObject {
     }
     const payload = isObject(data) ? data : {};
     const id = typeof payload.id === "string" ? payload.id : "";
+    /* the bag entry the client means, so a refined copy is not mixed up with a plain one */
+    const index = Number.isInteger(payload.index) ? payload.index : undefined;
     let changed = false;
     switch (type) {
       case "stat":
@@ -149,13 +154,13 @@ export class HeroStore extends DurableObject {
         changed = progression.buy(hero, id);
         break;
       case "sell":
-        changed = progression.sell(hero, id);
+        changed = progression.sell(hero, id, index);
         break;
       case "drop":
-        changed = progression.drop(hero, id);
+        changed = progression.drop(hero, id, index);
         break;
       case "equip":
-        changed = progression.equip(hero, id);
+        changed = progression.equip(hero, id, index);
         break;
       case "unequip":
         changed = progression.unequip(hero, String(payload.slot));
@@ -187,8 +192,68 @@ export class HeroStore extends DurableObject {
     return hero;
   }
 
+  /**
+   * A profession action (rules/crafting.js) with the server's dice: gather, craft, refine, enchant, disenchant or
+   * use. The World has already checked where the hero stands. `context.sinceLastGather`: ms since this player's
+   * previous gather, so nobody gathers faster than the gather time allows. Returns {hero, result} or null.
+   */
+  async profession(token, name, type, data, context = {}) {
+    const roster = await this.#getRoster(token);
+    const hero = this.#findHero(roster, name);
+    if (!hero) {
+      return null;
+    }
+    const payload = isObject(data) ? data : {};
+    const target = {
+      slot: typeof payload.slot === "string" ? payload.slot : undefined,
+      index: Number.isInteger(payload.index) ? payload.index : undefined,
+    };
+    let result;
+    switch (type) {
+      case "gather": {
+        const resource = String(payload.resource);
+        const minimumMs = crafting.gatherTime(hero, resource) * 1000 * GATHER_TIME_TOLERANCE;
+        result =
+          context.sinceLastGather < minimumMs
+            ? { ok: false, reason: "Not so fast." }
+            : crafting.gather(hero, resource);
+        break;
+      }
+      case "craft":
+        result = crafting.craft(hero, String(payload.recipe), payload.times);
+        break;
+      case "refine":
+        result = crafting.refine(hero, target);
+        break;
+      case "enchant":
+        result = crafting.enchant(hero, target, String(payload.rune));
+        break;
+      case "disenchant":
+        result = crafting.disenchant(hero, target.index);
+        break;
+      case "use": {
+        const currentHp = Number(payload.hp);
+        if (Number.isFinite(currentHp)) {
+          hero.hp = Math.max(0, Math.min(hero.hp, Math.round(currentHp)));
+        }
+        const currentSp = Number(payload.sp);
+        if (Number.isFinite(currentSp)) {
+          hero.sp = Math.max(0, Math.min(hero.sp, Math.round(currentSp)));
+        }
+        result = crafting.useItem(hero, String(payload.id), Date.now());
+        break;
+      }
+      default:
+        result = { ok: false, reason: "Unknown action." };
+    }
+    if (result.ok) {
+      await this.#persist(token, roster);
+    }
+    return { hero, result };
+  }
+
   /** A monster was killed: exp, zeny, loot and quest progress. Returns the hero or null. */
-  async rewardKill(token, name, { monsterId, exp, zeny, loot }) {
+  async rewardKill(token, name, { monsterId, exp, zeny, loot, material }) {
     const roster = await this.#getRoster(token);
     const hero = this.#findHero(roster, name);
     if (!hero) {
@@ -197,6 +262,9 @@ export class HeroStore extends DurableObject {
     progression.grantReward(hero, { exp, zeny });
     if (loot && ITEMS[loot]) {
       progression.addToBag(hero, loot, 1);
+    }
+    if (material && ITEMS[material]) {
+      progression.addToBag(hero, material, 1);
     }
     progression.recordQuestKill(hero, monsterId);
     progression.syncItemQuests(hero);

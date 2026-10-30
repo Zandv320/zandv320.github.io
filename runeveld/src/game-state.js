@@ -2,8 +2,9 @@
    the network connection, plus everything that follows from the hero (class, derived stats, free points).
    The other game-loop modules (player.js, monsters.js, abilities.js, bag.js, skill-effects.js) and main.js all
    work on these objects. */
-import { CLASSES, ITEMS, STARTER_BAG } from "./data.js";
-import { baseStats, deriveStats, statPointsForLevel, statPointsSpent } from "./rules/stats.js";
+import { CLASSES, STARTER_BAG } from "./data.js";
+import { baseStats, statPointsForLevel, statPointsSpent } from "./rules/stats.js";
+import * as progression from "./rules/progression.js";
 import {
   SKILLS_BY_CLASS,
   MAX_JOB_LEVEL,
@@ -34,8 +35,13 @@ export const player = {
   x: 0,
   z: 4,
   equipment: { ...CLASSES.swordsman.starterEquipment },
+  /* refine and enchant of what is worn, per slot */
+  equipmentMods: {},
   bag: STARTER_BAG.map((entry) => ({ ...entry })),
   quests: {},
+  /* profession levels {id: {level, exp}} and running elixirs {stat: {amount, until}} */
+  professions: {},
+  buffs: {},
   /* runtime only */
   isDead: false,
   isSitting: false,
@@ -98,11 +104,8 @@ export function playEffect(name, x, z, options) {
   return game.effects.play(name, x, z, options);
 }
 
-/* everything that follows from level, stats, equipment and skills (rules/stats.js) */
-export const equippedItems = () =>
-  Object.values(player.equipment)
-    .map((id) => id && ITEMS[id])
-    .filter(Boolean);
+/* everything that follows from level, stats, equipment (with refine and enchantments), skills and elixirs */
+export const equippedItems = () => progression.equippedItems(player);
 export const heroClass = () => CLASSES[player.classId] || CLASSES.swordsman;
 export const maxJobLevel = () => MAX_JOB_LEVEL_BY_TIER[heroClass().tier] || MAX_JOB_LEVEL;
 /** The skill ids on the hotbar for the player's class. */
@@ -110,14 +113,7 @@ export const hotbarSkills = () =>
   SKILLS_BY_CLASS[player.classId]
     ? SKILLS_BY_CLASS[player.classId].hotbar
     : SKILLS_BY_CLASS.swordsman.hotbar;
-export const derived = () =>
-  deriveStats({
-    level: player.level,
-    stats: player.stats,
-    items: equippedItems(),
-    skills: player.skills,
-    heroClass: heroClass(),
-  });
+export const derived = () => progression.derivedStatsOf(player);
 export const hpMax = () => derived().hpMax;
 export const spMax = () => derived().spMax;
 export const freeStatPoints = () =>

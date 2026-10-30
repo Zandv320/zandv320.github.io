@@ -41,7 +41,8 @@ export function statPointsSpent(stats) {
 
 /**
  * Everything that follows from level, stats, equipment and passive skills.
- * items: list of worn items ({atk, def, hp, bonus, ...}); skills: {id: level}; heroClass: entry of CLASSES.
+ * items: list of worn items ({atk, def, hp, bonus, ...}; enchanted weapons also carry atkPct, matkPct and
+ * freezeChance); skills: {id: level}; heroClass: entry of CLASSES.
  */
 export function deriveStats({
   level,
@@ -71,10 +72,22 @@ export function deriveStats({
   const spMax =
     Math.round((10 + level * 3 + s.int * 4) * (heroClass.spFactor || 1)) + itemSum("sp");
   const atk = Math.round(
-    3 + level * 1.5 + s.str * 1.2 + s.dex * 0.3 + itemSum("atk") + passive("blade_mastery", "atk"),
+    (3 +
+      level * 1.5 +
+      s.str * 1.2 +
+      s.dex * 0.3 +
+      itemSum("atk") +
+      passive("blade_mastery", "atk")) *
+      (1 + itemSum("atkPct")),
   );
   const matk = Math.round(
-    4 + level * 1.2 + s.int * 2 + s.dex * 0.2 + itemSum("matk") + passive("arcane_mastery", "matk"),
+    (4 +
+      level * 1.2 +
+      s.int * 2 +
+      s.dex * 0.2 +
+      itemSum("matk") +
+      passive("arcane_mastery", "matk")) *
+      (1 + itemSum("matkPct")),
   );
   const def = Math.round(itemSum("def") + s.vit * 0.4 + passive("stoneskin", "def"));
 
@@ -94,6 +107,8 @@ export function deriveStats({
     /* per second, while standing */
     hpRegen: (1 + level * 0.3 + s.vit * 0.2) * (1 + passive("second_wind", "regen")),
     spRegen: (1 + level * 0.2 + s.int * 0.3) * (1 + passive("inner_calm", "regen")),
+    /* chance that a hit freezes the target (frost enchantment) */
+    freezeChance: itemSum("freezeChance"),
     /* extra damage of Flame Sweep */
     skillBonus: 1 + s.int / 100,
   };

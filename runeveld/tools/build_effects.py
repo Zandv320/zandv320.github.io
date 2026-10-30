@@ -1,8 +1,8 @@
 """Eldoria: procedural pixel effects in the style of the Craftpix sheets.
 
-Ice, snow, steel, light, earth, spirits and shields that the free packs do not include. Every effect function returns a
-list of frames (RGBA, PIL) and a frame rate; build() writes them as single-row sheets to sprites/fx/ and returns the
-info for fx.json. Dark outlines like the sprites, limited palettes.
+Ice, snow, steel, light, earth, spirits, shields and water ripples that the free packs do not include. Every effect
+function returns a list of frames (RGBA, PIL) and a frame rate; build() writes them as single-row sheets to sprites/fx/
+and returns the info for fx.json. Dark outlines like the sprites, limited palettes.
 
 Usage: python3 -I runeveld/tools/build_effects.py [runeveld/sprites/fx]   (build_sprites.py calls this as well)
 """
@@ -490,6 +490,43 @@ def fire_pillar(n=8, w=64, h=128):
     return frames, 12
 
 
+# ---------- water ----------
+def ripples(n=8, s=64):
+    """Concentric rings on water (a fishing spot), seen from above at an angle; loops seamlessly."""
+    rnd = random.Random(21)
+    rings = 3
+    colors = [(255, 255, 255), (223, 247, 255), (143, 211, 244), (143, 211, 244)]
+    alphas = [255, 230, 170, 90]
+    sparkles = [(rnd.uniform(-20, 20), rnd.uniform(-8, 8), rnd.randrange(n)) for _ in range(5)]
+    frames = []
+    for f in range(n):
+        im = blank(s, s)
+        d = ImageDraw.Draw(im)
+        cx, cy = s // 2, s // 2
+        for i in range(rings):
+            t = (f / n + i / rings) % 1
+            rx = round(4 + 25 * t)
+            ry = max(2, round(rx * 0.45))
+            step = min(3, int(t * 4))
+            color, a = colors[step], alphas[step]
+            box = [cx - rx, cy - ry, cx + rx, cy + ry]
+            # the near half is a full line, the far half is broken up like light on the waves
+            d.arc(box, 0, 180, fill=color + (a,), width=1)
+            d.arc(box, 200, 250, fill=color + (a,), width=1)
+            d.arc(box, 290, 340, fill=color + (a,), width=1)
+            if step < 2 and rx > 6:  # a second, bluer line under the front of the young rings
+                d.arc([cx - rx + 1, cy - ry + 2, cx + rx - 1, cy + ry + 1], 30, 150, fill=colors[2] + (a,), width=1)
+        # the bobbing float point in the middle: a short white dash that rises and sinks
+        bob = 1 if f % 4 < 2 else 0
+        d.line([(cx - 1, cy - bob), (cx + 1, cy - bob)], fill=(255, 255, 255, 255))
+        d.point((cx, cy - bob - 1), fill=colors[1] + (255,))
+        for x, y, at in sparkles:
+            if f in (at, (at + 1) % n):
+                d.point((cx + x, cy + y), fill=(255, 255, 255, 255 if f == at else 140))
+        frames.append(im)
+    return frames, 8
+
+
 EFFECTS = {
     "ice_shards": ice_shards,
     "snow": snow,
@@ -507,6 +544,7 @@ EFFECTS = {
     "spirit": spirit,
     "rune_circle": rune_circle,
     "fire_pillar": fire_pillar,
+    "ripples": ripples,
 }
 
 

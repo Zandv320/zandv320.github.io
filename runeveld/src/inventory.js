@@ -1,17 +1,22 @@
 /* Eldoria – the inventory window (I): a grid of bag slots with stacks, and buttons to equip, use, sell or drop. */
-import { ITEMS, BAG_SIZE, SELL_RATIO } from "./data.js";
+import { ITEMS, BAG_SIZE } from "./data.js";
 import { icon } from "./icons.js";
 import { escapeHtml } from "./ui.js";
-import { itemStatText } from "./character-sheet.js";
+import { itemStatText, modsText, modsBadge } from "./character-sheet.js";
+import { sellPrice } from "./rules/progression.js";
+import { displayName, applyMods } from "./rules/item-mods.js";
 
 /**
  * @param {object} player the hero record of the player (player.bag = [{id, count}])
- * @param {object} deps callbacks from main.js: equip(id), use(id), sell(id), drop(id), isShopOpen()
+ * @param {object} deps callbacks from main.js: equip(id, index), use(id), sell(id, index), drop(id, index),
+ *   isShopOpen()
  */
 export function createInventory(player, deps) {
   const $ = (selector) => document.querySelector(selector);
   const panel = $("#inventory");
   let isOpenNow = false;
+  /* the selected bag slot; `selectedId` guards against the bag shifting under it */
+  let selectedIndex = -1;
   let selectedId = null;
 
   function renderGrid() {
@@ -25,7 +30,7 @@ export function createInventory(player, deps) {
       const item = ITEMS[entry.id];
       const countBadge = entry.count > 1 ? `<span class="item-count">${entry.count}</span>` : "";
       slots.push(
-        `<button class="bag-slot ${selectedId === entry.id ? "selected" : ""}" data-id="${entry.id}" title="${escapeHtml(item.name)}"><span class="item-icon">${icon(entry.id, item.icon)}</span>${countBadge}</button>`,
+        `<button class="bag-slot ${selectedIndex === i ? "selected" : ""}" data-index="${i}" title="${escapeHtml(displayName(entry.id, entry))}"><span class="item-icon">${icon(entry.id, item.icon)}</span>${countBadge}${modsBadge(entry)}</button>`,
       );
     }
     $("#inventory-grid").innerHTML = slots.join("");
@@ -33,12 +38,12 @@ export function createInventory(player, deps) {
 
   function renderDetail() {
     const detail = $("#inventory-detail");
-    if (!selectedId) {
+    const entry = player.bag[selectedIndex];
+    if (!entry) {
       detail.innerHTML = '<p class="hint">Select an item to see what it does.</p>';
       return;
     }
-    const item = ITEMS[selectedId];
-    const entry = player.bag.find((bagEntry) => bagEntry.id === selectedId);
+    const item = ITEMS[entry.id];
 
     const buttons = [];
     if (item.slot) {
@@ -49,7 +54,7 @@ export function createInventory(player, deps) {
     }
     // While a shop is open the bag sells instead of dropping.
     if (deps.isShopOpen()) {
-      const salePrice = Math.floor(item.price * SELL_RATIO);
+      const salePrice = sellPrice(entry.id, entry);
       buttons.push(
         `<button class="btn alt" data-action="sell">Sell for ${salePrice} zeny</button>`,
       );
@@ -58,15 +63,21 @@ export function createInventory(player, deps) {
     }
 
     const countText = entry.count > 1 ? ` <small>×${entry.count}</small>` : "";
-    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(selectedId, item.icon)}</span><div><b>${escapeHtml(item.name)}</b>${countText}<small class="item-stats">${itemStatText(item) || ""}</small></div></div><p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
+    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b>${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-stats">${itemStatText(applyMods(item, entry)) || ""}</small></div></div>${modsText(entry)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
   }
 
   function render() {
     if (!isOpenNow) return;
     $("#inventory-zeny").textContent = player.zeny;
     $("#inventory-count").textContent = `${player.bag.length} / ${BAG_SIZE}`;
-    // Forget the selection once the item has left the bag.
-    if (selectedId && !player.bag.some((entry) => entry.id === selectedId)) {
+    // Follow the selected item when the bag shifts, and forget it once it has left the bag.
+    if (
+      selectedIndex >= 0 &&
+      (!player.bag[selectedIndex] || player.bag[selectedIndex].id !== selectedId)
+    ) {
+      selectedIndex = player.bag.findIndex((entry) => entry.id === selectedId);
+    }
+    if (selectedIndex < 0) {
       selectedId = null;
     }
     renderGrid();
@@ -74,20 +85,23 @@ export function createInventory(player, deps) {
   }
 
   panel.addEventListener("click", (event) => {
-    const slot = event.target.closest(".bag-slot[data-id]");
+    const slot = event.target.closest(".bag-slot[data-index]");
     if (slot) {
-      selectedId = slot.dataset.id;
+      selectedIndex = +slot.dataset.index;
+      selectedId = player.bag[selectedIndex] ? player.bag[selectedIndex].id : null;
       render();
       return;
     }
     const button = event.target.closest("button[data-action]");
-    if (!button || !selectedId) return;
-    const id = selectedId;
+    const entry = player.bag[selectedIndex];
+    if (!button || !entry) return;
+    const id = entry.id;
+    const index = selectedIndex;
     const action = button.dataset.action;
-    if (action === "equip") deps.equip(id);
+    if (action === "equip") deps.equip(id, index);
     else if (action === "use") deps.use(id);
-    else if (action === "sell") deps.sell(id);
-    else if (action === "drop") deps.drop(id);
+    else if (action === "sell") deps.sell(id, index);
+    else if (action === "drop") deps.drop(id, index);
     render();
   });
   $("#inventory-close").onclick = () => close();

@@ -1,7 +1,9 @@
 /* Eldoria – game rules for a hero's progression: exp and levels, stat and skill points, bag and equipment,
    shops, potions, class advancement and quests.
    Pure functions on a hero record {name, hair, classId, level, exp, jobLevel, jobExp, stats, skills, hp, sp, zeny,
-   equipment, bag, quests, x, z}; they change the record in place and return true when the action was allowed.
+   equipment, equipmentMods, bag, quests, professions, buffs, x, z}; they change the record in place and return true
+   when the action was allowed. Bag entries are {id, count}, plus refine/enchant for modified equipment
+   (rules/item-mods.js); such entries never stack.
    The server runs exactly these rules on its own record, so the client cannot make anything up; the client runs
    the same rules for an immediate response. */
 import {
@@ -35,6 +37,8 @@ import {
 } from "./stats.js";
 import { QUESTS, questState, isQuestComplete } from "./quests.js";
 import { migrateHero } from "./legacy.js";
+import { applyMods, modsOf, validModsFor, priceFactor } from "./item-mods.js";
+import { sanitizeProfessions } from "./professions.js";
 
 const MAGE_CLASSES = ["mage", "wizard", "sage"];
 
@@ -51,11 +55,22 @@ export const freeSkillPoints = (hero) =>
   skillPointsForJobLevel(hero.jobLevel) -
   skillPointsSpent(hero.skills);
 
-/** The item definitions of everything the hero wears. */
+/** The item definitions of everything the hero wears, with their refine and enchantment bonuses applied. */
 export const equippedItems = (hero) =>
-  Object.values(hero.equipment || {})
-    .map((id) => id && ITEMS[id])
-    .filter(Boolean);
+  Object.entries(hero.equipment || {})
+    .filter(([, id]) => id && ITEMS[id])
+    .map(([slot, id]) => applyMods(ITEMS[id], hero.equipmentMods && hero.equipmentMods[slot]));
+
+/** The elixir buffs still running at `now` (ms since epoch), as {stat: {amount, until}}. */
+export function activeBuffs(hero, now = Date.now()) {
+  const active = {};
+  for (const [stat, buff] of Object.entries(hero.buffs || {})) {
+    if (buff && buff.until > now) {
+      active[stat] = buff;
+    }
+  }
+  return active;
+}
 
 /** The slot an item goes into: a ring goes into the first free ring slot (or ring1 when both are taken). */
 export function slotFor(hero, item) {
@@ -80,11 +95,20 @@ export function fitsSlot(id, slot) {
   return item.slot === slot || (item.slot === "ring" && (slot === "ring1" || slot === "ring2"));
 }
 
+/* running buffs count as an extra worn "item" with stat bonuses */
+function buffItems(hero) {
+  const bonus = {};
+  for (const [stat, buff] of Object.entries(activeBuffs(hero))) {
+    bonus[stat] = buff.amount;
+  }
+  return Object.keys(bonus).length ? [{ bonus }] : [];
+}
+
 export const derivedStatsOf = (hero) =>
   deriveStats({
     level: hero.level,
     stats: hero.stats,
-    items: equippedItems(hero),
+    items: [...equippedItems(hero), ...buffItems(hero)],
     skills: hero.skills,
     heroClass: classOf(hero),
   });
@@ -102,18 +126,31 @@ export const bagCount = (hero, id) =>
     .filter((entry) => entry.id === id)
     .reduce((total, entry) => total + entry.count, 0);
 
-/** Add `count` of an item to the bag, filling existing stacks first. False when it does not fit. */
-export function addToBag(hero, id, count = 1) {
+const hasMods = (entry) => !!modsOf(entry);
+
+/**
+ * Add `count` of an item to the bag, filling existing stacks first. False when it does not fit.
+ * With `mods` (refine/enchant) the item gets a slot of its own.
+ */
+export function addToBag(hero, id, count = 1, mods = null) {
   const item = ITEMS[id];
   if (!item || count <= 0) {
     return false;
   }
-  const maxStack = item.stack || 1;
   if (!hero.bag) {
     hero.bag = [];
   }
+  const validMods = validModsFor(id, mods);
+  if (validMods) {
+    if (hero.bag.length >= BAG_SIZE) {
+      return false;
+    }
+    hero.bag.push({ id, count: 1, ...validMods });
+    return true;
+  }
+  const maxStack = item.stack || 1;
   for (const entry of hero.bag) {
-    if (entry.id !== id || entry.count >= maxStack) {
+    if (entry.id !== id || entry.count >= maxStack || hasMods(entry)) {
       continue;
     }
     const added = Math.min(count, maxStack - entry.count);
@@ -135,24 +172,54 @@ export function addToBag(hero, id, count = 1) {
   return true;
 }
 
-/** Remove `count` of an item from the bag, taking from the last stacks first. False when there are too few. */
+/**
+ * Remove `count` of an item from the bag, taking from the last stacks first and from modified (refined or
+ * enchanted) entries only when the plain ones run out. False when there are too few.
+ */
 export function removeFromBag(hero, id, count = 1) {
   if (bagCount(hero, id) < count) {
     return false;
   }
-  for (let i = hero.bag.length - 1; i >= 0 && count > 0; i--) {
-    const entry = hero.bag[i];
-    if (entry.id !== id) {
-      continue;
-    }
-    const removed = Math.min(count, entry.count);
-    entry.count -= removed;
-    count -= removed;
-    if (entry.count <= 0) {
-      hero.bag.splice(i, 1);
+  for (const takeModified of [false, true]) {
+    for (let i = hero.bag.length - 1; i >= 0 && count > 0; i--) {
+      const entry = hero.bag[i];
+      if (entry.id !== id || hasMods(entry) !== takeModified) {
+        continue;
+      }
+      const removed = Math.min(count, entry.count);
+      entry.count -= removed;
+      count -= removed;
+      if (entry.count <= 0) {
+        hero.bag.splice(i, 1);
+      }
     }
   }
   return true;
+}
+
+/**
+ * Take one item with this id out of the bag: the entry at `index` when it holds that item, otherwise a plain one.
+ * Returns its modifiers ({} when none), or null when the bag has no such item.
+ */
+export function takeFromBag(hero, id, index) {
+  const bag = hero.bag || [];
+  let at = Number.isInteger(index) && bag[index] && bag[index].id === id ? index : -1;
+  if (at < 0) {
+    at = bag.findLastIndex((entry) => entry.id === id && !hasMods(entry));
+  }
+  if (at < 0) {
+    at = bag.findLastIndex((entry) => entry.id === id);
+  }
+  if (at < 0) {
+    return null;
+  }
+  const entry = bag[at];
+  const mods = modsOf(entry) || {};
+  entry.count--;
+  if (entry.count <= 0) {
+    bag.splice(at, 1);
+  }
+  return mods;
 }
 
 /* ---- exp, zeny, levels ---- */
@@ -236,8 +303,11 @@ export function advanceClass(hero, classId) {
 
 /* ---- equipment, shops, potions ---- */
 
-/** Wear an item from the bag; whatever was in that slot goes back into the bag. */
-export function equip(hero, id) {
+/**
+ * Wear an item from the bag (the entry at `index` when given, so a refined copy can be chosen); whatever was in
+ * that slot goes back into the bag, with its modifiers.
+ */
+export function equip(hero, id, index) {
   const item = ITEMS[id];
   if (!item || !item.slot) {
     return false;
@@ -246,17 +316,36 @@ export function equip(hero, id) {
   if (item.forClass && item.forClass !== hero.classId && item.forClass !== classOf(hero).base) {
     return false;
   }
-  if (!removeFromBag(hero, id)) {
+  const mods = takeFromBag(hero, id, index);
+  if (!mods) {
     return false;
+  }
+  if (!hero.equipmentMods) {
+    hero.equipmentMods = {};
   }
   const slot = slotFor(hero, item);
   const previous = hero.equipment[slot];
+  const previousMods = hero.equipmentMods[slot];
   hero.equipment[slot] = id;
+  setSlotMods(hero, slot, mods);
   if (previous) {
-    addToBag(hero, previous, 1);
+    addToBag(hero, previous, 1, previousMods);
   }
   hero.hp = Math.min(hero.hp, derivedStatsOf(hero).hpMax);
   return true;
+}
+
+/* store the modifiers of what is worn in a slot, or clear them */
+export function setSlotMods(hero, slot, mods) {
+  if (!hero.equipmentMods) {
+    hero.equipmentMods = {};
+  }
+  const valid = validModsFor(hero.equipment[slot], mods);
+  if (valid) {
+    hero.equipmentMods[slot] = valid;
+  } else {
+    delete hero.equipmentMods[slot];
+  }
 }
 
 export function unequip(hero, slot) {
@@ -264,10 +353,11 @@ export function unequip(hero, slot) {
   if (!id) {
     return false;
   }
-  if (!addToBag(hero, id)) {
+  if (!addToBag(hero, id, 1, hero.equipmentMods && hero.equipmentMods[slot])) {
     return false;
   }
   hero.equipment[slot] = null;
+  setSlotMods(hero, slot, null);
   hero.hp = Math.min(hero.hp, derivedStatsOf(hero).hpMax);
   return true;
 }
@@ -284,17 +374,24 @@ export function buy(hero, id) {
   return true;
 }
 
-export function sell(hero, id) {
-  const item = ITEMS[id];
-  if (!item || !removeFromBag(hero, id)) {
+/** What a shop pays for one of this item (refined items fetch more). */
+export const sellPrice = (id, mods) =>
+  ITEMS[id] ? Math.floor(ITEMS[id].price * SELL_RATIO * priceFactor(mods)) : 0;
+
+export function sell(hero, id, index) {
+  if (!ITEMS[id]) {
     return false;
   }
-  hero.zeny += Math.floor(item.price * SELL_RATIO);
+  const mods = takeFromBag(hero, id, index);
+  if (!mods) {
+    return false;
+  }
+  hero.zeny += sellPrice(id, mods);
   return true;
 }
 
-export function drop(hero, id) {
-  return !!ITEMS[id] && removeFromBag(hero, id);
+export function drop(hero, id, index) {
+  return !!ITEMS[id] && !!takeFromBag(hero, id, index);
 }
 
 /** Drink a healing potion from the bag; not allowed at full HP. */
@@ -420,8 +517,11 @@ export function newHero({ name, hair, classId }) {
     skills: {},
     zeny: 0,
     equipment: { ...emptyEquipment(), ...CLASSES[validClassId].starterEquipment },
+    equipmentMods: {},
     bag: STARTER_BAG.map((entry) => ({ ...entry })),
     quests: {},
+    professions: {},
+    buffs: {},
     x: 0,
     z: 4,
   };
@@ -495,10 +595,12 @@ export function sanitizeHero(input) {
   hero.zeny = clampInt(source.zeny, 0, 99999999, 0);
 
   hero.equipment = emptyEquipment();
+  hero.equipmentMods = {};
   for (const slot in hero.equipment) {
     const id = source.equipment && source.equipment[slot];
     if (id && fitsSlot(id, slot)) {
       hero.equipment[slot] = id;
+      setSlotMods(hero, slot, source.equipmentMods && source.equipmentMods[slot]);
     }
   }
 
@@ -507,7 +609,15 @@ export function sanitizeHero(input) {
     if (!entry || !ITEMS[entry.id]) {
       continue;
     }
-    addToBag(hero, entry.id, clampInt(entry.count, 1, ITEMS[entry.id].stack || 1, 1));
+    addToBag(hero, entry.id, clampInt(entry.count, 1, ITEMS[entry.id].stack || 1, 1), entry);
+  }
+
+  hero.professions = sanitizeProfessions(source.professions);
+  hero.buffs = {};
+  for (const [stat, buff] of Object.entries(source.buffs || {})) {
+    if (STATS.some(([key]) => key === stat) && buff && Number.isFinite(+buff.until)) {
+      hero.buffs[stat] = { amount: clampInt(buff.amount, 0, 20, 0), until: +buff.until };
+    }
   }
 
   /* only active and done quests are stored; 'ready' follows from the count */

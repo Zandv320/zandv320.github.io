@@ -133,6 +133,10 @@ import {
   drop,
 } from "./bag.js";
 import { groundRing, updateSkillEffects, updateTargetRing } from "./skill-effects.js";
+import { createGathering } from "./gathering.js";
+import { createWorkbench } from "./workbench.js";
+import { validModsFor } from "./rules/item-mods.js";
+import { sanitizeProfessions } from "./rules/professions.js";
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -170,6 +174,13 @@ async function init() {
   createVillagers(scene, clickables);
   showNpcs(false);
   game.effects = await createEffects({ scene });
+  game.gathering = createGathering({
+    applyHero: applyHeroRecord,
+    openWorkbench: (place) => game.workbench.open(place),
+    closeWorkbench: () => game.workbench.close(),
+    workbenchPlace: () => (game.workbench ? game.workbench.place() : null),
+  });
+  await game.gathering.setup();
   game.daylight = createDaylight({
     scene,
     camera,
@@ -300,7 +311,9 @@ function applyHeroRecord(hero) {
     return;
   }
   const hasNewClass = hero.classId !== player.classId;
-  const hasNewEquipment = JSON.stringify(hero.equipment) !== JSON.stringify(player.equipment);
+  const hasNewEquipment =
+    JSON.stringify(hero.equipment) !== JSON.stringify(player.equipment) ||
+    JSON.stringify(hero.equipmentMods || {}) !== JSON.stringify(player.equipmentMods);
   Object.assign(player, {
     classId: hero.classId,
     level: hero.level,
@@ -311,8 +324,11 @@ function applyHeroRecord(hero) {
     stats: hero.stats,
     skills: hero.skills,
     equipment: { ...emptyEquipment(), ...hero.equipment },
+    equipmentMods: hero.equipmentMods || {},
     bag: hero.bag,
     quests: hero.quests,
+    professions: hero.professions || {},
+    buffs: hero.buffs || {},
   });
   player.hp = Math.min(player.hp, hpMax());
   player.sp = Math.min(player.sp, spMax());
@@ -324,6 +340,9 @@ function applyHeroRecord(hero) {
   }
   game.characterSheet.render();
   game.inventory.render();
+  if (game.workbench) {
+    game.workbench.render();
+  }
   if (game.questLog) {
     game.questLog.refresh();
   }
@@ -347,7 +366,7 @@ function restoreHero(hero) {
       if (typeof entry === "string") {
         addToBag(entry, 1, true);
       } else if (entry && ITEMS[entry.id]) {
-        addToBag(entry.id, entry.count | 0, true);
+        addToBag(entry.id, entry.count | 0, true, entry);
       }
     }
   }
@@ -358,6 +377,15 @@ function restoreHero(hero) {
   if (hero.quests && typeof hero.quests === "object") {
     player.quests = hero.quests;
   }
+  player.equipmentMods = {};
+  for (const [slot, mods] of Object.entries(hero.equipmentMods || {})) {
+    const valid = player.equipment[slot] && validModsFor(player.equipment[slot], mods);
+    if (valid) {
+      player.equipmentMods[slot] = valid;
+    }
+  }
+  player.professions = sanitizeProfessions(hero.professions);
+  player.buffs = hero.buffs && typeof hero.buffs === "object" ? hero.buffs : {};
   if (!insideWorld(player.x, player.z, 1)) {
     player.x = 0;
     player.z = 4;
@@ -483,6 +511,8 @@ function createPanels(name) {
     use: (id) => {
       if (id === "red_potion") {
         useSkill("red_potion");
+      } else {
+        game.gathering.useItem(id);
       }
     },
     sell,
@@ -537,6 +567,12 @@ function createPanels(name) {
     obstacles,
     render: renderSheetAndBag,
   });
+  game.workbench = createWorkbench(player, {
+    perform: (type, data) => game.gathering.perform(type, data),
+    reportProgress: (result) => game.gathering.reportProgress(result),
+    playEffect: (effectName, place) =>
+      playEffect(effectName, place.x, place.z, { size: 2, y: 1.2 }),
+  });
   player.label = UI.createLabel("player", name);
   game.questLog = createQuestLog(player, {
     heroAction: (type, data) => game.network.heroAction(type, data),
@@ -585,6 +621,7 @@ function createPanels(name) {
         label: villager.label,
       })),
     ],
+    markers: () => game.gathering.markers(),
     walkTo,
   });
 }
@@ -680,8 +717,11 @@ function saveProgress() {
     sp: player.sp,
     zeny: player.zeny,
     equipment: player.equipment,
+    equipmentMods: player.equipmentMods,
     bag: player.bag,
     quests: player.quests,
+    professions: player.professions,
+    buffs: player.buffs,
     x,
     z,
   };
@@ -904,6 +944,12 @@ function startNetwork() {
     applyMonsterSnapshot(data);
   });
   network.on("chat", onChatEvent);
+  network.on("node_state", (data, from) => {
+    if (from === network.hostId()) {
+      game.gathering.onNodeState(data);
+    }
+  });
+  network.onMessage("node_states", (message) => game.gathering.onNodeStates(message.nodes));
   UI.setOnlineStatus(false, 1);
   /* the server simulates the monsters and only knows the world as circles */
   network.setWorldObstacles(() =>
@@ -977,6 +1023,7 @@ function onKillEvent(data, from) {
       exp: share.exp,
       zeny: share.zeny,
       loot: data.killer === network.me ? data.loot : null,
+      material: data.killer === network.me ? data.material : null,
     });
     game.questLog.onKill(data.id.split("#")[0]);
   }
@@ -1195,6 +1242,16 @@ function handleClick(clientX, clientY) {
       talkTo(npc, villager.x, villager.z, () => faceSpeaker(villager, player, 8));
       return;
     }
+    if (data.node) {
+      clearTarget();
+      game.gathering.clickNode(data.node);
+      return;
+    }
+    if (data.station) {
+      clearTarget();
+      game.gathering.clickStation(data.station);
+      return;
+    }
     if (data.peerId !== undefined) {
       game.party.showPlayerCard(data.peerId, clientX, clientY);
       return;
@@ -1255,7 +1312,8 @@ function isAnyPanelOpen() {
     game.characterSheet.isShopOpen() ||
     game.inventory.isOpen() ||
     game.dialogue.isOpen() ||
-    game.worldMap.isOpen()
+    game.worldMap.isOpen() ||
+    game.workbench.isOpen()
   );
 }
 
@@ -1265,6 +1323,7 @@ function closeAllPanels() {
   game.inventory.close();
   game.dialogue.close();
   game.worldMap.close();
+  game.workbench.close();
 }
 
 /* Mouse and touch on the game canvas: click or tap to walk, target or talk; drag to walk along; right drag to
@@ -1642,6 +1701,7 @@ function step(dt) {
     const merchant = game.merchant;
     merchant.sprite.update(dt, cameraState);
     UI.positionLabel(merchant.label, merchant.x, merchant.sprite.height + 0.1, merchant.z, camera);
+    game.gathering.update(dt);
   }
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
@@ -1704,6 +1764,8 @@ window.eldoria = {
   questLog: () => game.questLog,
   dialogue: () => game.dialogue,
   worldMap: () => game.worldMap,
+  gathering: () => game.gathering,
+  workbench: () => game.workbench,
   effects: () => game.effects,
   talkTo,
   villagers,

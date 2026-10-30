@@ -1,74 +1,35 @@
 /* Eldoria – the bag and the equipment of the player: stacking items, equipping and taking off, buying,
-   selling and dropping. Every change is also sent to the server as a hero action, which applies the same rules
-   to the saved hero. */
-import { CLASSES, ITEMS, BAG_SIZE, SELL_RATIO } from "./data.js";
+   selling and dropping. The shared rules (rules/progression.js) change the player record straight away; every
+   change is also sent to the server as a hero action, which applies the same rules to the saved hero.
+   Bag entries are {id, count}; refined or enchanted equipment also carries refine/enchant and never stacks, so
+   actions on such an item name its bag index. */
+import { CLASSES, ITEMS } from "./data.js";
+import * as progression from "./rules/progression.js";
+import { displayName, modsOf } from "./rules/item-mods.js";
 import { heroLayers } from "./appearance.js";
 import * as UI from "./ui.js";
 import { player, game, heroClass, hpMax } from "./game-state.js";
 
-/* The bag is a list of stacks [{id, count}] with at most BAG_SIZE stacks. */
+/* "iron sword", or "+3 Iron sword of Frost" for a modified one */
+const nameOf = (id, mods) => (modsOf(mods) ? displayName(id, mods) : ITEMS[id].name.toLowerCase());
 
 /** How many of this item are in the bag. */
-export function bagCount(id) {
-  return player.bag
-    .filter((entry) => entry.id === id)
-    .reduce((total, entry) => total + entry.count, 0);
-}
+export const bagCount = (id) => progression.bagCount(player, id);
 
 /**
  * Adds `count` of an item: first onto existing stacks, then into new stacks. Returns false (and says so unless
- * `silent`) when the bag is full; what fitted stays in the bag.
+ * `silent`) when the bag is full; what fitted stays in the bag. `mods`: refine/enchant of an equipment item.
  */
-export function addToBag(id, count = 1, silent = false) {
-  const item = ITEMS[id];
-  if (!item || count <= 0) {
-    return false;
+export function addToBag(id, count = 1, silent = false, mods = null) {
+  const added = progression.addToBag(player, id, count, mods);
+  if (!added && ITEMS[id] && !silent) {
+    UI.systemMessage("Your bag is full.");
   }
-  const maxStack = item.stack || 1;
-  for (const entry of player.bag) {
-    if (entry.id !== id || entry.count >= maxStack) {
-      continue;
-    }
-    const added = Math.min(count, maxStack - entry.count);
-    entry.count += added;
-    count -= added;
-    if (count <= 0) {
-      return true;
-    }
-  }
-  while (count > 0) {
-    if (player.bag.length >= BAG_SIZE) {
-      if (!silent) {
-        UI.systemMessage("Your bag is full.");
-      }
-      return false;
-    }
-    const added = Math.min(count, maxStack);
-    player.bag.push({ id, count: added });
-    count -= added;
-  }
-  return true;
+  return added;
 }
 
 /** Removes `count` of an item, from the last stacks first. False (and nothing removed) when there are too few. */
-export function removeFromBag(id, count = 1) {
-  if (bagCount(id) < count) {
-    return false;
-  }
-  for (let i = player.bag.length - 1; i >= 0 && count > 0; i--) {
-    const entry = player.bag[i];
-    if (entry.id !== id) {
-      continue;
-    }
-    const removed = Math.min(count, entry.count);
-    entry.count -= removed;
-    count -= removed;
-    if (entry.count <= 0) {
-      player.bag.splice(i, 1);
-    }
-  }
-  return true;
-}
+export const removeFromBag = (id, count = 1) => progression.removeFromBag(player, id, count);
 
 /** Redraws the hero with the current equipment and hair, and the panels that show it. */
 export function refreshAppearance() {
@@ -78,7 +39,16 @@ export function refreshAppearance() {
   game.inventory.render();
 }
 
-export function equip(id) {
+/* the bag index of an item with this id, preferring `index` when it holds that item */
+function indexOf(id, index) {
+  if (Number.isInteger(index) && player.bag[index] && player.bag[index].id === id) {
+    return index;
+  }
+  return player.bag.findIndex((entry) => entry.id === id);
+}
+
+/** Wear an item from the bag; `index` picks the bag entry (a refined copy, say). */
+export function equip(id, index) {
   const item = ITEMS[id];
   if (!item || !item.slot) {
     return;
@@ -89,22 +59,14 @@ export function equip(id) {
     );
     return;
   }
-  if (!removeFromBag(id)) {
+  const at = indexOf(id, index);
+  const name = nameOf(id, player.bag[at]);
+  if (!progression.equip(player, id, at)) {
     return;
   }
-  /* a ring goes into the first free ring slot; with both taken it replaces the first */
-  let slot = item.slot;
-  if (item.slot === "ring") {
-    slot = !player.equipment.ring1 ? "ring1" : !player.equipment.ring2 ? "ring2" : "ring1";
-  }
-  const previous = player.equipment[slot];
-  player.equipment[slot] = id;
-  if (previous) {
-    addToBag(previous, 1, true);
-  }
   refreshAppearance();
-  UI.systemMessage(`You equip the ${item.name.toLowerCase()}.`);
-  game.network.heroAction("equip", { id });
+  UI.systemMessage(`You equip the ${name}.`);
+  game.network.heroAction("equip", { id, index: at });
 }
 
 export function unequip(slot) {
@@ -112,17 +74,17 @@ export function unequip(slot) {
   if (!id) {
     return;
   }
-  if (!addToBag(id)) {
+  const name = nameOf(id, player.equipmentMods[slot]);
+  if (!progression.unequip(player, slot)) {
+    UI.systemMessage("Your bag is full.");
     return;
   }
-  player.equipment[slot] = null;
   game.network.heroAction("unequip", { slot });
   refreshAppearance();
-  const itemName = ITEMS[id].name.toLowerCase();
   UI.systemMessage(
     slot === "body"
-      ? `You take off the ${itemName}. Brr, a bit chilly like this.`
-      : `You take off the ${itemName}.`,
+      ? `You take off the ${name}. Brr, a bit chilly like this.`
+      : `You take off the ${name}.`,
   );
 }
 
@@ -145,24 +107,32 @@ export function buy(id) {
 }
 
 /** Sells one item; only while a shop is open. */
-export function sell(id) {
-  const item = ITEMS[id];
-  if (!item || !game.characterSheet.isShopOpen() || !removeFromBag(id)) {
+export function sell(id, index) {
+  if (!ITEMS[id] || !game.characterSheet.isShopOpen()) {
     return;
   }
-  const zeny = Math.floor(item.price * SELL_RATIO);
-  player.zeny += zeny;
-  UI.systemMessage(`You sold a ${item.name.toLowerCase()} for ${zeny} zeny.`);
+  const at = indexOf(id, index);
+  const entry = player.bag[at];
+  const name = nameOf(id, entry);
+  const zeny = progression.sellPrice(id, entry);
+  if (!progression.sell(player, id, at)) {
+    return;
+  }
+  UI.systemMessage(`You sold a ${name} for ${zeny} zeny.`);
   game.characterSheet.renderShop();
   game.characterSheet.render();
-  game.network.heroAction("sell", { id });
+  game.network.heroAction("sell", { id, index: at });
 }
 
-export function drop(id) {
-  const item = ITEMS[id];
-  if (!item || !removeFromBag(id)) {
+export function drop(id, index) {
+  if (!ITEMS[id]) {
     return;
   }
-  UI.systemMessage(`You drop the ${item.name.toLowerCase()}.`);
-  game.network.heroAction("drop", { id });
+  const at = indexOf(id, index);
+  const name = nameOf(id, player.bag[at]);
+  if (!progression.drop(player, id, at)) {
+    return;
+  }
+  UI.systemMessage(`You drop the ${name}.`);
+  game.network.heroAction("drop", { id, index: at });
 }

@@ -270,6 +270,7 @@ export function hitMonster(monster, result, kind) {
   } else if (kind) {
     shakeCamera(0.1, 0.15);
   }
+  weaponEnchantEffect(monster);
   /* the host (or server) applies the damage itself when the hit event arrives */
   if (!game.host) {
     monster.hp = Math.max(0, monster.hp - result.damage);
@@ -281,6 +282,31 @@ export function hitMonster(monster, result, kind) {
     pushZ: +(monster.z - player.z).toFixed(2),
     force,
   });
+}
+
+/* The element of an enchanted weapon shows on every hit; frost can freeze the target. */
+function weaponEnchantEffect(monster) {
+  const mods = player.equipmentMods && player.equipmentMods.weapon;
+  const element = mods && mods.enchant;
+  if (!element) {
+    return;
+  }
+  const y = monster.sprite.height * 0.5;
+  if (element === "flame") {
+    playEffect("fire", monster.x, monster.z, { size: 1.1, y });
+  } else if (element === "storms") {
+    playEffect("spark", monster.x, monster.z, { size: 1.2, y, tint: 0xfff2a0 });
+  } else if (element === "arcane") {
+    playEffect("sparkle", monster.x, monster.z, { size: 1.2, y, tint: 0xd3a6ff });
+  } else if (element === "frost") {
+    playEffect("ice_shards", monster.x, monster.z, { size: 1, y, tint: 0xcfefff });
+    if (!monster.isDead && Math.random() < derived().freezeChance) {
+      const duration = 1.5;
+      monster.frozenUntil = now() + duration;
+      playEffect("frost", monster.x, monster.z, { size: 1.6, y });
+      game.network.send("freeze", { ids: [monster.id], duration });
+    }
+  }
 }
 
 /* stat and skill points */
@@ -480,6 +506,21 @@ export function grantReward(reward) {
       UI.systemMessage(`Your bag is full, the ${item.name.toLowerCase()} was left behind.`);
     }
     game.inventory.render();
+  }
+
+  /* crafting material (raw meat, arcane dust) */
+  if (reward.material && ITEMS[reward.material]) {
+    const material = ITEMS[reward.material];
+    if (addToBag(reward.material, 1, true)) {
+      UI.logMessage(
+        '<span class="loot-msg">You found: ' +
+          icon(reward.material, material.icon, "small") +
+          " " +
+          UI.escapeHtml(material.name) +
+          ".</span>",
+      );
+      game.inventory.render();
+    }
   }
 
   let hasLevelledUp = false;

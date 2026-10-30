@@ -323,12 +323,20 @@ export function hostHandleHit(data, attackerId) {
       break;
     }
   }
+  let material = null;
+  for (const [itemId, chance] of Object.entries(spec.materials || {})) {
+    if (Math.random() < chance * ADMIN.dropMultiplier) {
+      material = itemId;
+      break;
+    }
+  }
   game.network.send("kill", {
     id: monster.id,
     killer: attackerId,
     exp: spec.exp,
     zeny: Math.round(randomBetween(spec.zeny[0], spec.zeny[1])),
     loot,
+    material,
   });
 }
 

@@ -2898,3 +2898,249 @@ textarea {
     display: none;
   }
 }
+
+/* ---------- professions: gather bar, node and station labels, workbench, professions tab ---------- */
+#workbench {
+  z-index: 21;
+  width: min(460px, calc(100vw - 24px));
+}
+#workbench.busy #workbench-body {
+  opacity: 0.6;
+  pointer-events: none;
+}
+#workbench-level span {
+  color: var(--gold-light);
+}
+#gather-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + var(--hotbar-height) + 64px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  width: 230px;
+  pointer-events: none;
+}
+#gather-bar > div {
+  flex: 1;
+}
+#gather-bar small {
+  display: block;
+  font-size: 11px;
+  color: var(--gold-light);
+  margin-bottom: 3px;
+}
+#gather-bar .bar i {
+  transition: none;
+}
+.bar.gather,
+.bar.prof {
+  --c1: #ffe6a3;
+  --c2: #e0a52e;
+  --c3: #8a5a10;
+}
+.bar.gather {
+  height: 8px;
+}
+#hud-buffs {
+  position: absolute;
+  left: calc(var(--safe-left) + 4px);
+  top: calc(var(--safe-top) + 104px);
+  display: flex;
+  gap: 4px;
+}
+#hud-buffs .buff {
+  position: relative;
+  --icon-size: 24px;
+}
+#hud-buffs .buff small {
+  position: absolute;
+  right: -2px;
+  bottom: -4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000;
+}
+.label.node .name {
+  color: #d9f2b4;
+  font-size: 11px;
+}
+.label.node.locked .name {
+  color: #b0a9a0;
+}
+.label.station .name {
+  color: #ffd9a0;
+}
+.damage.loot {
+  color: #ffe08a;
+  font-size: 14px;
+}
+.loot-msg {
+  color: #ffe08a;
+}
+.ico.tiny {
+  --icon-size: 14px;
+  vertical-align: -3px;
+}
+.mods-badge {
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff3b0;
+  text-shadow: 0 1px 2px #000;
+}
+.item-mods {
+  color: #ffe08a;
+  font-size: 11.5px;
+}
+.ench.flame {
+  color: #ff9a5a;
+}
+.ench.frost {
+  color: #9ad8ff;
+}
+.ench.storms {
+  color: #ffe45a;
+}
+.ench.arcane {
+  color: #d3a6ff;
+}
+.equip-slot.modded b {
+  color: #fff3b0;
+}
+.recipe {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  margin-bottom: 5px;
+}
+.recipe.locked {
+  opacity: 0.55;
+}
+.recipe-body {
+  flex: 1;
+  min-width: 0;
+}
+.recipe-name small {
+  margin-left: 6px;
+  color: var(--dim);
+  font-size: 11px;
+}
+.ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 3px;
+}
+.ingredient {
+  font-size: 11px;
+  color: #9fe3b0;
+}
+.ingredient.missing {
+  color: #ff8a8a;
+}
+.recipe-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+.locked-text {
+  font-size: 11px;
+  color: #ff8a8a;
+}
+.pick-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.pick {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid rgba(230, 187, 99, 0.3);
+  background: linear-gradient(180deg, #232a40, #11141f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pick small {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-size: 9px;
+  color: var(--dim);
+}
+.pick.selected {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.work-detail {
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 12.5px;
+}
+.work-detail p {
+  margin: 8px 0;
+}
+.work-detail > .btn {
+  margin-top: 8px;
+  width: 100%;
+}
+.rune-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.rune-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.rune-option > div {
+  flex: 1;
+}
+.rune-option small {
+  display: block;
+  font-size: 11px;
+}
+.rune-option.unavailable {
+  opacity: 0.5;
+}
+.profession-list h4 {
+  margin: 10px 0 6px;
+  color: var(--gold-light);
+}
+.profession {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.profession-body {
+  flex: 1;
+}
+.profession-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.profession-body small {
+  display: block;
+  margin-top: 2px;
+  color: var(--dim);
+  font-size: 11px;
+}

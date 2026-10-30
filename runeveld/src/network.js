@@ -571,6 +571,13 @@ export function createNetwork() {
     heroAction(type, data) {
       sendToServer({ kind: "hero_action", type, data });
     },
+    /**
+     * A profession action (gather, craft, refine, enchant, disenchant, use): the server rolls the dice and answers
+     * {kind: 'hero', hero, result} or {kind: 'action_result', result}. Resolves null without an answer.
+     */
+    professionAction(type, data) {
+      return this.request({ kind: "hero_action", type, data }, 8000);
+    },
     saveHero(hero) {
       sendToServer({ kind: "save_hero", hero });
     },

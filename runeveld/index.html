@@ -77,6 +77,14 @@
         <div id="quest-tracker" class="frame flat" hidden></div>
       </div>
       <div id="announcement"></div>
+      <div id="gather-bar" class="frame flat" hidden>
+        <span id="gather-icon"></span>
+        <div>
+          <small id="gather-label"></small>
+          <div class="bar gather"><i id="gather-fill"></i></div>
+        </div>
+      </div>
+      <div id="hud-buffs"></div>
       <div id="chat">
         <div id="chat-log"></div>
         <form id="chat-form" autocomplete="off">
@@ -147,6 +155,9 @@
         <button class="tab" data-tab="stats">Stats<span class="tab-badge" hidden></span></button>
         <button class="tab" data-tab="skills">Skills<span class="tab-badge" hidden></span></button>
         <button class="tab" data-tab="quests">Quests<span class="tab-badge" hidden></span></button>
+        <button class="tab" data-tab="professions">
+          Professions<span class="tab-badge" hidden></span>
+        </button>
       </div>
       <div class="sheet-grid" id="sheet-tab-equipment">
         <div class="sheet-preview-box">
@@ -177,6 +188,13 @@
         <div class="skills" id="sheet-skill-tree"></div>
       </div>
       <div id="sheet-tab-quests" hidden><div class="quest-list" id="sheet-quest-list"></div></div>
+      <div id="sheet-tab-professions" hidden>
+        <p class="hint">
+          Gather with a tool from Merchant Bram, craft at the forges, alchemy tables, campfires and
+          enchanting altars of Runeveld and Aurelia (marked on the map).
+        </p>
+        <div class="profession-list" id="sheet-profession-list"></div>
+      </div>
     </div>
 
     <!-- World map (M); drawn by world-map.js. -->
@@ -197,7 +215,8 @@
         ><span><i style="background: #7cc4ff"></i>players</span
         ><span><i style="background: #f87171"></i>monsters</span
         ><span><i style="background: #ffd1a6"></i>harmless</span
-        ><span><i style="background: #ffc857"></i>villagers</span>
+        ><span><i style="background: #ffc857"></i>villagers</span
+        ><span>⚒️⚗️🔥✨ crafting stations</span>
       </div>
     </div>
 
@@ -253,6 +272,19 @@
     </div>
 
     <!-- Start screens: character select, create, account and delete. -->
+    <!-- Workbench at a crafting station; filled by workbench.js. -->
+    <div id="workbench" class="panel modal" hidden>
+      <div class="panel-header">
+        <div>
+          <h3 id="workbench-title"></h3>
+          <small id="workbench-level"></small>
+        </div>
+        <button class="close-btn" id="workbench-close" title="Close">✕</button>
+      </div>
+      <div class="tabs" id="workbench-tabs" hidden></div>
+      <div id="workbench-body"></div>
+    </div>
+
     <div id="start" hidden>
       <div id="select" class="screen">
         <div class="select-left">

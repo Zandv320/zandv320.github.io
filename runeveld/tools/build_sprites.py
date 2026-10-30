@@ -27,6 +27,7 @@ Output (all pixel art, 1 world unit = 16 px, see world.js):
     merchant.png           32x32 frames, 4 columns, 1 row
     ground.png             7 tiles of 32x32 side by side: 3x grass, 2x cobbles, 2x path
     <decor>.png            single images at their real size
+    ore_*, herb_*, tree_stump.png  profession nodes: ore veins (+ ore_depleted), herbs (+ herb_picked), the cut tree
     tex/*.png              tileable textures for the 3D village (builders.js)
     smooth/*.png           2x smoothed copies of the sprites
 """
@@ -1095,6 +1096,273 @@ def build_textures(fields, out_dir):
     print("textures:", sorted(p.name for p in tex_dir.glob("*.png")))
 
 
+# ---------- profession nodes: ore veins, herbs and the tree stump ----------
+# Ore veins are the fortress rocks with nuggets or crystals in the metal's colour; herbs and the stump are drawn in
+# the palette of the fortress bushes and trees. Fills are drawn as characters, the dark outline is added afterwards.
+NODE_OUTLINE = (12, 15, 42)
+COLLAGE_OUTLINE = (5, 4, 3)
+ORE_CANVAS = (29, 24)  # every ore state has the same size, so a vein does not jump when it is mined empty
+# metal -> (dark, mid, light, highlight)
+ORE_RAMPS = {
+    "copper": ((132, 56, 28), (214, 104, 40), (246, 160, 78), (255, 220, 160)),
+    "iron": ((66, 44, 46), (124, 74, 60), (170, 104, 76), (214, 168, 140)),
+    "silver": ((72, 92, 140), (168, 192, 232), (222, 236, 255), (255, 255, 255)),
+    "gold": ((150, 90, 16), (232, 168, 32), (255, 216, 72), (255, 250, 196)),
+    "arcane": ((84, 40, 150), (150, 80, 220), (200, 140, 255), (245, 225, 255)),
+}
+ROCK_SHADOW = (52, 50, 76)  # the dent around a nugget
+# nugget shapes: (dx, dy, ramp index); 0 dark .. 3 highlight
+NUGGETS = {
+    "big": ((1, 0, 2), (2, 0, 3), (0, 1, 2), (1, 1, 1), (2, 1, 1), (3, 1, 0), (1, 2, 0), (2, 2, 0)),
+    "mid": ((0, 0, 3), (1, 0, 2), (0, 1, 2), (1, 1, 1), (2, 1, 0)),
+    "small": ((0, 0, 2), (1, 0, 1), (1, 1, 0)),
+}
+# where the nuggets sit on the rock group (top face, left face, front boulder, back boulder)
+NUGGET_SPOTS = (
+    (4, 8, "big"),
+    (10, 7, "mid"),
+    (13, 10, "small"),
+    (2, 14, "small"),
+    (3, 18, "mid"),
+    (10, 16, "big"),
+    (16, 19, "small"),
+    (20, 13, "big"),
+    (25, 15, "mid"),
+)
+# arcane crystals: (x of the base centre, y of the base, height, width)
+CRYSTALS = ((7, 9, 8, 3), (11, 10, 5, 2), (23, 13, 7, 3), (15, 18, 4, 2))
+CRYSTAL_SPARKLES = ((3, 3), (14, 4), (27, 7), (19, 9))
+
+HERB_COLORS = {
+    "l": (173, 184, 52),  # the greens of the fortress bushes
+    "m": (127, 142, 68),
+    "d": (88, 99, 53),
+    "k": (58, 66, 44),
+    "t": (79, 52, 47),  # tree trunk
+}
+# "|" is a stem: drawn after the outline, so thin stems stay green instead of turning into outline
+HERBS = {
+    "sunleaf": (
+        """
+.....hhy.....
+....hyyyy....
+....yyAyya...
+.....yaaa....
+......|......
+.ll...|...ll.
+lllm..|..lllm
+lllmm.|.llmmm
+.llmmlllllmm.
+llllmmllmmmll
+lmmmmmmmmmmmd
+.dmmmddmmmdd.
+..ddd..ddd...
+""",
+        {"y": (248, 197, 58), "h": (255, 236, 150), "a": (210, 132, 36), "A": (176, 96, 32)},
+        (),
+    ),
+    "wolfsbane": (
+        """
+......q......
+.....qpp.....
+.....ppx.....
+......|......
+..q..qpp..q..
+.qpp.ppx.qpp.
+.ppx..|..ppx.
+..|...|...|..
+..|..qpp..|..
+.d|..ppx..|d.
+ddd...|...ddd
+dkdd.d|d.ddkd
+.dkddddddddk.
+ddkkdkkkdkkdd
+.kkk.kkk.kkk.
+""",
+        {"q": (200, 156, 240), "p": (136, 84, 196), "x": (84, 46, 132)},
+        (),
+    ),
+    "moonbloom": (
+        """
+..b.......b..
+.bwb.....bwb.
+bwcwb...bwcwb
+.bwb..b..bwb.
+..|..bwb..|..
+..|.bwcwb.|..
+..|..bwb..|..
+.l|l..|..l|l.
+lllml.|.lmlll
+.lmmmllllmmm.
+lmmmmmmmmmmml
+.dmmddmmddmd.
+..dd..dd..d..
+""",
+        {"w": (232, 242, 255), "b": (140, 184, 240), "c": (255, 250, 210)},
+        ((1, 6, (200, 224, 255)), (13, 0, (232, 242, 255)), (7, 1, (232, 242, 255)), (14, 9, (200, 224, 255))),
+    ),
+    "embermoss": (
+        """
+......rRr.......
+..rRr.rRRrr.rr..
+.rRRRrRRRRrrRRr.
+rRRerRRrrRRrRerr
+rRrrrrerrRRrrrrr
+rrrrrdrrrrrrerrd
+rrerdddrrrdrrddd
+.ddddddddddddd..
+""",
+        {"R": (240, 132, 64), "r": (200, 64, 40), "d": (130, 36, 34), "e": (255, 222, 96)},
+        ((4, 0, (255, 222, 96)), (11, 0, (255, 170, 70)), (16, 1, (255, 222, 96))),
+    ),
+    "starpetal": (
+        """
+...w..........
+..wyw.........
+wwwgwww...w...
+.wwyww...wyw..
+.ww.ww.wwwgwww
+...|....wwyww.
+...|....ww.ww.
+...|.......|..
+.l.|l.....l|l.
+llmlll...lllml
+.lmmmlllllmmm.
+llmmmmmmmmmmml
+.dmmddmmmddmd.
+..ddd.ddd.dd..
+""",
+        {"w": (255, 252, 236), "y": (236, 206, 120), "g": (248, 184, 48)},
+        ((13, 1, (255, 236, 150)), (0, 0, (255, 236, 150))),
+    ),
+    "picked": (
+        """
+..c...c...c..
+..|...|...|..
+.l|l..|..l|l.
+lllml.|.lmlll
+.lmmmllllmmm.
+.dmmddmmddmd.
+..dd..dd..d..
+""",
+        {"c": (206, 214, 130)},
+        (),
+    ),
+}
+
+STUMP = """
+..cccccc..
+.cbbddbbc.
+cbbdbbdbbc
+.cbbddbbcs
+tcccccccss
+ttttstttss
+tttttsttss
+tstttttsss
+ttttsttssss
+tt.tttt..ss
+"""
+STUMP_COLORS = {
+    "c": (208, 119, 83),  # cut face in the palette of the woodpile
+    "b": (235, 150, 97),
+    "d": (181, 89, 69),
+    "t": (79, 52, 47),  # bark of the fortress tree trunk
+    "s": (56, 36, 36),
+}
+
+
+def add_outline(im, color=NODE_OUTLINE):
+    """Dark border around every opaque pixel (4-neighbourhood), like the Craftpix props."""
+    pad = Image.new("RGBA", (im.width + 2, im.height + 2), TRANSPARENT)
+    pad.paste(im, (1, 1))
+    a = np.array(pad)
+    filled = a[:, :, 3] > 0
+    border = np.zeros_like(filled)
+    border[1:, :] |= filled[:-1, :]
+    border[:-1, :] |= filled[1:, :]
+    border[:, 1:] |= filled[:, :-1]
+    border[:, :-1] |= filled[:, 1:]
+    a[border & ~filled] = color + (255,)
+    return Image.fromarray(a).copy()  # a copy, so the result can be drawn on
+
+
+def replace_color(im, old, new):
+    a = np.array(im)
+    a[(a[:, :, 0] == old[0]) & (a[:, :, 1] == old[1]) & (a[:, :, 2] == old[2]) & (a[:, :, 3] > 0), :3] = new
+    return Image.fromarray(a)
+
+
+def rock_group(rock, rock2):
+    """The big fortress rock in front of a mirrored small one, on the ore canvas."""
+    im = Image.new("RGBA", ORE_CANVAS, TRANSPARENT)
+    top = ORE_CANVAS[1] - 20
+    im.alpha_composite(mirror(rock2), (13, top + 8))
+    im.alpha_composite(rock, (0, top + 2))
+    return replace_color(im, COLLAGE_OUTLINE, NODE_OUTLINE)
+
+
+def ore_vein(group, ramp, crystals=False):
+    im = group.copy()
+    px = im.load()
+    for x, y, shape in NUGGET_SPOTS:
+        cells = {(x + dx, y + dy) for dx, dy, _ in NUGGETS[shape]}
+        for cx, cy in cells:  # a dark dent below and to the right of the nugget
+            for sx, sy in ((cx + 1, cy), (cx, cy + 1), (cx + 1, cy + 1)):
+                if (sx, sy) not in cells and px[sx, sy][3] > 0 and px[sx, sy][:3] != NODE_OUTLINE:
+                    px[sx, sy] = ROCK_SHADOW + (255,)
+        for dx, dy, k in NUGGETS[shape]:
+            if px[x + dx, y + dy][3] > 0:
+                px[x + dx, y + dy] = ramp[k] + (255,)
+    if not crystals:
+        return im
+    shards = Image.new("RGBA", im.size, TRANSPARENT)
+    sp = shards.load()
+    for cx, base, height, width in CRYSTALS:
+        for dy in range(height):
+            half = min(width, height - dy)  # straight sides, then a point
+            for dx in range(-half + 1, half):
+                k = 2 if dx < 0 else 1 if dx == 0 else 0
+                if dx == -1 and dy > 0 and dy % 3 == 1:
+                    k = 3  # glints on the lit facet
+                sp[cx + dx, base - dy] = ramp[k] + (255,)
+        sp[cx, base - height + 1] = ramp[3] + (255,)
+    shards = add_outline(shards).crop((1, 1, im.width + 1, im.height + 1))
+    im.alpha_composite(shards)
+    for x, y in CRYSTAL_SPARKLES:
+        if px[x, y][3] == 0:
+            px[x, y] = ramp[3] + (255,)
+    return im
+
+
+def herb(fill, colors, sparkles):
+    im = add_outline(pixel_drawing(fill, {**HERB_COLORS, **colors}))
+    px = im.load()
+    for y, line in enumerate(fill.strip("\n").split("\n")):
+        for x, ch in enumerate(line):
+            if ch == "|":
+                px[x + 1, y + 1] = HERB_COLORS["d"] + (255,)
+    canvas = Image.new("RGBA", (im.width + 2, im.height + 2), TRANSPARENT)  # room for sparkles around the plant
+    canvas.alpha_composite(im, (1, 1))
+    px = canvas.load()
+    for x, y, color in sparkles:
+        if px[x, y][3] == 0:
+            px[x, y] = color + (255,)
+    return canvas.crop(canvas.getbbox())
+
+
+def build_resource_nodes(out_dir):
+    """ore_<metal>.png, ore_depleted.png, herb_<name>.png, herb_picked.png and tree_stump.png."""
+    rock = open_rgba(out_dir / "rock.png")
+    rock2 = open_rgba(out_dir / "rock2.png")
+    group = rock_group(rock, rock2)
+    group.save(out_dir / "ore_depleted.png")
+    for metal, ramp in ORE_RAMPS.items():
+        ore_vein(group, ramp, crystals=metal == "arcane").save(out_dir / f"ore_{metal}.png")
+    for name, (fill, colors, sparkles) in HERBS.items():
+        herb(fill, colors, sparkles).save(out_dir / f"herb_{name}.png")
+    add_outline(pixel_drawing(STUMP, STUMP_COLORS)).save(out_dir / "tree_stump.png")
+
+
 # ---------- effects: Craftpix "Free Pixel Magic Sprite Effects" and "11 Free Pixel Art Explosion Sprites" ----------
 # Separate frames are cut into one row (tight around the drawing, square and centred so the animation does not
 # jump). The sizes go into sprites/fx/fx.json, so effects.js needs to know nothing about the source.
@@ -1245,6 +1513,7 @@ def main():
     build_class_gear(stacked, body, out_dir)
     build_animals(animals_dir, out_dir)
     fields = build_ground_and_decor(village_dir, fortress_dir, out_dir)
+    build_resource_nodes(out_dir)
     build_textures(fields, out_dir)
     build_effect_sheets(packs_dir, out_dir)
     build_smooth(out_dir)

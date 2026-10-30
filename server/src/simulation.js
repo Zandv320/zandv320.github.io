@@ -267,6 +267,14 @@ export function createSimulation(emit) {
         break;
       }
     }
+    /* crafting material (raw meat, arcane dust) drops on its own roll */
+    let material = null;
+    for (const [itemId, chance] of Object.entries(spec.materials || {})) {
+      if (Math.random() < chance) {
+        material = itemId;
+        break;
+      }
+    }
 
     emit("kill", {
       id: monster.id,
@@ -274,6 +282,7 @@ export function createSimulation(emit) {
       exp: spec.exp,
       zeny: Math.round(randomBetween(spec.zeny[0], spec.zeny[1])),
       loot,
+      material,
       x: +monster.x.toFixed(1),
       z: +monster.z.toFixed(1),
     });

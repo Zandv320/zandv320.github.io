@@ -913,3 +913,164 @@ export function squarePlaza(w, d, textureName = "cobbles2") {
   mesh.position.y = 0.02;
   return mesh;
 }
+
+/* ---------- crafting stations (rules/professions.js); the fire and glow effects are added by stations.js ---------- */
+
+/* an unlit material for things that glow (coals, potions, runes) */
+const glowMaterial = (hex) => new THREE.MeshBasicMaterial({ color: hex });
+
+/** Forge: a stone hearth with glowing coals, a hood and a chimney, a water trough beside it. */
+export function forge() {
+  const group = new THREE.Group();
+  const hearth = block(1.8, 0.9, 1.3, "stone", 0.9);
+  group.add(hearth);
+  const coals = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8), glowMaterial(0xff7a2a));
+  coals.rotation.x = -Math.PI / 2;
+  coals.position.set(0, 0.91, 0.1);
+  group.add(coals);
+  for (const x of [-0.75, 0.75]) {
+    const pillar = block(0.3, 1.4, 0.3, "stone", 0.82);
+    pillar.position.set(x, 0.9, -0.45);
+    group.add(pillar);
+  }
+  const hood = block(1.8, 0.45, 0.9, "stone", 0.78);
+  hood.position.set(0, 2.3, -0.3);
+  group.add(hood);
+  const chimney = block(0.7, 1.4, 0.6, "stone", 0.86);
+  chimney.position.set(0, 2.75, -0.45);
+  group.add(chimney);
+  const trough = block(0.9, 0.45, 0.5, "wood_dark");
+  trough.position.set(1.45, 0, 0.25);
+  group.add(trough);
+  const water = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.75, 0.36),
+    groundMaterial("water", 0.75, 0.36),
+  );
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(1.45, 0.43, 0.25);
+  group.add(water);
+  group.userData.mapKind = "station";
+  return group;
+}
+
+/** Alchemy table: a workbench with flasks in three colours, a mortar and a little rack. */
+export function alchemyTable() {
+  const group = new THREE.Group();
+  const top = box(1.9, 0.12, 0.9, material("wood", 1.9, 0.9));
+  top.position.y = 0.9;
+  group.add(top);
+  for (const [x, z] of CORNERS) {
+    const leg = box(0.12, 0.9, 0.12, material("wood_dark", 0.12, 0.9));
+    leg.position.set(x * 0.85, 0, z * 0.35);
+    group.add(leg);
+  }
+  const flasks = [
+    [-0.6, 0.1, 0xe0413a, 0.34],
+    [-0.3, -0.15, 0x3a7be0, 0.26],
+    [0.05, 0.12, 0x5ccf4a, 0.3],
+  ];
+  for (const [x, z, color, h] of flasks) {
+    const flask = outline(
+      new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.12, h, 8), glowMaterial(color)),
+      40,
+    );
+    flask.position.set(x, 1.02 + h / 2, z);
+    group.add(flask);
+  }
+  const mortar = outline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.11, 0.16, 8), material("stone", 0.6, 0.2)),
+    40,
+  );
+  mortar.position.set(0.5, 1.04, 0.05);
+  group.add(mortar);
+  const rack = box(1.6, 0.08, 0.25, material("wood_dark", 1.6, 0.25));
+  rack.position.set(0, 1.55, -0.35);
+  group.add(rack);
+  for (const x of [-0.7, 0.7]) {
+    const post = box(0.08, 0.7, 0.08, material("wood_dark", 0.08, 0.7));
+    post.position.set(x, 0.95, -0.38);
+    group.add(post);
+  }
+  for (const [x, color] of [
+    [-0.45, 0xb04ad8],
+    [-0.1, 0xf0c23a],
+    [0.3, 0x3ad8c8],
+  ]) {
+    const jar = box(0.18, 0.24, 0.18, glowMaterial(color));
+    jar.position.set(x, 1.63, -0.35);
+    group.add(jar);
+  }
+  group.userData.mapKind = "station";
+  return group;
+}
+
+/** Campfire: a ring of stones, crossed logs, a spit on two forked sticks and a log to sit on. */
+export function campfire() {
+  const group = new THREE.Group();
+  for (let i = 0; i < 9; i++) {
+    const angle = (i / 9) * Math.PI * 2;
+    const stone = block(0.32, 0.22, 0.28, "stone", 0.8 + (i % 3) * 0.08);
+    stone.position.set(Math.sin(angle) * 0.7, 0, Math.cos(angle) * 0.7);
+    stone.rotation.y = angle;
+    group.add(stone);
+  }
+  for (const angle of [0.4, -0.4, Math.PI / 2]) {
+    const log = outline(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.09, 0.09, 0.9, 6),
+        material("wood_dark", 0.6, 0.9),
+      ),
+      40,
+    );
+    log.rotation.set(Math.PI / 2 - 0.25, angle, 0);
+    log.position.y = 0.15;
+    group.add(log);
+  }
+  const embers = new THREE.Mesh(new THREE.CircleGeometry(0.35, 8), glowMaterial(0xff8a2a));
+  embers.rotation.x = -Math.PI / 2;
+  embers.position.y = 0.05;
+  group.add(embers);
+  for (const x of [-0.75, 0.75]) {
+    const stick = box(0.07, 1, 0.07, material("wood_dark", 0.07, 1));
+    stick.position.set(x, 0, 0);
+    group.add(stick);
+  }
+  const spit = outline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.7, 5), material("wood", 0.2, 1.7)),
+    40,
+  );
+  spit.rotation.z = Math.PI / 2;
+  spit.position.y = 0.95;
+  group.add(spit);
+  const seat = outline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.3, 8), material("wood", 1.2, 1.3)),
+    40,
+  );
+  seat.rotation.z = Math.PI / 2;
+  seat.position.set(0, 0.2, 1.3);
+  group.add(seat);
+  group.userData.mapKind = "station";
+  return group;
+}
+
+/** Enchanting altar: a stepped stone base with a violet crystal on top and four rune stones around it. */
+export function enchantingAltar() {
+  const group = altar();
+  const crystal = outline(
+    new THREE.Mesh(new THREE.OctahedronGeometry(0.32), glowMaterial(0xb07cff)),
+    20,
+  );
+  crystal.scale.y = 1.6;
+  crystal.position.y = 1.65;
+  group.add(crystal);
+  for (const [x, z] of CORNERS) {
+    const runeStone = block(0.36, 0.7, 0.3, "stone", 0.86);
+    runeStone.position.set(x * 1.9, 0, z * 1.5);
+    group.add(runeStone);
+    const glyph = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.26), glowMaterial(0x9ad8ff));
+    glyph.position.set(x * 1.9, 0.4, z * 1.5 + 0.151);
+    group.add(glyph);
+  }
+  group.userData.mapKind = "station";
+  return group;
+}

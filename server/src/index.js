@@ -12,12 +12,22 @@
    everyone receives snapshots ('monsters'), attacks ('monster_attack') and kills ('kill') as events from 'server'.
    Players report their hits ('hit'), freezes ('freeze') and provocations ('provoke'). The client sends the world's
    collision circles ({kind:'world_obstacles', obstacles:[[x, z, r], ...]}) because the world is built in the browser.
-   Heroes live in HeroStore (hero-store.js); this object forwards hero requests to it over RPC. */
+   Heroes live in HeroStore (hero-store.js); this object forwards hero requests to it over RPC. Profession actions
+   (gather, craft, refine, enchant, disenchant, use) are checked here first (is the hero at the node or station?);
+   gathered nodes stay depleted for everyone ('node_state' events, 'node_states' on joining). */
 /* global WebSocketPair, WebSocketRequestResponsePair */
 import { DurableObject } from "cloudflare:workers";
 import { createSimulation } from "./simulation.js";
 import { isValidToken, isValidHeroName, LEGACY_STORAGE_PREFIX } from "./hero-store.js";
 import { maxDamage } from "../../runeveld/src/rules/progression.js";
+import {
+  RESOURCES,
+  RECIPES,
+  PROFESSIONS,
+  USE_DISTANCE,
+  stationNear,
+} from "../../runeveld/src/rules/professions.js";
+import { GATHER_NODES } from "../../runeveld/src/rules/gather-nodes.js";
 
 export { Accounts } from "./accounts.js";
 export { HeroStore } from "./hero-store.js";
@@ -53,7 +63,11 @@ const HERO_MESSAGE_KINDS = new Set([
   "hero_action",
 ]);
 /* only the server decides about monsters */
-const SERVER_ONLY_EVENTS = new Set(["monsters", "monster_attack", "kill"]);
+const SERVER_ONLY_EVENTS = new Set(["monsters", "monster_attack", "kill", "node_state"]);
+/* hero actions of the professions: the World checks where the hero stands, HeroStore rolls the dice */
+const PROFESSION_ACTIONS = new Set(["gather", "craft", "refine", "enchant", "disenchant", "use"]);
+/* a little slack on the distance to a node or station, for the delay of the position updates */
+const USE_DISTANCE_SLACK = 1.5;
 
 const isObject = (value) => Boolean(value) && typeof value === "object";
 
@@ -84,6 +98,10 @@ export class World extends DurableObject {
     /* invited player id → {partyId, from, time} */
     this.invites = new Map();
     this.partyCounter = 0;
+    /* gathering node id → time (ms) at which it grows back */
+    this.depletedNodes = new Map();
+    /* player id → time (ms) of their last gather */
+    this.lastGather = new Map();
     this.version = (env.VERSION && env.VERSION.id) || "";
     this.loop = null;
     this.lastTick = 0;
@@ -281,6 +299,7 @@ export class World extends DurableObject {
       }
     }
     trySend(ws, { kind: "welcome", players, time: Date.now() });
+    trySend(ws, { kind: "node_states", nodes: this.#depletedNodeList() });
     this.#broadcast(ws, { kind: "presence", from: attachment.id, presence: attachment.presence });
     this.#startLoopFor(ws);
   }
@@ -400,6 +419,10 @@ export class World extends DurableObject {
             reply({ kind: "error", error: "no_hero" });
             return;
           }
+          if (PROFESSION_ACTIONS.has(message.type)) {
+            await this.#professionAction(ws, attachment, message, reply);
+            return;
+          }
           const hero = await store.action(
             token,
             attachment.heroName,
@@ -416,6 +439,97 @@ export class World extends DurableObject {
     } catch {
       reply({ kind: "error", error: "server_error" });
     }
+  }
+
+  /* ---- professions: gathering nodes and crafting stations ---- */
+
+  #depletedNodeList() {
+    const now = Date.now();
+    const list = [];
+    for (const [id, until] of this.depletedNodes) {
+      if (until <= now) {
+        this.depletedNodes.delete(id);
+      } else {
+        list.push({ id, respawnIn: +((until - now) / 1000).toFixed(1) });
+      }
+    }
+    return list;
+  }
+
+  /* Where must the hero stand for this action? Returns a reason when they are in the wrong place, else "". */
+  #placeProblem(attachment, type, data) {
+    const presence = attachment.presence || {};
+    const x = +presence.x;
+    const z = +presence.z;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+      return "Where are you?";
+    }
+    let stationKind = null;
+    if (type === "gather") {
+      const node = GATHER_NODES[String(data.node)];
+      if (!node) {
+        return "Nothing to gather here.";
+      }
+      if (Math.hypot(node.x - x, node.z - z) > USE_DISTANCE + USE_DISTANCE_SLACK) {
+        return "Too far away.";
+      }
+      if ((this.depletedNodes.get(node.id) || 0) > Date.now()) {
+        return "Someone got here first.";
+      }
+      return "";
+    }
+    if (type === "craft") {
+      const recipe = RECIPES[String(data.recipe)];
+      stationKind = recipe ? PROFESSIONS[recipe.profession].station : null;
+    } else if (type === "refine" || type === "enchant" || type === "disenchant") {
+      stationKind = "enchanting_altar";
+    } else {
+      return "";
+    }
+    if (!stationKind) {
+      return "Unknown recipe.";
+    }
+    return stationNear(stationKind, x, z) ? "" : "You need to stand at the right station.";
+  }
+
+  async #professionAction(ws, attachment, message, reply) {
+    const type = String(message.type);
+    const data = isObject(message.data) ? message.data : {};
+    const problem = this.#placeProblem(attachment, type, data);
+    if (problem) {
+      reply({ kind: "action_result", result: { ok: false, reason: problem } });
+      return;
+    }
+    const now = Date.now();
+    const context = {};
+    let node = null;
+    if (type === "gather") {
+      node = GATHER_NODES[String(data.node)];
+      context.sinceLastGather = now - (this.lastGather.get(attachment.id) || 0);
+      data.resource = node.resource;
+    }
+    const response = await this.#heroStore().profession(
+      attachment.token,
+      attachment.heroName,
+      type,
+      data,
+      context,
+    );
+    if (!response) {
+      reply({ kind: "error", error: "unknown_hero" });
+      return;
+    }
+    if (node && response.result.ok) {
+      this.lastGather.set(attachment.id, now);
+      /* the same node can be taken twice when two players finish at once; the first one depletes it */
+      if ((this.depletedNodes.get(node.id) || 0) <= now) {
+        const respawn = RESOURCES[node.resource].respawn;
+        this.depletedNodes.set(node.id, now + respawn * 1000);
+        this.#broadcast(null, this.#serverEvent("node_state", { id: node.id, respawnIn: respawn }));
+      }
+    }
+    this.#refreshMaxDamage(ws, response.hero);
+    reply({ kind: "hero", hero: response.hero, result: response.result });
   }
 
   async #playHero(ws, token, name, reply) {
@@ -646,6 +760,7 @@ export class World extends DurableObject {
             exp: share.exp,
             zeny: share.zeny,
             loot: playerId === kill.killer ? kill.loot : null,
+            material: playerId === kill.killer ? kill.material : null,
           },
         );
         if (hero) {
