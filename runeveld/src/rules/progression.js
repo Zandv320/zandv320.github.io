@@ -209,11 +209,16 @@ export function removeFromBag(hero, id, count = 1) {
 export function takeFromBag(hero, id, index) {
   const bag = hero.bag || [];
   let at = Number.isInteger(index) && bag[index] && bag[index].id === id ? index : -1;
-  if (at < 0) {
-    at = bag.findLastIndex((entry) => entry.id === id && !hasMods(entry));
+  /* the last match, plain ones first (a loop: findLastIndex is missing on older phone browsers) */
+  for (let i = bag.length - 1; at < 0 && i >= 0; i--) {
+    if (bag[i].id === id && !hasMods(bag[i])) {
+      at = i;
+    }
   }
-  if (at < 0) {
-    at = bag.findLastIndex((entry) => entry.id === id);
+  for (let i = bag.length - 1; at < 0 && i >= 0; i--) {
+    if (bag[i].id === id) {
+      at = i;
+    }
   }
   if (at < 0) {
     return null;

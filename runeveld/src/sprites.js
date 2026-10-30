@@ -98,6 +98,8 @@ const shadowMaterial = new THREE.MeshBasicMaterial({
   depthWrite: false,
 });
 const SHADOW_Y = 0.06;
+/* for the shadow batches of the static scenery (batching.js) */
+export const BLOB_SHADOW = { geometry: shadowGeometry, material: shadowMaterial, y: SHADOW_Y };
 const clickMaterial = new THREE.MeshBasicMaterial({ visible: false });
 
 function addBlobShadow(group, diameter) {
@@ -158,6 +160,8 @@ function figureGeometry(width, height, feet, hip) {
   );
   geometry.setIndex([0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5]);
   geometry.computeBoundingSphere();
+  /* some room for the lean, squash and crouch, so the camera only skips figures that are truly out of view */
+  geometry.boundingSphere.radius *= 1.25;
   geometry.userData = { hip, top };
   return geometry;
 }
@@ -251,7 +255,6 @@ export class Sprite2D {
           side: THREE.DoubleSide,
         });
         const mesh = new THREE.Mesh(this.geometry, material);
-        mesh.frustumCulled = false;
         /* a tiny offset per layer keeps the draw order stable */
         mesh.position.z = 0.004 * (i + 1);
         this.group.add(mesh);
@@ -268,8 +271,8 @@ export class Sprite2D {
         layer.source = source;
         layer.texture = source.clone();
         layer.texture.needsUpdate = true;
-        layer.white = whiteTexture(source).clone();
-        layer.white.needsUpdate = true;
+        /* the white flash version is made on the first hit (flashHit): most figures are never hit */
+        layer.white = null;
         layer.mesh.material.map = layer.texture;
         layer.mesh.material.needsUpdate = true;
       }
@@ -340,7 +343,6 @@ export class Sprite2D {
               side: THREE.DoubleSide,
             }),
           );
-          mesh.frustumCulled = false;
           mesh.position.z = z;
           this.group.add(mesh);
           return mesh;
@@ -418,6 +420,10 @@ export class Sprite2D {
     this.flashTime = 0.09;
     this.punch = 1;
     for (const layer of this.layers) {
+      if (!layer.white) {
+        layer.white = whiteTexture(layer.source).clone();
+        layer.white.needsUpdate = true;
+      }
       layer.white.repeat.copy(layer.texture.repeat);
       layer.white.offset.copy(layer.texture.offset);
       layer.mesh.material.map = layer.white;

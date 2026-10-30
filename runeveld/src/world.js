@@ -12,7 +12,14 @@ import {
   SMOOTH,
   PIXEL_SCALE,
   IS_PHONE,
+  BLOB_SHADOW,
 } from "./sprites.js";
+import {
+  createBillboardBatch,
+  createShadowBatch,
+  mergeStaticGroups,
+  updateBatchUniforms,
+} from "./batching.js";
 import * as builders from "./builders.js";
 import {
   FOREST,
@@ -38,11 +45,21 @@ export const GATE_HALF_WIDTH = 2.8; /* half the width of the gates (on the road)
 export const PPU = 16;
 
 export const canvas = document.getElementById("game");
-export const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: false,
-  powerPreference: "high-performance",
-});
+/* Some phones refuse a "high-performance" context; then the default one. Without WebGL at all the loading screen
+   says so (index.html shows uncaught errors there). */
+function createRenderer() {
+  for (const powerPreference of ["high-performance", "default"]) {
+    try {
+      return new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference });
+    } catch (error) {
+      console.warn("WebGL (" + powerPreference + ") failed:", error);
+    }
+  }
+  throw new Error(
+    "this browser cannot show 3D graphics (WebGL). Update it, turn on hardware acceleration or try another browser.",
+  );
+}
+export const renderer = createRenderer();
 /* pixel look: the scene is rendered at low resolution and scaled up without blurring (canvas image-rendering) */
 renderer.setPixelRatio(PIXEL_SCALE > 1 ? 1 / PIXEL_SCALE : Math.min(devicePixelRatio, 2));
 canvas.style.imageRendering = PIXEL_SCALE > 1 ? "pixelated" : "auto";
@@ -521,11 +538,19 @@ function buildValeGround(atlas, decor) {
 }
 
 /* ---------- scenery ---------- */
+/* Every billboard in the world as {name, x, z, scale} (the world map and the night lights read them). */
 export const billboards = [];
+/* The ones that change (gathering nodes): real Billboard objects, updated every frame. */
+const dynamicBillboards = [];
+/* The static ones, drawn in batches once the world is built: {texture, width, height, x, z, shadow}. */
+const staticBillboards = [];
+/* The pixel-3D builds, merged into a few meshes once the world is built. */
+const placedGroups = [];
 
 /* Billboards (trees, bushes, small objects): village objects (32 px kit) at scale .65, trees and rocks (16 px kit)
-   at 1.3; then they match the 24 px hero. Resolves to the Billboard. */
-async function prop(name, x, z, { radius = 0, shadow = 0, scale = 0.65 } = {}) {
+   at 1.3; then they match the 24 px hero. Static ones (the default) are drawn in batches (batching.js) and resolve
+   to a plain record; `dynamic: true` gives a Billboard of its own that can be hidden, moved or clicked. */
+async function prop(name, x, z, { radius = 0, shadow = 0, scale = 0.65, dynamic = false } = {}) {
   const texture = await loadTexture("sprites/" + name + ".png");
   if (!texture) {
     throw new Error("Sprite missing: " + name);
@@ -535,10 +560,17 @@ async function prop(name, x, z, { radius = 0, shadow = 0, scale = 0.65 } = {}) {
   if (radius > 0) {
     obstacles.push({ x, z, r: radius });
   }
+  if (!dynamic) {
+    const record = { name, x, z, scale };
+    billboards.push(record);
+    staticBillboards.push({ texture, width, height, x, z, shadow });
+    return record;
+  }
   const billboard = new Billboard(texture, width, height, { shadow });
   billboard.group.position.set(x, 0, z);
   scene.add(billboard.group);
   billboards.push(billboard);
+  dynamicBillboards.push(billboard);
   billboard.name = name;
   billboard.x = x;
   billboard.z = z;
@@ -558,10 +590,38 @@ function place(group, x, z, { rotation = 0, radius = 0 } = {}) {
     }
   });
   scene.add(group);
+  placedGroups.push(group);
   if (radius > 0) {
     obstacles.push({ x, z, r: radius });
   }
   return group;
+}
+
+/* The static billboards in batches: one InstancedMesh per picture and size, one for all their blob shadows. */
+function buildBillboardBatches() {
+  const groups = new Map();
+  const shadows = [];
+  for (const item of staticBillboards) {
+    const key = `${item.texture.uuid}|${item.width.toFixed(4)}|${item.height.toFixed(4)}`;
+    if (!groups.has(key)) {
+      groups.set(key, { ...item, positions: [] });
+    }
+    groups.get(key).positions.push({ x: item.x, z: item.z });
+    if (item.shadow > 0) {
+      shadows.push({ x: item.x, z: item.z, diameter: item.shadow });
+    }
+  }
+  for (const group of groups.values()) {
+    const geometry = new THREE.PlaneGeometry(group.width, group.height);
+    geometry.translate(0, group.height / 2, 0);
+    scene.add(createBillboardBatch(group.texture, geometry, group.positions, cameraState.yaw));
+  }
+  if (shadows.length) {
+    scene.add(
+      createShadowBatch(BLOB_SHADOW.geometry, BLOB_SHADOW.material, shadows, BLOB_SHADOW.y),
+    );
+  }
+  staticBillboards.length = 0;
 }
 
 /** Builds the whole world: ground, village, fields, forest and the capital. Resolves when every sprite is loaded. */
@@ -827,11 +887,16 @@ export async function buildWorld() {
   buildCapital(context);
   buildProfessionSites(context);
   await Promise.all(pending);
+  /* draw the static scenery in bulk (batching.js): the same picture, far fewer draw calls */
+  buildBillboardBatches();
+  mergeStaticGroups(scene, placedGroups);
+  placedGroups.length = 0;
   renderer.shadowMap.needsUpdate = true;
 }
 
 export function updateBillboards() {
-  for (const billboard of billboards) {
+  updateBatchUniforms(cameraState);
+  for (const billboard of dynamicBillboards) {
     billboard.update(cameraState);
   }
 }

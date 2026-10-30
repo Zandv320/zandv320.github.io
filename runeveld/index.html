@@ -435,6 +435,54 @@
       </div>
     </div>
     <div id="loading">Loading Eldoria…</div>
+    <!-- Safety net for the start, in plain old JavaScript so it runs on every browser: when the game fails before it
+         is running (an old browser, no WebGL, a file that did not load) or loading takes very long, the loading
+         screen says so and offers a reload instead of waiting forever. -->
+    <script>
+      (function () {
+        var loading = document.getElementById("loading");
+        function isLoading() {
+          return loading && !/\baway\b/.test(loading.className);
+        }
+        function show(message) {
+          if (!isLoading()) {
+            return;
+          }
+          var box = document.createElement("div");
+          box.className = "loading-problem";
+          var text = document.createElement("p");
+          text.textContent = message;
+          var button = document.createElement("button");
+          button.className = "btn main";
+          button.textContent = "Reload";
+          button.onclick = function () {
+            location.reload();
+          };
+          box.appendChild(text);
+          box.appendChild(button);
+          loading.textContent = "";
+          loading.appendChild(box);
+        }
+        window.eldoriaLoadProblem = show;
+        window.addEventListener("error", function (event) {
+          show("Eldoria could not start: " + (event.message || "a file did not load") + ".");
+        });
+        window.addEventListener("unhandledrejection", function (event) {
+          var reason = event.reason;
+          show("Eldoria could not start: " + ((reason && reason.message) || reason) + ".");
+        });
+        if (!("noModule" in document.createElement("script"))) {
+          show("This browser is too old for Eldoria. Please update it, or try Chrome or Firefox.");
+        }
+        setTimeout(function () {
+          if (isLoading() && !loading.querySelector(".loading-problem")) {
+            show(
+              "Loading is taking longer than usual. A slow connection? Wait a little longer, or try again.",
+            );
+          }
+        }, 40000);
+      })();
+    </script>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

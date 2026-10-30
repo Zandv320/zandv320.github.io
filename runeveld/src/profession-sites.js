@@ -39,12 +39,13 @@ export function buildProfessionSites({ prop, place, pending }) {
     }
     const sprite = RESOURCES[node.resource].node;
     pending.push(
-      prop(sprite, node.x, node.z, look).then((billboard) => {
+      prop(sprite, node.x, node.z, { ...look, dynamic: true }).then((billboard) => {
         entry.full = billboard;
       }),
       prop(DEPLETED_SPRITE[node.profession], node.x, node.z, {
         scale: look.scale,
         shadow: look.shadow * 0.6,
+        dynamic: true,
       }).then((billboard) => {
         entry.depleted = billboard;
         billboard.group.visible = false;

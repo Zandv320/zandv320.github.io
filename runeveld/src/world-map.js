@@ -107,7 +107,12 @@ export function createWorldMap(deps) {
         return;
       }
       if (typeof mapKind === "string") {
-        box.setFromObject(object);
+        /* merged builds keep their box in userData.mapBox (batching.js) */
+        if (object.userData.mapBox) {
+          box.copy(object.userData.mapBox);
+        } else {
+          box.setFromObject(object);
+        }
         features.buildings.push({
           kind: mapKind,
           x0: box.min.x,
@@ -650,7 +655,12 @@ export function createWorldMap(deps) {
     const worldZ0 = deps.player.z - height / 2 / scale;
     minimapContext.save();
     minimapContext.beginPath();
-    minimapContext.roundRect(0, 0, width, height, 10 * ratio);
+    /* roundRect is missing on older phone browsers: a square corner then */
+    if (minimapContext.roundRect) {
+      minimapContext.roundRect(0, 0, width, height, 10 * ratio);
+    } else {
+      minimapContext.rect(0, 0, width, height);
+    }
     minimapContext.clip();
     minimapContext.fillStyle = COLORS.outside;
     minimapContext.fillRect(0, 0, width, height);

@@ -1809,7 +1809,35 @@ window.eldoria = {
   maxJobLevel,
 };
 
+/* Phones drop the graphics context now and then (the screen was off for long, another app needed the GPU).
+   three.js rebuilds everything once the browser gives it back; until then a notice, with a reload button in case
+   it never comes back. */
+canvas.addEventListener("webglcontextlost", (event) => {
+  event.preventDefault();
+  if ($("#context-lost")) {
+    return;
+  }
+  const notice = document.createElement("div");
+  notice.id = "context-lost";
+  notice.innerHTML =
+    '<div class="loading-problem"><p>The graphics were interrupted. Restoring…</p>' +
+    '<button class="btn main">Reload</button></div>';
+  notice.querySelector("button").addEventListener("click", () => location.reload());
+  document.body.appendChild(notice);
+});
+canvas.addEventListener("webglcontextrestored", () => {
+  renderer.shadowMap.needsUpdate = true;
+  const notice = $("#context-lost");
+  if (notice) {
+    notice.remove();
+  }
+});
+
 init().catch((error) => {
   console.error(error);
-  $("#loading").textContent = "Loading failed: " + error.message;
+  if (window.eldoriaLoadProblem) {
+    window.eldoriaLoadProblem("Loading failed: " + error.message);
+  } else {
+    $("#loading").textContent = "Loading failed: " + error.message;
+  }
 });
