@@ -464,73 +464,90 @@ MANTELS = {
 }
 
 
-def mantel(lijf, tuniek, palet, zoom=None, fw=64, fh=64):
+def mantel(lijf, hoofd, palet, zoom=None, fw=64, fh=64):
+    """Een cape per frame, opgehangen aan de schouders (net onder het hoofd) tot aan de kuiten.
+    Geeft (voor, achter): 'achter' komt onder het lijf, 'voor' erover.
+      van voren:   de cape achter het lijf, aan de zijkanten en tussen de benen zichtbaar; ervoor alleen kraag en gesp
+      van achteren: de hele cape over de rug (het hoofd komt er nog overheen)
+      van opzij:   hangt van de achterste schouder schuin naar achteren, langer uitwaaierend bij het lopen;
+                   ervoor alleen het stuk over de achterste schouder
+    De vorm is glad (trapezium met golvende zoom), niet de rafelige omtrek van armen en benen."""
     import numpy as np
-    L = np.array(lijf); T = np.array(tuniek)
+    L = np.array(lijf); K = np.array(hoofd)
     H, W = L.shape[:2]; rows = H // fh; cols = W // fw
     voor = np.zeros_like(L); achter = np.zeros_like(L)
-    outline, donker, midden, licht = [np.array(k + (255,), dtype=np.uint8) for k in palet]
+    rand, donker, midden, licht = [np.array(k + (255,), dtype=np.uint8) for k in palet]
     goud = np.array(zoom + (255,), dtype=np.uint8) if zoom else None
+    gesp = goud if goud is not None else np.array((214, 178, 70, 255), dtype=np.uint8)
 
     def dilate(m):
         d = m.copy(); d[1:, :] |= m[:-1, :]; d[:-1, :] |= m[1:, :]; d[:, 1:] |= m[:, :-1]; d[:, :-1] |= m[:, 1:]; return d
 
-    def kleur(mask, cx, hem, doel):
-        """mask inkleuren: licht van links, donker rechts, de onderste rij als zoom, en een omlijning eromheen"""
-        ys, xs = np.nonzero(mask)
-        if not len(ys): return
-        w = max(1, xs.max() - xs.min())
-        for y, x in zip(ys, xs):
-            if y >= hem - 1: k = goud if goud is not None else donker
-            elif x > cx + w * 0.22: k = donker
-            elif x < cx - w * 0.3: k = licht
-            else: k = midden
+    def vul(mask, ys, hem, licht_links, doel, plooien=True):
+        """inkleuren met licht van de lichte kant, plooien als verticale banen, zoom onderaan, omlijning eromheen"""
+        yy, xx = np.nonzero(mask)
+        if not len(yy): return
+        x0, x1 = xx.min(), xx.max(); w = max(1, x1 - x0)
+        for y, x in zip(yy, xx):
+            t = (x - x0) / w if licht_links else (x1 - x) / w      # 0 = lichte kant, 1 = schaduwkant
+            k = licht if t < .22 else (donker if t > .7 else midden)
+            if plooien and y > ys + 2 and t >= .22 and (x - x0) % 4 == 2: k = donker   # plooien
+            if y <= ys: k = licht                                                       # de schouderlijn vangt licht
+            if y >= hem - 1: k = goud if goud is not None else donker                   # zoom
             doel[y, x] = k
-        rand = dilate(mask) & ~mask
-        doel[rand] = outline
+        doel[dilate(mask) & ~mask] = rand
 
     for r in range(rows):
-        d = r % 4; dood = r >= 16; anim_loop = 4 <= r < 12
+        d = r % 4; dood = r >= 16; loopt = 4 <= r < 8
         for c in range(cols):
-            y0f, x0f = r * fh, c * fw
-            lm = L[y0f:y0f + fh, x0f:x0f + fw, 3] > 0; tm = T[y0f:y0f + fh, x0f:x0f + fw, 3] > 0
-            if not lm.any() or not tm.any(): continue
-            ys, xs = np.nonzero(lm); tys, txs = np.nonzero(tm)
-            ly1 = ys.max(); y0 = tys.min() + 1; tl, tr = txs.min(), txs.max(); tb = tys.max()
-            hem = min(ly1 - 1, int(y0 + (ly1 - y0) * 0.82)); cx = (tl + tr) / 2
-            if hem <= y0 + 2: continue
+            fy, fx = r * fh, c * fw
+            lm = L[fy:fy + fh, fx:fx + fw, 3] > 0; km = K[fy:fy + fh, fx:fx + fw, 3] > 0
+            if not lm.any() or not km.any(): continue
+            lys, lxs = np.nonzero(lm); kys, kxs = np.nonzero(km)
+            voet = lys.max(); nek = min(kys.max(), kys.min() + 15)     # een hand in de hoofdlaag telt niet als nek
+            ys = nek - 1                                    # de schouderlijn, net onder de kin (het hoofd tekent eroverheen)
+            if dood or voet - ys < 5: continue              # liggend of ineengezakt: geen cape
+            hem = voet - 3                                  # tot de kuiten
+            rij = np.nonzero(lm[ys + 2])[0]
+            if not len(rij): continue
+            xl, xr = rij.min(), rij.max(); cx = (xl + xr) / 2
+            hoogte = hem - ys
             cape = np.zeros((fh, fw), bool)
-            sway = (1 if c % 2 else -1) if anim_loop else 0
-            for y in range(y0, hem + 1):
-                rowm = tm[y] | lm[y]
-                if rowm.any(): nz = np.nonzero(rowm)[0]; l, rr = min(nz[0], tl), max(nz[-1], tr)
-                else: l, rr = tl, tr
-                f = (y - y0) / max(1, hem - y0); spread = 1 + int(2.5 * f); s = sway if y > hem - 3 else 0
-                if d == 1: l2, r2 = l - 1, rr + spread + 1 + s          # kijkt naar links: de cape sleept rechts
-                elif d == 2: l2, r2 = l - spread - 1 + s, rr + 1
-                else: l2, r2 = l - spread + s, rr + spread + s
-                cape[y, max(0, l2):min(fw, r2 + 1)] = True
-            cape[hem, (np.arange(fw) + c) % 3 == 0] = False       # een licht geschulpte zoom
-            A = achter[y0f:y0f + fh, x0f:x0f + fw]; V = voor[y0f:y0f + fh, x0f:x0f + fw]
-            if dood:
-                kleur(cape, cx, hem, A); continue
-            if d == 3:                                   # van achteren: de hele cape over de rug
-                kleur(cape, cx, hem, V)
-            elif d == 0:                                 # van voren: cape erachter, kraag en gesp ervoor
-                kleur(cape, cx, hem, A)
-                kraag = np.zeros((fh, fw), bool); kraag[y0:y0 + 2, tl:tr + 1] = True
-                kleur(kraag, cx, hem, V); V[y0 + 1, int(cx)] = goud if goud is not None else np.array((214, 178, 70, 255), dtype=np.uint8)
-            else:                                        # van opzij: cape erachter, over de achterste schouder ervoor
-                kleur(cape, cx, hem, A)
-                schouder = np.zeros((fh, fw), bool)
-                if d == 1: schouder[y0:tb + 1, int(cx + (tr - tl) * 0.1):tr + 1] = cape[y0:tb + 1, int(cx + (tr - tl) * 0.1):tr + 1]
-                else: schouder[y0:tb + 1, tl:int(cx - (tr - tl) * 0.1) + 1] = cape[y0:tb + 1, tl:int(cx - (tr - tl) * 0.1) + 1]
-                kleur(schouder, cx, hem, V)
+            golf = (c % 2) * 2 - 1                          # per frame wisselend: de zoom zwaait
+            for y in range(ys, hem + 1):
+                f = (y - ys) / hoogte
+                if d in (0, 3):                             # voor- en achteraanzicht: een trapezium dat iets uitwaaiert
+                    uit = 1 + 2.2 * f; zw = (golf if loopt else 0) * f * f
+                    a, b = xl - uit + zw, xr + uit + zw
+                else:                                       # zijaanzicht: vanaf de achterste schouder schuin naar achteren
+                    sleep = (3.5 if loopt else 1.8) * f + (golf * 1.2 * f * f if loopt else 0)
+                    if d == 1:                              # kijkt naar links: de rug is rechts
+                        a, b = cx + 1 + 1.5 * f, xr + 1 + sleep
+                    else:                                   # kijkt naar rechts: de rug is links
+                        a, b = xl - 1 - sleep, cx - 1 - 1.5 * f
+                cape[y, max(0, int(round(a))):min(fw, int(round(b)) + 1)] = True
+            # een geschulpte zoom
+            for x in np.nonzero(cape[hem])[0]:
+                if (x + c) % 3 == 0: cape[hem, x] = False
+            A = achter[fy:fy + fh, fx:fx + fw]; V = voor[fy:fy + fh, fx:fx + fw]
+            if d == 3:
+                vul(cape, ys, hem, True, V)
+            elif d == 0:
+                vul(cape, ys, hem, True, A)
+                kraag = np.zeros((fh, fw), bool); kraag[ys:ys + 2, int(xl):int(xr) + 1] = True
+                vul(kraag, ys, hem, True, V, plooien=False)
+                V[ys + 1, int(round(cx))] = gesp
+            else:
+                vul(cape, ys, hem, d == 2, A)
+                schouder = np.zeros((fh, fw), bool)   # alleen een smalle rand over de achterste schouder
+                if d == 1: schouder[ys:ys + 2, int(xr) - 1:] = cape[ys:ys + 2, int(xr) - 1:]
+                else: schouder[ys:ys + 2, :int(xl) + 2] = cape[ys:ys + 2, :int(xl) + 2]
+                vul(schouder, ys, hem, d == 2, V, plooien=False)
     return Image.fromarray(voor), Image.fromarray(achter)
 
 
 for naam, k in MANTELS.items():
-    v, a = mantel(basis, tuniek_laag, k['palet'], k['zoom'])
+    v, a = mantel(basis, uit[1], k['palet'], k['zoom'])
     v.save(UIT / f'{naam}.png'); a.save(UIT / f'{naam}b.png')
 
 # ---------- tweede klassen: Knight en Crusader (harnas in staalblauw / zilver met goud), Wizard en Sage (gewaad) ----------
