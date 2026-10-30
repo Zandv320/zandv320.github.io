@@ -1,0 +1,16 @@
+# Eldoria: Chronicles of Magic – de spelserver op Cloudflare Workers (gratis plan).
+# Eén Durable Object ("Wereld") per wereld houdt de WebSocket-verbindingen van alle spelers vast en stuurt hun
+# berichten door. Uitrollen gebeurt via GitHub Actions (.github/workflows/server.yml) met wrangler.
+name = "eldoria-server"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "WERELD"
+class_name = "Wereld"
+
+# het gratis plan vereist SQLite-backed Durable Objects
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Wereld"]
