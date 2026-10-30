@@ -160,9 +160,16 @@ export class HeroStore extends DurableObject {
       case "unequip":
         changed = progression.unequip(hero, String(payload.slot));
         break;
-      case "drink":
+      case "drink": {
+        // The stored HP is only synced every few seconds, so a potion right after a hit would be refused as
+        // "already at full health". The client sends its current HP; it can only lower it, never raise it.
+        const currentHp = Number(payload.hp);
+        if (Number.isFinite(currentHp)) {
+          hero.hp = Math.max(0, Math.min(hero.hp, Math.round(currentHp)));
+        }
         changed = progression.drinkPotion(hero, id || DEFAULT_POTION);
         break;
+      }
       case "advance":
         changed = progression.advanceClass(hero, id);
         break;

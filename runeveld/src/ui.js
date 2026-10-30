@@ -25,6 +25,9 @@ export function createLabel(kind, name) {
   el.innerHTML =
     '<div class="quest-mark" hidden></div><div class="name"></div><div class="hp" hidden><i></i></div>';
   el.querySelector(".name").textContent = name;
+  // hidden until positionLabel places it; otherwise labels created before the game starts (monsters arriving from
+  // the server while the character select is open) pile up in the top-left corner
+  el.style.display = "none";
   labelsLayer.appendChild(el);
   return {
     el,

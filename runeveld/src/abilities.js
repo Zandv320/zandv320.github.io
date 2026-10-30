@@ -83,7 +83,8 @@ function drinkPotion(time) {
     return;
   }
   removeFromBag("red_potion");
-  game.network.heroAction("drink", { id: "red_potion" });
+  // send the HP from before drinking: the server's copy may be several seconds old
+  game.network.heroAction("drink", { id: "red_potion", hp: Math.round(player.hp) });
   sfx.potion();
   playEffect("sparkle", player.x, player.z, { size: 2, grounded: true, follow: player });
   player.hp = Math.min(hpMax(), player.hp + potion.heal);
