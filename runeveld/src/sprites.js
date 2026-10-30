@@ -188,6 +188,8 @@ export class Sprite2D {
     this.finished = false;
     this.facing = new THREE.Vector2(0, 1);
     this.flashTime = 0;
+    /* hit stop: the animation holds while this is above 0 (feel.js) */
+    this.freezeTime = 0;
     this.cols = 1;
     this.rows = 1;
     this.nudgeVector = new THREE.Vector2();
@@ -425,7 +427,16 @@ export class Sprite2D {
     this.nudgeTime = 1;
   }
 
+  /** Holds the current pose for `seconds`: the hit stop when a blow lands. */
+  freeze(seconds) {
+    this.freezeTime = Math.max(this.freezeTime, seconds);
+  }
+
   update(dt, cameraState) {
+    if (this.freezeTime > 0) {
+      this.freezeTime -= dt;
+      dt = 0;
+    }
     const anim = this.anim;
     if (anim) {
       this.time += dt;

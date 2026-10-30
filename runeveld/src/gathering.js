@@ -26,6 +26,7 @@ import * as UI from "./ui.js";
 import { player, game, clickables, now, playEffect, hpMax, spMax } from "./game-state.js";
 import { pressedKeys } from "./player.js";
 import { createWorkAnimation } from "./work-animation.js";
+import { flyToHud } from "./feel.js";
 
 /* what a node is called above it */
 const NODE_NAMES = {
@@ -341,6 +342,7 @@ export function createGathering(deps) {
     }
     const item = ITEMS[result.item];
     sfx.loot();
+    flyToHud(result.item, item.icon, node.x, 0.5, node.z, camera, "bag");
     UI.floatingText(
       player.x,
       player.sprite.height + 0.6,
@@ -358,6 +360,7 @@ export function createGathering(deps) {
         `<span class="level-msg">A gem! You found ${icon(result.gem, gem.icon, "small")} ${UI.escapeHtml(gem.name)}.</span>`,
       );
       playEffect("sparkle", node.x, node.z, { size: 1.4, y: 0.6 });
+      flyToHud(result.gem, gem.icon, node.x, 0.5, node.z, camera, "bag", 0.25);
     }
     reportProgress(result);
   }

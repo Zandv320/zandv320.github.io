@@ -25,6 +25,7 @@ import {
 import { knockBack } from "./monsters.js";
 import { addToBag } from "./bag.js";
 import { groundRing } from "./skill-effects.js";
+import { hitStop, buzz, flyToHud } from "./feel.js";
 import { useSkill } from "./abilities.js";
 
 /** Keys held down (KeyboardEvent.code), filled by the input handlers in main.js. */
@@ -256,6 +257,8 @@ export function hitMonster(monster, result, kind) {
   UI.floatingText(monster.x, numberHeight, monster.z, camera, text, style);
   const force = kind === "whirlwind_sweep" ? 1.2 : result.crit ? 0.45 : 0.28;
   knockBack(monster, monster.x - player.x, monster.z - player.z, force);
+  /* the blow lands: hero and monster hold for a moment, longer on a critical hit */
+  hitStop([monster.sprite, kind ? null : player.sprite], result.crit ? 0.09 : 0.045);
   sfx.hit(result.crit);
   if (result.crit && !kind) {
     playEffect("flash", monster.x, monster.z, { size: 1.4, y: 0.6, tint: 0xffe6a0 });
@@ -267,6 +270,7 @@ export function hitMonster(monster, result, kind) {
   }
   if (result.crit) {
     shakeCamera(0.22, 0.2);
+    buzz("crit");
   } else if (kind) {
     shakeCamera(0.1, 0.15);
   }
@@ -369,6 +373,11 @@ export function takeDamage(damage, spec, attacker) {
   player.hp -= damage;
   UI.floatingText(player.x, player.sprite.height, player.z, camera, damage, "hurt");
   player.sprite.flashHit();
+  player.sprite.freeze(0.05);
+  if (attacker) {
+    attacker.sprite.freeze(0.05);
+  }
+  buzz("hurt");
 
   /* Aegis of Light: part of the damage goes back to the attacker */
   if (attacker && !attacker.isDead && player.skills.aegis_of_light > 0) {
@@ -407,6 +416,7 @@ function die() {
   playOnce("death", 999);
   player.respawnAt = now() + RESPAWN_DELAY;
   sfx.death();
+  buzz("death");
   shakeCamera(0.4, 0.4);
   UI.setLowHp(false);
   UI.announce("You were defeated", "You will be back at the well in 5 seconds.");
@@ -430,6 +440,7 @@ function respawn() {
 /* level ups: full HP and SP, effects and a message */
 function celebrateLevelUp() {
   sfx.levelUp();
+  buzz("levelUp");
   playEffect("flash", player.x, player.z, { size: 3.4, y: 0.9, tint: 0xffd27a });
   playEffect("sparkle", player.x, player.z, {
     size: 2.6,
@@ -474,11 +485,18 @@ function celebrateJobLevelUp(hasLevelledUp) {
   }
 }
 
-/** Exp, zeny and loot (a killed monster or a quest reward), with level and job level ups. */
+/**
+ * Exp, zeny and loot (a killed monster or a quest reward), with level and job level ups. `reward.from` ({x, z},
+ * the killed monster) is where found items and coins fly to the bag and zeny counter from; else the hero.
+ */
 export function grantReward(reward) {
   reward = { ...reward, exp: Math.round(reward.exp * ADMIN.expMultiplier) };
   player.exp += reward.exp;
   player.zeny += reward.zeny;
+  const from = reward.from || player;
+  if (reward.zeny > 0) {
+    flyToHud("ui_zeny", "🪙", from.x, 0.6, from.z, camera, "zeny");
+  }
   UI.floatingText(
     player.x,
     player.sprite.height + 0.4,
@@ -492,6 +510,7 @@ export function grantReward(reward) {
     const item = ITEMS[reward.loot];
     sfx.loot();
     if (addToBag(reward.loot)) {
+      flyToHud(reward.loot, item.icon, from.x, 0.6, from.z, camera, "bag", 0.15);
       const equipHint = item.slot ? " Open your inventory (I) to equip it." : "";
       UI.logMessage(
         '<span class="level-msg">You found: ' +
@@ -512,6 +531,7 @@ export function grantReward(reward) {
   if (reward.material && ITEMS[reward.material]) {
     const material = ITEMS[reward.material];
     if (addToBag(reward.material, 1, true)) {
+      flyToHud(reward.material, material.icon, from.x, 0.6, from.z, camera, "bag", 0.3);
       UI.logMessage(
         '<span class="loot-msg">You found: ' +
           icon(reward.material, material.icon, "small") +

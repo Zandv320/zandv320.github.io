@@ -44,6 +44,7 @@ import {
 import { createWorldMap } from "./world-map.js";
 import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight.js";
 import { createPerfOverlay } from "./perf-overlay.js";
+import { createAmbience } from "./ambience.js";
 import { createEffects } from "./effects.js";
 import { unlockAudio, sfx, isSoundOn, setSoundOn } from "./audio.js";
 import { baseStats } from "./rules/stats.js";
@@ -192,6 +193,7 @@ async function init() {
     hemiLight,
     lights: createWorldLights(),
   });
+  game.ambience = createAmbience(scene);
   warmUpGpu();
   $("#loading").classList.add("away");
   addEventListener("pointerdown", unlockAudio, { capture: true });
@@ -1052,6 +1054,7 @@ function onKillEvent(data, from) {
   if (share) {
     grantReward({
       ...data,
+      from: monster ? { x: monster.x, z: monster.z } : null,
       exp: share.exp,
       zeny: share.zeny,
       loot: data.killer === network.me ? data.loot : null,
@@ -1761,6 +1764,11 @@ function step(dt) {
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
   updateBillboards();
+  if (game.ambience) {
+    /* dust behind everyone walking near the camera; villagers too, they make the streets feel alive */
+    const movers = game.isStarted ? [player, ...peers.values(), ...villagers()] : [];
+    game.ambience.update(dt, time, cameraState, renderer, movers, 1 - daylight());
+  }
   if (game.effects) {
     game.effects.update(dt, cameraState);
   }

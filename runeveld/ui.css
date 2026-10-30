@@ -388,6 +388,35 @@ h3 {
   color: #d8b4fe;
   font-size: 14px;
 }
+/* game feel (feel.js): a found item or coin flying to the bag or zeny counter, which bumps when it lands */
+.fly-icon {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  --icon-size: 28px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(255, 214, 120, 0.55));
+  font-size: 24px;
+  line-height: 1;
+}
+.bump {
+  animation: hud-bump 0.32s ease-out;
+}
+#hud-zeny {
+  /* so the bump (a transform) applies to it */
+  display: inline-block;
+}
+@keyframes hud-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.22);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 @keyframes damage-rise {
   0% {
     opacity: 0;
