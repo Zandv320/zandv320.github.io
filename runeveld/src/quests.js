@@ -16,13 +16,13 @@ export function maakQuests(P,A){
 
   /* alles wat een npc te vertellen heeft: nieuwe quests, lopende en inleverbare */
   function vanNpc(naam){return questsVan(naam).map(id=>({id,q:QUESTS[id],st:st(id)})).filter(x=>x.st!=='gesloten'&&x.st!=='gedaan')}
-  function accepteer(id){if(st(id)!=='nieuw')return false;P.quests[id]={st:'bezig',n:0};
+  function accepteer(id){if(st(id)!=='nieuw')return false;P.quests[id]={st:'bezig',n:0};if(A.actie)A.actie('quest',{id,actie:'accepteer'});
     const d=QUESTS[id].doel;if(d.soort==='item')P.quests[id].n=Math.min(d.n,A.tasAantal(d.item));
     UI.log(`<span class="lvl">Quest accepted: ${UI.esc(QUESTS[id].titel)}</span>`);vernieuw();return true}
   function lever(id){
     const q=QUESTS[id],s=P.quests[id];if(!voltooid(id,s))return false;
     if(q.doel.soort==='item'&&!A.tasVerwijderen(q.doel.item,q.doel.n))return false;
-    s.st='gedaan';const b=q.beloning;A.beloning({exp:b.exp,zeny:b.zeny});
+    s.st='gedaan';const b=q.beloning;A.beloning({exp:b.exp,zeny:b.zeny});if(A.actie)A.actie('quest',{id,actie:'lever'});
     const gekregen=[];for(const it of b.items||[]){const id=(P.klasse==='mage'||P.klasse==='wizard'||P.klasse==='sage')&&it.mage?it.mage:it.id;if(A.tasToevoegen(id,it.n))gekregen.push(`${ico(id,ITEMS[id].icoon,'klein')} ${UI.esc(ITEMS[id].naam)}${it.n>1?' ×'+it.n:''}`);else UI.sys(`Your bag is full, the ${ITEMS[id].naam.toLowerCase()} was left behind.`)}
     UI.log(`<span class="lvl">Quest complete: ${UI.esc(q.titel)} · +${b.exp} exp · +${b.zeny} zeny${gekregen.length?' · '+gekregen.join(', '):''}</span>`);
     UI.melding('QUEST COMPLETE',q.titel);G.quest();if(A.fx)A.fx('sprankel');vernieuw();return true;
@@ -30,9 +30,9 @@ export function maakQuests(P,A){
   /* gebeurtenissen */
   function opDood(soort){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='dood'&&d.monster===soort&&s.n<d.n){s.n++;w=true;
       if(s.n>=d.n)UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: done! Return to ${UI.esc(QUESTS[id].gever)}.</span>`)}}if(w)vernieuw()}
-  function opBezoek(npc){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='bezoek'&&d.npc===npc&&!s.n){s.n=1;w=true;
+  function opBezoek(npc){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='bezoek'&&d.npc===npc&&!s.n){s.n=1;w=true;if(A.actie)A.actie('quest',{id,actie:'voortgang'});
       UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: done! Return to ${UI.esc(QUESTS[id].gever)}.</span>`)}}if(w)vernieuw()}
-  function opPlek(x,z){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='plek'&&!s.n&&Math.hypot(x-d.x,z-d.z)<=d.r){s.n=1;w=true;
+  function opPlek(x,z){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='plek'&&!s.n&&Math.hypot(x-d.x,z-d.z)<=d.r){s.n=1;w=true;if(A.actie)A.actie('quest',{id,actie:'voortgang'});
       UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: you found ${UI.esc(d.naam)}. Return to ${UI.esc(QUESTS[id].gever)}.</span>`)}}if(w)vernieuw()}
   /* itemquests kijken gewoon in de tas */
   function opTas(){let w=false;for(const id in P.quests){const s=P.quests[id],d=QUESTS[id].doel;if(s.st==='bezig'&&d.soort==='item'){const n=Math.min(d.n,A.tasAantal(d.item));if(n!==s.n){if(n>=d.n&&s.n<d.n)UI.log(`<span class="lvl">${UI.esc(QUESTS[id].titel)}: you have everything. Return to ${UI.esc(QUESTS[id].gever)}.</span>`);s.n=n;w=true}}}if(w)vernieuw()}

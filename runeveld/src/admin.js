@@ -82,6 +82,10 @@ export function maakAdmin(C){
     /* ---------- save ---------- */
     d=sectie('Save');
     const ta=h('textarea',{spellcheck:'false'});d.appendChild(ta);
+    /* het account: het token waar de helden op de server aan hangen; op een ander apparaat invullen om daar verder te spelen */
+    const tokIn=h('input',{type:'text',value:(()=>{try{return localStorage.getItem('runeveld.token')||''}catch(e){return ''}})(),spellcheck:'false',style:'width:100%;font-family:monospace;font-size:11px'});
+    d.appendChild(h('p',{class:'ktip'},'Account token (keep it secret; enter it on another device to play with the same heroes):'));d.appendChild(tokIn);
+    knoppen(d,[['Use this token',()=>{const t=tokIn.value.trim();if(/^[a-z0-9]{20,48}$/.test(t)){try{localStorage.setItem('runeveld.token',t)}catch(e){}location.reload()}}]]);
     knoppen(d,[['Show save',()=>{C.bewaar();ta.value=C.exportSave()||''}],['Copy',()=>{C.bewaar();navigator.clipboard&&navigator.clipboard.writeText(C.exportSave()||'')}],['Load from text',()=>{try{JSON.parse(ta.value);C.importSave(ta.value)}catch(e){UI.sys('That is not valid save JSON.')}},'rood'],['Reset save',()=>{if(confirm('Delete this character and start over?'))C.resetSave()},'rood']]);
     knoppen(d,[[knop.hidden?'Show 🛠️ button in HUD':'Hide 🛠️ button',()=>{knop.hidden=!knop.hidden;try{localStorage.setItem(SLEUTEL,knop.hidden?'0':'1')}catch(e){}}]]);
     el.ververs=()=>{

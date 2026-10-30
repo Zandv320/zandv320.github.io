@@ -74,14 +74,14 @@ export function maakSelectie(A){
     if(naam.length<2||naam.length>14){$('#maak-fout').textContent='A name has 2 to 14 characters.';return}
     if(!/^[\p{L}\p{N} '\-]+$/u.test(naam)){$('#maak-fout').textContent='Letters, numbers, spaces and - only.';return}
     if(L.some(c=>c.naam.toLowerCase()===naam.toLowerCase())){$('#maak-fout').textContent='You already have a hero with that name.';return}
-    L.push({naam,haar,klasse:kl});A.bewaar();i=L.length-1;t=0;toonScherm('sel');
+    L.push({naam,haar,klasse:kl});A.bewaar();if(A.nieuw)A.nieuw(L[L.length-1]);i=L.length-1;t=0;toonScherm('sel');
   }
   $('#maak-ok').onclick=maakAan;$('#maak-naam').onkeydown=e=>{if(e.key==='Enter')maakAan()};
   $('#maak-terug').onclick=()=>toonScherm('sel');
 
   /* ---- verwijderen: de naam typen als bevestiging ---- */
   $('#wis-typ').oninput=()=>{const c=lijst()[i];$('#wis-ok').disabled=!c||$('#wis-typ').value.trim().toLowerCase()!==c.naam.toLowerCase()};
-  $('#wis-ok').onclick=()=>{const L=lijst();if($('#wis-ok').disabled||!L[i])return;L.splice(i,1);A.bewaar();i=Math.max(0,i-1);toonScherm('sel')};
+  $('#wis-ok').onclick=()=>{const L=lijst();if($('#wis-ok').disabled||!L[i])return;const weg=L.splice(i,1)[0];A.bewaar();if(A.wis)A.wis(weg.naam);i=Math.max(0,i-1);toonScherm('sel')};
   $('#wis-terug').onclick=()=>toonScherm('sel');
 
   /* toetsen: pijltjes kiezen, Enter gaat de wereld in, Escape terug */

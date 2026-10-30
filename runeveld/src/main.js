@@ -62,15 +62,37 @@ async function init(){
   DAG=maakDaglicht({scene,camera,renderer,zon,hemi,lichten});
   $('#laden').classList.add('weg');
   addEventListener('pointerdown',wekGeluid,{capture:true});addEventListener('keydown',wekGeluid,{capture:true});
-  CH=leesChars();
-  SEL=maakSelectie({chars:()=>CH.lijst,bewaar:()=>schrijfChars(CH),start:i=>start(i),laatst:()=>CH.laatst,inDorp,scene,cam,camera});
+  CH=leesChars();startNet();await laadHeldenVanServer();
+  SEL=maakSelectie({chars:()=>CH.lijst,bewaar:()=>schrijfChars(CH),start:i=>start(i),laatst:()=>CH.laatst,inDorp,scene,cam,camera,
+    nieuw:async c=>{const r=await net.vraag({k:'nieuw',c});if(r&&r.lijst)neemLijst(r)},wis:async naam=>{const r=await net.vraag({k:'wis',naam});if(r&&r.lijst)neemLijst(r)}});
   /* het selectiescherm kijkt ingezoomd naar het podium; bij Enter World gaat de camera terug naar de normale stand */
   stdPx=cam.px;stdTilt=cam.tilt;zetZoom(ZOOMS[Math.min(ZOOMS.length-1,ZOOMS.indexOf(stdPx)+2)]);cam.yaw=PODIUM.yaw;cam.tilt=THREE.MathUtils.degToRad(PODIUM.tilt);const d0=SEL.cameraDoel();cam.doel.set(d0[0],d0[1],d0[2]);
   invoer();loop();SEL.toon();
 }
+/* de helden staan op de server (per account-token); de browser houdt een kopie voor als de server er niet is.
+   Een leeg account neemt één keer de helden uit de browser over. */
+let serverAccount=false;   /* de server kent accounts (anders: alleen de browser) */
+function neemLijst(r){CH.lijst.splice(0,CH.lijst.length,...r.lijst);CH.laatst=r.laatst|0;schrijfChars(CH)}
+async function laadHeldenVanServer(){
+  for(let i=0;i<40&&!net.viaServer()&&!net.verbonden();i++)await new Promise(r=>setTimeout(r,100));   /* even wachten op de verbinding */
+  if(!net.viaServer())return;
+  let r=await net.vraag({k:'laad'});if(!r||!r.lijst)return;serverAccount=true;
+  if(!r.lijst.length&&CH.lijst.length){r=await net.vraag({k:'import',lijst:CH.lijst});if(!r||!r.lijst)return}
+  neemLijst(r);
+}
+/* het record van de server overnemen (na een handeling of een dood monster); hp, sp en plek blijven van de client */
+function neemRecord(c){
+  if(!gestart||!c||c.naam!==P.naam)return;
+  const andereKlasse=c.klasse!==P.klasse,andereUitr=JSON.stringify(c.uitr)!==JSON.stringify(P.uitr);
+  Object.assign(P,{klasse:c.klasse,lvl:c.lvl,exp:c.exp,job:c.job,jobexp:c.jobexp,zeny:c.zeny,stats:c.stats,skills:c.skills,uitr:c.uitr,tas:c.tas,quests:c.quests});
+  P.hp=Math.min(P.hp,hpMax());P.sp=Math.min(P.sp,spMax());
+  if(andereKlasse)bouwBalk();if(andereUitr||andereKlasse)vernieuwUiterlijk();
+  K.render();I.render();if(Q)Q.vernieuw();
+}
 /* de wereld in met held nummer i uit de lijst; een held zonder level is nieuw */
 async function start(i){
-  const save=CH.lijst[i];P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...klasse().start};CH.laatst=i;schrijfChars(CH);
+  let save=CH.lijst[i];
+  if(net.viaServer()&&serverAccount){const r=await net.vraag({k:'speel',naam:save.naam});if(r&&r.c){save={...save,...r.c};CH.lijst[i]=save}}P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...klasse().start};CH.laatst=i;schrijfChars(CH);
   bouwBalk();
   zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;toonNpcs(true);
   if(save.lvl){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,x:save.x,z:save.z});
@@ -94,7 +116,7 @@ async function start(i){
     herstel:()=>{P.hp=hpMax();P.sp=spMax();K.render()},exportSave:()=>JSON.stringify(CH.lijst[P.slot]),importSave:s=>{gestart=false;CH.lijst[P.slot]={...JSON.parse(s),naam:P.naam};schrijfChars(CH);location.reload()},
     resetSave:()=>{gestart=false;CH.lijst.splice(P.slot,1);CH.laatst=0;schrijfChars(CH);location.reload()},tijd:()=>24,zetTijd,af,obstakels,render:()=>{K.render();I.render()}});
   P.label=UI.maakLabel('speler',naam);
-  Q=maakQuests(P,{tasAantal,tasVerwijderen,tasToevoegen,beloning:d=>beloning({...d,buit:null}),render:()=>{K.render();I.render()},fx:naam=>FX.speel(naam,P.x,P.z,{grootte:2.6,voet:true,volg:P,tint:0xffe6a0}),
+  Q=maakQuests(P,{actie:(t,d)=>net.actie(t,d),tasAantal,tasVerwijderen,tasToevoegen,beloning:d=>beloning({...d,buit:null}),render:()=>{K.render();I.render()},fx:naam=>FX.speel(naam,P.x,P.z,{grootte:2.6,voet:true,volg:P,tint:0xffe6a0}),
     elkeNpc:f=>{f('Merchant Bram',npc.label);for(const n of dorpelingen())f(n.spec.naam,n.label)}});
   DL=maakDialoog(Q,{openWinkel,advancementOpties,advance,klasseNaam:id=>KLASSEN[id]});Q.vernieuw();
   KT=maakKaart({scene,borden,P,M,S,VELD,DORP,PLEIN,inDorp,npcs:()=>[npc,...dorpelingen().map(n=>({naam:n.spec.naam,x:n.x,z:n.z,label:n.label}))],
@@ -103,7 +125,7 @@ async function start(i){
   UI.sys(save.lvl?`Welcome back, ${naam}!`:`Welcome to Eldoria, ${naam}! The village of Runeveld is safe; the monsters roam the fields beyond the gates. Merchant Bram at the stall sells potions and gear. Old Mette by the well is looking for you.`);
   if(P.klasse==='mage'&&!save.lvl)UI.sys('As a Mage you fight from a distance: click a monster and press 1 for Ember Bolt.');
   if(vrijeStat()>0||vrijeSkill()>0)UI.log(`<span class="lvl">You have ${vrijeStat()} stat points and ${vrijeSkill()} skill points to spend. Press C.</span>`);
-  gestart=true;startNet();
+  gestart=true;stuurPresence();
   setInterval(bewaar,5000);addEventListener('pagehide',bewaar);
 }
 /* npc's en dorpelingen alleen in de echte wereld, niet op het selectiescherm */
@@ -130,11 +152,11 @@ function leesChars(){
   const oud=lees();const d={lijst:oud?[oud]:[],laatst:0};schrijfChars(d);return d;
 }
 function schrijfChars(d){try{localStorage.setItem(CHARS,JSON.stringify(d))}catch(e){}}
-function bewaar(){if(!gestart)return;CH.lijst[P.slot]={naam:P.naam,haar:P.haar,klasse:P.klasse,lvl:P.lvl,exp:P.exp,job:P.job,jobexp:P.jobexp,stats:P.stats,skills:P.skills,hp:P.hp,sp:P.sp,zeny:P.zeny,uitr:P.uitr,tas:P.tas,quests:P.quests,x:+P.x.toFixed(2),z:+P.z.toFixed(2)};CH.laatst=P.slot;schrijfChars(CH)}
+function bewaar(){if(!gestart)return;if(net&&net.viaServer())net.save({hp:Math.round(P.hp),sp:Math.round(P.sp),x:+P.x.toFixed(2),z:+P.z.toFixed(2)});CH.lijst[P.slot]={naam:P.naam,haar:P.haar,klasse:P.klasse,lvl:P.lvl,exp:P.exp,job:P.job,jobexp:P.jobexp,stats:P.stats,skills:P.skills,hp:P.hp,sp:P.sp,zeny:P.zeny,uitr:P.uitr,tas:P.tas,quests:P.quests,x:+P.x.toFixed(2),z:+P.z.toFixed(2)};CH.laatst=P.slot;schrijfChars(CH)}
 
 /* ====================== multiplayer ====================== */
 function startNet(){
-  net=maakNet();
+  net=maakNet();net.onChar(neemRecord);
   net.onHost(v=>{if(v)wordHost();else H=null});
   net.onSpelers((spelers,weg)=>{
     for(const id of weg)verwijderSpeler(id);
@@ -349,7 +371,7 @@ function vaardigheid(id){
   if(id==='drank'){const V=ITEMS.drank;
     if(tasAantal('drank')<=0){UI.sys('You are out of potions. Merchant Bram at the stall sells them.');return}
     if(P.hp>=hpMax())return;
-    tasVerwijderen('drank');G.drank();FX.speel('sprankel',P.x,P.z,{grootte:2,voet:true,volg:P});P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();I.render();return;
+    tasVerwijderen('drank');net.actie('drank',{id:'drank'});G.drank();FX.speel('sprankel',P.x,P.z,{grootte:2,voet:true,volg:P});P.hp=Math.min(hpMax(),P.hp+V.heal);P.cd.drank=t+V.cd;UI.getal(P.x,P.sprite.h,P.z,camera,'+'+V.heal,'heal');K.render();I.render();return;
   }
   const sk=SKILLS[id],l=P.skills[id]||0;if(!sk||sk.passief)return;
   if(l<=0){UI.sys(`You have not learned ${sk.naam} yet. Spend your skill points with C.`);return}
@@ -450,8 +472,8 @@ function vaardigheid(id){
   }
 }
 /* stat- en skillpunten verdelen */
-function statOmhoog(k){const n=P.stats[k]||1,kost=statKosten(n);if(n>=MAX_STAT||vrijeStat()<kost)return;P.stats[k]=n+1;P.hp=Math.min(P.hp,hpMax())}
-function skillOmhoog(id){if(vrijeSkill()<=0||!kanLeren(P.skills,id))return;P.skills[id]=(P.skills[id]||0)+1;UI.sys(`${SKILLS[id].naam} is now level ${P.skills[id]}.`)}
+function statOmhoog(k){const n=P.stats[k]||1,kost=statKosten(n);if(n>=MAX_STAT||vrijeStat()<kost)return;P.stats[k]=n+1;P.hp=Math.min(P.hp,hpMax());net.actie('stat',{k})}
+function skillOmhoog(id){if(vrijeSkill()<=0||!kanLeren(P.skills,id))return;P.skills[id]=(P.skills[id]||0)+1;UI.sys(`${SKILLS[id].naam} is now level ${P.skills[id]}.`);net.actie('skill',{id})}
 function neemSchade(dmg,spec,van){
   if(P.dood||ADMIN.god)return;const a=af();
   if(spec&&Math.random()>raakKans(monsterGevecht(spec).hit,a.flee)){UI.getal(P.x,P.sprite.h,P.z,camera,'Miss','mis');G.mis();return}
@@ -470,7 +492,7 @@ function sterf(){
   UI.melding('You were defeated','You will be back at the well in 5 seconds.');UI.sys('You were defeated.');
 }
 function herleef(){
-  P.dood=false;P.hp=hpMax();P.sp=spMax();P.x=0;P.z=4;P.bezigTot=0;P.anim='';zetAnim('idle');
+  P.dood=false;P.hp=hpMax();P.sp=spMax();P.x=0;P.z=4;P.bezigTot=0;P.anim='';zetAnim('idle');net.actie('respawn',{});
   ring(P.x,P.z,0x7cf5a0,.3,1.8,.6,.8);
 }
 function beloning(d){
@@ -501,7 +523,7 @@ function advance(id){
   if(k.uitrusting&&!tasToevoegen(k.uitrusting,1))UI.sys(`Your bag is full; come back for your ${ITEMS[k.uitrusting].naam.toLowerCase()}.`);
   bouwBalk();UI.melding(k.naam.toUpperCase(),`You are now a ${k.naam}. New skills await on the Skills tab.`);G.levelUp();ring(P.x,P.z,0xffc857,.3,3,1,1);FX.speel('flits',P.x,P.z,{grootte:4,y:1,tint:0xffd27a});FX.speel('ring',P.x,P.z,{grootte:3.6,y:.2,tint:0xffd27a});
   UI.log(`<span class="lvl">You have become a ${k.naam}! Your job level starts again at 1 and now goes up to ${maxJob()}. Your ${UI.esc(ITEMS[k.uitrusting].naam)} is in your bag.</span>`);
-  K.render();I.render();bewaar();return true;
+  K.render();I.render();bewaar();net.actie('advance',{id});return true;
 }
 /* een gesprek met een npc op (x,z): meteen als we dichtbij staan, anders eerst erheen lopen */
 function gesprek(n,x,z,bij){
@@ -531,23 +553,23 @@ function uitrusten(id){
   if(it.klasse&&it.klasse!==P.klasse&&it.klasse!==klasse().basis){UI.sys(`Only a ${KLASSEN[it.klasse].naam} can use the ${it.naam.toLowerCase()}.`);return}
   if(!tasVerwijderen(id))return;
   const oud=P.uitr[it.slot];P.uitr[it.slot]=id;if(oud)tasToevoegen(oud,1,true);
-  vernieuwUiterlijk();UI.sys(`You equip the ${it.naam.toLowerCase()}.`);
+  vernieuwUiterlijk();UI.sys(`You equip the ${it.naam.toLowerCase()}.`);net.actie('uitrusten',{id});
 }
 function afdoen(slot){
   const id=P.uitr[slot];if(!id)return;
-  if(!tasToevoegen(id))return;P.uitr[slot]=null;
+  if(!tasToevoegen(id))return;P.uitr[slot]=null;net.actie('afdoen',{slot});
   vernieuwUiterlijk();UI.sys(slot==='lichaam'?`You take off the ${ITEMS[id].naam.toLowerCase()}. Brr, a bit chilly like this.`:`You take off the ${ITEMS[id].naam.toLowerCase()}.`);
 }
 function koop(id){
   const it=ITEMS[id];if(!it)return;
   if(P.zeny<it.prijs){UI.sys('Not enough zeny. Defeat monsters to earn zeny.');return}
-  if(!tasToevoegen(id))return;P.zeny-=it.prijs;UI.sys(`You bought a ${it.naam.toLowerCase()}.`);I.render();
+  if(!tasToevoegen(id))return;P.zeny-=it.prijs;UI.sys(`You bought a ${it.naam.toLowerCase()}.`);I.render();net.actie('koop',{id});
 }
 function verkoop(id){
   const it=ITEMS[id];if(!it||!K.winkelOpen()||!tasVerwijderen(id))return;
-  const z=Math.floor(it.prijs*VERKOOPDEEL);P.zeny+=z;UI.sys(`You sold a ${it.naam.toLowerCase()} for ${z} zeny.`);K.winkelRender();K.render();
+  const z=Math.floor(it.prijs*VERKOOPDEEL);P.zeny+=z;UI.sys(`You sold a ${it.naam.toLowerCase()} for ${z} zeny.`);K.winkelRender();K.render();net.actie('verkoop',{id});
 }
-function weggooi(id){const it=ITEMS[id];if(!it||!tasVerwijderen(id))return;UI.sys(`You drop the ${it.naam.toLowerCase()}.`)}
+function weggooi(id){const it=ITEMS[id];if(!it||!tasVerwijderen(id))return;UI.sys(`You drop the ${it.naam.toLowerCase()}.`);net.actie('weggooi',{id})}
 
 /* ====================== admin-acties ====================== */
 function zetLevel(l){P.lvl=Math.max(1,Math.min(MAX_LVL,l|0));P.exp=0;P.hp=hpMax();P.sp=spMax();K.render()}

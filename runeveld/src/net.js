@@ -3,6 +3,13 @@
    die het langst online is ("host") de monsters. Zonder verbinding werkt het spel gewoon alleen.
    SERVER: de workers.dev-adres van de server; te overschrijven met localStorage 'runeveld.server' (leeg = geen server). */
 export const SERVER='https://eldoria-server.zandv320.workers.dev';
+/* lokaal testen gebeurt in een eigen wereld ('dev'), los van de spelers op de echte site */
+const WERELD=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'dev':'v1';
+/* het account: een geheim token dat de browser één keer aanmaakt; de helden op de server hangen eraan */
+export function token(){let t=null;try{t=localStorage.getItem('runeveld.token')}catch(e){}
+  if(!t||!/^[a-z0-9]{20,48}$/.test(t)){t=(crypto.randomUUID?crypto.randomUUID().replace(/-/g,''):Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''));try{localStorage.setItem('runeveld.token',t)}catch(e){}}
+  return t}
+export function zetToken(t){try{localStorage.setItem('runeveld.token',String(t).trim())}catch(e){}}
 const URLS=['wss://broker.hivemq.com:8884/mqtt','wss://broker.emqx.io:8084/mqtt','wss://test.mosquitto.org:8081/mqtt'];
 const TOPIC='zandv320/runeveld/v1/';
 const MQTT_CDN='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';
@@ -20,7 +27,7 @@ export function maakNet(){
   const hostId=()=>{if(ws)return 'server';let h=me;for(const id of spelers.keys())if(id<h)h=id;return h};
   const setConn=v=>{if(verbonden!==v){verbonden=v;connFns.forEach(f=>f(v))}};
   const firePeers=(weg=[])=>spelerFns.forEach(f=>{try{f(spelers,weg)}catch(e){console.error(e)}});
-  let ws=null,wereldFn=null;   /* de WebSocket naar de eigen server, als die er is; wereldFn geeft de botsingscirkels voor de server */
+  let ws=null,wereldFn=null,vraagNr=0;const vragen=new Map(),charFns=[];   /* de WebSocket naar de eigen server, als die er is; wereldFn geeft de botsingscirkels voor de server */
   function publish(k,obj){
     if(ws&&ws.readyState===1){if(k==='p')ws.send(JSON.stringify({k:'p',p:obj.p}));else if(k==='e')ws.send(JSON.stringify({k:'e',t:obj.t,d:obj.d,to:obj.to}));return}
     if(client&&client.connected)client.publish(TOPIC+k,JSON.stringify(obj),{qos:0})}
@@ -29,19 +36,21 @@ export function maakNet(){
     if(!m||typeof m!=='object'||typeof m.f!=='string'||m.f===me)return;
     if(m.f==='server'){if(k==='e'){if(m.to&&m.to!==me)return;fire(m.t,m.d,'server',false)}return}
     gezien.set(m.f,Date.now());
-    if(k==='p'){const nieuw=!spelers.has(m.f);spelers.set(m.f,m.p||{});if(nieuw)elect();firePeers()}
+    if(k==='p'){if(!m.p||!m.p.n)return;const nieuw=!spelers.has(m.f);spelers.set(m.f,m.p||{});if(nieuw)elect();firePeers()}   /* zonder naam staat iemand nog op het selectiescherm */
     else if(k==='x'){if(spelers.delete(m.f)){gezien.delete(m.f);elect();firePeers([m.f])}}
     else if(k==='e'){if(!spelers.has(m.f)){spelers.set(m.f,{});elect();firePeers()}if(m.to&&m.to!==me)return;fire(m.t,m.d,m.f,false)}
   }
   const serverUrl=()=>{let u=SERVER;try{const o=localStorage.getItem('runeveld.server');if(o!==null)u=o}catch(e){}return u.replace(/\/$/,'')};
   /* de eigen server: verbinden, aanmelden, en bij een breuk opnieuw proberen met oplopende wachttijd */
   function verbindServer(url){return new Promise(res=>{
-    let klaar=false;let s;try{s=new WebSocket(url.replace(/^http/,'ws')+'/ws?wereld=v1')}catch(e){return res(false)}
+    let klaar=false;let s;try{s=new WebSocket(url.replace(/^http/,'ws')+'/ws?wereld='+WERELD)}catch(e){return res(false)}
     const to=setTimeout(()=>{if(!klaar){klaar=true;try{s.close()}catch(e){}res(false)}},8000);
-    s.onopen=()=>{ws=s;s.send(JSON.stringify({k:'hi',f:me,p:myPres}))};
+    s.onopen=()=>{ws=s;s.send(JSON.stringify({k:'hi',f:me,p:myPres,tok:token()}))};
     s.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}if(!m||typeof m!=='object')return;
       if(m.k==='hallo'){if(!klaar){klaar=true;clearTimeout(to);res(true)}for(const sp of m.spelers||[])verwerk('p',{f:sp.f,p:sp.p});elect();setConn(true);if(wereldFn)try{s.send(JSON.stringify({k:'wereld',obst:wereldFn()}))}catch(e){}}
-      else if(m.k==='p'||m.k==='x'||m.k==='e')verwerk(m.k,m)};
+      else if(m.k==='p'||m.k==='x'||m.k==='e')verwerk(m.k,m)
+      else if(m.i!==undefined&&vragen.has(m.i)){const v=vragen.get(m.i);vragen.delete(m.i);clearTimeout(v.timer);v.res(m)}
+      else if(m.k==='char'&&m.c)charFns.forEach(f=>{try{f(m.c)}catch(e){console.error(e)}})};
     const dicht=()=>{if(ws===s)ws=null;elect();setConn(false);if(!klaar){klaar=true;clearTimeout(to);res(false)}else if(!gesloten)herverbind()};
     s.onclose=dicht;s.onerror=()=>{try{s.close()}catch(e){}};
   })}
@@ -93,6 +102,12 @@ export function maakNet(){
     stuur(t,d,to){publish('e',{f:me,t,d,to});if(!to||to===me)fire(t,d,me,true)},
     presence(p,direct=false){myPres=p;if(direct)publish('p',{f:me,p})},
     wereld(f){wereldFn=f;if(ws&&ws.readyState===1)try{ws.send(JSON.stringify({k:'wereld',obst:f()}))}catch(e){}},
-    viaServer:()=>!!ws,
+    viaServer:()=>!!ws,wereldNaam:WERELD,
+    /* een vraag aan de server met een antwoord (helden laden, aanmaken, spelen); null als er geen server is of hij zwijgt */
+    vraag(obj,ms=5000){return new Promise(res=>{if(!ws||ws.readyState!==1)return res(null);const i=++vraagNr;const timer=setTimeout(()=>{vragen.delete(i);res(null)},ms);vragen.set(i,{res,timer});try{ws.send(JSON.stringify({...obj,i}))}catch(e){vragen.delete(i);clearTimeout(timer);res(null)}})},
+    /* een handeling van de held (stat, skill, koop, quest, ...): de server past de regels toe en stuurt het record terug */
+    actie(t,d){if(ws&&ws.readyState===1)try{ws.send(JSON.stringify({k:'a',t,d}))}catch(e){}},
+    save(c){if(ws&&ws.readyState===1)try{ws.send(JSON.stringify({k:'save',c}))}catch(e){}},
+    onChar(f){charFns.push(f)},
   };
 }
