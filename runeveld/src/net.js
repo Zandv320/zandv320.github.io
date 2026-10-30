@@ -15,17 +15,19 @@ export function maakNet(){
   let client=null,verbonden=false,host=false,myPres={},gesloten=false,brokerUrl='';
   const hostFns=[],spelerFns=[],connFns=[];
   const fire=(t,d,f,isMe)=>(handlers[t]||[]).forEach(fn=>{try{fn(d,f,isMe)}catch(e){console.error(e)}});
-  const elect=()=>{let h=me;for(const id of spelers.keys())if(id<h)h=id;const v=h===me;if(v!==host){host=v;hostFns.forEach(f=>f(v))}};
-  const hostId=()=>{let h=me;for(const id of spelers.keys())if(id<h)h=id;return h};
+  /* met de eigen server is de server de 'host' van de monsters; via MQTT is dat de speler met de laagste id */
+  const elect=()=>{let h=me;for(const id of spelers.keys())if(id<h)h=id;const v=!ws&&h===me;if(v!==host){host=v;hostFns.forEach(f=>f(v))}};
+  const hostId=()=>{if(ws)return 'server';let h=me;for(const id of spelers.keys())if(id<h)h=id;return h};
   const setConn=v=>{if(verbonden!==v){verbonden=v;connFns.forEach(f=>f(v))}};
   const firePeers=(weg=[])=>spelerFns.forEach(f=>{try{f(spelers,weg)}catch(e){console.error(e)}});
-  let ws=null;   /* de WebSocket naar de eigen server, als die er is */
+  let ws=null,wereldFn=null;   /* de WebSocket naar de eigen server, als die er is; wereldFn geeft de botsingscirkels voor de server */
   function publish(k,obj){
     if(ws&&ws.readyState===1){if(k==='p')ws.send(JSON.stringify({k:'p',p:obj.p}));else if(k==='e')ws.send(JSON.stringify({k:'e',t:obj.t,d:obj.d,to:obj.to}));return}
     if(client&&client.connected)client.publish(TOPIC+k,JSON.stringify(obj),{qos:0})}
   /* een bericht van een andere speler, uit welke bron ook: k = 'p' status, 'x' weg, 'e' gebeurtenis */
   function verwerk(k,m){
     if(!m||typeof m!=='object'||typeof m.f!=='string'||m.f===me)return;
+    if(m.f==='server'){if(k==='e'){if(m.to&&m.to!==me)return;fire(m.t,m.d,'server',false)}return}
     gezien.set(m.f,Date.now());
     if(k==='p'){const nieuw=!spelers.has(m.f);spelers.set(m.f,m.p||{});if(nieuw)elect();firePeers()}
     else if(k==='x'){if(spelers.delete(m.f)){gezien.delete(m.f);elect();firePeers([m.f])}}
@@ -38,9 +40,9 @@ export function maakNet(){
     const to=setTimeout(()=>{if(!klaar){klaar=true;try{s.close()}catch(e){}res(false)}},8000);
     s.onopen=()=>{ws=s;s.send(JSON.stringify({k:'hi',f:me,p:myPres}))};
     s.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}if(!m||typeof m!=='object')return;
-      if(m.k==='hallo'){if(!klaar){klaar=true;clearTimeout(to);res(true)}for(const sp of m.spelers||[])verwerk('p',{f:sp.f,p:sp.p});setConn(true)}
+      if(m.k==='hallo'){if(!klaar){klaar=true;clearTimeout(to);res(true)}for(const sp of m.spelers||[])verwerk('p',{f:sp.f,p:sp.p});elect();setConn(true);if(wereldFn)try{s.send(JSON.stringify({k:'wereld',obst:wereldFn()}))}catch(e){}}
       else if(m.k==='p'||m.k==='x'||m.k==='e')verwerk(m.k,m)};
-    const dicht=()=>{if(ws===s)ws=null;setConn(false);if(!klaar){klaar=true;clearTimeout(to);res(false)}else if(!gesloten)herverbind()};
+    const dicht=()=>{if(ws===s)ws=null;elect();setConn(false);if(!klaar){klaar=true;clearTimeout(to);res(false)}else if(!gesloten)herverbind()};
     s.onclose=dicht;s.onerror=()=>{try{s.close()}catch(e){}};
   })}
   let wacht=2000;
@@ -64,7 +66,7 @@ export function maakNet(){
   (async function start(){
     elect(); /* alleen = host */
     const url=serverUrl();
-    if(url){if(await verbindServer(url)){brokerUrl=url;return}herverbind();return}   /* eigen server: geen MQTT meer nodig */
+    if(url&&await verbindServer(url)){brokerUrl=url;return}   /* eigen server; lukt dat niet, dan de publieke brokers */
     try{if(typeof mqtt==='undefined')await laadScript(MQTT_CDN)}catch(e){}
     while(!gesloten){
       if(typeof mqtt!=='undefined')for(const u of URLS){client=await verbind(u);if(client){brokerUrl=u;break}}
@@ -90,5 +92,7 @@ export function maakNet(){
     /* stuurt naar iedereen (of één speler) en verwerkt het bericht meteen ook lokaal */
     stuur(t,d,to){publish('e',{f:me,t,d,to});if(!to||to===me)fire(t,d,me,true)},
     presence(p,direct=false){myPres=p;if(direct)publish('p',{f:me,p})},
+    wereld(f){wereldFn=f;if(ws&&ws.readyState===1)try{ws.send(JSON.stringify({k:'wereld',obst:f()}))}catch(e){}},
+    viaServer:()=>!!ws,
   };
 }

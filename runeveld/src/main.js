@@ -154,12 +154,13 @@ function startNet(){
   net.aan('m',(d,f)=>{if(f!==net.hostId()||H)return;snapshot(d)});
   net.aan('c',(d,f,isMe)=>{const s=S.get(f);const naam=isMe?P.naam:(s&&s.pres.n)||'?';UI.chat(naam,d.t);const l=isMe?P.label:s&&s.label;if(l)UI.bubble(l,d.t)});
   UI.online(false,1);
-  if(net.isHost())wordHost();   /* alleen in de wereld: meteen host */
+  net.wereld(()=>obstakels.map(o=>[+o.x.toFixed(2),+o.z.toFixed(2),+o.r.toFixed(2)]));   /* de server simuleert de monsters en kent de wereld alleen als cirkels */
+  if(net.isHost())wordHost();   /* zonder server: de eerste speler is host */
 }
 function verwijderSpeler(id){const s=S.get(id);if(!s)return;s.sprite.verwijder();UI.verwijderLabel(s.label);S.delete(id);UI.sys(`${s.pres.n||'Someone'} left.`)}
 let presT=0,lastPres='';
 function stuurPresence(){
-  const t=nu();if(t-presT<.12)return;
+  const t=nu();if(t-presT<.2)return;
   const p={n:P.naam,h:P.haar,k:P.klasse,l:P.lvl,x:+P.x.toFixed(2),y:+P.z.toFixed(2),kx:+P.sprite.kijk.x.toFixed(2),ky:+P.sprite.kijk.y.toFixed(2),a:P.anim,s:P.seq,hp:Math.round(P.hp),hm:hpMax(),dd:P.dood,zt:P.zit,u:P.uitr};
   const key=JSON.stringify(p);if(key===lastPres)return;lastPres=key;presT=t;net.presence(p,true);
 }
@@ -339,7 +340,7 @@ function raak(m,r,soort){
   klap(m,m.x-P.x,m.z-P.z,soort==='rolstoot'?1.2:r.crit?.45:.28);G.raak(r.crit);if(r.crit&&!soort)FX.speel('flits',m.x,m.z,{grootte:1.4,y:.6,tint:0xffe6a0});
   if(r.magie&&P.skills.manaspiegel>0){P.sp=Math.min(spMax(),P.sp+r.dmg*SKILLS.manaspiegel.deel(P.skills.manaspiegel))}if(r.crit)schud(.22,.2);else if(soort)schud(.1,.15);
   if(!H)m.hp=Math.max(0,m.hp-r.dmg);
-  net.stuur('h',{id:m.id,dmg:r.dmg});
+  const kr=soort==='rolstoot'?1.2:r.crit?.45:.28;net.stuur('h',{id:m.id,dmg:r.dmg,kx:+(m.x-P.x).toFixed(2),kz:+(m.z-P.z).toFixed(2),kracht:kr});
 }
 function vaardigheid(id){
   if(P.dood||!gestart)return;const t=nu();
@@ -714,5 +715,5 @@ function stap(dt){
   renderer.render(scene,camera);
 }
 
-window.RV={P,M,S,cam,camera,renderer,scene,zon,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
+window.RV={P,M,S,cam,camera,renderer,scene,zon,obstakels,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
 init().catch(e=>{console.error(e);$('#laden').textContent='Loading failed: '+e.message});
