@@ -1,0 +1,12 @@
+# Formatting and linting for the Eldoria build tools (runeveld/tools/*.py).
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "N", "B", "UP"]
+ignore = ["E741"]
