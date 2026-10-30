@@ -2,17 +2,18 @@
    uit wat er in de scene staat (userData.kaart op bouwsels en vlakken, de billboards uit `borden`); de live laag
    (speler, medespelers, monsters, npc's met questmarkers) wordt elk frame opnieuw getekend zolang de kaart open is. */
 import * as THREE from 'three';
-import {BOS,inBos,inVeld} from './gebied.js';
+import {BOS,inBos,inVeld,VALE,inVale,STAD,inStad,KASTEEL,inKasteel} from './gebied.js';
 
 const KLEUR={
-  buiten:'#2f4a22',gras:'#86b54c',bos:'#4c7a3b',dorp:'#8fbb52',
-  plein:'#d9905a',pad:'#caa062',plek:'#8e8d86',
+  buiten:'#2f4a22',gras:'#86b54c',bos:'#4c7a3b',dorp:'#8fbb52',weide:'#9cbe56',stad:'#c4ab84',kasteelgrond:'#b3a494',
+  plein:'#d9905a',pad:'#caa062',plek:'#8e8d86',straat:'#a99a84',
+  muur:'#7d7d78',toren:'#66665f',poort:'#55554f',kasteel:'#6a6a92',fontein:'#58a6d8',standbeeld:'#b9b9b2',kerk:'#8f7fb2',tent:'#6f8f4a',
   huis:'#5d6c9c',huisRand:'#0c0f2a',hut:'#a6713c',hek:'#6b4a2a',put:'#8f8e89',kraam:'#c9473d',kraam2:'#4f9a4f',
   klein:'#8a5a2a',hooi:'#d9b25a',vijver:'#58a6d8',moestuin:'#7a5536',altaar:'#b4b2aa',menhir:'#86857f',
   boom:'#3b8a3c',den:'#2d6b3a',struik:'#67ad4c',rots:'#9b9b95',lantaarn:'#ffd27a',
   speler:'#ffffff',ander:'#7cc4ff',monster:'#f87171',monsterRustig:'#ffd1a6',npc:'#ffc857',quest:'#ffe9a8',
 };
-const X0=-70,X1=70,Z0=BOS.z0,Z1=70;        /* de wereld: het veld en het bos erboven */
+const X0=VALE.x0-4,X1=70,Z0=BOS.z0,Z1=70;        /* de wereld: Kingsvale in het westen, het veld, het bos erboven */
 
 /* A: {scene, borden, P, M (monsters), S (medespelers), npcs() → [{naam,x,z,label}], Q (quests), VELD, DORP, PLEIN, loopNaar(x,z), inDorp} */
 export function maakKaart(A){
@@ -39,12 +40,12 @@ export function maakKaart(A){
     g.fillStyle=KLEUR.buiten;g.fillRect(0,0,c.width,c.height);
     /* de golvende vormen van veld en bos, per halve eenheid */
     const st=.5;
-    for(let z=Z0;z<Z1;z+=st)for(let x=X0;x<X1;x+=st){const v=inVeld(x+st/2,z+st/2),b=inBos(x+st/2,z+st/2);if(!v&&!b)continue;
-      g.fillStyle=v?KLEUR.gras:KLEUR.bos;g.fillRect(px(x),pz(z),st*schaal+.5,st*schaal+.5)}
+    for(let z=Z0;z<Z1;z+=st)for(let x=X0;x<X1;x+=st){const xx=x+st/2,zz=z+st/2,v=inVeld(xx,zz),b=inBos(xx,zz),w=inVale(xx,zz);if(!v&&!b&&!w)continue;
+      g.fillStyle=v?KLEUR.gras:b?KLEUR.bos:inStad(xx,zz)?(inKasteel(xx,zz)?KLEUR.kasteelgrond:KLEUR.stad):KLEUR.weide;g.fillRect(px(x),pz(z),st*schaal+.5,st*schaal+.5)}
     g.fillStyle=KLEUR.dorp;g.fillRect(px(-A.DORP),pz(-A.DORP),2*A.DORP*schaal,2*A.DORP*schaal);
     /* vlakken: plein, wegen, open plek */
     for(const v of items.vlak){
-      if(v.soort==='pad'){g.save();g.translate(px(v.x),pz(v.z));g.rotate(-v.rot);g.fillStyle=KLEUR.pad;g.fillRect(-v.w/2*schaal,-v.l/2*schaal,v.w*schaal,v.l*schaal);g.restore()}
+      if(v.soort==='pad'||v.soort==='straat'){g.save();g.translate(px(v.x),pz(v.z));g.rotate(-v.rot);g.fillStyle=KLEUR[v.soort];g.fillRect(-v.w/2*schaal,-v.l/2*schaal,v.w*schaal,v.l*schaal);g.restore()}
       else{g.fillStyle=KLEUR[v.soort]||KLEUR.plein;g.beginPath();g.arc(px(v.x),pz(v.z),v.r*schaal,0,Math.PI*2);g.fill()}
     }
     /* bouwsels als hun omhullende doos */
@@ -53,7 +54,7 @@ export function maakKaart(A){
       if(b.soort==='huis'){const hut=b.z<BOS.z1;g.fillStyle=hut?KLEUR.hut:KLEUR.huis;g.fillRect(x,y,w,h);g.strokeStyle=KLEUR.huisRand;g.lineWidth=Math.max(1,schaal*.25);g.strokeRect(x+.5,y+.5,w-1,h-1)}
       else if(b.soort==='hek'){g.fillStyle=KLEUR.hek;g.fillRect(x,y,Math.max(w,schaal*.4),Math.max(h,schaal*.4))}
       else if(b.soort==='kraam'){g.fillStyle=b.x<0?KLEUR.kraam:KLEUR.kraam2;g.fillRect(x,y,w,h)}
-      else if(b.soort==='vijver'||b.soort==='put'||b.soort==='altaar'||b.soort==='menhir'){g.fillStyle=KLEUR[b.soort];g.beginPath();g.ellipse(px(b.x),pz(b.z),w/2,h/2,0,0,Math.PI*2);g.fill()}
+      else if(b.soort==='vijver'||b.soort==='put'||b.soort==='altaar'||b.soort==='menhir'||b.soort==='toren'||b.soort==='fontein'||b.soort==='standbeeld'){g.fillStyle=KLEUR[b.soort];g.beginPath();g.ellipse(px(b.x),pz(b.z),w/2,h/2,0,0,Math.PI*2);g.fill()}
       else{g.fillStyle=KLEUR[b.soort]||KLEUR.klein;g.fillRect(x,y,w,h)}
     }
     /* bomen, struiken, rotsen, lantaarns */
@@ -67,7 +68,7 @@ export function maakKaart(A){
     /* namen van de gebieden */
     g.textAlign='center';g.fillStyle='rgba(255,255,255,.85)';g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=3;g.lineJoin='round';
     const naam=(t,x,z,maat)=>{g.font=`700 ${maat}px Rubik,sans-serif`;g.strokeText(t,px(x),pz(z));g.fillText(t,px(x),pz(z))};
-    naam('Runeveld',0,-A.DORP-3,schaal*2.6);naam(BOS.naam,0,BOS.z0+5,schaal*2.6);
+    naam('Runeveld',0,-A.DORP-3,schaal*2.6);naam(BOS.naam,0,BOS.z0+5,schaal*2.6);naam(VALE.naam,VALE.cx,VALE.z0+8,schaal*2.6);naam(STAD.naam,STAD.cx,STAD.z0-3,schaal*2.2);
     return c;
   }
   function zorgVast(schaal){if(!vast||S!==schaal){S=schaal;vast=tekenVast(schaal)}return vast}
@@ -117,7 +118,7 @@ export function maakKaart(A){
     if(sleep){const dx=e.clientX-sleep.x,dy=e.clientY-sleep.y;if(Math.hypot(dx,dy)>4)sleep.bewoog=true;
       if(sleep.bewoog){const k=fit*zoom;cx=sleep.cx-dx/k;cz=sleep.cz-dy/k;render()}}
     const[x,z]=naarWereld(e);
-    $('#kaart-pos').textContent=`${Math.round(x)}, ${Math.round(z)} · ${z<BOS.z1&&z>BOS.z0&&Math.abs(x)<BOS.x1?BOS.naam:A.inDorp(x,z)?'Runeveld village':'Runeveld fields'}`});
+    $('#kaart-pos').textContent=`${Math.round(x)}, ${Math.round(z)} · ${inStad(x,z)?STAD.naam:inBos(x,z)?BOS.naam:(inVale(x,z)&&!inVeld(x,z))?VALE.naam:A.inDorp(x,z)?'Runeveld village':'Runeveld fields'}`});
   cv.addEventListener('pointerup',e=>{if(!sleep)return;const s=sleep;sleep=null;if(s.bewoog)return;const[x,z]=naarWereld(e);if(A.loopNaar(x,z))sluit()});
   cv.addEventListener('pointercancel',()=>{sleep=null});
   $('#kaart-sluit').onclick=()=>sluit();

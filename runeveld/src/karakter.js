@@ -1,5 +1,5 @@
 /* Runeveld – characterscherm (C) met uitrusting, stats en skills, en de winkel van Koopman Bram. */
-import {ITEMS,SLOTS,WINKEL} from './data.js';
+import {ITEMS,SLOTS,WINKELS} from './data.js';
 import {ico} from './iconen.js';
 import {BLADEN} from './bladen.js';
 import {heldLagen,tekenHeld} from './uiterlijk.js';
@@ -97,8 +97,10 @@ export function maakKarakter(P,A){
   addEventListener('resize',()=>{if(open&&tab==='skills')render()});
 
   /* ---------- winkel ---------- */
+  let winkel=WINKELS.bram;
   function renderWinkel(){
-    $('#w-lijst').innerHTML=WINKEL.map(id=>{const it=ITEMS[id];
+    $('#w-naam').textContent=winkel.naam;$('#w-tekst').textContent=winkel.tekst;
+    $('#w-lijst').innerHTML=winkel.items.map(id=>{const it=ITEMS[id];
       return`<div class="rij"><span>${ico(id,it.icoon,"klein")} ${esc(it.naam)}<small class="wstat">${statTekst(it)||esc(it.beschr||'')}</small></span><button class="knop" data-item="${id}" ${P.zeny<it.prijs?'disabled':''}>${it.prijs} zeny</button></div>`}).join('')
       +'<p class="ktip">Open your inventory (I) while the shop is open to sell items for half their price.</p>';
     $('#w-zeny').textContent=P.zeny;
@@ -111,6 +113,6 @@ export function maakKarakter(P,A){
   return{
     toon,sluit,toggle(){open?sluit():toon()},isOpen:()=>open,render:()=>{if(open)render()},
     tick(dt){if(!open||tab!=='uitrusting')return;t+=dt;tekenPreview()},
-    winkelToon(){wk.hidden=false;renderWinkel()},winkelSluit(){wk.hidden=true},winkelOpen:()=>!wk.hidden,winkelRender:()=>{if(!wk.hidden)renderWinkel()},
+    winkelToon(w){winkel=w||WINKELS.bram;wk.hidden=false;renderWinkel()},winkelSluit(){wk.hidden=true},winkelOpen:()=>!wk.hidden,winkelRender:()=>{if(!wk.hidden)renderWinkel()},
   };
 }

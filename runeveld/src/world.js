@@ -5,9 +5,10 @@
 import * as THREE from 'three';
 import {laadTextuur,maakTex,Bord,FACTOR,GLAD,PIXEL,TELEFOON} from './sprites.js';
 import * as B from './bouw.js';
-import {BOS,inBos,inVeld,veldRand,binnenWereld} from './gebied.js';
+import {BOS,inBos,inVeld,veldRand,binnenWereld,VALE,inVale,inStad,inKasteel} from './gebied.js';
 export {binnenWereld};
 import {bouwBos} from './bos.js';
+import {bouwStad} from './stad.js';
 
 export const VELD=60;                     /* halve breedte van de wereld */
 export const DORP=22;                     /* halve breedte van het dorp */
@@ -31,7 +32,10 @@ export const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40
 zon.castShadow=true;zon.shadow.mapSize.set(TELEFOON?2048:4096,TELEFOON?2048:4096);zon.shadow.bias=-.0005;
 /* het bereik dekt het veld en het bos; de zon staat zo dat de projectie het bos (z tot -112) ook raakt */
 zon.position.set(20,40,-10);zon.target.position.set(0,0,-26);
-Object.assign(zon.shadow.camera,{left:-70,right:70,top:95,bottom:-95,near:1,far:160});
+Object.assign(zon.shadow.camera,{left:-56,right:56,top:66,bottom:-66,near:1,far:160});
+/* de schaduwcamera reist mee met de speler (de wereld is te groot voor één schaduwkaart); op hele eenheden, anders flikkeren de randen */
+let zonX=0,zonZ=0;
+export function volgZon(x,z){x=Math.round(x);z=Math.round(z);if(x===zonX&&z===zonZ)return;zonX=x;zonZ=z;zon.position.set(x+20,40,z-10);zon.target.position.set(x,0,z-26)}
 
 /* Pixelcamera: orthografisch, schuin van boven (zoals RO), met een vaste pixelschaal: cam.px gerenderde pixels per
    wereld-eenheid. Op 16 valt elke sprite-pixel precies op één gerenderde pixel. De camera klikt op het pixelraster vast
@@ -78,7 +82,7 @@ export const obstakels=[];                /* {x,z,r} */
 function klem(x,z,m=1.2){
   if(binnenWereld(x,z,m))return[x,z];
   let best=null,bd=1e9;
-  for(const[cx,cz]of[[0,0],[BOS.cx,BOS.cz]]){const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz)||1;
+  for(const[cx,cz]of[[0,0],[BOS.cx,BOS.cz],[VALE.cx,VALE.cz]]){const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz)||1;
     for(let s=.3;s<60;s+=.3){const px=x+dx/d*s,pz=z+dz/d*s;if(binnenWereld(px,pz,m)){if(s<bd){bd=s;best=[px,pz]}break}}}
   return best||[0,4];
 }
@@ -118,7 +122,7 @@ function bouwGrond(atlas,decor){
      golvende randen te volgen zijn; de bomen eroverheen maken de trapjes onzichtbaar */
   const H=TILE/4,S=CPU/4;
   for(let j=0;j<NZ*4;j++)for(let i=0;i<NX*4;i++){const x=(i+.5)*S+X0,z=(j+.5)*S+Z0;
-    if(inBos(x,z)&&!inVeld(x,z))g.fillStyle='rgba(22,44,38,.34)';else if(!inBos(x,z,-2.5)&&!inVeld(x,z,-2.5))g.fillStyle='rgba(10,28,20,.5)';else continue;
+    if(inBos(x,z)&&!inVeld(x,z))g.fillStyle='rgba(22,44,38,.34)';else if(!inBos(x,z,-2.5)&&!inVeld(x,z,-2.5)&&!inVale(x,z,-2.5))g.fillStyle='rgba(10,28,20,.5)';else continue;
     g.fillRect(i*H,j*H,H,H)}
   /* wat bloemen en steentjes in het gras, spaarzaam en alleen buiten het dorp wat dichter; in het bos alleen steentjes */
   for(let k=0;k<380;k++){const x=X0+R()*(X1-X0),z=Z0+R()*(Z1-Z0);
@@ -133,8 +137,40 @@ function bouwGrond(atlas,decor){
   const vanger=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0),new THREE.ShadowMaterial({color:0x1a1540,opacity:.38}));
   vanger.rotation.x=-Math.PI/2;vanger.position.set((X0+X1)/2,.03,(Z0+Z1)/2);vanger.receiveShadow=true;vanger.renderOrder=1;scene.add(vanger);
   /* wijde omgeving buiten de wereld */
-  const buiten=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshBasicMaterial({color:0x4f7f2a}));
+  bouwGrondVale(atlas,decor);
+  const buiten=new THREE.Mesh(new THREE.PlaneGeometry(700,700),new THREE.MeshBasicMaterial({color:0x4f7f2a}));
   buiten.rotation.x=-Math.PI/2;buiten.position.y=-.01;scene.add(buiten);
+}
+
+/* de grond van Kingsvale: een eigen tegelkaart (één grote kaart voor alles zou te veel textuurgeheugen vragen).
+   Waar het veld overlapt blijft hij doorzichtig; de weiden zijn iets warmer van kleur, de stad krijgt aangestampte aarde. */
+function bouwGrondVale(atlas,decor){
+  const R=toeval(31337);
+  const VX0=VALE.x0-8,VX1=-60,VZ0=VALE.z0-6,VZ1=VALE.z1+6,VNX=Math.round((VX1-VX0)/CPU),VNZ=Math.round((VZ1-VZ0)/CPU);
+  const c=document.createElement('canvas');c.width=VNX*TILE;c.height=VNZ*TILE;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  const w2px=v=>(v-VX0)/CPU*TILE,w2pz=v=>(v-VZ0)/CPU*TILE;
+  for(let j=0;j<VNZ;j++)for(let i=0;i<VNX;i++){
+    const x=(i+.5)*CPU+VX0,z=(j+.5)*CPU+VZ0;
+    if(inVeld(x,z,-1)&&x>-70)continue;                       /* daar ligt de grond van het veld al */
+    const idx=(R()<.12?2:R()<.3?1:0);g.drawImage(atlas,idx*TILE,0,TILE,TILE,i*TILE,j*TILE,TILE,TILE);
+  }
+  const H=TILE/4,S=CPU/4;
+  for(let j=0;j<VNZ*4;j++)for(let i=0;i<VNX*4;i++){const x=(i+.5)*S+VX0,z=(j+.5)*S+VZ0;
+    if(inVeld(x,z,-1)&&x>-70)continue;
+    if(inStad(x,z,.7))g.fillStyle=inKasteel(x,z)?'rgba(120,110,100,.5)':'rgba(150,122,80,.42)';
+    else if(inVale(x,z))g.fillStyle='rgba(140,120,30,.1)';
+    else if(!inVale(x,z,-2.5)&&!inVeld(x,z,-2.5))g.fillStyle='rgba(10,28,20,.5)';else continue;
+    g.fillRect(i*H,j*H,H,H)}
+  for(let k=0;k<420;k++){const x=VX0+R()*(VX1-VX0),z=VZ0+R()*(VZ1-VZ0);
+    if(!inVale(x,z)||inVeld(x,z)||inStad(x,z,-1))continue;
+    const img=[decor.bloemen,decor.bloemen2,decor.rots2,decor.bloemen][Math.floor(R()*4)];
+    g.drawImage(img,Math.round(w2px(x)-img.width/2),Math.round(w2pz(z)-img.height/2))}
+  const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
+  if(GLAD){tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4}else{tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false}
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(VX1-VX0,VZ1-VZ0),new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:.5}));
+  mesh.rotation.x=-Math.PI/2;mesh.position.set((VX0+VX1)/2,.006,(VZ0+VZ1)/2);scene.add(mesh);
+  const vanger=new THREE.Mesh(new THREE.PlaneGeometry(VX1-VX0,VZ1-VZ0),new THREE.ShadowMaterial({color:0x1a1540,opacity:.38}));
+  vanger.rotation.x=-Math.PI/2;vanger.position.set((VX0+VX1)/2,.031,(VZ0+VZ1)/2);vanger.receiveShadow=true;vanger.renderOrder=1;scene.add(vanger);
 }
 
 /* ---------- decor ---------- */
@@ -191,7 +227,7 @@ export async function bouwWereld(){
   P.push(prop('kar',-7.6,-14.8,{r:1.2,schaduw:2.6}));
   /* borden bij de poorten en bij het plein */
   P.push(prop('bord',2.4,9.2,{r:.4}),prop('bord',3.4,-DORP+2.6,{r:.4}),prop('bord',-3.4,DORP-2.6,{r:.4}));
-  P.push(prop('lantaarn',3.2,-DORP+1.2,{r:.25}),prop('lantaarn',-3.2,-DORP+1.2,{r:.25}),prop('lantaarn',3.2,DORP-1.2,{r:.25}),prop('lantaarn',-3.2,DORP-1.2,{r:.25}));
+  P.push(prop('lantaarn',-DORP+1.2,3.2,{r:.25}),prop('lantaarn',-DORP+1.2,-3.2,{r:.25}),prop('bord',-DORP+2.6,3.4,{r:.4}),prop('lantaarn',3.2,-DORP+1.2,{r:.25}),prop('lantaarn',-3.2,-DORP+1.2,{r:.25}),prop('lantaarn',3.2,DORP-1.2,{r:.25}),prop('lantaarn',-3.2,DORP-1.2,{r:.25}));
   /* beplanting: bomen in de hoeken, struiken bij de huizen, bloemen langs het plein */
   const dorpsbomen=[['boom',-19,-19],['den',-16,-20],['boom2',-19.5,-4],['boom',19,-19],['den2',20,-15],['boom2',19.5,4],['boom',-19,18.5],['den',-20,14],['boom2',19.5,19],['den',-6,19.5],['boom',10,-19.5]];
   for(const[n,x,z]of dorpsbomen)P.push(prop(n,x,z,{r:.55,schaduw:1.8,schaal:1.3}));
@@ -201,7 +237,7 @@ export async function bouwWereld(){
   const STAP=2.6;
   for(let i=-DORP+STAP/2;i<DORP;i+=STAP){
     if(Math.abs(i)>POORT){bouw(B.hek(STAP),i,-DORP,{r:1.2});bouw(B.hek(STAP),i,DORP,{r:1.2})}
-    bouw(B.hek(STAP),-DORP,i,{r:1.2,rot:Math.PI/2});bouw(B.hek(STAP),DORP,i,{r:1.2,rot:Math.PI/2});
+    if(Math.abs(i)>POORT)bouw(B.hek(STAP),-DORP,i,{r:1.2,rot:Math.PI/2});bouw(B.hek(STAP),DORP,i,{r:1.2,rot:Math.PI/2});
   }
   /* ----- buiten het dorp: velden en bos ----- */
   const R=toeval(777);
@@ -210,24 +246,25 @@ export async function bouwWereld(){
   let n=0,pogingen=0;
   while(n<170&&pogingen++<4000){
     const x=R()*2*(VELD-2)-(VELD-2),z=R()*2*(VELD-2)-(VELD-2);
-    if(!buiten(x,z,2.5)||Math.abs(x)<3.5)continue;                       /* niet in het dorp, niet op het pad */
+    if(!buiten(x,z,2.5)||Math.abs(x)<3.5||(x<-DORP&&Math.abs(z)<3.2))continue;   /* niet in het dorp, niet op de wegen */
     const rand=Math.max(Math.abs(x),Math.abs(z));
     if(rand<VELD-10&&R()<.45)continue;                                     /* dichter bos aan de rand van de wereld */
     if(!vrij(x,z,2.2))continue;
     const s=soorten[Math.floor(R()*soorten.length)];
     P.push(prop(s,x,z,s==='struik'?{schaduw:1,schaal:1.3}:{r:.55,schaduw:1.8,schaal:1.3}));n++;
   }
-  for(let k=0;k<28;k++){const x=R()*2*(VELD-3)-(VELD-3),z=R()*2*(VELD-3)-(VELD-3);if(!buiten(x,z,2)||Math.abs(x)<3||!vrij(x,z,1.5))continue;P.push(prop('rots',x,z,{r:.6,schaduw:1.4,schaal:1.2}))}
+  for(let k=0;k<28;k++){const x=R()*2*(VELD-3)-(VELD-3),z=R()*2*(VELD-3)-(VELD-3);if(!buiten(x,z,2)||Math.abs(x)<3||(x<-DORP&&Math.abs(z)<3)||!vrij(x,z,1.5))continue;P.push(prop('rots',x,z,{r:.6,schaduw:1.4,schaal:1.2}))}
   /* een bomenrij als rand van de wereld */
   /* een bomenrand langs de golvende rand van het veld: de binnenste rij sluit af (botsing), daarbuiten nog drie
      losse rijen zodat de wereld in bos overgaat. Waar het bos het veld overlapt (de noordpoort) staat niets. */
   for(let th=0;th<Math.PI*2;th+=2.3/60){const r=veldRand(th);
     for(const[k,dicht,kans]of[[-1.3,true,1],[1.6,false,1],[4.4,false,.85],[7.4,false,.7],[10.4,false,.5]]){
       const rr=r+k+(dicht?0:(R()-.5)*1.6),x=Math.sin(th)*rr+(dicht?0:(R()-.5)*1.2),z=Math.cos(th)*rr;
-      if(inBos(x,z)||R()>kans)continue;
+      if(inBos(x,z)||inVale(x,z)||R()>kans)continue;
       const s=R()<.6?'den':R()<.5?'boom':'boom2';
       P.push(prop(s,x,z,{r:dicht?.7:0,schaduw:1.8,schaal:1.3}))}}
   bouwBos({scene,prop,bouw,vrij,toeval,P});
+  bouwStad({scene,prop,bouw,vrij,toeval,P,obstakels});
   await Promise.all(P);
 }
 export function updateBorden(){for(const b of borden)b.update(cam)}

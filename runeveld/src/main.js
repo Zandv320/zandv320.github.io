@@ -1,12 +1,12 @@
 /* Runeveld – hoofdspel: speler, monsters, gevechten, levels, multiplayer, invoer. */
 import * as THREE from 'three';
-import {KLASSEN,ADVANCEMENT,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL} from './data.js';
+import {KLASSEN,ADVANCEMENT,MAX_LVL,expVoor,MONSTERS,SPAWNS,RESPAWN,ITEMS,STARTUITRUSTING,STARTTAS,TAS_SLOTS,VERKOOPDEEL,WINKELS} from './data.js';
 import {maakInventaris} from './inventaris.js';
 import {maakAdmin} from './admin.js';
 import {maakDorpelingen,updateDorpelingen,spreek,dorpelingen,groet,toonDorpelingen} from './dorpelingen.js';
 import {maakQuests} from './quests.js';
 import {maakDialoog} from './dialoog.js';
-import {BOS,inBos,BOS_PLEK,afstandTotPad} from './gebied.js';
+import {BOS,inBos,BOS_PLEK,afstandTotPad,VALE,inVale,inVeld,STAD,inStad,inKasteel,KASTEEL,KAMP,KONINGSWEG} from './gebied.js';
 import {maakKaart} from './kaart.js';
 import {maakDaglicht,daglicht,klokTekst,zetTijd,isNacht} from './daglicht.js';
 import {maakFx} from './fx.js';
@@ -16,11 +16,11 @@ import {ico} from './iconen.js';
 import {SKILLS,SKILLS_VAN,MAX_JOB,MAX_JOB_TIER,jobExpVoor,JOB_EXP_DEEL,skillPuntenVoor,skillPuntenBesteed,kanLeren} from './regels/skills.js';
 import {slag as regelSlag,spreuk,naVerdediging,raakKans,monsterGevecht} from './regels/gevecht.js';
 import {BLADEN,laadBladen,laadLagenVoor,opLaagGeladen} from './bladen.js';
-import {heldLagen,tekenHeld} from './uiterlijk.js';
+import {heldLagen,tekenHeld,herkleur,HAAR_BRON,HAAR} from './uiterlijk.js';
 import {maakSelectie,PODIUM} from './selectie.js';
 import {maakKarakter} from './karakter.js';
 import {Sprite2D} from './sprites.js';
-import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld,zon,hemi} from './world.js';
+import {renderer,scene,camera,cam,updateCamera,zetZoom,ZOOMS,bouwWereld,botsing,vrij,VELD,DORP,PLEIN,inDorp,canvas,grondPunt,straal,updateBorden,obstakels,schud,borden,binnenWereld,zon,hemi,volgZon} from './world.js';
 import {maakNet} from './net.js';
 import * as UI from './ui.js';
 
@@ -56,6 +56,9 @@ async function init(){
   /* dag en nacht: lantaarns en het altaar geven 's nachts licht */
   const lichten=borden.filter(b=>b.naam==='lantaarn').map(b=>({x:b.x,z:b.z,y:1.1,r:4.5,kleur:[255,210,130],sterkte:.85}));
   lichten.push({x:BOS_PLEK[0],z:BOS_PLEK[1],y:1.2,r:6.5,kleur:[170,120,255],sterkte:.7});
+  /* vuren: het kampvuur van de bandieten en de vuurkorven bij de slotpoort; ze branden altijd */
+  const vuren=[[KAMP[0],KAMP[1],1.7],[KASTEEL.x1+2.6,-5.2,1.1],[KASTEEL.x1+2.6,5.2,1.1]];
+  for(const[x,z,g]of vuren){FX.speel('vuur',x,z,{grootte:g,voet:true,loop:true});lichten.push({x,z,y:.8,r:3.5*g,kleur:[255,160,80],sterkte:.9})}
   DAG=maakDaglicht({scene,camera,renderer,zon,hemi,lichten});
   $('#laden').classList.add('weg');
   addEventListener('pointerdown',wekGeluid,{capture:true});addEventListener('keydown',wekGeluid,{capture:true});
@@ -75,7 +78,7 @@ async function start(i){
     if(Array.isArray(save.tas)){P.tas=[];for(const e of save.tas){if(typeof e==='string')tasToevoegen(e,1,true);else if(e&&ITEMS[e.id])tasToevoegen(e.id,e.n|0,true)}}
     if(save.dranken>0)tasToevoegen('drank',save.dranken,true);   /* oude opslag: drankjes als los getal */
     if(save.quests&&typeof save.quests==='object')P.quests=save.quests;
-    if(!inDorp(P.x,P.z)&&Math.max(Math.abs(P.x),Math.abs(P.z))>VELD-2){P.x=0;P.z=4}
+    if(!binnenWereld(P.x,P.z,1)){P.x=0;P.z=4}
     for(const k in P.uitr)if(P.uitr[k]&&!ITEMS[P.uitr[k]])P.uitr[k]=null;
     if(save.stats)P.stats={...basisStats(),...save.stats};if(save.skills)P.skills=save.skills;
     P.job=Math.min(maxJob(),save.job||Math.min(maxJob(),save.lvl));P.jobexp=save.jobexp||0;
@@ -143,7 +146,7 @@ function startNet(){
   });
   net.onVerbinding(v=>{UI.online(v,net.aantal());UI.sys(v?'Connected to the world.':'No connection: you are playing alone for now.')});
   net.aan('h',(d,f,isMe)=>{if(H)hostHit(d,f);
-    if(!isMe){const m=M.get(d.id);if(m&&!m.dood){UI.getal(m.x,m.sprite.h*.8,m.z,camera,d.dmg,'');const s=S.get(f);klap(m,s?m.x-s.x:0,s?m.z-s.z:1,.25);if(!H)m.hp=Math.max(0,m.hp-d.dmg)}}});
+    if(!isMe){const m=M.get(d.id);if(m&&!m.dood){UI.getal(m.x,m.sprite.h*.8*m.schaal,m.z,camera,d.dmg,'');const s=S.get(f);klap(m,s?m.x-s.x:0,s?m.z-s.z:1,.25);if(!H)m.hp=Math.max(0,m.hp-d.dmg)}}});
   net.aan('ijs',(d,f)=>{const tot=nu()+(d.duur||1.5);for(const id of d.ids||[]){const m=M.get(id);if(m&&!m.dood)m.ijsTot=tot}});
   net.aan('k',(d,f)=>{if(f!==net.hostId())return;const m=M.get(d.id);if(m)sterfMonster(m);if(d.door===net.me){beloning(d);Q.opDood(d.id.split('#')[0])}});
   net.aan('ma',(d,f)=>{if(f!==net.hostId())return;const m=M.get(d.id);if(m&&!m.dood){m.sprite.speel('aanval',true);m.aanvalT=nu()+.5;const w=d.to===net.me?P:S.get(d.to);if(w)m.sprite.stoot(w.x-m.x,w.z-m.z,.22)}if(d.to===net.me&&m)neemSchade(d.dmg,m.spec,m)});
@@ -165,13 +168,19 @@ function stuurPresence(){
 function zorgMonster(id){
   let m=M.get(id);if(m)return m;
   const soort=id.split('#')[0],spec=MONSTERS[soort];if(!spec)return null;
-  const sprite=new Sprite2D(BLADEN[soort],{schaduw:1.1});scene.add(sprite.g);
-  m={id,spec,sprite,label:UI.maakLabel('monster',spec.naam),x:0,z:0,tx:0,tz:0,kx:0,kz:1,st:0,hp:spec.hp,hpm:spec.hp,dood:false,hideT:0,aanvalT:0,
+  /* bandieten zijn mensen uit de lagen van de held; dieren kunnen een ander blad lenen, groter zijn en een kleur krijgen */
+  let lagen=null;if(spec.mens){const T=BLADEN.held.lagen,h=spec.mens;const hoofd=herkleur(h.hoofd||'hoofd',HAAR_BRON,HAAR[h.haar],'haar-'+h.haar,!!h.hoofd);lagen=[h.wapen&&T[h.wapen+'b'],T.lijf,T[h.kleding],hoofd,h.wapen&&T[h.wapen]].filter(Boolean)}
+  const schaal=spec.schaal||(spec.mens&&spec.mens.schaal)||1;
+  const sprite=new Sprite2D(spec.mens?BLADEN.held:BLADEN[spec.blad||soort],{schaduw:1.1*schaal,lagen});if(schaal!==1)sprite.g.scale.setScalar(schaal);if(spec.tint)sprite.tint(spec.tint);scene.add(sprite.g);
+  m={id,spec,sprite,schaal,label:UI.maakLabel('monster',spec.naam),x:0,z:0,tx:0,tz:0,kx:0,kz:1,st:0,hp:spec.hp,hpm:spec.hp,dood:false,hideT:0,aanvalT:0,
      doel:null,cd:0,wt:null,wtT:R(0,3),rt:0,nieuw:true};
   sprite.mesh.userData.m=m;klikbaar.push(sprite.mesh);M.set(id,m);return m;
 }
 /* een plek in de zone van dit monster: buiten de palissade, op een vrije plek, niet op het pad bij de poorten */
 function spawnPunt(spec){
+  if(spec.gebied==='kamp'){const[px,pz]=KAMP;for(let i=0;i<80;i++){const a=R(0,Math.PI*2),d=R(2,6),x=px+Math.cos(a)*d,z=pz+Math.sin(a)*d;if(vrij(x,z,.8))return[x,z]}return[px,pz-7]}
+  if(spec.gebied==='vale'){for(let i=0;i<160;i++){const x=R(VALE.x0+6,VALE.x1-6),z=R(VALE.z0+6,VALE.z1-6);
+      if(!inVale(x,z,3)||inVeld(x,z)||inStad(x,z,-9)||Math.abs(x-STAD.cx)<5&&Math.abs(z)<STAD.z1+10||Math.hypot(x-KAMP[0],z-KAMP[1])<12||!vrij(x,z,.8)||Math.hypot(x-P.x,z-P.z)<6)continue;return[x,z]}return[VALE.cx,VALE.z1-12]}
   if(spec.gebied==='plek'){const[px,pz]=BOS_PLEK;for(let i=0;i<80;i++){const a=R(0,Math.PI*2),d=R(2.6,5.4),x=px+Math.cos(a)*d,z=pz+Math.sin(a)*d;if(vrij(x,z,.8))return[x,z]}return[px,pz-4]}
   if(spec.gebied==='bos'){for(let i=0;i<120;i++){const x=R(BOS.x0+4,BOS.x1-4),z=R(BOS.z0+4,BOS.z1-6);
       if(afstandTotPad(x,z)<3||Math.hypot(x-BOS_PLEK[0],z-BOS_PLEK[1])<10||!vrij(x,z,.8)||Math.hypot(x-P.x,z-P.z)<4)continue;return[x,z]}return[BOS.x0+8,BOS.z1-12]}
@@ -185,8 +194,18 @@ function spawnPunt(spec){
 function thuis(spec,x,z){
   if(spec.gebied==='plek')return Math.hypot(x-BOS_PLEK[0],z-BOS_PLEK[1])<8;
   if(spec.gebied==='bos')return inBos(x,z);
+  if(spec.gebied==='kamp')return Math.hypot(x-KAMP[0],z-KAMP[1])<9;
+  if(spec.gebied==='vale')return inVale(x,z,2)&&!inVeld(x,z)&&!inStad(x,z,-4);
   return !inDorp(x,z)&&Math.abs(x)>=3;
 }
+/* het gebied waarin een monster een speler blijft achtervolgen */
+function jachtgebied(spec,x,z){
+  if(spec.gebied==='plek'||spec.gebied==='bos')return inBos(x,z);
+  if(spec.gebied==='kamp'||spec.gebied==='vale')return inVale(x,z)&&!inStad(x,z,-3);
+  return true;
+}
+/* veilige plekken: binnen de palissade van Runeveld en binnen de muren van Aurelia */
+const veilig=(x,z)=>inDorp(x,z)||inStad(x,z);
 function sterfMonster(m){
   if(m.dood)return;m.dood=true;m.hp=0;m.st=3;m.doel=null;const rs=m.spec.respawn||RESPAWN;m.rt=R(rs[0],rs[1]);
   m.sprite.speel('dood',true);m.hideT=nu()+1.6;if(Math.hypot(m.x-P.x,m.z-P.z)<14)G.monsterDood();if(FX)FX.speel('rook',m.x,m.z,{grootte:1.6,voet:true,vertraging:.9});
@@ -215,9 +234,9 @@ function hostTick(dt){
     if(m.dood){m.rt-=dt;if(m.rt<=0)herleefMonster(m,spawnPunt(m.spec));continue}
     if(ADMIN.bevroren||nu()<(m.ijsTot||0)){m.st=0;m.tx=m.x;m.tz=m.z;continue}
     let doel=m.doel?spelers.find(s=>s.id===m.doel):null;
-    if(doel&&(doel.dood||inDorp(doel.x,doel.z)||Math.hypot(doel.x-m.x,doel.z-m.z)>13||(sp.gebied&&!inBos(doel.x,doel.z)))){doel=null;m.doel=null}
+    if(doel&&(doel.dood||veilig(doel.x,doel.z)||Math.hypot(doel.x-m.x,doel.z-m.z)>13||!jachtgebied(sp,doel.x,doel.z))){doel=null;m.doel=null}
     const nachtF=isNacht()&&sp.nacht?sp.nacht:null;
-    if(!doel&&sp.agressief){let best=null,bd=sp.aggro*(nachtF?nachtF.aggro:1);for(const s of spelers){if(s.dood||inDorp(s.x,s.z))continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
+    if(!doel&&sp.agressief){let best=null,bd=sp.aggro*(nachtF?nachtF.aggro:1);for(const s of spelers){if(s.dood||veilig(s.x,s.z))continue;const d=Math.hypot(s.x-m.x,s.z-m.z);if(d<bd){bd=d;best=s}}if(best){doel=best;m.doel=best.id}}
     m.cd=Math.max(0,m.cd-dt);
     if(doel){
       const dx=doel.x-m.x,dz=doel.z-m.z,d=Math.hypot(dx,dz)||1e-4;m.kx=dx/d;m.kz=dz/d;
@@ -248,13 +267,13 @@ function updateMonsters(dt){
   const t=nu();
   for(const m of M.values()){
     if(m.dood){if(m.hideT&&t>m.hideT){m.sprite.g.visible=false;m.label.el.hidden=true;m.hideT=0}
-      if(m.sprite.g.visible){m.sprite.update(dt,cam);UI.plaatsLabel(m.label,m.x,m.sprite.h+.1,m.z,camera)}continue}
+      if(m.sprite.g.visible){m.sprite.update(dt,cam);UI.plaatsLabel(m.label,m.x,m.sprite.h*m.schaal+.1,m.z,camera)}continue}
     if(!H){const k=1-Math.exp(-10*dt);m.x+=(m.tx-m.x)*k;m.z+=(m.tz-m.z)*k}
     m.sprite.g.position.set(m.x,0,m.z);m.sprite.zetKijk(m.kx,m.kz);
     if(t>=m.aanvalT)m.sprite.speel(m.st===1?'loop':'idle');
     const ijs=t<(m.ijsTot||0);if(ijs!==!!m.ijsTint){m.ijsTint=ijs;for(const L of m.sprite.lagen)L.mesh.material.color.set(ijs?0x9ad8ff:0xffffff)}
     m.sprite.update(dt,cam);
-    UI.plaatsLabel(m.label,m.x,m.sprite.h+.1,m.z,camera);UI.labelHp(m.label,m.hp,m.hpm,m.hp<m.hpm||P.target===m);
+    UI.plaatsLabel(m.label,m.x,m.sprite.h*m.schaal+.1,m.z,camera);UI.labelHp(m.label,m.hp,m.hpm,m.hp<m.hpm||P.target===m);
   }
   if(P.target)UI.doelkader(P.target);
 }
@@ -311,7 +330,7 @@ function slag(m){
 /* een klap op een monster: witte flits, squash en een duw van de aanvaller af */
 function klap(m,dx,dz,kracht){
   m.sprite.raak();m.sprite.stoot(dx,dz,kracht);
-  if(H&&!m.dood){const l=Math.hypot(dx,dz)||1,nx=m.x+dx/l*kracht*.6,nz=m.z+dz/l*kracht*.6;if(vrij(nx,nz,.4)&&!inDorp(nx,nz)){m.x=m.tx=nx;m.z=m.tz=nz}}
+  if(H&&!m.dood){const l=Math.hypot(dx,dz)||1,nx=m.x+dx/l*kracht*.6,nz=m.z+dz/l*kracht*.6;if(vrij(nx,nz,.4)&&!veilig(nx,nz)){m.x=m.tx=nx;m.z=m.tz=nz}}
 }
 /* r: uitkomst van regels/gevecht.js slag(); soort: '' voor een gewone slag, anders de skill */
 function raak(m,r,soort){
@@ -467,7 +486,7 @@ function beloning(d){
     if(klasse().tier===1&&P.job>=maxJob()){const opties=ADVANCEMENT[P.klasse]||[];UI.melding('JOB MASTERED',`Speak to ${KLASSEN[opties[0]].gever} to choose your path.`);UI.log(`<span class="lvl">You have mastered the ${klasse().naam} path. Speak to ${UI.esc(KLASSEN[opties[0]].gever)} to advance to ${opties.map(o=>KLASSEN[o].naam).join(' or ')}.</span>`)}}
   K.render();
 }
-function openWinkel(){K.winkelToon();npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z)}
+function openWinkel(n){const w=WINKELS[(n&&typeof n.winkel==='string')?n.winkel:'bram']||WINKELS.bram;K.winkelToon(w);if(n&&n.sprite)n.sprite.zetKijk(P.x-n.x,P.z-n.z)}
 /* een aura die de held volgt zolang de barrière duurt */
 function aura(tint){if(P.auraFx)P.auraFx.stop();P.auraFx=FX.speel('ring',P.x,P.z,{grootte:4.4,y:.2,tint,loop:true,volg:P,additief:true})}
 /* class advancement: op het maximale joblevel van een eerste klasse kiest de speler bij de npc zijn tweede klasse */
@@ -590,8 +609,8 @@ function klik(cx,cy){
   const hits=straal(cx,cy).intersectObjects(klikbaar,false).filter(h=>h.object.visible&&h.object.parent.visible);
   if(hits.length){const u=hits[0].object.userData;
     if(u.m&&!u.m.dood){P.target=u.m;P.wacht=null;P.bestemming=null;P.naarNpc=false;UI.doelkader(u.m);if(P.zit)zitten(false);return}
-    if(u.dorpeling){const n=u.dorpeling;gesprek({naam:n.spec.naam,groet:groet(n),sprite:n.sprite},n.x,n.z,()=>spreek(n,P,8));return}
-    if(u.npc){gesprek({naam:'Merchant Bram',groet:BRAM_GROET,sprite:npc.sprite,winkel:true},npc.x,npc.z,()=>npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z));return}
+    if(u.dorpeling){const n=u.dorpeling;gesprek({naam:n.spec.naam,groet:groet(n),sprite:n.sprite,winkel:n.spec.winkel,x:n.x,z:n.z},n.x,n.z,()=>spreek(n,P,8));return}
+    if(u.npc){gesprek({naam:'Merchant Bram',groet:BRAM_GROET,sprite:npc.sprite,winkel:'bram',x:npc.x,z:npc.z},npc.x,npc.z,()=>npc.sprite.zetKijk(P.x-npc.x,P.z-npc.z));return}
   }
   const p=grondPunt(cx,cy);if(!p)return;
   DL.sluit();P.bestemming=[p.x,p.z];P.naarNpc=false;P.target=null;P.wacht=null;UI.doelkader(null);if(P.zit)zitten(false);
@@ -657,7 +676,7 @@ function stap(dt){
   if(SEL&&!gestart)SEL.tick(dt);
   const t=nu();
   if(!gestart&&SEL&&SEL.isOpen()){const d=SEL.cameraDoel();_doel.set(d[0],d[1],d[2])}else _doel.set(P.x,0,P.z);
-  cam.doel.lerp(_doel,1-Math.exp(-8*dt));if(cam.schudT>0)cam.schudT-=dt;updateCamera();
+  cam.doel.lerp(_doel,1-Math.exp(-8*dt));if(cam.schudT>0)cam.schudT-=dt;updateCamera();volgZon(cam.doel.x,cam.doel.z);
   if(gestart){
     updateSpeler(dt);if(H)hostTick(dt);updateMonsters(dt);updateAnderen(dt);stuurPresence();
     UI.hud(P,hpMax(),spMax(),expVoor(P.lvl),tasAantal('drank'),klasse().naam,P.job<maxJob()?jobExpVoor(P.job):0);
@@ -669,8 +688,11 @@ function stap(dt){
     UI.laagHp(!P.dood&&P.hp<hpMax()*.25);
     if(P.auraFx&&(t>=P.barriereTot||P.dood)){P.auraFx.stop();P.auraFx=null}
     /* naam van het gebied in beeld als je een ander gebied binnenloopt */
-    const zn=inBos(P.x,P.z)?'bos':'veld';if(zone&&zn!==zone)UI.melding(zn==='bos'?BOS.naam:'Runeveld',zn==='bos'?'The old forest. Stay on the path.':'Fields and village.');
-    if(zn!==zone){zone=zn;$('#mm-zone').textContent=zn==='bos'?BOS.naam:inDorp(P.x,P.z)?'Runeveld':'Runeveld fields'}else if(zn==='veld'&&tasT===0){$('#mm-zone').textContent=inDorp(P.x,P.z)?'Runeveld':'Runeveld fields'}
+    const zn=inStad(P.x,P.z)?'stad':inBos(P.x,P.z)?'bos':(inVale(P.x,P.z)&&!inVeld(P.x,P.z))?'vale':'veld';
+    const ZONES={bos:[BOS.naam,'The old forest. Stay on the path.'],veld:['Runeveld','Fields and village.'],vale:[VALE.naam,'Meadows along the Kingsroad. Bandits roam here.'],stad:[STAD.naam,'The capital of Eldoria. Safe within the walls.']};
+    if(zone&&zn!==zone)UI.melding(ZONES[zn][0],ZONES[zn][1]);
+    const zoneNaam=()=>zn==='stad'?(inKasteel(P.x,P.z)?'Aurelia Castle':STAD.naam):zn==='vale'?VALE.naam:zn==='bos'?BOS.naam:inDorp(P.x,P.z)?'Runeveld':'Runeveld fields';
+    if(zn!==zone){zone=zn;$('#mm-zone').textContent=zoneNaam()}else if(tasT===0)$('#mm-zone').textContent=zoneNaam();
     K.tick(dt);ADM.tick(dt);KT.render();KT.renderMini();
   }
   if(gestart){npc.sprite.update(dt,cam);UI.plaatsLabel(npc.label,npc.x,npc.sprite.h+.1,npc.z,camera)}
@@ -683,5 +705,5 @@ function stap(dt){
   renderer.render(scene,camera);
 }
 
-window.RV={P,M,S,cam,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
+window.RV={P,M,S,cam,camera,renderer,scene,zon,ADMIN,net:()=>net,H:()=>H,stap,vaardigheid,uitrusten,afdoen,koop,verkoop,weggooi,tasToevoegen,tasAantal,statOmhoog,skillOmhoog,af,K:()=>K,I:()=>I,ADM:()=>ADM,Q:()=>Q,DL:()=>DL,KT:()=>KT,FX:()=>FX,gesprek,dorpelingen,advance,maxJob};
 init().catch(e=>{console.error(e);$('#laden').textContent='Loading failed: '+e.message});

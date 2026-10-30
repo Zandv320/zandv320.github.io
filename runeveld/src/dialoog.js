@@ -33,7 +33,7 @@ export function maakDialoog(Q,A){
     const adv=A.advancementOpties&&A.advancementOpties(n.naam);
     if(adv)keuzes.push(['I am ready to choose my path',()=>toon('You have learned everything your first calling could teach you. Choose wisely; there is no way back.',
       adv.map(id=>{const k=A.klasseNaam(id);return[`${ico('k_'+id,k.icoon,'klein')} ${k.naam}`,()=>toon(`${k.naam}: ${k.beschr} Is this your path?`,[[`Become a ${k.naam}`,()=>{if(A.advance(id))sluit()}],['Not yet',menu,'alt']])]}).concat([['Not yet',menu,'alt']]))]);
-    if(n.winkel)keuzes.push(['Let me see your wares',()=>{sluit();A.openWinkel()},'alt']);
+    if(n.winkel)keuzes.push(['Let me see your wares',()=>{sluit();A.openWinkel(n)},'alt']);
     keuzes.push(['Goodbye',sluit,'alt']);
     toon(n.groet,keuzes);
   }

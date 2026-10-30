@@ -55,7 +55,7 @@ export function maakAdmin(C){
     d=sectie('Teleport');
     const tx=h('input',{type:'number',value:0}),tz=h('input',{type:'number',value:0});const ga=h('button',{class:'aknop'},'Go');ga.onclick=()=>C.teleport(+tx.value,+tz.value);
     rij(d,'x / z',tx,tz,ga);
-    knoppen(d,[['Well',()=>C.teleport(0,4)],['North gate',()=>C.teleport(0,-DORP-3)],['South gate',()=>C.teleport(0,DORP+3)],['Rabbits',()=>C.teleport(12,-30)],['Foxes',()=>C.teleport(-40,10)],['Boars',()=>C.teleport(50,45)],['World edge',()=>C.teleport(VELD-3,0)]]);
+    knoppen(d,[['Well',()=>C.teleport(0,4)],['North gate',()=>C.teleport(0,-DORP-3)],['South gate',()=>C.teleport(0,DORP+3)],['Rabbits',()=>C.teleport(12,-30)],['Foxes',()=>C.teleport(-40,10)],['Aurelia gate',()=>C.teleport(-93,0)],['Aurelia square',()=>C.teleport(-130,0)],['Castle',()=>C.teleport(-150,0)],['Bandit camp',()=>C.teleport(-110,-45)],['Boars',()=>C.teleport(50,45)],['World edge',()=>C.teleport(VELD-3,0)]]);
     /* ---------- monsters ---------- */
     d=sectie('Monsters');
     const hostNoot=h('p',{class:'amono'});d.appendChild(hostNoot);

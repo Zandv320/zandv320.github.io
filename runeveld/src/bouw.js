@@ -167,3 +167,112 @@ export function pad(breedte,lengte,{x=0,z=0,rot=0}={}){
   const m=new THREE.Mesh(new THREE.PlaneGeometry(breedte,lengte),grondMat('pad',breedte,lengte));m.userData.kaart={soort:'pad',w:breedte,l:lengte};
   m.rotation.order='YXZ';m.rotation.y=rot;m.rotation.x=-Math.PI/2;m.position.set(x,.015,z);return m;
 }
+
+/* ====================== Aurelia: stadsmuren, torens, poorten, het kasteel en het stadsleven ====================== */
+/* kantelen langs een lengte L (langs x), op hoogte y, aan beide kanten van een dikte `dik` */
+function kantelen(g,L,y,dik){
+  for(let x=-L/2+.45;x<L/2-.2;x+=1.3)for(const t of[-1,1]){const k=blok(.7,.6,.3,'steen',.9);k.position.set(x,y,t*(dik/2-.15));g.add(k)}
+}
+/* ---------- stadsmuur: een stenen segment (lengte L langs x) met plint en kantelen ---------- */
+export function muur(L=6,h=4,dik=1.4){
+  const g=new THREE.Group();g.add(blok(L,h,dik,'steen',.96));
+  g.add(blok(L,.5,dik+.3,'steen',.85));kantelen(g,L,h,dik);
+  g.userData.kaart='muur';return g;
+}
+/* ---------- ronde toren met een kegeldak, of open met kantelen ---------- */
+export function toren(r=2,h=7,{dak=true}={}){
+  const g=new THREE.Group();
+  const lijf=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(r,r*1.08,h,12),mat('steen',r*6.5,h)),40);lijf.position.y=h/2;g.add(lijf);
+  const rand=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(r*1.18,r*1.08,.6,12),mat('steen',r*7,.6)),40);rand.position.y=h+.3;g.add(rand);
+  if(dak){const k=omlijn(new THREE.Mesh(new THREE.ConeGeometry(r*1.3,r*1.7,12),mat('dak',r*8,r*1.7,.95)),30);k.position.y=h+.6+r*.85;g.add(k)}
+  else for(let i=0;i<10;i++){const a=i/10*Math.PI*2,k=blok(.6,.55,.35,'steen',.9);k.position.set(Math.cos(a)*r*1.05,h+.6,Math.sin(a)*r*1.05);k.rotation.y=-a;g.add(k)}
+  for(const y of[h*.45,h*.75]){const raam=doos(.3,.7,.1,mat('hout_donker',.3,.7));raam.position.set(0,y,r+.02);g.add(raam)}
+  g.userData.kaart='toren';g.userData.top=dak?h+.6+r*1.7:h+.6;return g;
+}
+/* ---------- vlag: een paal met een wapperende lap ---------- */
+export function vlag(h=2.4,stof='stof_rood'){
+  const g=new THREE.Group();
+  const paal=doos(.12,h,.12,mat('hout_donker',.12,h));g.add(paal);
+  const lap=doos(1.3,.75,.05,mat(stof,1.3,.75));lap.position.set(.7,h-.45,0);g.add(lap);
+  const bol=omlijn(new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),kleur(0xe6bb63)),50);bol.position.y=h+.1;g.add(bol);
+  return g;
+}
+/* ---------- poortgebouw: twee zijblokken, een overspanning met kantelen, een opgehaald valhek en vlaggen; de doorgang langs z ---------- */
+export function poortgebouw({w=9,h=5.5,d=3.2,open=3.6}={}){
+  const g=new THREE.Group();const zijde=(w-open)/2;
+  for(const t of[-1,1]){const b=blok(zijde,h,d,'steen',.96);b.position.x=t*(open/2+zijde/2);g.add(b);
+    const p=blok(zijde,.5,d+.3,'steen',.85);p.position.x=t*(open/2+zijde/2);g.add(p)}
+  const boven=blok(w,h*.42,d,'steen',.92);boven.position.y=h*.58;g.add(boven);kantelen(g,w,h,d);
+  const hek=doos(open,1.1,.1,mat('hout_donker',open,1.1));hek.position.set(0,h*.58-.4,d/2+.05);g.add(hek);
+  for(const x of[-open/2-.4,open/2+.4]){const f=doos(.25,h*.5,.25,mat('hout_donker',.25,h*.5));f.position.set(x,h*.1,d/2+.15);g.add(f)}
+  for(const t of[-1,1]){const v=vlag(2.2);v.position.set(t*(w/2-.8),h+.3,0);g.add(v)}
+  g.userData.kaart='poort';return g;
+}
+/* ---------- het kasteel: een hoge donjon met vier hoektorens, een middentoren, kantelen, poort, trap en banieren ---------- */
+export function kasteel({w=16,d=12,h=8}={}){
+  const g=new THREE.Group();
+  g.add(blok(w,h,d,'steen',.98));g.add(blok(w+.6,1,d+.6,'steen',.85));
+  kantelen(g,w,h,d);
+  for(const t of[-1,1]){const zij=new THREE.Group();zij.rotation.y=Math.PI/2;zij.position.x=t*(w/2);kantelen(zij,d,h,.3);g.add(zij)}
+  for(const[x,z]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const t=toren(2.2,11);t.position.set(x*(w/2),0,z*(d/2));g.add(t);
+    const v=vlag(2.2);v.position.set(x*(w/2),11+.6+2.2*1.7-.2,z*(d/2));g.add(v)}
+  const mid=toren(3,15);mid.position.set(0,0,-1.5);g.add(mid);
+  const top=vlag(3,'stof_rood');top.position.set(0,15+.6+3*1.7-.2,-1.5);g.add(top);
+  /* de poort met een luifel van hout, ramen en banieren aan de voorkant */
+  const deur=doos(2.8,3.6,.12,mat('hout_donker',2.8,3.6));deur.position.set(0,1.8,d/2+.06);g.add(deur);
+  const boog=blok(3.6,.5,.9,'steen',.9);boog.position.set(0,3.6,d/2+.3);g.add(boog);
+  for(const x of[-5.5,-3,3,5.5]){const r=doos(.8,1.3,.08,mat('glas',.8,1.3));r.position.set(x,5.2,d/2+.04);g.add(r)}
+  for(const x of[-5.5,5.5]){const b=doos(1.1,2.6,.06,mat('stof_rood',1.1,2.6));b.position.set(x,2.4,d/2+.05);g.add(b)}
+  /* een brede trap naar de poort */
+  for(let i=0;i<3;i++){const s=blok(6-i*.8,.32,1.1,'steen',.92);s.position.set(0,i*.32,d/2+1.6-i*.55);g.add(s)}
+  g.userData.kaart='kasteel';return g;
+}
+/* ---------- fontein: een bekken met water, een zuil en een bovenschaal ---------- */
+export function fontein(r=2.6){
+  const g=new THREE.Group();
+  const water=new THREE.Mesh(new THREE.CircleGeometry(r,24),grondMat('water',r*2,r*2));water.rotation.x=-Math.PI/2;water.position.y=.42;g.add(water);
+  const rand=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(r+.5,r+.6,.6,24,1,true),mat('steen',(r+.5)*6,.6)),40);rand.position.y=.3;g.add(rand);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(r,r+.5,24),grondMat('steen',r*2,r*2));ring.rotation.x=-Math.PI/2;ring.position.y=.605;g.add(ring);
+  const zuil=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(.45,.6,2.2,10),mat('steen',3,2.2)),40);zuil.position.y=1.1;g.add(zuil);
+  const schaal=omlijn(new THREE.Mesh(new THREE.CylinderGeometry(1.2,.7,.4,14),mat('steen',7,.4)),40);schaal.position.y=2.4;g.add(schaal);
+  const w2=new THREE.Mesh(new THREE.CircleGeometry(1.05,14),grondMat('water',2,2));w2.rotation.x=-Math.PI/2;w2.position.y=2.61;g.add(w2);
+  const punt=omlijn(new THREE.Mesh(new THREE.ConeGeometry(.35,.9,8),mat('steen',2,.9)),40);punt.position.y=3.05;g.add(punt);
+  g.userData.kaart='fontein';return g;
+}
+/* ---------- standbeeld: een sokkel met een stenen ridder (vereenvoudigd) ---------- */
+export function standbeeld(){
+  const g=new THREE.Group();
+  g.add(blok(2,1.3,2,'steen',.9));const s2=blok(1.4,.4,1.4,'steen',.95);s2.position.y=1.3;g.add(s2);
+  const lijf=blok(.8,1.6,.55,'steen',.82);lijf.position.y=1.7;g.add(lijf);
+  const hoofd=omlijn(new THREE.Mesh(new THREE.SphereGeometry(.32,8,6),mat('steen',2,1,.85)),50);hoofd.position.y=3.6;g.add(hoofd);
+  const zwaard=blok(.14,2,.14,'steen',.75);zwaard.position.set(.55,2.3,.2);g.add(zwaard);
+  const schild=blok(.5,.9,.12,'steen',.8);schild.position.set(-.55,2.2,.2);g.add(schild);
+  g.userData.kaart='standbeeld';return g;
+}
+/* ---------- kerk: een hoog schip met een vierkante toren en een spits ---------- */
+export function kerk(){
+  const g=huis({w:8,d:11,h:4.2,dakH:3.2,muur:'steen',ramen:3,schoorsteen:false});
+  const toren=blok(3.2,10,3.2,'steen',.96);toren.position.set(-8/2+1.6,0,-11/2+1.6);g.add(toren);
+  const spits=omlijn(new THREE.Mesh(new THREE.ConeGeometry(2.3,3.2,4),mat('dak',8,3.2,.95)),30);spits.rotation.y=Math.PI/4;spits.position.set(-8/2+1.6,11.6,-11/2+1.6);g.add(spits);
+  for(const y of[5,7.5]){const r=doos(.6,1.1,.1,mat('glas',.6,1.1));r.position.set(-8/2+1.6,y,-11/2+1.6+1.62);g.add(r)}
+  const kruis=new THREE.Group();kruis.add(blok(.12,1,.12,'steen',.8));const dwars=blok(.6,.12,.12,'steen',.8);dwars.position.y=.7;kruis.add(dwars);kruis.position.set(-8/2+1.6,13.2,-11/2+1.6);g.add(kruis);
+  g.userData.kaart='kerk';return g;
+}
+/* ---------- tent voor het bandietenkamp: twee schuine lappen op een nokbalk ---------- */
+export function tent(w=3,d=3.2,stof='stof_groen'){
+  const g=new THREE.Group();const dakH=1.7,span=w/2,L=Math.hypot(span,dakH),a=Math.atan2(dakH,span);
+  for(const[teken,tint]of[[1,1],[-1,.85]]){const p=helling(d,L,stof,tint);p.rotation.order='YXZ';p.rotation.y=Math.PI/2;p.rotation.x=-Math.PI/2+teken*a;p.position.set(teken*span/2,dakH/2,0);g.add(p)}
+  const nok=doos(.12,.12,d+.3,mat('hout_donker',.2,d));nok.position.y=dakH;g.add(nok);
+  for(const t of[-1,1]){const paal=doos(.14,dakH,.14,mat('hout_donker',.14,dakH));paal.position.z=t*(d/2);g.add(paal)}
+  g.userData.kaart='tent';return g;
+}
+/* ---------- straat: keien op de grond, zoals pad() maar met de stadskeien ---------- */
+export function straat(breedte,lengte,{x=0,z=0,rot=0}={}){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(breedte,lengte),grondMat('keien2',breedte,lengte));m.userData.kaart={soort:'straat',w:breedte,l:lengte};
+  m.rotation.order='YXZ';m.rotation.y=rot;m.rotation.x=-Math.PI/2;m.position.set(x,.018,z);return m;
+}
+/* ---------- vierkant stadsplein ---------- */
+export function pleinVierkant(w,d,naam='keien2'){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),grondMat(naam,w,d));m.userData.kaart={soort:'straat',w,l:d};
+  m.rotation.x=-Math.PI/2;m.position.y=.02;return m;
+}

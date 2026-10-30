@@ -58,11 +58,21 @@ export const ITEMS={
   wolfsvacht:{naam:'Wolf pelt',prijs:34,icoon:'🐺',stapel:99,beschr:'Grey, thick and warm. The wolf disagreed.'},
   gewei:{naam:'Stag antler',prijs:45,icoon:'🦌',stapel:99,beschr:'Heavy and branching. Good for hilts, says Ragnar.'},
   slagtand:{naam:'Dire tusk',prijs:140,icoon:'🦷',stapel:99,beschr:'As long as your forearm. Something to brag about.'},
+  /* Kingsvale */
+  grote_drank:{naam:'Orange potion',gebruik:'heal',heal:160,cd:1,prijs:120,icoon:'🧪',stapel:99,beschr:'Brewed in Aurelia. Restores 160 HP.'},
+  donkere_vacht:{naam:'Dire wolf pelt',prijs:70,icoon:'🐺',stapel:99,beschr:'Thick, dark and still a little warm.'},
+  bandietenzegel:{naam:'Bandit insignia',prijs:45,icoon:'🏴',stapel:99,beschr:'A tin badge with a crossed-out crown. The bandits of Kingsvale wear them.'},
 };
 export const STARTUITRUSTING=KLASSEN.swordsman.start;
 export const STARTTAS=[{id:'drank',n:5}];
 /* wat Merchant Bram verkoopt; hij koopt alles terug voor de helft */
 export const WINKEL=['drank','tuniek','leren_kap','houtzwaard','houtstaf','gewaad','punthoed','vest','ijzerzwaard','zijden_gewaad','eikenstaf','ijzeren_helm','sterrenhoed','harnas','staalzwaard','magiergewaad','kristalstaf'];
+/* alle winkels: Bram in Runeveld en de kooplieden op de markt van Aurelia */
+export const WINKELS={
+  bram:{naam:'Merchant Bram',tekst:'"Welcome to Runeveld, adventurer. A potion for the road, or something sturdier to wear?"',items:WINKEL},
+  apotheek:{naam:'Apothecary Wren',tekst:'"Potions, tinctures and no questions. The orange ones are my own recipe."',items:['drank','grote_drank']},
+  wapensmid:{naam:'Armorer Gunnar',tekst:'"Steel from the royal forges. It costs what it costs."',items:['vest','ijzerzwaard','ijzeren_helm','harnas','staalzwaard','zijden_gewaad','eikenstaf','sterrenhoed','magiergewaad','kristalstaf']},
+};
 export const VERKOOPDEEL=.5;
 
 /* De monsters volgen de dieren uit het Craftpix-pack "Hunt Animals": konijn, vos, everzwijn.
@@ -80,5 +90,14 @@ export const BOS_MONSTERS={
   everzwijn:{naam:'Dire Boar',lvl:14,hp:900,atk:46,exp:520,zeny:[80,160],snelheid:2.4,agressief:true,bereik:1.6,aggro:7,gebied:'plek',respawn:[60,90],buit:{slagtand:.8,staalzwaard:.12,kristalstaf:.12,harnas:.1,magiergewaad:.1,drank:.5}},
 };
 Object.assign(MONSTERS,BOS_MONSTERS);
-export const SPAWNS=[{soort:'konijn',n:14},{soort:'vos',n:8},{soort:'zwijn',n:4},{soort:'wolf',n:7},{soort:'hert',n:5},{soort:'everzwijn',n:1}];
+/* Kingsvale (gebied.js): `gebied:'vale'` zwerft over de weiden buiten de stad, 'kamp' blijft bij het bandietenkamp.
+   Bandieten zijn mensen: opgebouwd uit de lagen van de held (`mens`), net als de dorpelingen. `blad` hergebruikt een dierensheet, `tint` kleurt hem. */
+export const VALE_MONSTERS={
+  bandiet:{naam:'Bandit',lvl:16,hp:1050,atk:54,exp:650,zeny:[60,140],snelheid:3,agressief:true,bereik:1.4,aggro:6.5,gebied:'vale',mens:{kleding:'harnas2',hoofd:'hoofd1',wapen:'wapen1',haar:'zwart'},buit:{bandietenzegel:.5,drank:.3,grote_drank:.08,ijzerzwaard:.06,vest:.06,zijden_gewaad:.04}},
+  direwolf:{naam:'Dire Wolf',lvl:17,hp:1350,atk:60,exp:760,zeny:[50,120],snelheid:3.5,agressief:true,bereik:1.4,aggro:7,gebied:'vale',blad:'wolf',schaal:1.25,tint:0x9a8ab8,nacht:{aggro:1.6,snelheid:1.15},buit:{donkere_vacht:.55,drank:.3,grote_drank:.08,ijzeren_helm:.05,sterrenhoed:.05}},
+  bruut:{naam:'Bandit Brute',lvl:19,hp:1950,atk:72,exp:1150,zeny:[100,220],snelheid:2.7,agressief:true,bereik:1.5,aggro:6.5,gebied:'vale',mens:{kleding:'harnas2',hoofd:'hoofd2',wapen:'wapen2',haar:'rood',schaal:1.15},buit:{bandietenzegel:.7,grote_drank:.15,staalzwaard:.05,harnas:.05,kristalstaf:.04,magiergewaad:.04}},
+  hoofdman:{naam:'Bandit Chief Varek',lvl:22,hp:6500,atk:96,exp:4500,zeny:[400,800],snelheid:3,agressief:true,bereik:1.6,aggro:8,gebied:'kamp',respawn:[90,150],mens:{kleding:'harnas2',hoofd:'hoofd2',wapen:'wapen2',haar:'blond',schaal:1.3},buit:{bandietenzegel:1,grote_drank:.6,staalzwaard:.15,kristalstaf:.15,harnas:.12,magiergewaad:.12,ijzeren_helm:.1,sterrenhoed:.1}},
+};
+Object.assign(MONSTERS,VALE_MONSTERS);
+export const SPAWNS=[{soort:'konijn',n:14},{soort:'vos',n:8},{soort:'zwijn',n:4},{soort:'wolf',n:7},{soort:'hert',n:5},{soort:'everzwijn',n:1},{soort:'bandiet',n:10},{soort:'direwolf',n:7},{soort:'bruut',n:6},{soort:'hoofdman',n:1}];
 export const RESPAWN=[9,15];   /* seconden, min en max */

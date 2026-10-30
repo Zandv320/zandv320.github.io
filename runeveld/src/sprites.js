@@ -86,6 +86,8 @@ export class Sprite2D{
     this.cols=Math.max(1,Math.round(b.image.width/this.blad.fw));this.rows=Math.max(1,Math.round(b.image.height/this.blad.fh));
     this._uv();
   }
+  /* alle lagen een kleurzweem geven (bijv. een donkere wolf) */
+  tint(kleur){this.tintKleur=kleur;for(const L of this.lagen)L.mesh.material.color.set(kleur)}
   heeft(naam){return !!this.blad.anims[naam]}
   speel(naam,herstart=false){
     const a=this.blad.anims[naam]||this.blad.anims.idle;if(!a)return;
