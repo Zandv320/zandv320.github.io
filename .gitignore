@@ -4,3 +4,4 @@ dist/
 runeveld/_download/
 __pycache__/
 *.pyc
+.wrangler/
