@@ -106,7 +106,7 @@ export function deriveStats({
     attackInterval: Math.max(0.4, 0.9 - s.agi * 0.006),
     /* per second, while standing */
     hpRegen: (1 + level * 0.3 + s.vit * 0.2) * (1 + passive("second_wind", "regen")),
-    spRegen: (1 + level * 0.2 + s.int * 0.3) * (1 + passive("inner_calm", "regen")),
+    spRegen: (1 + level * 0.2 + s.int * 0.2) * (1 + passive("inner_calm", "regen")),
     /* chance that a hit freezes the target (frost enchantment) */
     freezeChance: itemSum("freezeChance"),
     /* extra damage of Flame Sweep */

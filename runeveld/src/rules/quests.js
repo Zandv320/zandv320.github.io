@@ -427,7 +427,7 @@ export const QUESTS = {
       "Six grey wolves. They hunt between the trees off the path, north of the gate. Watch your back.",
     completeText: "Six wolves. The howling is quieter already. Good work, and well paid.",
     goal: { type: "kill", monster: "wolf", count: 6 },
-    reward: { exp: 600, zeny: 500, items: [{ id: "red_potion", count: 5 }] },
+    reward: { exp: 800, zeny: 500, items: [{ id: "red_potion", count: 5 }] },
   },
   lise_warm_coat: {
     giver: "Baker Lise",
@@ -463,7 +463,7 @@ export const QUESTS = {
     chapter: 4,
     main: true,
     title: "The dire boar",
-    level: 13,
+    level: 12,
     after: "rolf_wolves",
     intro:
       "Something big has made its den on the stone circle at the end of the forest path. A boar, they say, the size of a cart. Nobody goes near the altar any more. Deal with it and I will give you my own steel.",
@@ -496,7 +496,7 @@ export const QUESTS = {
     completeText:
       "Rolf sent you? He does not send just anyone. Welcome to Aurelia. Rest at the inn, see the market, and come back to me when you are ready to work.",
     goal: { type: "visit", npc: "Captain Aldric" },
-    reward: { exp: 900, zeny: 400, items: [{ id: "red_potion", count: 4 }] },
+    reward: { exp: 700, zeny: 400, items: [{ id: "red_potion", count: 4 }] },
   },
   aldric_bandits: {
     giver: "Captain Aldric",
@@ -513,7 +513,7 @@ export const QUESTS = {
       "Eight bandits. They roam the meadows of Kingsvale outside the walls, mostly along the road. They fight in groups; so should you.",
     completeText: "Eight. The merchants will drink to your name tonight. Here is the city's pay.",
     goal: { type: "kill", monster: "bandit", count: 8 },
-    reward: { exp: 2200, zeny: 900, items: [{ id: "orange_potion", count: 3 }] },
+    reward: { exp: 1500, zeny: 900, items: [{ id: "orange_potion", count: 3 }] },
   },
   wren_dark_pelts: {
     giver: "Apothecary Wren",
@@ -527,7 +527,7 @@ export const QUESTS = {
       "Four dire wolf pelts. The dire wolves hunt the meadows south and west of the city, and they are bolder at night.",
     completeText: "Four pelts, and not a hair singed. You have a careful hand. Here, as promised.",
     goal: { type: "item", item: "dire_wolf_pelt", count: 4 },
-    reward: { exp: 1800, zeny: 600, items: [{ id: "orange_potion", count: 5 }] },
+    reward: { exp: 1100, zeny: 600, items: [{ id: "orange_potion", count: 5 }] },
   },
   aldric_brutes: {
     giver: "Captain Aldric",
@@ -543,7 +543,7 @@ export const QUESTS = {
     progressText: "Five bandit brutes. Big, slow, and they hit like a mule. Keep moving.",
     completeText: "Five brutes down. Now I know you can take their chief. Rest first.",
     goal: { type: "kill", monster: "bandit_brute", count: 5 },
-    reward: { exp: 3500, zeny: 1400, items: [{ id: "orange_potion", count: 5 }] },
+    reward: { exp: 2000, zeny: 1400, items: [{ id: "orange_potion", count: 5 }] },
   },
   aldric_varek: {
     giver: "Captain Aldric",
@@ -561,7 +561,7 @@ export const QUESTS = {
     completeText:
       "Varek is dead? Then Kingsvale is ours again. The Steward wants to see you in the castle. Go, before he changes his mind.",
     goal: { type: "kill", monster: "bandit_chief", count: 1 },
-    reward: { exp: 7000, zeny: 3000, items: [{ id: "orange_potion", count: 8 }] },
+    reward: { exp: 2200, zeny: 3000, items: [{ id: "orange_potion", count: 8 }] },
   },
   corvin_audience: {
     giver: "Steward Corvin",
@@ -580,7 +580,7 @@ export const QUESTS = {
       "The King was pleased. That does not happen often. The crown's gratitude, in coin, and you are welcome in Aurelia for as long as you live.",
     goal: { type: "reach", x: -153, z: 0, r: 4.5, label: "the King at the keep" },
     reward: {
-      exp: 5000,
+      exp: 1200,
       zeny: 4000,
       items: [
         { id: "amulet_of_aurelia", count: 1 },

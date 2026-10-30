@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "format": "prettier --write \"runeveld/**/*.{js,css,html}\" \"server/**/*.{js,json}\" \"*.js\"",
     "format:check": "prettier --check \"runeveld/**/*.{js,css,html}\" \"server/**/*.{js,json}\" \"*.js\"",
-    "lint": "eslint runeveld/src server/src"
+    "lint": "eslint runeveld/src server/src",
+    "balance": "node runeveld/tools/balance-sim.js"
   },
   "dependencies": {
     "peerjs": "^1.5.4",
