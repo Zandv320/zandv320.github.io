@@ -777,6 +777,9 @@ for uit, naam, fps in (('ring', '2', 14), ('slag', '3_2', 18), ('komeet', '4_1',
                        ('straal', '3', 18), ('harten', '5', 12), ('spat', '6_2', 16), ('knal', '4_2', 16), ('kaars', '6', 12)):
     im = open_rgba(FXM / f'{naam}.png')
     im.save(FX / f'{uit}.png'); fxinfo[uit] = dict(fw=72, fh=72, n=im.width // 72, fps=fps)
+# de procedurele effecten (ijs, staal, licht, aarde, geesten, schilden) uit maak_fx.py erbij
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent)); import maak_fx
+fxinfo.update(maak_fx.maak(FX))
 (FX / 'fx.json').write_text(json.dumps(fxinfo))
 print('effecten:', {k: (v['fw'], v['n']) for k, v in fxinfo.items()})
 
