@@ -46,6 +46,7 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { createSettings } from "./settings.js";
+import { setupCursors, setWorldCursor } from "./cursors.js";
 import { createEffects } from "./effects.js";
 import { unlockAudio, sfx } from "./audio.js";
 import { baseStats } from "./rules/stats.js";
@@ -1254,6 +1255,27 @@ function updatePeers(dt) {
 
 /* ====================== input ====================== */
 
+/* What a click at this screen point would do, as a cursor: attack, talk, gather or default (walk, use). */
+function cursorAt(clientX, clientY) {
+  if (!game.isStarted || player.isDead) {
+    return "default";
+  }
+  const hit = screenRay(clientX, clientY)
+    .intersectObjects(clickables, false)
+    .find((candidate) => candidate.object.visible && candidate.object.parent.visible);
+  if (!hit) {
+    return "default";
+  }
+  const data = hit.object.userData;
+  if (data.monster) {
+    return data.monster.isDead ? "default" : "attack";
+  }
+  if (data.villager || data.npc || data.peerId !== undefined) {
+    return "talk";
+  }
+  return data.node ? "gather" : "default";
+}
+
 function handleClick(clientX, clientY) {
   if (player.isDead) {
     return;
@@ -1404,6 +1426,19 @@ function setupPointerInput() {
     }
   });
 
+  /* the cursor follows what is under the mouse, looked up at most once a frame */
+  let hoverPoint = null;
+  canvas.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "mouse" && !drag) {
+      if (!hoverPoint) {
+        requestAnimationFrame(() => {
+          setWorldCursor(canvas, cursorAt(hoverPoint[0], hoverPoint[1]));
+          hoverPoint = null;
+        });
+      }
+      hoverPoint = [event.clientX, event.clientY];
+    }
+  });
   canvas.addEventListener("pointermove", (event) => {
     if (pointers.has(event.pointerId)) {
       pointers.set(event.pointerId, [event.clientX, event.clientY]);
@@ -1589,6 +1624,7 @@ function setupButtons() {
 
 function setupInput() {
   setupPointerInput();
+  setupCursors();
   setupKeyboardInput();
   setupButtons();
 }

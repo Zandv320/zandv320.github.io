@@ -3913,3 +3913,24 @@ body.touch #select .help {
 body.hide-names .label .name {
   display: none;
 }
+
+/* ---------- RPG cursors for the mouse (cursors.js) ---------- */
+body.rpg-cursor,
+body.rpg-cursor * {
+  cursor: var(--cursor-default);
+}
+body.rpg-cursor input[type="text"],
+body.rpg-cursor input:not([type]),
+body.rpg-cursor input[type="password"],
+body.rpg-cursor textarea {
+  cursor: text;
+}
+body.rpg-cursor #game[data-cursor="attack"] {
+  cursor: var(--cursor-attack);
+}
+body.rpg-cursor #game[data-cursor="talk"] {
+  cursor: var(--cursor-talk);
+}
+body.rpg-cursor #game[data-cursor="gather"] {
+  cursor: var(--cursor-gather);
+}
