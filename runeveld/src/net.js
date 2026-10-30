@@ -53,7 +53,7 @@ export function maakNet(){
       else if(m.i!==undefined&&vragen.has(m.i)){const v=vragen.get(m.i);vragen.delete(m.i);clearTimeout(v.timer);v.res(m)}
       else if(m.k==='char'&&m.c)charFns.forEach(f=>{try{f(m.c)}catch(e){console.error(e)}})
       else if(berichtFns[m.k])try{berichtFns[m.k](m)}catch(e){console.error(e)}};
-    const dicht=()=>{if(ws===s)ws=null;elect();setConn(false);if(!klaar){klaar=true;clearTimeout(to);res(false)}else if(!gesloten)herverbind()};
+    const dicht=()=>{if(ws===s)ws=null;for(const[i,v]of vragen){clearTimeout(v.timer);v.res(null)}vragen.clear();elect();setConn(false);if(!klaar){klaar=true;clearTimeout(to);res(false)}else if(!gesloten)herverbind()};
     s.onclose=dicht;s.onerror=()=>{try{s.close()}catch(e){}};
   })}
   let wacht=2000;

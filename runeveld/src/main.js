@@ -95,7 +95,7 @@ function neemRecord(c){
 /* de wereld in met held nummer i uit de lijst; een held zonder level is nieuw */
 async function start(i){
   let save=CH.lijst[i];
-  if(net.viaServer()&&serverAccount){const r=await net.vraag({k:'speel',naam:save.naam});if(r&&r.c){save={...save,...r.c};CH.lijst[i]=save}}P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...LEGE_UITR(),...klasse().start};CH.laatst=i;schrijfChars(CH);
+  if(net.viaServer()){let r=await net.vraag({k:'speel',naam:save.naam});if(!r&&net.viaServer())r=await net.vraag({k:'speel',naam:save.naam});if(r&&r.c){serverAccount=true;save={...save,...r.c};CH.lijst[i]=save}}P.slot=i;P.naam=save.naam;P.haar=save.haar||'standaard';P.klasse=KLASSEN[save.klasse]?save.klasse:'swordsman';P.uitr={...LEGE_UITR(),...klasse().start};CH.laatst=i;schrijfChars(CH);
   bouwBalk();
   zetZoom(stdPx);cam.yaw=0;cam.tilt=stdTilt;toonNpcs(true);
   if(save.lvl){Object.assign(P,{lvl:save.lvl,exp:save.exp,zeny:save.zeny,x:save.x,z:save.z});
@@ -160,9 +160,10 @@ function bewaar(){if(!gestart)return;if(net&&net.viaServer())net.save({hp:Math.r
 /* ====================== multiplayer ====================== */
 function startNet(){
   net=maakNet();net.onChar(neemRecord);
-  /* de server kent na een herstart niet meer welke held deze verbinding speelt: opnieuw melden */
-  const meld=()=>{if(gestart&&serverAccount)net.vraag({k:'speel',naam:P.naam}).then(r=>{if(r&&r.c)neemRecord(r.c)})};
-  net.onHerverbind(meld);net.onBericht('fout',m=>{if(m.fout==='geen held')meld()});
+  /* de server kent na een herstart niet meer welke held deze verbinding speelt: opnieuw melden. Lukte het laden van de
+     helden bij het opstarten niet (server was net aan het herstarten), dan alsnog. */
+  const meld=()=>{if(gestart)net.vraag({k:'speel',naam:P.naam}).then(r=>{if(r&&r.c){serverAccount=true;neemRecord(r.c)}})};
+  net.onHerverbind(async()=>{if(!serverAccount&&!gestart)await laadHeldenVanServer();meld()});net.onBericht('fout',m=>{if(m.fout==='geen held')meld()});
   net.onHost(v=>{if(v)wordHost();else H=null});
   net.onSpelers((spelers,weg)=>{
     for(const id of weg)verwijderSpeler(id);
