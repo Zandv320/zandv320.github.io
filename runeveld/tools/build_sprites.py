@@ -28,6 +28,7 @@ Output (all pixel art, 1 world unit = 16 px, see world.js):
     ground.png             7 tiles of 32x32 side by side: 3x grass, 2x cobbles, 2x path
     <decor>.png            single images at their real size
     ore_*, herb_*, tree_stump.png  profession nodes: ore veins (+ ore_depleted), herbs (+ herb_picked), the cut tree
+    work_*.png, work.json  profession animations: the tool per frame, in front of and behind the body
     tex/*.png              tileable textures for the 3D village (builders.js)
     smooth/*.png           2x smoothed copies of the sprites
 """
@@ -391,20 +392,19 @@ def is_swing_arc(rgb):
     return rgb[0] > 200 and rgb[1] > 200 and rgb[2] > 200
 
 
-def staff(sword, sword_back, body, head, colors, fw=64, fh=64, rows=4):
-    """colors: {'wood', 'wood_light', 'orb_outline', 'orb', 'orb_highlight', 'arc'}. Returns (front, back).
+def weapon_grips(sword, sword_back, body, fw=64, fh=64, rows=4):
+    """Where the hand holds the sword in every frame, so other things (staffs, tools) can be held the same way.
 
-    The grip is the skin pixel of the body closest to the hilt of the sword (the hand). In idle, walk, hurt and death
-    the staff stands upright through the hand (leaning slightly outwards), with the orb above the head; in the attack
-    frames it points along with the sword, as a thrust towards the target. Afterwards the hand pixels are drawn over
-    it again, so the hand holds the staff instead of hanging next to it."""
-    front = Image.new("RGBA", sword.size, TRANSPARENT)
-    back = front.copy()
+    Returns {(row, col): frame} with frame = {'arcs': [(x, y, is_back)], 'center': (cx, cy), 'grip': grip or None};
+    grip = (gx, gy, ux, uy, hand, is_back): the hand pixel (or the hilt), the unit direction from hilt to tip, the
+    hand pixel itself (or None) and whether the sword is mostly behind the body. The grip is the skin pixel of the
+    body closest to the hilt of the sword. Frames without a sword keep the grip of the previous frame in the row;
+    frames where the sword is a mere dot have no grip."""
     front_px, back_px, body_px = sword.load(), sword_back.load(), body.load()
+    frames = {}
     last_grip = {}  # last grip per row, for frames without a sword
     last_direction = {}  # sword direction of the previous frame per row
     for r in range(sword.height // fh):
-        is_attack = (r // rows) == 2  # third animation: attack
         for c in range(sword.width // fw):
             front_points, back_points, arc_points = [], [], []
             for y in range(r * fh, (r + 1) * fh):
@@ -415,93 +415,117 @@ def staff(sword, sword_back, body, head, colors, fw=64, fh=64, rows=4):
                             continue
                         (arc_points if is_swing_arc(p[:3]) else points_list).append((x, y, src is back_px))
             points = front_points + back_points
-            target = back if len(back_points) > len(front_points) else front
-            canvas = PixelCanvas(target)
-            for x, y, is_back in arc_points:  # the swing arc, light blue, in its own layer
-                PixelCanvas(back if is_back else front).pixels[x, y] = colors["arc"] + (255,)
+            is_back = len(back_points) > len(front_points)
             body_box = body.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
             if body_box:
                 cx, cy = c * fw + (body_box[0] + body_box[2]) / 2, r * fh + (body_box[1] + body_box[3]) / 2
             else:
                 cx, cy = c * fw + 32, r * fh + 38
-            head_box = head.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
-            head_top = r * fh + (head_box[1] if head_box else 18)
-            if points:
-                best, end_a, end_b = -1, None, None
-                for i in range(len(points)):
-                    for j in range(i + 1, len(points)):
-                        dist2 = (points[i][0] - points[j][0]) ** 2 + (points[i][1] - points[j][1]) ** 2
-                        if dist2 > best:
-                            best, end_a, end_b = dist2, points[i], points[j]
-                if end_a is None or best < 4:
-                    continue
-                # which end is the hilt? In the first frame of a row the end closest to the body; after that the end
-                # whose direction resembles the previous frame's, so the staff does not flip over while the hand
-                # moves up and down during the walk
-                if r in last_direction:
-                    rx, ry = last_direction[r]
-                    if (end_b[0] - end_a[0]) * rx + (end_b[1] - end_a[1]) * ry >= 0:
-                        hilt, tip = end_a, end_b
-                    else:
-                        hilt, tip = end_b, end_a
+            frame = {"arcs": arc_points, "center": (cx, cy), "grip": None}
+            frames[(r, c)] = frame
+            if not points:
+                frame["grip"] = last_grip.get(r)
+                continue
+            best, end_a, end_b = -1, None, None
+            for i in range(len(points)):
+                for j in range(i + 1, len(points)):
+                    dist2 = (points[i][0] - points[j][0]) ** 2 + (points[i][1] - points[j][1]) ** 2
+                    if dist2 > best:
+                        best, end_a, end_b = dist2, points[i], points[j]
+            if end_a is None or best < 4:
+                continue
+            # which end is the hilt? In the first frame of a row the end closest to the body; after that the end
+            # whose direction resembles the previous frame's, so the staff does not flip over while the hand
+            # moves up and down during the walk
+            if r in last_direction:
+                rx, ry = last_direction[r]
+                if (end_b[0] - end_a[0]) * rx + (end_b[1] - end_a[1]) * ry >= 0:
+                    hilt, tip = end_a, end_b
                 else:
-                    dist_a = (end_a[0] - cx) ** 2 + (end_a[1] - cy) ** 2
-                    dist_b = (end_b[0] - cx) ** 2 + (end_b[1] - cy) ** 2
-                    hilt, tip = (end_a, end_b) if dist_a <= dist_b else (end_b, end_a)
-                last_direction[r] = (tip[0] - hilt[0], tip[1] - hilt[1])
-                # the hand: skin pixels of the body right next to the hilt
-                hand, hand_dist = None, 99
-                for y in range(max(r * fh, hilt[1] - 4), min((r + 1) * fh, hilt[1] + 5)):
-                    for x in range(max(c * fw, hilt[0] - 4), min((c + 1) * fw, hilt[0] + 5)):
-                        p = body_px[x, y]
-                        if p[3] > 0 and p[:3] in SKIN:
-                            dist2 = (x - hilt[0]) ** 2 + (y - hilt[1]) ** 2
-                            if dist2 < hand_dist:
-                                hand_dist, hand = dist2, (x, y)
-                gx, gy = hand if hand else (hilt[0], hilt[1])
-                length = best**0.5
-                ux, uy = (tip[0] - hilt[0]) / length, (tip[1] - hilt[1]) / length
-                last_grip[r] = (gx, gy, ux, uy, hand, target)
+                    hilt, tip = end_b, end_a
             else:
-                if r not in last_grip:
-                    continue
-                gx, gy, ux, uy, hand, target = last_grip[r]
-                canvas = PixelCanvas(target)
-            if is_attack:
-                x0, y0 = round(gx - ux * 4), round(gy - uy * 4)
-                x1, y1 = round(gx + ux * 11), round(gy + uy * 11)
-                ox, oy = round(gx + ux * 12.5), round(gy + uy * 12.5)
-                nx, ny = (1, 0) if abs(uy) >= abs(ux) else (0, 1)
-            else:
-                # upright through the hand, the orb always just above the head (also when the staff hangs behind the
-                # body). In the side views the staff leans forwards (the side the figure faces), otherwise the lean
-                # would flip with the hand on every walk frame; from the front and back it leans to the hand's side.
-                facing = r % rows  # 0 front, 1 left, 2 right, 3 back
-                lean = -1 if facing == 1 else 1 if facing == 2 else (1 if gx >= cx else -1)
-                ox, oy = gx + lean * 3, head_top - 3
-                vx, vy = ox - gx, oy - gy
-                length = max(1, (vx * vx + vy * vy) ** 0.5)
-                vx, vy = vx / length, vy / length
-                x0, y0 = round(gx - vx * 9), round(gy - vy * 9)
-                x1, y1 = round(ox - vx * 1.5), round(oy - vy * 1.5)
-                nx, ny = (1, 0)
-            draw_line(canvas, x0 + nx, y0 + ny, x1 + nx, y1 + ny, colors["wood_light"])
-            draw_line(canvas, x0, y0, x1, y1, colors["wood"])
-            for yy in range(-1, 2):  # the orb on top
-                for xx in range(-1, 2):
-                    is_corner = abs(xx) + abs(yy) == 2
-                    canvas.pixels[ox + xx, oy + yy] = (colors["orb_outline"] if is_corner else colors["orb"]) + (255,)
-            for xx, yy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
-                canvas.pixels[ox + xx, oy + yy] = colors["orb_outline"] + (255,)
-            canvas.pixels[ox, oy] = colors["orb_highlight"] + (255,)
-            # the hand back on top of the staff, so it holds it (only when the staff is in front of the body)
-            if target is front and hand:
-                for y in range(gy - 2, gy + 3):
-                    for x in range(gx - 2, gx + 3):
-                        if r * fh <= y < (r + 1) * fh and c * fw <= x < (c + 1) * fw:
-                            p = body_px[x, y]
-                            if p[3] > 0 and p[:3] in SKIN and target.getpixel((x, y))[3] > 0:
-                                canvas.pixels[x, y] = p
+                dist_a = (end_a[0] - cx) ** 2 + (end_a[1] - cy) ** 2
+                dist_b = (end_b[0] - cx) ** 2 + (end_b[1] - cy) ** 2
+                hilt, tip = (end_a, end_b) if dist_a <= dist_b else (end_b, end_a)
+            last_direction[r] = (tip[0] - hilt[0], tip[1] - hilt[1])
+            # the hand: skin pixels of the body right next to the hilt
+            hand, hand_dist = None, 99
+            for y in range(max(r * fh, hilt[1] - 4), min((r + 1) * fh, hilt[1] + 5)):
+                for x in range(max(c * fw, hilt[0] - 4), min((c + 1) * fw, hilt[0] + 5)):
+                    p = body_px[x, y]
+                    if p[3] > 0 and p[:3] in SKIN:
+                        dist2 = (x - hilt[0]) ** 2 + (y - hilt[1]) ** 2
+                        if dist2 < hand_dist:
+                            hand_dist, hand = dist2, (x, y)
+            gx, gy = hand if hand else (hilt[0], hilt[1])
+            length = best**0.5
+            ux, uy = (tip[0] - hilt[0]) / length, (tip[1] - hilt[1]) / length
+            frame["grip"] = last_grip[r] = (gx, gy, ux, uy, hand, is_back)
+    return frames
+
+
+def hand_over(canvas, target, body, gx, gy, fw, fh, r, c):
+    """Draw the hand pixels of the body back over whatever the hand holds, so it grips it."""
+    body_px = body.load()
+    for y in range(gy - 2, gy + 3):
+        for x in range(gx - 2, gx + 3):
+            if r * fh <= y < (r + 1) * fh and c * fw <= x < (c + 1) * fw:
+                p = body_px[x, y]
+                if p[3] > 0 and p[:3] in SKIN and target.getpixel((x, y))[3] > 0:
+                    canvas.pixels[x, y] = p
+
+
+def staff(sword, sword_back, body, head, colors, fw=64, fh=64, rows=4):
+    """colors: {'wood', 'wood_light', 'orb_outline', 'orb', 'orb_highlight', 'arc'}. Returns (front, back).
+
+    The staff is held where the sword is (weapon_grips). In idle, walk, hurt and death the staff stands upright
+    through the hand (leaning slightly outwards), with the orb above the head; in the attack frames it points along
+    with the sword, as a thrust towards the target. Afterwards the hand pixels are drawn over it again, so the hand
+    holds the staff instead of hanging next to it."""
+    front = Image.new("RGBA", sword.size, TRANSPARENT)
+    back = front.copy()
+    for (r, c), frame in weapon_grips(sword, sword_back, body, fw, fh, rows).items():
+        is_attack = (r // rows) == 2  # third animation: attack
+        for x, y, is_back in frame["arcs"]:  # the swing arc, light blue, in its own layer
+            PixelCanvas(back if is_back else front).pixels[x, y] = colors["arc"] + (255,)
+        if frame["grip"] is None:
+            continue
+        gx, gy, ux, uy, hand, is_back = frame["grip"]
+        target = back if is_back else front
+        canvas = PixelCanvas(target)
+        cx = frame["center"][0]
+        head_box = head.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)).getbbox()
+        head_top = r * fh + (head_box[1] if head_box else 18)
+        if is_attack:
+            x0, y0 = round(gx - ux * 4), round(gy - uy * 4)
+            x1, y1 = round(gx + ux * 11), round(gy + uy * 11)
+            ox, oy = round(gx + ux * 12.5), round(gy + uy * 12.5)
+            nx, ny = (1, 0) if abs(uy) >= abs(ux) else (0, 1)
+        else:
+            # upright through the hand, the orb always just above the head (also when the staff hangs behind the
+            # body). In the side views the staff leans forwards (the side the figure faces), otherwise the lean
+            # would flip with the hand on every walk frame; from the front and back it leans to the hand's side.
+            facing = r % rows  # 0 front, 1 left, 2 right, 3 back
+            lean = -1 if facing == 1 else 1 if facing == 2 else (1 if gx >= cx else -1)
+            ox, oy = gx + lean * 3, head_top - 3
+            vx, vy = ox - gx, oy - gy
+            length = max(1, (vx * vx + vy * vy) ** 0.5)
+            vx, vy = vx / length, vy / length
+            x0, y0 = round(gx - vx * 9), round(gy - vy * 9)
+            x1, y1 = round(ox - vx * 1.5), round(oy - vy * 1.5)
+            nx, ny = (1, 0)
+        draw_line(canvas, x0 + nx, y0 + ny, x1 + nx, y1 + ny, colors["wood_light"])
+        draw_line(canvas, x0, y0, x1, y1, colors["wood"])
+        for yy in range(-1, 2):  # the orb on top
+            for xx in range(-1, 2):
+                is_corner = abs(xx) + abs(yy) == 2
+                canvas.pixels[ox + xx, oy + yy] = (colors["orb_outline"] if is_corner else colors["orb"]) + (255,)
+        for xx, yy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
+            canvas.pixels[ox + xx, oy + yy] = colors["orb_outline"] + (255,)
+        canvas.pixels[ox, oy] = colors["orb_highlight"] + (255,)
+        # the hand back on top of the staff, so it holds it (only when the staff is in front of the body)
+        if target is front and hand:
+            hand_over(canvas, target, body, gx, gy, fw, fh, r, c)
     return front, back
 
 
@@ -1458,6 +1482,307 @@ def build_effect_sheets(packs_dir, out_dir):
     print("effects:", {k: (v["fw"], v["n"]) for k, v in fx_info.items()})
 
 
+# ---------- profession animations: the hero works with a tool in the hand ----------
+# The hero sheet has no working poses, but its attack animation has the arm at rest, lifted, raised and stretched
+# out. A profession animation is a sequence of those body frames (per direction), and its tool is drawn per frame in
+# that frame's hand at an angle chosen here: raised behind the head, struck down in front, held out over the water.
+# work_<anim>.png has a column per frame and 8 rows: the 4 directions (down, left, right, up) with the tool in front
+# of the body, then the same 4 with the tool behind it. work.json gives per animation the tool, the body column per
+# direction and frame, and the tool's tip per direction and frame in frame pixels (the fishing line starts there).
+WORK_ATTACK_ROW = 8
+WOOD = {"o": (61, 34, 26), "d": (98, 60, 38), "m": (147, 97, 65), "l": (194, 148, 89)}
+STEEL = {"o": (32, 34, 48), "d": (74, 80, 98), "m": (128, 136, 156), "l": (196, 204, 220)}
+
+# Poses per direction (down, left, right, up): body column of the attack animation, the hand in frame pixels, the
+# tool angle in degrees on screen (0 right, 90 down) and whether the tool is in front of the body.
+WORK_POSES = {
+    "rest": [(0, (26, 38), 115, True), (0, (32, 37), 115, False), (0, (29, 37), 65, True), (0, (36, 37), 60, False)],
+    "lift": [
+        (1, (24, 34), -160, False),
+        (1, (29, 34), -5, False),
+        (1, (24, 33), -140, False),
+        (1, (37, 38), -60, False),
+    ],
+    "raise": [
+        (2, (24, 31), -105, False),
+        (1, (29, 34), -35, False),
+        (2, (21, 32), -105, False),
+        (6, (25, 32), -85, False),
+    ],
+    "strike": [(6, (36, 36), 75, True), (4, (21, 34), 150, True), (4, (43, 33), 30, True), (2, (36, 37), -55, False)],
+    "follow": [(7, (29, 40), 100, True), (6, (25, 36), 125, True), (6, (38, 36), 55, True), (1, (37, 38), -45, False)],
+    "reach": [(6, (36, 36), 60, True), (6, (25, 36), 160, True), (6, (38, 36), 20, True), (1, (37, 38), -90, False)],
+    "hold": [(7, (29, 40), 70, True), (7, (28, 40), 150, True), (7, (36, 38), 30, True), (0, (36, 37), -80, False)],
+    "cast": [(5, (43, 31), -60, True), (5, (22, 32), -150, True), (5, (42, 32), -30, True), (5, (20, 32), -100, False)],
+    "point": [(6, (36, 36), 60, True), (4, (21, 34), 175, True), (4, (43, 33), 5, True), (2, (36, 37), -90, False)],
+}
+
+# Animations: tool, frames as (pose, extra angle), how fast, and whether the hero crouches (the client squeezes the
+# legs). `impact`: the frames where the tool hits (sparks, chips, sound).
+WORK_ANIMS = {
+    "mine": dict(
+        tool="pickaxe",
+        fps=9,
+        frames=[("rest", 0), ("lift", 0), ("raise", 0), ("raise", 8), ("strike", 0), ("strike", 6), ("follow", 0)],
+        impact=[4],
+    ),
+    "chop": dict(
+        tool="hatchet",
+        fps=10,
+        frames=[
+            ("lift", 0),
+            ("raise", 0),
+            ("strike", -20),
+            ("follow", -10),
+            ("lift", 0),
+            ("raise", 10),
+            ("strike", -10),
+            ("follow", 0),
+        ],
+        impact=[2, 6],
+    ),
+    "harvest": dict(
+        tool="sickle", fps=6, crouch=0.45, frames=[("hold", 0), ("reach", -20), ("reach", 25), ("hold", 10)], impact=[2]
+    ),
+    "fish_cast": dict(
+        tool="fishing_rod",
+        fps=8,
+        once=True,
+        frames=[("rest", 0), ("raise", 0), ("raise", 0), ("cast", 0), ("cast", 0), ("point", -30)],
+    ),
+    "fish": dict(tool="fishing_rod", fps=2, frames=[("point", -30), ("point", -26)]),
+    "smith": dict(
+        tool="hammer",
+        fps=11,
+        frames=[("lift", 0), ("raise", 0), ("strike", 10), ("follow", 10), ("follow", 10)],
+        impact=[2],
+    ),
+    "brew": dict(tool="flask", fps=4, frames=[("hold", 0), ("reach", 0), ("hold", 0), ("follow", 0)], impact=[1]),
+    "cook": dict(
+        tool="pan", fps=5, crouch=0.35, frames=[("reach", 5), ("reach", -5), ("reach", 5), ("hold", 0)], impact=[1]
+    ),
+    "enchant": dict(
+        tool="wand",
+        fps=4,
+        frames=[("raise", 0), ("raise", -10), ("point", -40), ("point", -40), ("raise", -10)],
+        impact=[2],
+    ),
+}
+
+
+class ToolPen:
+    """Draws one tool in one frame: positions are (along, across) in pixels from the grip, along the tool's direction
+    and across it."""
+
+    def __init__(self, canvas, gx, gy, ux, uy, side):
+        self.canvas, self.gx, self.gy = canvas, gx, gy
+        self.ux, self.uy = ux, uy
+        self.nx, self.ny = -uy * side, ux * side
+
+    def at(self, along, across=0.0):
+        return (
+            round(self.gx + self.ux * along + self.nx * across),
+            round(self.gy + self.uy * along + self.ny * across),
+        )
+
+    def dot(self, along, across, color):
+        x, y = self.at(along, across)
+        if 0 <= x < self.canvas.width and 0 <= y < self.canvas.height:
+            self.canvas.pixels[x, y] = color + (255,)
+
+    def line(self, a0, a1, color, across=0.0):
+        x0, y0 = self.at(a0, across)
+        x1, y1 = self.at(a1, across)
+        draw_line(self.canvas, x0, y0, x1, y1, color)
+
+    def handle(self, a0, a1, wood=WOOD):
+        """A shaft of two pixels wide, light on one side."""
+        self.line(a0, a1, wood["m"], 0.6)
+        self.line(a0, a1, wood["d"])
+
+
+def draw_pickaxe(pen):
+    pen.handle(-2, 9)
+    for across in range(-4, 5):
+        bend = -1 if abs(across) >= 3 else 0  # the points curve back towards the hand
+        pen.dot(9 + bend, across, STEEL["o"])
+        pen.dot(10 + bend, across, STEEL["d"] if abs(across) >= 3 else STEEL["m"])
+    pen.dot(11, 0, STEEL["o"])
+    pen.dot(10, 0, STEEL["l"])
+    pen.dot(8, -4, STEEL["l"])
+    pen.dot(8, 4, STEEL["l"])
+    return 10
+
+
+def draw_hatchet(pen):
+    pen.handle(-2, 9)
+    for along, width in ((5, 2), (6, 3), (7, 4), (8, 4), (9, 3)):
+        for across in range(1, width + 1):
+            pen.dot(along, across, STEEL["l"] if across == width else STEEL["m"])
+        pen.dot(along, width + 1, STEEL["o"])
+    pen.dot(4, 1, STEEL["o"])
+    pen.dot(10, 1, STEEL["o"])
+    pen.dot(10, 0, STEEL["o"])
+    return 8
+
+
+def draw_fishing_rod(pen):
+    pen.line(-3, 2, WOOD["o"], 0.6)  # the cork grip
+    pen.line(-3, 2, WOOD["d"])
+    pen.dot(1, -1, (40, 42, 52))  # the reel
+    pen.dot(1, -2, (128, 136, 156))
+    pen.line(2, 17, (214, 182, 112))  # bamboo
+    for along in (6, 10, 14):
+        pen.dot(along, 0, (150, 116, 60))  # the joints
+    pen.dot(17, 0, (90, 60, 40))
+    return 17
+
+
+def draw_sickle(pen):
+    pen.handle(-2, 3)
+    for along, across in ((4, 0), (5, 0), (6, 0), (7, 0), (8, 1), (8, 2), (8, 3), (7, 4), (6, 4)):
+        pen.dot(along, across, STEEL["l"])
+    for along, across in ((4, 1), (5, 1), (6, 1), (7, 1), (7, 2), (7, 3), (6, 3)):
+        pen.dot(along, across, STEEL["m"])
+    pen.dot(5, 4, STEEL["o"])
+    pen.dot(9, 2, STEEL["o"])
+    return 8
+
+
+def draw_hammer(pen):
+    pen.handle(-2, 7)
+    for along in range(7, 10):
+        for across in range(-2, 3):
+            edge = along in (7, 9) or abs(across) == 2
+            pen.dot(along, across, STEEL["d"] if edge else STEEL["m"])
+    pen.dot(9, -2, STEEL["o"])
+    pen.dot(9, 2, STEEL["o"])
+    pen.dot(8, 0, STEEL["l"])
+    return 8
+
+
+FLASK = {
+    (-1, -7): (110, 70, 40),
+    (0, -7): (110, 70, 40),
+    (-1, -6): (170, 210, 220),
+    (0, -6): (170, 210, 220),
+    (-2, -5): (170, 210, 220),
+    (-1, -5): (70, 190, 90),
+    (0, -5): (70, 190, 90),
+    (1, -5): (170, 210, 220),
+    (-2, -4): (170, 210, 220),
+    (-1, -4): (70, 190, 90),
+    (0, -4): (210, 255, 200),
+    (1, -4): (170, 210, 220),
+    (-2, -3): (170, 210, 220),
+    (-1, -3): (70, 190, 90),
+    (0, -3): (70, 190, 90),
+    (1, -3): (170, 210, 220),
+    (-2, -2): (90, 120, 130),
+    (-1, -2): (90, 120, 130),
+    (0, -2): (90, 120, 130),
+    (1, -2): (90, 120, 130),
+}
+
+
+def draw_flask(pen):
+    """An upright bottle with a green brew in the hand, whatever the arm does; tilted a little when the arm is."""
+    tilt = 1 if pen.ux > 0.5 else -1 if pen.ux < -0.5 else 0
+    for (dx, dy), color in FLASK.items():
+        x, y = round(pen.gx) + dx + (tilt if dy <= -5 else 0), round(pen.gy) + dy + 2
+        if 0 <= x < pen.canvas.width and 0 <= y < pen.canvas.height:
+            pen.canvas.pixels[x, y] = color + (255,)
+    return None
+
+
+def draw_pan(pen):
+    pen.handle(-1, 4, {"m": (74, 80, 98), "d": (40, 42, 52)})
+    for along in range(4, 11):
+        for across in range(-3, 4):
+            dist = ((along - 7.5) ** 2 + across**2) ** 0.5
+            if dist <= 3.2:
+                pen.dot(along, across, (40, 42, 52) if dist > 2.3 else (74, 80, 98))
+    pen.dot(7, 0, (226, 140, 60))  # something sizzling in it
+    pen.dot(8, 1, (240, 190, 90))
+    pen.dot(8, -1, (196, 96, 50))
+    return 7
+
+
+def draw_wand(pen):
+    pen.handle(-2, 6, {"m": (90, 60, 110), "d": (50, 32, 64)})
+    pen.dot(3, 0, (222, 182, 70))  # a golden band
+    for along, across, color in (
+        (7, 0, (190, 110, 255)),
+        (8, 0, (245, 225, 255)),
+        (9, 0, (190, 110, 255)),
+        (8, -1, (120, 60, 200)),
+        (8, 1, (120, 60, 200)),
+        (10, 0, (90, 30, 140)),
+    ):
+        pen.dot(along, across, color)
+    return 8
+
+
+TOOL_DRAWINGS = {
+    "pickaxe": draw_pickaxe,
+    "hatchet": draw_hatchet,
+    "fishing_rod": draw_fishing_rod,
+    "sickle": draw_sickle,
+    "hammer": draw_hammer,
+    "flask": draw_flask,
+    "pan": draw_pan,
+    "wand": draw_wand,
+}
+
+
+def build_work_animations(out_dir, fw=64, fh=64, rows=4):
+    body = open_rgba(out_dir / "hero_body.png")
+    body_px = body.load()
+    info = {}
+    for name, spec in WORK_ANIMS.items():
+        frames = spec["frames"]
+        sheet = Image.new("RGBA", (len(frames) * fw, 2 * rows * fh), TRANSPARENT)
+        canvas = PixelCanvas(sheet)
+        columns, tips = [], []
+        for d in range(rows):
+            row_columns, row_tips = [], []
+            for f, (pose, extra) in enumerate(frames):
+                col, (hx, hy), angle, is_front = WORK_POSES[pose][d]
+                # the extra angle turns the tool further in the swing direction of that side
+                turn = extra if d in (0, 2) else -extra
+                a = (angle + turn) * 3.141592653589793 / 180
+                ux, uy = float(np.cos(a)), float(np.sin(a))
+                # the head (blade, pick, pan) points towards the bottom of the screen, or to the front
+                side = 1 if (-uy * 0.3 + ux * 1.0) * (1 if d != 1 else -1) >= 0 else -1
+                ox, oy = f * fw, (d if is_front else d + rows) * fh
+                pen = ToolPen(canvas, ox + hx, oy + hy, ux, uy, side)
+                tip_along = TOOL_DRAWINGS[spec["tool"]](pen)
+                if is_front:
+                    # the hand of that body frame back over the tool, so it grips it
+                    for y in range(hy - 2, hy + 3):
+                        for x in range(hx - 2, hx + 3):
+                            p = body_px[col * fw + x, (WORK_ATTACK_ROW + d) * fh + y]
+                            if p[3] > 0 and p[:3] in SKIN and sheet.getpixel((ox + x, oy + y))[3] > 0:
+                                canvas.pixels[ox + x, oy + y] = p
+                tx, ty = pen.at(tip_along) if tip_along is not None else (ox + hx, oy + hy - 6)
+                row_columns.append(col)
+                row_tips.append([tx - ox, ty - oy])
+            columns.append(row_columns)
+            tips.append(row_tips)
+        sheet.save(out_dir / f"work_{name}.png")
+        info[name] = {
+            "tool": spec["tool"],
+            "fps": spec["fps"],
+            "once": spec.get("once", False),
+            "crouch": spec.get("crouch", 0),
+            "impact": spec.get("impact", []),
+            "columns": columns,
+            "tips": tips,
+        }
+    (out_dir / "work.json").write_text(json.dumps(info, separators=(",", ":")))
+    print("work animations:", ", ".join(WORK_ANIMS))
+
+
 # ---------- smooth version: Scale2x twice (4x) and back down to 2x with Lanczos ----------
 # Scale2x (EPX) smooths diagonal pixel stairs without blurring; the last step softens the edges.
 # The engine can draw these 2x sprites with soft filtering ("smooth graphics" in the admin panel).
@@ -1514,6 +1839,7 @@ def main():
     build_animals(animals_dir, out_dir)
     fields = build_ground_and_decor(village_dir, fortress_dir, out_dir)
     build_resource_nodes(out_dir)
+    build_work_animations(out_dir)
     build_textures(fields, out_dir)
     build_effect_sheets(packs_dir, out_dir)
     build_smooth(out_dir)

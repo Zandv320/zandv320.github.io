@@ -176,4 +176,51 @@ export const sfx = {
     if (!canPlay()) return;
     tone("square", 1200, 1200, 0.03, 0.06);
   },
+  /* professions: one sound per tool, played on the frame the tool hits */
+  pick() {
+    if (!canPlay()) return;
+    tone("square", 1760, 1500, 0.06, 0.08);
+    tone("triangle", 2640, 2400, 0.12, 0.06, 0.01);
+    noise(0.07, 0.2, { f0: 3500, f1: 1500, q: 1.2 });
+  },
+  chop() {
+    if (!canPlay()) return;
+    tone("triangle", 160, 90, 0.1, 0.3);
+    noise(0.09, 0.25, { f0: 900, f1: 300, q: 1.4 });
+  },
+  snip() {
+    if (!canPlay()) return;
+    noise(0.05, 0.16, { f0: 5000, f1: 3000, q: 2 });
+    noise(0.12, 0.08, { f0: 1200, f1: 600, q: 0.8, delay: 0.03 });
+  },
+  cast() {
+    if (!canPlay()) return;
+    noise(0.3, 0.12, { f0: 2500, f1: 700, q: 0.7 });
+  },
+  splash() {
+    if (!canPlay()) return;
+    noise(0.35, 0.22, { f0: 1400, f1: 250, q: 0.6 });
+    tone("sine", 600, 200, 0.15, 0.08);
+  },
+  hammer() {
+    if (!canPlay()) return;
+    tone("square", 1180, 1180, 0.18, 0.1);
+    tone("triangle", 2360, 2300, 0.3, 0.07, 0.005);
+    noise(0.06, 0.25, { f0: 4000, f1: 2000, q: 1 });
+  },
+  bubble() {
+    if (!canPlay()) return;
+    tone("sine", 300, 900, 0.08, 0.12);
+    tone("sine", 450, 1200, 0.07, 0.08, 0.1);
+  },
+  sizzle() {
+    if (!canPlay()) return;
+    noise(0.5, 0.1, { f0: 6000, f1: 4000, type: "highpass", q: 0.5 });
+  },
+  chime() {
+    if (!canPlay()) return;
+    [988, 1319, 1976].forEach((frequency, i) =>
+      tone("sine", frequency, frequency, 0.4, 0.07, i * 0.06),
+    );
+  },
 };

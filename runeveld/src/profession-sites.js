@@ -19,7 +19,7 @@ const NODE_LOOK = {
 const STATION_BUILDS = {
   forge: [builders.forge, 1.4],
   alchemy_table: [builders.alchemyTable, 1.1],
-  campfire: [builders.campfire, 1],
+  campfire: [builders.campfire, 0.8],
   enchanting_altar: [builders.enchantingAltar, 2.3],
 };
 

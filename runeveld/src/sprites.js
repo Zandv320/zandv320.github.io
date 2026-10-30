@@ -136,10 +136,42 @@ function whiteTexture(source) {
 /* How far sprites lean back towards the camera (1 = facing the camera exactly). */
 export const LEAN = 1;
 
+/* A plane of w × h standing on y = 0 (the feet `feet` units above the bottom edge), with an extra row of vertices
+   at the hip (`hip` units above the feet) so the legs can be squeezed into a crouch. */
+function figureGeometry(width, height, feet, hip) {
+  const geometry = new THREE.BufferGeometry();
+  const bottom = -feet;
+  const top = height - feet;
+  const hipV = (feet + hip) / height;
+  const x0 = -width / 2;
+  const x1 = width / 2;
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(
+      [x0, bottom, 0, x1, bottom, 0, x0, hip, 0, x1, hip, 0, x0, top, 0, x1, top, 0],
+      3,
+    ),
+  );
+  geometry.setAttribute(
+    "uv",
+    new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, hipV, 1, hipV, 0, 1, 1, 1], 2),
+  );
+  geometry.setIndex([0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5]);
+  geometry.computeBoundingSphere();
+  geometry.userData = { hip, top };
+  return geometry;
+}
+
 export class Sprite2D {
-  /* sheet: {texture, frameWidth, frameHeight, scale, feet, height, directions:{down,left,right,up},
-             anims:{name:{row, frames, fps, once, perDirection}}}
-     layers: textures in draw order (back first); without layers sheet.texture is used
+  /* sheet: {texture, frameWidth, frameHeight, scale, feet, height, hip, directions:{down,left,right,up},
+             anims:{name:{row, frames, fps, once, perDirection, columns, crouch, work, mirrorLeft}}}
+       columns: {direction: [column per frame]} instead of consecutive columns
+       crouch: 0..1, how far the legs are squeezed (the hip row of the geometry goes down)
+       work: name of a work sheet (sheet.workSheets[name] → texture with the tool, 4 rows in front of the body,
+             then 4 rows behind it, a column per frame); the weapon layers hide meanwhile
+       mirrorLeft: the left view is the right view mirrored
+     layers: textures in draw order (back first); without layers sheet.texture is used; a texture with
+     userData.isWeapon is hidden while a work animation shows its tool
      shadow: diameter of the shadow in world units (0 = none) */
   constructor(sheet, { shadow = 0.9, layers = null } = {}) {
     this.group = new THREE.Group();
@@ -161,6 +193,12 @@ export class Sprite2D {
     this.nudgeVector = new THREE.Vector2();
     this.nudgeTime = 0;
     this.punch = 0;
+    this.crouch = 0;
+    this.crouchTarget = 0;
+    /* the tool of a work animation: a mesh in front of the body and one behind it */
+    this.tool = null;
+    /* called with (animation name, frame) whenever the frame changes */
+    this.onFrame = null;
     this.setSheet(sheet, layers);
     if (shadow > 0) {
       this.shadow = addBlobShadow(this.group, shadow);
@@ -180,11 +218,16 @@ export class Sprite2D {
     if (this.geometry) {
       this.geometry.dispose();
     }
-    this.geometry = new THREE.PlaneGeometry(width, height);
-    this.geometry.translate(0, height / 2 - feet, 0);
+    /* sheet.hip is in pixels of the original (not smoothed) sheet */
+    const hip = sheet.hip ? sheet.hip * SHEET_SCALE * sheet.scale : (height - feet) / 2;
+    this.geometry = figureGeometry(width, height, feet, hip);
+    this.crouch = 0;
     this.mesh.geometry = this.geometry;
     for (const layer of this.layers) {
       layer.mesh.geometry = this.geometry;
+    }
+    if (this.tool) {
+      this.tool.front.geometry = this.tool.back.geometry = this.geometry;
     }
     this.setLayers(layers || [sheet.texture]);
     this.play("idle", true);
@@ -231,6 +274,9 @@ export class Sprite2D {
         layer.mesh.material.needsUpdate = true;
       }
     });
+    if (this.anim && this.anim.work) {
+      this._setWork(this.anim.work);
+    }
     const first = sources[0];
     this.cols = Math.max(1, Math.round(first.image.width / this.sheet.frameWidth));
     this.rows = Math.max(1, Math.round(first.image.height / this.sheet.frameHeight));
@@ -262,7 +308,97 @@ export class Sprite2D {
     this.time = 0;
     this.frame = 0;
     this.finished = false;
+    this.crouchTarget = anim.crouch || 0;
+    this._setWork(anim.work || null);
     this._updateUv();
+  }
+
+  /* Show the tool of a work animation (or none), and hide the weapon while it is out. */
+  _setWork(workName) {
+    const texture = workName && this.sheet.workSheets ? this.sheet.workSheets[workName] : null;
+    if (workName && !texture && this.sheet.loadWork) {
+      /* not loaded yet: show it as soon as it arrives, if this animation is still playing */
+      this.sheet.loadWork(workName).then(() => {
+        if (this.anim && this.anim.work === workName) {
+          this._setWork(workName);
+          this._updateUv();
+        }
+      });
+    }
+    if (!texture) {
+      if (this.tool) {
+        this.tool.front.visible = this.tool.back.visible = false;
+      }
+    } else {
+      if (!this.tool) {
+        const makeMesh = (z) => {
+          const mesh = new THREE.Mesh(
+            this.geometry,
+            new THREE.MeshBasicMaterial({
+              transparent: true,
+              alphaTest: 0.5,
+              side: THREE.DoubleSide,
+            }),
+          );
+          mesh.frustumCulled = false;
+          mesh.position.z = z;
+          this.group.add(mesh);
+          return mesh;
+        };
+        this.tool = { front: makeMesh(0.05), back: makeMesh(-0.004), source: null, texture: null };
+      }
+      if (this.tool.source !== texture) {
+        if (this.tool.texture) {
+          this.tool.texture.dispose();
+        }
+        this.tool.source = texture;
+        this.tool.texture = texture.clone();
+        this.tool.texture.needsUpdate = true;
+        this.tool.backTexture = texture.clone();
+        this.tool.backTexture.needsUpdate = true;
+        this.tool.front.material.map = this.tool.texture;
+        this.tool.back.material.map = this.tool.backTexture;
+        this.tool.front.material.needsUpdate = this.tool.back.material.needsUpdate = true;
+      }
+      this.tool.front.visible = this.tool.back.visible = true;
+    }
+    for (const layer of this.layers) {
+      layer.mesh.visible = !(texture && layer.source.userData && layer.source.userData.isWeapon);
+    }
+  }
+
+  /* Squeeze the legs: 0 standing, 1 legs gone. Moves the hip row of the geometry down and the top along with it. */
+  _applyCrouch() {
+    const { hip, top } = this.geometry.userData;
+    const drop = hip * this.crouch;
+    const position = this.geometry.attributes.position;
+    position.setY(2, hip - drop);
+    position.setY(3, hip - drop);
+    position.setY(4, top - drop);
+    position.setY(5, top - drop);
+    position.needsUpdate = true;
+  }
+
+  /**
+   * World position of a point given in pixels of a 64 × 64 frame (as in work.json), on the current frame. Used for
+   * the tip of the fishing rod. Mirrored views and the crouch are taken into account.
+   */
+  framePointToWorld(px, py, target = new THREE.Vector3()) {
+    const base = this.sheet.frameWidth / SHEET_SCALE;
+    let u = (px + 0.5) / base;
+    if (this.mirrored) {
+      u = 1 - u;
+    }
+    const v = 1 - (py + 0.5) / base;
+    const width = this.sheet.frameWidth * this.sheet.scale;
+    const height = this.sheet.frameHeight * this.sheet.scale;
+    const feet = (this.sheet.feet || 0) * this.sheet.scale;
+    let y = v * height - feet;
+    const { hip } = this.geometry.userData;
+    y = y < hip ? y * (1 - this.crouch * (y > 0 ? 1 : 0)) : y - hip * this.crouch;
+    const mesh = this.layers.length ? this.layers[0].mesh : this.mesh;
+    mesh.updateWorldMatrix(true, false);
+    return mesh.localToWorld(target.set((u - 0.5) * width, y, 0));
   }
 
   duration(name) {
@@ -312,7 +448,15 @@ export class Sprite2D {
       if (frame !== this.frame) {
         this.frame = frame;
         this._updateUv();
+        if (this.onFrame) {
+          this.onFrame(this.animName, frame);
+        }
       }
+    }
+    if (this.crouch !== this.crouchTarget) {
+      const step = dt * 5;
+      this.crouch += Math.max(-step, Math.min(step, this.crouchTarget - this.crouch));
+      this._applyCrouch();
     }
     if (this.flashTime > 0) {
       this.flashTime -= dt;
@@ -365,6 +509,18 @@ export class Sprite2D {
     for (const layer of this.layers) {
       layer.mesh.rotation.x = tiltX;
     }
+    if (this.tool) {
+      this.tool.front.rotation.x = this.tool.back.rotation.x = tiltX;
+      if (this.layers.length) {
+        /* the tool moves along with the squash and the nudge of the body */
+        const body = this.layers[0].mesh;
+        for (const mesh of [this.tool.front, this.tool.back]) {
+          mesh.scale.copy(body.scale);
+          mesh.position.x = body.position.x;
+          mesh.position.y = body.position.y;
+        }
+      }
+    }
     snapToCameraGrid(this, cameraState);
   }
 
@@ -377,7 +533,12 @@ export class Sprite2D {
     const directions = this.sheet.directions || { down: 0 };
     let directionRow = directions[this.direction];
     let mirror = false;
-    if (directionRow === undefined) {
+    let direction = this.direction;
+    if (anim.mirrorLeft && direction === "left" && directions.right !== undefined) {
+      direction = "right";
+      directionRow = directions.right;
+      mirror = true;
+    } else if (directionRow === undefined) {
       /* no row of its own for this direction: use the opposite side, mirrored */
       let opposite = "down";
       if (this.direction === "left") {
@@ -391,7 +552,10 @@ export class Sprite2D {
         directions[opposite] !== undefined;
     }
     const row = (anim.row || 0) + (anim.perDirection === false ? 0 : directionRow);
-    const column = (anim.column || 0) + this.frame;
+    const column = anim.columns
+      ? anim.columns[direction][this.frame]
+      : (anim.column || 0) + this.frame;
+    this.mirrored = mirror;
     const cellWidth = 1 / this.cols;
     const cellHeight = 1 / this.rows;
     for (const layer of this.layers) {
@@ -405,10 +569,33 @@ export class Sprite2D {
         layer.white.offset.copy(layer.texture.offset);
       }
     }
+    if (this.tool && this.tool.front.visible && anim.work) {
+      /* the work sheet: a column per frame, the direction's row in front, 4 rows lower behind the body */
+      const toolWidth = 1 / anim.frames;
+      const toolHeight = 1 / 8;
+      const toolRow = directions[direction] ?? 0;
+      for (const [texture, row] of [
+        [this.tool.texture, toolRow],
+        [this.tool.backTexture, toolRow + 4],
+      ]) {
+        texture.repeat.set(mirror ? -toolWidth : toolWidth, toolHeight);
+        texture.offset.set(
+          mirror ? (this.frame + 1) * toolWidth : this.frame * toolWidth,
+          1 - (row + 1) * toolHeight,
+        );
+      }
+    }
   }
 
   dispose() {
     this.group.removeFromParent();
+    if (this.tool) {
+      this.tool.front.material.dispose();
+      this.tool.back.material.dispose();
+      this.tool.texture.dispose();
+      this.tool.backTexture.dispose();
+      this.tool = null;
+    }
     for (const layer of this.layers) {
       layer.mesh.material.dispose();
       layer.texture.dispose();

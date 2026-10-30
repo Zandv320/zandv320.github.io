@@ -569,6 +569,7 @@ function createPanels(name) {
   });
   game.workbench = createWorkbench(player, {
     perform: (type, data) => game.gathering.perform(type, data),
+    work: (place, seconds, label) => game.gathering.workAt(place, seconds, label),
     reportProgress: (result) => game.gathering.reportProgress(result),
     playEffect: (effectName, place) =>
       playEffect(effectName, place.x, place.z, { size: 2, y: 1.2 }),
@@ -1148,6 +1149,7 @@ function sendPresence() {
     faceX: +player.sprite.facing.x.toFixed(2),
     faceZ: +player.sprite.facing.y.toFixed(2),
     anim: player.anim,
+    work: player.workAnim,
     seq: player.seq,
     hp: Math.round(player.hp),
     hpMax: hpMax(),
@@ -1195,6 +1197,8 @@ function updatePeers(dt) {
         peer.sprite.play("walk");
       } else if (presence.sitting) {
         peer.sprite.play("sit");
+      } else if (presence.work && peer.sprite.has(presence.work)) {
+        peer.sprite.play(presence.work);
       } else {
         peer.sprite.play("idle");
       }

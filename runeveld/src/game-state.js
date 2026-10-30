@@ -59,6 +59,8 @@ export const player = {
   busyUntil: 0 /* attack or hurt animation playing */,
   seq: 0 /* counts one-shot animations, so other players replay them */,
   anim: "idle",
+  /* a profession animation (mine, chop, smith, ...) that replaces idle while working; gathering.js sets it */
+  workAnim: null,
   regenTimer: 0,
   respawnAt: 0,
 };

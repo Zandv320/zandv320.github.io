@@ -1,6 +1,7 @@
 /* Eldoria – the workbench window, opened at a crafting station: the recipes of the station's profession, and at an
-   enchanting altar also refining, enchanting and disenchanting. Actions go through gathering.perform(), so the
-   server rolls the dice. */
+   enchanting altar also refining, enchanting and disenchanting. Every action first plays the station's animation
+   (hammering, brewing, cooking, enchanting) and then goes through gathering.perform(), so the server rolls the
+   dice. */
 import { ITEMS, EQUIPMENT_SLOTS } from "./data.js";
 import {
   PROFESSIONS,
@@ -28,7 +29,8 @@ const ENCHANTING_TABS = [
 
 /**
  * @param {object} player the hero record of the player
- * @param {object} deps {perform(type, data) → Promise<result>, reportProgress(result), playEffect(name, options)}
+ * @param {object} deps {perform(type, data) → Promise<result>, work(place, seconds, label) → Promise<boolean> (the
+ *   hero works at the station first; false when interrupted), reportProgress(result), playEffect(name, place)}
  */
 export function createWorkbench(player, deps) {
   const $ = (selector) => document.querySelector(selector);
@@ -207,13 +209,22 @@ export function createWorkbench(player, deps) {
 
   /* ---- actions ---- */
 
-  async function run(type, data) {
+  /* time spent working before the result: a moment per item made, a little longer for the rituals of the altar */
+  const WORK_SECONDS = { refine: 2.4, enchant: 2.4, disenchant: 1.6 };
+
+  async function run(type, data, label) {
     if (isBusy) {
       return null;
     }
     isBusy = true;
-    panel.classList.add("busy");
+    panel.classList.add("busy", "working");
     try {
+      const seconds =
+        type === "craft" ? Math.min(6, 1.5 + 0.5 * ((data.times || 1) - 1)) : WORK_SECONDS[type];
+      const isDone = await deps.work(place, seconds, label);
+      if (!isDone) {
+        return null;
+      }
       const result = await deps.perform(type, data);
       if (result && !result.ok) {
         UI.systemMessage(result.reason);
@@ -221,13 +232,17 @@ export function createWorkbench(player, deps) {
       return result && result.ok ? result : null;
     } finally {
       isBusy = false;
-      panel.classList.remove("busy");
+      panel.classList.remove("busy", "working");
       render();
     }
   }
 
   async function craft(recipeId, times) {
-    const result = await run("craft", { recipe: recipeId, times });
+    const result = await run(
+      "craft",
+      { recipe: recipeId, times },
+      `Making ${ITEMS[RECIPES[recipeId].output].name.toLowerCase()}…`,
+    );
     if (!result) {
       return;
     }
@@ -247,7 +262,7 @@ export function createWorkbench(player, deps) {
   }
 
   async function refine() {
-    const result = await run("refine", { ...picked });
+    const result = await run("refine", { ...picked }, "Refining…");
     if (!result) {
       return;
     }
@@ -270,7 +285,7 @@ export function createWorkbench(player, deps) {
   }
 
   async function enchant(rune) {
-    const result = await run("enchant", { ...picked, rune });
+    const result = await run("enchant", { ...picked, rune }, "Enchanting…");
     if (!result) {
       return;
     }
@@ -296,7 +311,7 @@ export function createWorkbench(player, deps) {
       return;
     }
     confirmDisenchant = -1;
-    const result = await run("disenchant", { index });
+    const result = await run("disenchant", { index }, "Disenchanting…");
     if (!result) {
       return;
     }

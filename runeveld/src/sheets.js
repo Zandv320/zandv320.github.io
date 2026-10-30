@@ -7,7 +7,10 @@
      directions              row offset per facing direction; a missing direction mirrors the opposite one
      anims                   row (first row of the animation), frames, fps, once (plays a single time),
                              perDirection (false: a single row for all directions)
-   The hero consists of layers with the same layout: body, clothing, head and weapon (see baseHeroLayers). */
+   The hero consists of layers with the same layout: body, clothing, head and weapon (see baseHeroLayers).
+   The profession animations (mine, chop, harvest, fish_cast, fish, smith, brew, cook, enchant) come from
+   sprites/work.json: body frames of the attack animation per direction, with the tool from work_<name>.png
+   (tools/build_sprites.py). WORK holds their tool tips and impact frames. */
 import { loadTexture, SHEET_SCALE } from "./sprites.js";
 import { ITEMS } from "./data.js";
 
@@ -82,6 +85,8 @@ export const SHEETS = {
     feet: 20,
     height: 26,
     directions: HERO_DIRECTIONS,
+    /* pixels from the feet to the hip: the legs below it are squeezed when crouching */
+    hip: 8,
     /* layer name → url; loadSheets() replaces this with layer name → texture */
     layers: Object.fromEntries(HERO_LAYER_FILES.map((name) => [name, `sprites/${name}.png`])),
     anims: {
@@ -191,6 +196,7 @@ export function loadLayer(name) {
     if (!texture) {
       throw new Error("Sprite missing: " + url);
     }
+    markWeapon(name, texture);
     loaded[name] = texture;
     delete layersLoading[name];
     for (const callback of layerListeners) {
@@ -199,6 +205,61 @@ export function loadLayer(name) {
     return texture;
   });
   return layersLoading[name];
+}
+
+/* swords and staffs hide while the hero works with a tool */
+function markWeapon(name, texture) {
+  if (/^(sword|staff)\d/.test(name)) {
+    texture.userData.isWeapon = true;
+  }
+}
+
+/** Profession animations: name → {tool, fps, once, crouch, impact, columns, tips} (sprites/work.json). */
+export const WORK = {};
+const HERO_DIRECTION_NAMES = ["down", "left", "right", "up"];
+const workLoading = {};
+
+/** Loads the tool sheet of a profession animation (resolves to its texture). */
+function loadWork(name) {
+  const sheet = SHEETS.hero;
+  if (sheet.workSheets[name]) {
+    return Promise.resolve(sheet.workSheets[name]);
+  }
+  if (!workLoading[name]) {
+    workLoading[name] = loadTexture(`sprites/work_${name}.png`).then((texture) => {
+      sheet.workSheets[name] = texture;
+      return texture;
+    });
+  }
+  return workLoading[name];
+}
+
+/* the profession animations as hero animations: body frames from the attack rows, the tool from its own sheet */
+async function loadWorkAnimations() {
+  const sheet = SHEETS.hero;
+  sheet.workSheets = {};
+  sheet.loadWork = loadWork;
+  let info = {};
+  try {
+    info = await (await fetch("sprites/work.json")).json();
+  } catch {
+    return;
+  }
+  for (const [name, work] of Object.entries(info)) {
+    WORK[name] = work;
+    sheet.anims[name] = {
+      row: sheet.anims.attack.row,
+      frames: work.columns[0].length,
+      fps: work.fps,
+      once: work.once,
+      crouch: work.crouch,
+      work: name,
+      mirrorLeft: true,
+      columns: Object.fromEntries(
+        HERO_DIRECTION_NAMES.map((direction, i) => [direction, work.columns[i]]),
+      ),
+    };
+  }
 }
 
 /** Loads every layer needed for this equipment. */
@@ -234,11 +295,13 @@ export async function loadSheets() {
         await Promise.all(
           STARTUP_LAYERS.map(async (name) => {
             textures[name] = await load(layerUrls[name]);
+            markWeapon(name, textures[name]);
           }),
         );
         sheet.texture = textures.hero_body;
       }
     }),
   );
+  await loadWorkAnimations();
   return SHEETS;
 }

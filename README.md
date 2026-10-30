@@ -43,13 +43,15 @@ docker run --rm -v "$PWD":/w -w /w python:3.12-slim sh -c "pip install -q black 
   `ui.js`, `character-sheet.js`, `inventory.js`, `quest-log.js`, `dialogue.js`, `character-select.js`,
   `world-map.js`, `party.js`, `account.js`, `admin.js` (Ctrl+Shift+A), `icons.js` + `icon-index.js` (gegenereerd).
   Beroepen: `gathering.js` (verzamelen, stations, acties), `workbench.js` (craften, refinen, enchanten),
-  `profession-sites.js` (nodes, vijvers en stations in de wereld). Netwerk: `network.js`.
+  `profession-sites.js` (nodes, vijvers en stations in de wereld), `work-animation.js` (de beroepsanimaties met
+  effecten, geluid en vislijn). Netwerk: `network.js`.
 - `runeveld/src/rules/` – pure spelregels zonder browser- of netwerkcode (stats, skills, combat, quests, progression,
   legacy-migratie, en voor de beroepen `professions.js` met recepten en stations, `crafting.js` met de acties,
   `item-mods.js` voor refine en enchant, `gather-nodes.js` met de verzamelplekken); de server draait precies deze
   regels
 - `runeveld/sprites/` – de pixel-art, geknipt uit Craftpix-freebies door `runeveld/tools/build_sprites.py` (met
-  `build_effects.py` voor de procedurele effecten) en `build_icons.py` voor de iconen; `sprites/smooth/` is dezelfde
+  `build_effects.py` voor de procedurele effecten) en `build_icons.py` voor de iconen; de beroepsanimaties
+  (`work_*.png` + `work.json`) hergebruiken de aanvalsframes met per frame een getekend gereedschap; `sprites/smooth/` is dezelfde
   set 2× opgeschaald met Scale2x voor de gladde weergave
 - `runeveld/_download/` – de gedownloade Craftpix-zips (niet gecommit); uitpakken en
   `python3 -I runeveld/tools/build_sprites.py <map-met-packs>` draaien om `sprites/` opnieuw te maken

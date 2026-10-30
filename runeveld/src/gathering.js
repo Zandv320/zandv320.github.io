@@ -1,5 +1,6 @@
 /* Eldoria – the professions in play: clicking a gathering node walks there and gathers it (a progress bar, the
-   swing animation, then the server's roll), clicking a crafting station walks there and opens the workbench.
+   profession animation of work-animation.js, then the server's roll), clicking a crafting station walks there and
+   opens the workbench; crafting there plays the station's animation first (workAt).
    Depleted nodes show what is left (a stump, a picked plant, a bare rock) until they grow back; the server tells
    everyone ('node_state'). Every profession action goes through perform(): with a server the server applies the
    rules and rolls the dice, without one the same rules run here. */
@@ -18,12 +19,13 @@ import * as crafting from "./rules/crafting.js";
 import { activeBuffs } from "./rules/progression.js";
 import { nodeSprites } from "./profession-sites.js";
 import { loadTexture } from "./sprites.js";
-import { camera, scene } from "./world.js";
+import { camera, scene, isFree } from "./world.js";
 import { sfx } from "./audio.js";
 import { icon } from "./icons.js";
 import * as UI from "./ui.js";
 import { player, game, clickables, now, playEffect, hpMax, spMax } from "./game-state.js";
-import { playOnce, pressedKeys, setAnim } from "./player.js";
+import { pressedKeys } from "./player.js";
+import { createWorkAnimation } from "./work-animation.js";
 
 /* what a node is called above it */
 const NODE_NAMES = {
@@ -53,8 +55,44 @@ const GATHER_VERBS = {
 const reachOf = (node) => (node.profession === "fishing" ? USE_DISTANCE - 0.3 : 2);
 /* labels of nodes and stations show within this distance */
 const LABEL_DISTANCE = 9;
-/* time between two swings of the tool */
-const SWING_INTERVAL = 0.75;
+/* the animation per gathering profession and per crafting station (sheets.js WORK) */
+const GATHER_ANIMS = {
+  mining: "mine",
+  woodcutting: "chop",
+  herbalism: "harvest",
+  fishing: "fish_cast",
+};
+const STATION_ANIMS = {
+  forge: "smith",
+  alchemy_table: "brew",
+  campfire: "cook",
+  enchanting_altar: "enchant",
+};
+/* How far from the centre of a node or station the hero stands to work: beside it, so it is seen from the side
+   (the clearest view of the swing) and not hidden behind it. */
+const WORK_SIDE = { mining: 1.3, woodcutting: 1.2, herbalism: 0.8 };
+const STATION_SIDE = { forge: 1.9, alchemy_table: 1.6, campfire: 1.2, enchanting_altar: 2.9 };
+
+/** A free spot beside (x, z) at `side` units, on the hero's side if possible, a little in front (towards the camera). */
+function spotBeside(x, z, side) {
+  const preferred = Math.sign(player.x - x) || 1;
+  for (const [dx, dz] of [
+    [preferred, 0.2],
+    [-preferred, 0.2],
+    [0, 1],
+    [0, -1],
+  ]) {
+    const spotX = x + dx * side;
+    const spotZ = z + dz * (dx ? 1 : side);
+    if (isFree(spotX, spotZ, 0.35)) {
+      return [spotX, spotZ];
+    }
+  }
+  return null;
+}
+
+/* how long a node shakes after a hit, in seconds */
+const SHAKE_TIME = 0.3;
 
 /**
  * @param {object} deps {applyHero(hero), openWorkbench(place), closeWorkbench(), workbenchPlace()}
@@ -67,7 +105,12 @@ export function createGathering(deps) {
   /* node id → {label, ripples} */
   const extras = new Map();
   const stationLabels = [];
-  let active = null; /* {node, start, duration, nextSwing} */
+  /* what the hero is doing: {node, start, duration} while gathering, {place, start, duration, resolve} while
+     working at a station */
+  let active = null;
+  const work = createWorkAnimation();
+  /* node id → {amount, time}: nodes shaking from a hit */
+  const shakes = new Map();
   let ripplesInfo = null;
   let ripplesTexture = null;
   let buffTimer = 0;
@@ -204,16 +247,17 @@ export function createGathering(deps) {
       return;
     }
     const distance = Math.hypot(node.x - player.x, node.z - player.z);
-    if (distance <= reachOf(node)) {
+    /* fishing: walk towards the spot until the shore stops the hero; otherwise to a spot beside the node */
+    const spot =
+      node.profession === "fishing" ? null : spotBeside(node.x, node.z, WORK_SIDE[node.profession]);
+    const isThere = spot
+      ? Math.hypot(spot[0] - player.x, spot[1] - player.z) < 0.5
+      : distance <= reachOf(node);
+    if (isThere) {
       begin(node);
       return;
     }
-    /* walk up to the node, stopping in front of it on the player's side */
-    const stop = node.profession === "fishing" ? 0 : 1.3;
-    player.destination = [
-      node.x + ((player.x - node.x) / distance) * stop,
-      node.z + ((player.z - node.z) / distance) * stop,
-    ];
+    player.destination = spot || [node.x, node.z];
     player.onArrive = () => {
       if (Math.hypot(node.x - player.x, node.z - player.z) <= USE_DISTANCE) {
         begin(node);
@@ -227,10 +271,14 @@ export function createGathering(deps) {
       return;
     }
     const duration = crafting.gatherTime(player, node.resource);
-    active = { node, start: now(), duration, nextSwing: now() };
+    active = { node, start: now(), duration, hasBite: false };
     player.destination = null;
     player.onArrive = null;
-    player.sprite.face(node.x - player.x, node.z - player.z);
+    work.start(GATHER_ANIMS[node.profession], {
+      x: node.x,
+      z: node.z,
+      shake: (amount) => shakes.set(node.id, { amount, time: 0 }),
+    });
     const resourceName = ITEMS[node.resource].name.toLowerCase();
     $("#gather-label").textContent =
       node.profession === "fishing"
@@ -241,26 +289,44 @@ export function createGathering(deps) {
       PROFESSIONS[node.profession].emoji,
     );
     bar.hidden = false;
-    if (node.profession === "fishing") {
-      playEffect("splash", node.x, node.z, { size: 1, y: 0.3, tint: 0xcfe9ff });
-    }
   }
 
   function cancel(reason) {
     if (!active) {
       return;
     }
+    const resolve = active.resolve;
     active = null;
     bar.hidden = true;
+    work.stop();
+    if (resolve) {
+      resolve(false);
+    }
     if (reason) {
       UI.systemMessage(reason);
     }
   }
 
+  /**
+   * Work at a station for `duration` seconds with its animation, before a craft, refine or enchant goes to the
+   * server. Resolves true when done, false when the hero walked away or was interrupted.
+   */
+  function workAt(place, duration, label) {
+    cancel();
+    return new Promise((resolve) => {
+      active = { place, start: now(), duration, resolve };
+      $("#gather-label").textContent = label;
+      const profession = STATIONS[place.kind].profession;
+      $("#gather-icon").innerHTML = icon("prof_" + profession, PROFESSIONS[profession].emoji);
+      bar.hidden = false;
+      work.start(STATION_ANIMS[place.kind], { x: place.x, z: place.z, shake: () => {} });
+    });
+  }
+
   async function finish(node) {
     active = null;
     bar.hidden = true;
-    setAnim("idle");
+    work.stop();
     const result = await perform("gather", { node: node.id });
     if (!result) {
       return;
@@ -420,16 +486,13 @@ export function createGathering(deps) {
 
   function clickStation(place) {
     cancel();
-    const distance = Math.hypot(place.x - player.x, place.z - player.z);
-    if (distance <= USE_DISTANCE) {
+    const spot = spotBeside(place.x, place.z, STATION_SIDE[place.kind]);
+    if (!spot || Math.hypot(spot[0] - player.x, spot[1] - player.z) < 0.5) {
+      player.sprite.face(place.x - player.x, place.z - player.z);
       deps.openWorkbench(place);
       return;
     }
-    const stop = place.kind === "enchanting_altar" ? 2.8 : 2;
-    player.destination = [
-      place.x + ((player.x - place.x) / distance) * stop,
-      place.z + ((player.z - place.z) / distance) * stop,
-    ];
+    player.destination = spot;
     player.onArrive = () => {
       if (Math.hypot(place.x - player.x, place.z - player.z) <= USE_DISTANCE + 0.5) {
         player.sprite.face(place.x - player.x, place.z - player.z);
@@ -481,24 +544,44 @@ export function createGathering(deps) {
       if (player.isDead || wantsToMove) {
         cancel();
       } else {
-        const node = active.node;
-        if (time >= active.nextSwing) {
-          active.nextSwing = time + SWING_INTERVAL;
-          if (node.profession !== "fishing") {
-            playOnce("attack", 0.4);
-            player.sprite.nudge(node.x - player.x, node.z - player.z, 0.12);
-            if (node.profession === "mining") {
-              playEffect("spark", node.x, node.z, { size: 0.7, y: 0.6 });
-            } else if (node.profession === "woodcutting") {
-              playEffect("leaves", node.x, node.z, { size: 1.2, y: 1.6 });
-            }
-          }
-        }
         const progress = Math.min(1, (time - active.start) / active.duration);
         $("#gather-fill").style.transform = `scaleX(${progress.toFixed(3)})`;
-        if (progress >= 1) {
-          finish(node);
+        if (
+          active.node &&
+          active.node.profession === "fishing" &&
+          progress > 0.85 &&
+          !active.hasBite
+        ) {
+          active.hasBite = true;
+          work.bite();
         }
+        if (progress >= 1) {
+          if (active.node) {
+            finish(active.node);
+          } else {
+            const resolve = active.resolve;
+            active = null;
+            bar.hidden = true;
+            work.stop();
+            resolve(true);
+          }
+        }
+      }
+    }
+    work.update(dt);
+
+    /* nodes shaking from a hit: a quick wobble that dies out */
+    for (const [id, shake] of shakes) {
+      shake.time += dt;
+      const sprites = nodeSprites.get(id);
+      const mesh = sprites && sprites.full ? sprites.full.mesh : null;
+      if (shake.time >= SHAKE_TIME) {
+        shakes.delete(id);
+        if (mesh) {
+          mesh.position.x = 0;
+        }
+      } else if (mesh) {
+        mesh.position.x = Math.sin(shake.time * 60) * shake.amount * (1 - shake.time / SHAKE_TIME);
       }
     }
 
@@ -549,6 +632,7 @@ export function createGathering(deps) {
     clickNode,
     clickStation,
     perform,
+    workAt,
     reportProgress,
     useItem,
     cancel,

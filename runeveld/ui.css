@@ -3144,3 +3144,18 @@ textarea {
   color: var(--dim);
   font-size: 11px;
 }
+/* while the hero works at a station the workbench steps aside, so the animation stays in view */
+#workbench.working {
+  opacity: 0.2;
+  pointer-events: none;
+}
+@media (min-width: 900px) {
+  #workbench {
+    left: auto;
+    right: 24px;
+    transform: translateY(-50%);
+  }
+  #workbench.working {
+    opacity: 0.75;
+  }
+}

@@ -207,7 +207,7 @@ export function updatePlayer(dt) {
     setAnim("walk");
   } else if (time >= player.busyUntil) {
     /* checked again: an attack in this frame sets busyUntil */
-    setAnim(player.isSitting ? "sit" : "idle");
+    setAnim(player.isSitting ? "sit" : player.workAnim || "idle");
   }
   player.sprite.group.position.set(player.x, 0, player.z);
   player.sprite.update(dt, cameraState);
