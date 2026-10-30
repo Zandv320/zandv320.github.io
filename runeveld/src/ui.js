@@ -193,6 +193,18 @@ const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
 
 export const escapeHtml = (value) => String(value).replace(/[&<>"]/g, (c) => HTML_ESCAPES[c]);
 
+/**
+ * An item name as it reads in a sentence: "iron sword", but proper names keep their capitals ("Ring of Might",
+ * "Rune of Sharpness"). With `article` it gets "a" or "an" in front.
+ */
+export function itemNoun(name, article = false) {
+  const noun = /[A-Z]/.test(name.slice(1)) ? name : name.charAt(0).toLowerCase() + name.slice(1);
+  if (!article) {
+    return noun;
+  }
+  return (/^[aeiou]/i.test(noun) ? "an " : "a ") + noun;
+}
+
 export function systemMessage(text) {
   logMessage('<span class="system">' + escapeHtml(text) + "</span>");
 }

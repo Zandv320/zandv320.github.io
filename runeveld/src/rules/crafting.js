@@ -253,7 +253,7 @@ export function refineInfo(hero, target) {
   const resolved = resolveTarget(hero, target);
   const item = resolved && ITEMS[resolved.id];
   if (!item || !isRefinable(item)) {
-    return { reason: "Only weapons and armour can be refined." };
+    return { reason: "Only weapons and armor can be refined." };
   }
   const current = resolved.mods.refine || 0;
   if (current >= MAX_REFINE) {

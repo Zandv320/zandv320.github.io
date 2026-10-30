@@ -809,7 +809,7 @@ function advanceClass(id) {
   player.sp = spMax();
   if (newClass.grantedArmor && !addToBag(newClass.grantedArmor, 1)) {
     UI.systemMessage(
-      `Your bag is full; come back for your ${ITEMS[newClass.grantedArmor].name.toLowerCase()}.`,
+      `Your bag is full; come back for your ${UI.itemNoun(ITEMS[newClass.grantedArmor].name)}.`,
     );
   }
   buildHotbar();

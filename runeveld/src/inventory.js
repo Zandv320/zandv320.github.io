@@ -10,7 +10,7 @@ import { displayName, applyMods, modsOf } from "./rules/item-mods.js";
 const SLOT_NAMES = {
   weapon: "Weapon",
   head: "Headgear",
-  body: "Body armour",
+  body: "Body armor",
   cloak: "Cloak",
   pants: "Pants",
   boots: "Boots",

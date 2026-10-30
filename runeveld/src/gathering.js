@@ -480,7 +480,7 @@ export function createGathering(deps) {
       );
       playEffect("sparkle", player.x, player.z, { size: 1.6, y: 1, tint: 0x8fc8ff });
     } else {
-      UI.systemMessage(`You drink the ${item.name.toLowerCase()}. ${item.description}`);
+      UI.systemMessage(`You drink the ${UI.itemNoun(item.name)}. ${item.description}`);
       playEffect("light_rays", player.x, player.z, { size: 2.4, grounded: true, tint: 0xffb36b });
     }
     player.hp = Math.min(player.hp, hpMax());

@@ -141,7 +141,7 @@ export function createWorkbench(player, deps) {
 
   function renderRefine() {
     const list = candidates(isRefinable);
-    let html = itemPicker(list, "You carry nothing that can be refined: weapons and armour can.");
+    let html = itemPicker(list, "You carry nothing that can be refined: weapons and armor can.");
     const entry = pickedEntry(list);
     if (entry) {
       const info = crafting.refineInfo(player, entry.target);
@@ -241,7 +241,7 @@ export function createWorkbench(player, deps) {
     const result = await run(
       "craft",
       { recipe: recipeId, times },
-      `Making ${ITEMS[RECIPES[recipeId].output].name.toLowerCase()}…`,
+      `Making ${UI.itemNoun(ITEMS[RECIPES[recipeId].output].name)}…`,
     );
     if (!result) {
       return;

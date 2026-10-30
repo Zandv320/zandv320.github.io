@@ -55,7 +55,9 @@ export function useSkill(id) {
     return;
   }
   if (level <= 0) {
-    UI.systemMessage(`You have not learned ${skill.name} yet. Spend your skill points with C.`);
+    UI.systemMessage(
+      `You have not learned ${skill.name} yet. Spend skill points in your character sheet (C).`,
+    );
     return;
   }
   /* Clear Mind makes every skill cheaper */
@@ -117,7 +119,7 @@ function standUp() {
    player has walked up to the target. */
 function targetInRange(cast, range) {
   if (!player.target || player.target.isDead) {
-    UI.systemMessage("Pick a target first: click a monster.");
+    UI.systemMessage("Pick a target first: tap or click a monster.");
     return null;
   }
   const monster = player.target;

@@ -108,7 +108,7 @@ export function createQuestLog(player, deps) {
           `${icon(itemId, item.icon, "small")} ${UI.escapeHtml(item.name)}${countText}`,
         );
       } else {
-        UI.systemMessage(`Your bag is full, the ${item.name.toLowerCase()} was left behind.`);
+        UI.systemMessage(`Your bag is full: the ${UI.itemNoun(item.name)} was left behind.`);
       }
     }
     const receivedText = received.length ? " · " + received.join(", ") : "";

@@ -11,7 +11,7 @@ import * as UI from "./ui.js";
 import { player, game, heroClass, hpMax } from "./game-state.js";
 
 /* "iron sword", or "+3 Iron sword of Frost" for a modified one */
-const nameOf = (id, mods) => (modsOf(mods) ? displayName(id, mods) : ITEMS[id].name.toLowerCase());
+const nameOf = (id, mods) => (modsOf(mods) ? displayName(id, mods) : UI.itemNoun(ITEMS[id].name));
 
 /** How many of this item are in the bag. */
 export const bagCount = (id) => progression.bagCount(player, id);
@@ -55,7 +55,7 @@ export function equip(id, index) {
   }
   if (item.forClass && item.forClass !== player.classId && item.forClass !== heroClass().base) {
     UI.systemMessage(
-      `Only a ${CLASSES[item.forClass].name} can use the ${item.name.toLowerCase()}.`,
+      `Only ${UI.itemNoun(CLASSES[item.forClass].name, true)} can use the ${UI.itemNoun(item.name)}.`,
     );
     return;
   }
@@ -102,7 +102,7 @@ export function buy(id) {
     UI.systemMessage("Your bag is full.");
     return;
   }
-  UI.systemMessage(`You bought a ${item.name.toLowerCase()}.`);
+  UI.systemMessage(`You bought ${UI.itemNoun(item.name, true)}.`);
   game.inventory.render();
   if (game.questLog) {
     game.questLog.refresh();
@@ -122,7 +122,9 @@ export function sell(id, index) {
   if (!progression.sell(player, id, at)) {
     return;
   }
-  UI.systemMessage(`You sold a ${name} for ${zeny} zeny.`);
+  UI.systemMessage(
+    `You sold ${/^\+/.test(name) ? "a " + name : UI.itemNoun(name, true)} for ${zeny} zeny.`,
+  );
   game.characterSheet.renderShop();
   game.characterSheet.render();
   game.network.heroAction("sell", { id, index: at });

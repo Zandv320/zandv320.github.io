@@ -522,7 +522,7 @@ export function grantReward(reward) {
           "</span>",
       );
     } else {
-      UI.systemMessage(`Your bag is full, the ${item.name.toLowerCase()} was left behind.`);
+      UI.systemMessage(`Your bag is full: the ${UI.itemNoun(item.name)} was left behind.`);
     }
     game.inventory.render();
   }

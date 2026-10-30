@@ -35,7 +35,7 @@ export const GUIDE_TOPICS = {
     icons: ["ui_character", "blade_mastery"],
     body: [
       "Monsters and quests give <b>experience</b>. Every level brings <b>stat points</b>, every job level <b>skill points</b>.",
-      "<b>STR</b> hits harder, <b>AGI</b> attacks faster and dodges, <b>VIT</b> gives health and defence, <b>INT</b> powers spells and SP, <b>DEX</b> makes you hit, <b>LUK</b> brings critical hits.",
+      "<b>STR</b> hits harder, <b>AGI</b> attacks faster and dodges, <b>VIT</b> gives health and defense, <b>INT</b> powers spells and SP, <b>DEX</b> makes you hit, <b>LUK</b> brings critical hits.",
       "Spend points on the <b>Stats</b> tab of your character sheet with the <b>+</b> buttons. Higher stats cost more points.",
     ],
   },
@@ -81,7 +81,7 @@ export const GUIDE_TOPICS = {
     icons: ["prof_enchanting", "arcane_dust", "rune_of_sharpness", "ench_flame"],
     body: [
       "An <b>enchanting altar</b> has four tabs. <b>Disenchant</b> breaks old gear into arcane dust. <b>Runes</b> turns dust and materials into runes.",
-      "<b>Refine</b> uses runes to make a weapon or armour stronger, up to +10. Up to +4 never fails; from +5 a failure costs a level, but nothing is ever destroyed.",
+      "<b>Refine</b> uses runes to make a weapon or armor stronger, up to +10. Up to +4 never fails; from +5 a failure costs a level, but nothing is ever destroyed.",
       "<b>Enchant</b> gives a weapon an element: flame, frost, storms or arcane, each with its own effect in battle.",
     ],
   },

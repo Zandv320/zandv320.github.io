@@ -5,6 +5,7 @@
 import { SHEETS } from "./sheets.js";
 import { Sprite2D } from "./sprites.js";
 import * as UI from "./ui.js";
+import { isNight } from "./daylight.js";
 import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } from "./appearance.js";
 
 /* The villagers: looks, route (list of points; a single point = standing still) and lines.
@@ -13,7 +14,8 @@ import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } fro
    each route point, loop: walk the route in a circle instead of back and forth, facing: direction when standing,
    hammers: plays the attack animation now and then (recruits), work: a profession animation (sheets.js WORK:
    smith, fish, harvest, brew, cook, chop) played while standing at a route point, facing workFacing,
-   shop: SHOPS key. */
+   shop: SHOPS key, night: extra lines after dark, after: {questId: lines} that join once the player has finished
+   that quest, so the world talks about what the player did. */
 const VILLAGERS = [
   {
     name: "Guard Rolf",
@@ -32,6 +34,12 @@ const VILLAGERS = [
       "The boars have been bold lately.",
       "Move along, nothing to see here.",
     ],
+    night: ["Long night. Keep your eyes on the tree line.", "Wolves are loud tonight."],
+    after: {
+      main_crown: ["Bandits this far east. I do not like it."],
+      rolf_dire_boar: ["The altar is quiet again, thanks to you."],
+      aldric_varek: ["Word came down the Kingsroad: Varek is dead. Was that you?"],
+    },
   },
   {
     name: "Guard Sven",
@@ -47,9 +55,14 @@ const VILLAGERS = [
     pause: [5, 10],
     lines: [
       "Quiet shift. I like quiet shifts.",
-      "Foxes to the west, boars to the east.",
+      "Rabbits by the fence, foxes further out, boars at the edge.",
       "Rolf owes me a drink.",
     ],
+    night: ["Night shift. My favorite. Nobody talks."],
+    after: {
+      sven_foxes: ["Quiet nights since the foxes learned their lesson."],
+      corvin_audience: ["You met the King? Rolf will never stop talking about it."],
+    },
   },
   {
     name: "Old Mette",
@@ -69,6 +82,12 @@ const VILLAGERS = [
       "Back in my day the well was deeper.",
       "You look thin. Eat something.",
     ],
+    night: ["Off to bed with you. Nothing good walks after dark."],
+    after: {
+      mette_altar: ["The altar still stands. I sleep better now."],
+      main_sharpen: ["Keep that edge clean, child."],
+      corvin_audience: ["The King himself! Runeveld is proud of you."],
+    },
   },
   {
     name: "Pim",
@@ -94,6 +113,11 @@ const VILLAGERS = [
       "I saw a fox! A real one!",
       "Mum says I cannot go past the gate.",
     ],
+    night: ["Mum says it is bedtime. I say it is fox time."],
+    after: {
+      pim_fox: ["Everyone believes me now! The tail proves it!"],
+      rolf_dire_boar: ["Did you really fight a boar as big as a cart?"],
+    },
   },
   {
     name: "Farmer Jorn",
@@ -116,6 +140,11 @@ const VILLAGERS = [
       "Rabbits ate my lettuce again.",
       "Rain tomorrow, mark my words.",
     ],
+    night: ["Boars dig at night. I hear them from my bed."],
+    after: {
+      jorn_boars: ["The beets are safe. The rabbits are another story."],
+      main_crown: ["I still think about that badge in my furrows."],
+    },
   },
   {
     name: "Baker Lise",
@@ -133,6 +162,11 @@ const VILLAGERS = [
       "Bram overcharges, you know.",
       "Two loaves for the guards, every morning.",
     ],
+    night: ["The dough rises while the village sleeps."],
+    after: {
+      lise_fox_tails: ["The tails on my door work. Not one fox since."],
+      lise_warm_coat: ["Warmest coat in Runeveld. Smells a bit of wolf."],
+    },
   },
   {
     name: "Fisher Teun",
@@ -148,6 +182,11 @@ const VILLAGERS = [
       "Not a single bite all morning.",
       "The big one lives under the far rock.",
     ],
+    night: ["The big ones bite after dark. Supposedly."],
+    after: {
+      teun_lucky_feet: ["The rabbit feet worked! One bite. Well, a nibble."],
+      main_cook: ["Still grilling your minnows? Good. Never go hungry."],
+    },
   },
   {
     name: "Smith Ragnar",
@@ -163,6 +202,11 @@ const VILLAGERS = [
       "Mind the sparks.",
       "A dull blade is a dead swordsman.",
     ],
+    night: ["The forge stays warm all night. So do I."],
+    after: {
+      main_smelt: ["Your bars held up. Not bad for a first time."],
+      ragnar_antlers: ["Those antler hilts sold the same week."],
+    },
   },
   /* ---- Aurelia: gate watch, city watch, the court, the market, the square, the quarters and the temple ---- */
   {
@@ -178,6 +222,11 @@ const VILLAGERS = [
       "Bandits on the road again. Every week.",
       "The King pays for results, not stories.",
     ],
+    night: ["Night is when the bandits move. So do we."],
+    after: {
+      aldric_bandits: ["The carts run again. The merchants send their thanks."],
+      aldric_varek: ["Kingsvale breathes easier. So do I."],
+    },
   },
   {
     name: "Gate Guard Bo",
@@ -192,6 +241,8 @@ const VILLAGERS = [
       "Keep your purse close on market day.",
       "Long shift. Longer road.",
     ],
+    night: ["Gates close at midnight. Mostly."],
+    after: { aldric_varek: ["You are the one who took Varek? Go on through."] },
   },
   {
     name: "Guard Hal",
@@ -210,6 +261,7 @@ const VILLAGERS = [
       "Somebody keeps stealing lanterns.",
       "I hear wolves at night, beyond the wall.",
     ],
+    night: ["There, hear that? Wolves, past the wall."],
   },
   {
     name: "Guard Ida",
@@ -228,6 +280,7 @@ const VILLAGERS = [
       "Stay off the training field unless you like bruises.",
       "Ser Roland walks the avenue again. Showing off.",
     ],
+    night: ["Even the recruits sleep. Finally."],
   },
   {
     name: "Guard Rik",
@@ -249,6 +302,7 @@ const VILLAGERS = [
       "The fountain water is not for drinking.",
       "Move along.",
     ],
+    night: ["Lanterns lit, streets quiet. Just how I like it."],
   },
   {
     name: "Royal Guard",
@@ -258,7 +312,11 @@ const VILLAGERS = [
     weapon: "sword2",
     route: [[-153, 2.6]],
     facing: [1, 0],
-    lines: ["Bow before His Majesty.", "Not one step closer.", "..."],
+    lines: [
+      "Bow before His Majesty.",
+      "Not one step closer.",
+      "The King's word is law in these halls.",
+    ],
   },
   {
     name: "Royal Guard",
@@ -268,7 +326,11 @@ const VILLAGERS = [
     weapon: "sword2",
     route: [[-153, -2.6]],
     facing: [1, 0],
-    lines: ["The King sees all who come.", "Hands where I can see them.", "..."],
+    lines: [
+      "The King sees all who come.",
+      "Hands where I can see them.",
+      "We stand. That is the whole job.",
+    ],
   },
   {
     name: "Castle Guard",
@@ -306,6 +368,8 @@ const VILLAGERS = [
       "My father built this keep. I keep it.",
       "Every bandit on my road is an insult to my crown.",
     ],
+    night: ["Even kings lie awake."],
+    after: { corvin_audience: ["Ah, the one who broke the crossed-out crown."] },
   },
   {
     name: "Steward Corvin",
@@ -323,6 +387,8 @@ const VILLAGERS = [
       "His Majesty will see you when His Majesty sees you.",
       "Taxes, ledgers, bandits. In that order.",
     ],
+    night: ["The ledgers do not sleep, so neither do I."],
+    after: { corvin_audience: ["His Majesty spoke of you at supper. Twice."] },
   },
   {
     name: "Lady Elara",
@@ -342,6 +408,7 @@ const VILLAGERS = [
       "Have you heard the bard? Dreadful. I adore him.",
       "A lady does not hurry.",
     ],
+    night: ["The stars are lovely from the temple steps."],
   },
   {
     name: "Ser Roland",
@@ -360,6 +427,8 @@ const VILLAGERS = [
       "The King knights those who deserve it. Mostly.",
       "Stand aside, citizen.",
     ],
+    night: ["A knight's vigil never ends. Or so I tell the ladies."],
+    after: { aldric_varek: ["Varek? I was about to deal with him myself. Truly."] },
   },
   {
     name: "Apothecary Wren",
@@ -376,6 +445,8 @@ const VILLAGERS = [
       "Dire wolf pelt keeps a brew warm for days.",
       "Shake well. Or do not. It is your stomach.",
     ],
+    night: ["Night herbs are stronger. Ask me why. Actually, do not."],
+    after: { wren_dark_pelts: ["Those pelts work wonders. My brews stay warm for days."] },
   },
   {
     name: "Armorer Gunnar",
@@ -418,6 +489,7 @@ const VILLAGERS = [
       "The bandits took my cart twice this month.",
       "Two for a zeny, three if you smile.",
     ],
+    after: { aldric_bandits: ["My cart made it to market twice this week! Twice!"] },
   },
   {
     name: "Tailor Maud",
@@ -446,6 +518,7 @@ const VILLAGERS = [
       "Smell that? That is money.",
       "The Kingsroad is the only road, and it is full of thieves.",
     ],
+    after: { aldric_bandits: ["The road is safer now. My prices are not."] },
   },
   {
     name: "Innkeeper Rosa",
@@ -460,6 +533,12 @@ const VILLAGERS = [
       "The Gilded Boar: finest inn in Aurelia. The only one, too.",
       "Bandit talk makes the guests nervous. Keep it down.",
     ],
+    night: ["Last round! And I mean it this time."],
+    after: {
+      corvin_audience: [
+        "A guest who has met the King! First round is on the house. Only the first.",
+      ],
+    },
   },
   {
     name: "Townsman Piet",
@@ -493,6 +572,8 @@ const VILLAGERS = [
       "A coin for a song? A song for a coin?",
       "Everyone is a critic in this city.",
     ],
+    night: ["The night wants a song. The neighbors do not."],
+    after: { aldric_varek: ["I am writing a song about you. Nothing rhymes with Varek."] },
   },
   {
     name: "Washerwoman Ana",
@@ -510,6 +591,7 @@ const VILLAGERS = [
       "Mud. Everywhere. Always mud.",
       "The bard again. Saints preserve us.",
     ],
+    night: ["Washing by lantern light. Again."],
   },
   {
     name: "Old Gert",
@@ -523,6 +605,7 @@ const VILLAGERS = [
       "The statue? That is old King Edric. Looked nothing like him.",
       "My knees. Do not ask.",
     ],
+    night: ["At my age you sleep in the day and count stars at night."],
   },
   {
     name: "Nell",
@@ -544,6 +627,7 @@ const VILLAGERS = [
     pause: [0, 1],
     loop: true,
     lines: ["Catch me, Ro!", "I am going to be a knight!", "The fountain splashed me!"],
+    night: ["Ro is scared of the dark. I am not. Much."],
   },
   {
     name: "Ro",
@@ -569,6 +653,7 @@ const VILLAGERS = [
       "I want to be a wizard!",
       "Did you see the bandit they brought in?",
     ],
+    night: ["Nell, did you hear that?"],
   },
   {
     name: "Beggar Tam",
@@ -582,6 +667,10 @@ const VILLAGERS = [
       "I fought at the river, you know. Nobody remembers.",
       "The guards are kind. The nobles are not.",
     ],
+    night: ["Cold one tonight. A zeny buys a blanket."],
+    after: {
+      aldric_varek: ["They say a newcomer took down Varek. Reminds me of me, at the river."],
+    },
   },
   {
     name: "Courier Jesper",
@@ -615,6 +704,7 @@ const VILLAGERS = [
       "My boy joined the guard. I do not sleep.",
       "Fresh pie on the sill. Do not touch it.",
     ],
+    night: ["My boy is on the wall tonight. I keep the lamp lit."],
   },
   {
     name: "Carpenter Jos",
@@ -646,7 +736,7 @@ const VILLAGERS = [
     lines: [
       "Gunnar sells it. I make it.",
       "Hot. Everything here is hot.",
-      "Bring me dire wolf fangs and I will make you a hilt.",
+      "Bring me a dire tusk one day. I want to see one up close.",
     ],
   },
   {
@@ -692,6 +782,7 @@ const VILLAGERS = [
       "Hay, oats, and a lot of shoveling.",
       "Ser Roland's horse bites. Like its master.",
     ],
+    night: ["The horses get restless at night. So do I."],
   },
   {
     name: "Guildmaster Hesper",
@@ -705,6 +796,7 @@ const VILLAGERS = [
       "Bandit insignias fetch a price. Ask around.",
       "Heroes come and go. The guild remains.",
     ],
+    after: { aldric_brutes: ["Five brutes. The guild noticed. So did the bandits."] },
   },
   {
     name: "Father Anselm",
@@ -723,6 +815,7 @@ const VILLAGERS = [
       "The temple is open to all. Even bandits, should they repent.",
       "Light the candles, mind the wax.",
     ],
+    night: ["The candles burn for every traveler on the road."],
   },
   {
     name: "Pilgrim Sanne",
@@ -759,6 +852,8 @@ const VILLAGERS = [
       "Beets, turnips, and a view of the castle.",
       "The windmill grinds slow, like Abe.",
     ],
+    night: ["I lock the barn at night now. Bandits."],
+    after: { aldric_varek: ["Varek is gone? Then maybe I get my cow back."] },
   },
   {
     name: "Miller Abe",
@@ -773,6 +868,7 @@ const VILLAGERS = [
       "Flour for the whole city comes through here.",
       "Wendel talks too much.",
     ],
+    night: ["No wind, no flour. I might as well sleep."],
   },
 ];
 
@@ -795,6 +891,7 @@ VILLAGERS.push({
     "Jorn says the scarecrow works. The crows disagree.",
     "Mind the rows, please. They were straight this morning.",
   ],
+  night: ["Fireflies over the grain. Pretty, but they do not pay."],
 });
 
 const randomBetween = (min, max) => min + Math.random() * (max - min);
@@ -956,9 +1053,26 @@ export function updateVillagers(dt, cameraState, camera, player) {
     villager.chatTimer -= dt;
     if (villager.chatTimer <= 0) {
       villager.chatTimer = randomBetween(15, 45);
-      UI.speechBubble(villager.label, spec.lines[Math.floor(Math.random() * spec.lines.length)]);
+      const lines = linesFor(spec, player);
+      UI.speechBubble(villager.label, lines[Math.floor(Math.random() * lines.length)]);
     }
   }
+}
+
+/* What a villager may say now: the usual lines, the night lines after dark and the lines about quests the player
+   has finished. Night and story lines count twice, so they are heard often enough to notice. */
+function linesFor(spec, player) {
+  const lines = [...spec.lines];
+  if (spec.night && isNight()) {
+    lines.push(...spec.night, ...spec.night);
+  }
+  const quests = (player && player.quests) || {};
+  for (const [questId, storyLines] of Object.entries(spec.after || {})) {
+    if (quests[questId] && quests[questId].state === "done") {
+      lines.push(...storyLines, ...storyLines);
+    }
+  }
+  return lines;
 }
 
 /* Spoken to: face the player and stand still for a while; the conversation itself goes through dialogue.js. */

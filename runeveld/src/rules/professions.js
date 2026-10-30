@@ -39,7 +39,7 @@ export const PROFESSIONS = {
     kind: "crafting",
     station: "forge",
     emoji: "⚒️",
-    description: "Smelt ore into bars and forge weapons, armour and jewellery at a forge.",
+    description: "Smelt ore into bars and forge weapons, armor and jewelry at a forge.",
   },
   alchemy: {
     name: "Alchemy",

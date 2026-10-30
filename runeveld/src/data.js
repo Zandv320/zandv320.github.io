@@ -705,7 +705,7 @@ export const ITEMS = {
     price: 8,
     icon: "🪨",
     stack: 99,
-    description: "Green-streaked rock. The forge turns it into copper.",
+    description: "Rock flecked with orange. The forge turns it into copper.",
   },
   iron_ore: {
     name: "Iron ore",
@@ -1011,7 +1011,7 @@ export const ITEMS = {
     price: 60,
     icon: "🔷",
     stack: 99,
-    description: "Refines armour at the enchanting altar.",
+    description: "Refines armor at the enchanting altar.",
   },
   rune_of_flame: {
     name: "Rune of Flame",

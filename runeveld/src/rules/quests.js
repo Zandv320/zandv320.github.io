@@ -87,9 +87,9 @@ export const QUESTS = {
     level: 1,
     after: "main_bram_cap",
     intro:
-      "You look like you can hold a sword. The rabbits north of the gate are eating everything that grows. Thin them out for me: five should do.",
+      "You look like you can hold a sword. The rabbits outside the fence are eating everything that grows. Thin them out for me: five should do.",
     progressText:
-      "Five rabbits. They are just outside the north gate. Hit them before they hop off.",
+      "Five rabbits. They hop around just outside the fence. Hit them before they hop off.",
     completeText:
       "Five fewer rabbits. The farmers will sleep better. Here is your pay, and something for the scratches.",
     goal: { type: "kill", monster: "rabbit", count: 5 },
@@ -134,7 +134,7 @@ export const QUESTS = {
     after: "rolf_rabbits",
     intro:
       "I saw a fox and nobody believes me! If you bring me a fox tail I can show everyone. Please? I have ten zeny.",
-    progressText: "A fox tail! The foxes live west of the village. Do not tell mum.",
+    progressText: "A fox tail! The foxes run out in the fields, past the rabbits. Do not tell mum.",
     completeText: "A REAL fox tail! Here, you can have my ten zeny. All of it.",
     goal: { type: "item", item: "fox_tail", count: 1 },
     reward: { exp: 40, zeny: 10, items: [] },
@@ -271,8 +271,8 @@ export const QUESTS = {
     level: 3,
     after: "main_cook",
     intro:
-      "Rolf sent you? Then you will do. Foxes have been circling the south fields at night. Six of them should learn to keep their distance.",
-    progressText: "Six foxes, south and west of the village. Watch out, they bite back.",
+      "Rolf sent you? Then you will do. Foxes have been circling the fields at night. Six of them should learn to keep their distance.",
+    progressText: "Six foxes, out in the fields beyond the rabbits. Watch out, they bite back.",
     completeText: "Six foxes. Quiet shift tonight, then. I like quiet shifts. Here.",
     goal: { type: "kill", monster: "fox", count: 6 },
     reward: { exp: 220, zeny: 180, items: [{ id: "red_potion", count: 3 }] },
@@ -288,7 +288,7 @@ export const QUESTS = {
       "You fight like a farmer with a stick. Brave, but plain. Every fighter learns tricks as they grow: a heavy blow, a burst of flame. Learn one, then come back.",
     progressText: "Open your character sheet, go to Skills and learn a skill.",
     completeText:
-      "Better. Now that you can fight properly: Farmer Jorn has trouble east of the village.",
+      "Better. Now that you can fight properly: Farmer Jorn has trouble in his fields. Go and hear him out.",
     hint: "Skill points come with job levels. Open the character sheet, choose Skills, tap a skill and press Learn. Skills you learn appear on your hotbar.",
     ui: "character",
     tutorial: "skills",
@@ -303,7 +303,7 @@ export const QUESTS = {
     after: "rolf_rabbits",
     intro:
       "Foxes got into my flour again. I want three of their tails for my door. Let the others see what happens.",
-    progressText: "Three fox tails. The foxes are west of the fence, past the trees.",
+    progressText: "Three fox tails. The foxes run in the fields, further out than the rabbits.",
     completeText:
       "Three tails for my door. Perfect. This cap was my brother's, he will not miss it. And the bread is on the house.",
     goal: { type: "item", item: "fox_tail", count: 3 },
@@ -319,8 +319,8 @@ export const QUESTS = {
     level: 5,
     after: "main_skill",
     intro:
-      "Boars. Big ones, east of the village, and they have found my beets. I cannot pay much, but I pay. Three boars.",
-    progressText: "Three boars, east past the fields. Do not let them charge you.",
+      "Boars. Big ones, out at the edge of the fields, and they have found my beets. I cannot pay much, but I pay. Three boars.",
+    progressText: "Three boars, at the far edge of the fields. Do not let them charge you.",
     completeText: "Three boars gone. My beets thank you. So do I. Here.",
     goal: { type: "kill", monster: "boar", count: 3 },
     reward: { exp: 300, zeny: 350, items: [{ id: "red_potion", count: 5 }] },
@@ -351,7 +351,7 @@ export const QUESTS = {
     after: "jorn_boars",
     intro:
       "Jorn says you handle boars. Good. I need four boar hides for the bellows. Bring them and I will make it worth your while.",
-    progressText: "Four boar hides. The boars are east of the village.",
+    progressText: "Four boar hides. The boars roam the far edge of the fields.",
     completeText:
       "Four good hides. A deal is a deal: this has been waiting for someone who deserves it.",
     goal: { type: "item", item: "boar_hide", count: 4 },
@@ -415,7 +415,7 @@ export const QUESTS = {
   rolf_wolves: {
     giver: "Guard Rolf",
     where: { monster: "wolf" },
-    hint: "Grey wolves hunt between the trees of Whisperwood, off the path. They are quick and come in pairs; fight near the path so you can pull back.",
+    hint: "Grey wolves hunt between the trees of Whisperwood, off the path. They are quick and often hunt together; fight near the path so you can pull back.",
     chapter: 4,
     main: true,
     title: "Howling in the north",
@@ -508,7 +508,7 @@ export const QUESTS = {
     level: 15,
     after: "rolf_road_west",
     intro:
-      "Rolf sent you? Then you can swing a blade. Bandits have taken the meadows around the city and rob every cart on the Kingsroad. Eight of them, and the rest will think about a new trade.",
+      "So you are Rolf's fighter. Good, I need one. Bandits have taken the meadows around the city and rob every cart on the Kingsroad. Eight of them, and the rest will think about a new trade.",
     progressText:
       "Eight bandits. They roam the meadows of Kingsvale outside the walls, mostly along the road. They fight in groups; so should you.",
     completeText: "Eight. The merchants will drink to your name tonight. Here is the city's pay.",
@@ -524,7 +524,7 @@ export const QUESTS = {
     intro:
       "The dire wolves of Kingsvale have a pelt that keeps a brew warm for days. Four of them, and I pay in potions. Good ones.",
     progressText:
-      "Four dire wolf pelts. The dire wolves hunt the meadows south and west of the city, and they are bolder at night.",
+      "Four dire wolf pelts. The dire wolves roam the meadows of Kingsvale, and they are bolder at night.",
     completeText: "Four pelts, and not a hair singed. You have a careful hand. Here, as promised.",
     goal: { type: "item", item: "dire_wolf_pelt", count: 4 },
     reward: { exp: 1100, zeny: 600, items: [{ id: "orange_potion", count: 5 }] },
