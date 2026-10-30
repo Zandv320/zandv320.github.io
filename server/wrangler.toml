@@ -1,24 +1,29 @@
-# Eldoria: Chronicles of Magic – de spelserver op Cloudflare Workers (gratis plan).
-# Eén Durable Object ("Wereld") per wereld houdt de WebSocket-verbindingen van alle spelers vast en stuurt hun
-# berichten door. Uitrollen gebeurt via GitHub Actions (.github/workflows/server.yml) met wrangler.
+# Eldoria: Chronicles of Magic – the game server on Cloudflare Workers (free plan).
+# One Durable Object ("World") per world holds the WebSocket connections of all players and relays their messages.
+# One "HeroStore" holds every account's heroes, shared by all worlds; "Accounts" holds usernames and passwords.
+# Deployment runs through GitHub Actions (.github/workflows/server.yml) with wrangler.
 name = "eldoria-server"
 main = "src/index.js"
 compatibility_date = "2025-10-01"
 workers_dev = true
 
-# de versie van de uitrol, zodat een draaiend object merkt dat er nieuwe code is en zichzelf herstart
+# the version of the deployment, so a running object notices new code and restarts itself
 [version_metadata]
-binding = "VERSIE"
+binding = "VERSION"
 
 [[durable_objects.bindings]]
-name = "WERELD"
-class_name = "Wereld"
+name = "WORLD"
+class_name = "World"
 
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
 class_name = "Accounts"
 
-# het gratis plan vereist SQLite-backed Durable Objects
+[[durable_objects.bindings]]
+name = "HEROES"
+class_name = "HeroStore"
+
+# the free plan requires SQLite-backed Durable Objects
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Wereld"]
@@ -26,3 +31,13 @@ new_sqlite_classes = ["Wereld"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Accounts"]
+
+# the English refactor: the world class was renamed (its stored data, including the old heroes, stays)
+[[migrations]]
+tag = "v3"
+renamed_classes = [{ from = "Wereld", to = "World" }]
+
+# heroes moved out of the worlds into one shared store
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["HeroStore"]

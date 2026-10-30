@@ -1,179 +1,381 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="Eldoria: Chronicles of Magic. A top-down MMORPG in your browser in the style of Ragnarok Online. Start as a swordsman or mage in the village of Runeveld, defeat monsters and play together with others.">
-<meta name="theme-color" content="#0b0e16">
-<title>Eldoria: Chronicles of Magic</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap">
-<link rel="stylesheet" href="./ui.css">
-</head>
-<body>
-<canvas id="c"></canvas>
-<canvas id="nacht"></canvas>
-<div id="labels"></div>
-<div id="pijn"></div>
-<div id="fx"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Eldoria: Chronicles of Magic. A top-down MMORPG in your browser in the style of Ragnarok Online. Start as a swordsman or mage in the village of Runeveld, defeat monsters and play together with others."
+    />
+    <meta name="theme-color" content="#0b0e16" />
+    <title>Eldoria: Chronicles of Magic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap"
+    />
+    <link rel="stylesheet" href="./ui.css" />
+  </head>
+  <body>
+    <!-- Full-screen layers: the 3D world, the night tint, name labels, the red hurt vignette and floating numbers. -->
+    <canvas id="game"></canvas>
+    <canvas id="night-overlay"></canvas>
+    <div id="labels"></div>
+    <div id="hurt-overlay"></div>
+    <div id="fx-layer"></div>
 
-<div id="hud" hidden>
-  <div id="char" class="frame">
-    <div class="portret"><canvas id="h-portret" width="72" height="80"></canvas><span class="lvlbadge" id="h-lvl">1</span></div>
-    <div class="charinfo">
-      <div class="kop"><b id="h-naam">—</b><small><span id="h-klassenaam">Swordsman</span> · Job <span id="h-job">1</span></small></div>
-      <div class="bar hp"><i id="h-hp"></i><span id="h-hpt"></span></div>
-      <div class="bar sp"><i id="h-sp"></i><span id="h-spt"></span></div>
-      <div class="bar exp" id="h-expbar" title="Experience"><i id="h-exp"></i></div>
-      <div class="bar job" id="h-jobbar" title="Job experience"><i id="h-jobexp"></i></div>
-    </div>
-  </div>
-  <div id="partij" class="frame plat" hidden></div>
-  <div id="spelerkaart" class="frame plat" hidden></div>
-  <div id="uitnodiging" class="frame" hidden></div>
-  <div id="doelkader" class="frame plat" hidden><div class="kop"><b id="d-naam"></b><small id="d-lvl"></small></div><div class="bar hp"><i id="d-hp"></i><span id="d-hpt"></span></div></div>
-  <div id="rechtsboven">
-    <div id="status" class="frame plat"><span title="Zeny"><i data-ico="ui_zeny" data-emoji="🪙"></i> <b id="h-zeny">0</b></span><span id="h-tijd" title="Time of day">☀️ 12:00</span><span title="Players online"><i class="stip" id="h-stip"></i><span id="h-online" class="online-tekst">offline</span></span></div>
-    <div id="mm" class="frame"><canvas id="minimap" width="156" height="156"></canvas><div id="mm-zone">Runeveld</div></div>
-    <div id="qtracker" class="frame plat" hidden></div>
-  </div>
-  <div id="melding"></div>
-  <div id="chat">
-    <div id="log"></div>
-    <form id="chatin" autocomplete="off"><input id="chattekst" maxlength="120" placeholder="Say something…"><button type="button" id="chat-sluit" title="Close chat">✕</button></form>
-  </div>
-  <div id="onder">
-    <div id="mobiel" class="frame plat"><button id="m-chat" title="Chat"><i data-ico="ui_chat" data-emoji="💬"></i></button><button id="m-zoomin" title="Zoom in">+</button><button id="m-zoomuit" title="Zoom out">−</button></div>
-    <div id="balk" class="frame">
-      <button class="slot" data-skill="drank" title="Red potion: restores 45 HP"><kbd>R</kbd><span class="ic" data-ico="drank" data-emoji="🧪"></span><span class="nm">Potion</span><span class="aantal" id="h-drank">0</span><i class="cd"></i></button>
-      <button class="slot" data-skill="zit" title="Sit: recover faster"><kbd>X</kbd><span class="ic" data-ico="ui_zit" data-emoji="🪑"></span><span class="nm">Sit</span><i class="cd"></i></button>
-    </div>
-    <div id="menu" class="frame plat">
-      <button class="mk" id="k-knop" title="Character (C)"><i data-ico="ui_char" data-emoji="👤"></i><kbd>C</kbd></button>
-      <button class="mk" id="i-knop" title="Inventory (I)"><i data-ico="ui_tas" data-emoji="🎒"></i><kbd>I</kbd></button>
-      <button class="mk" id="j-knop" title="Quests (J)"><i data-ico="ui_quests" data-emoji="📜"></i><kbd>J</kbd></button>
-      <button class="mk" id="m-knop" title="Map (M)"><i data-ico="ui_kaart" data-emoji="🗺️"></i><kbd>M</kbd></button>
-      <button class="mk alleen-desktop" id="g-knop" title="Sound">🔊</button>
-      <button class="mk" id="a-knop" title="Admin (Ctrl+Shift+A)" hidden><i data-ico="ui_admin" data-emoji="🛠️"></i></button>
-      <a class="mk alleen-desktop" href="../" title="Back to all games"><i data-ico="ui_huis" data-emoji="⌂"></i></a>
-    </div>
-  </div>
-</div>
-
-<div id="karakter" class="paneel modal" hidden>
-  <div class="kkop"><div><h3 id="k-naam">—</h3><small id="k-sub"></small></div><button class="ksluit" id="k-sluit" title="Close (C)">✕</button></div>
-  <div class="ktabs"><button class="ktab actief" data-tab="uitrusting">Equipment<span class="kbadge" hidden></span></button><button class="ktab" data-tab="stats">Stats<span class="kbadge" hidden></span></button><button class="ktab" data-tab="skills">Skills<span class="kbadge" hidden></span></button><button class="ktab" data-tab="quests">Quests<span class="kbadge" hidden></span></button></div>
-  <div class="kgrid" id="k-tab-uitrusting">
-    <div class="kpreview"><canvas id="k-canvas" width="144" height="160"></canvas><div class="kstats" id="k-stats"></div></div>
-    <div>
-      <div class="kslots" id="k-slots"></div>
-      <div class="ktas"><h4>Bag</h4><div class="kitems" id="k-tas"></div></div>
-      <p class="ktip">Click an item in your bag to equip it, and a slot to take it off again. Without clothes you stand in your underwear.</p>
-    </div>
-  </div>
-  <div id="k-tab-stats" hidden>
-    <p class="ktip" id="k-statpunten"></p>
-    <div class="kstatgrid"><div id="k-statlijst"></div><div class="kstats" id="k-afgeleid"></div></div>
-  </div>
-  <div id="k-tab-skills" hidden>
-    <p class="ktip" id="k-skillpunten"></p>
-    <div class="kskills" id="k-skilllijst"></div>
-  </div>
-  <div id="k-tab-quests" hidden><div class="kquests" id="k-questlijst"></div></div>
-</div>
-
-<div id="kaart" class="paneel modal" hidden>
-  <div class="kkop"><div><h3>World map</h3><small>Scroll to zoom · drag to pan · click to walk there · <span id="kaart-pos">—</span></small></div><button class="ksluit" id="kaart-sluit" title="Close (M)">✕</button></div>
-  <canvas id="kaart-canvas"></canvas>
-  <div class="legenda"><span><i style="background:#fff"></i>you</span><span><i style="background:#7cc4ff"></i>players</span><span><i style="background:#f87171"></i>monsters</span><span><i style="background:#ffd1a6"></i>harmless</span><span><i style="background:#ffc857"></i>villagers</span></div>
-</div>
-
-<div id="dialoog" class="paneel" hidden>
-  <canvas id="dl-portret" width="48" height="64"></canvas>
-  <div class="dl-body"><b id="dl-naam"></b><p id="dl-tekst"></p><div id="dl-keuzes"></div></div>
-</div>
-
-<div id="admin" class="paneel" hidden>
-  <div class="kkop"><div><h3>Admin</h3><small>Ctrl+Shift+A · local only, nothing here is secret</small></div><button class="ksluit" id="a-sluit" title="Close">✕</button></div>
-  <div id="a-inhoud"></div>
-</div>
-
-<div id="inventaris" class="paneel modal" hidden>
-  <div class="kkop"><div><h3>Inventory</h3><small><span id="i-vol">0 / 20</span> slots · <i data-ico="ui_zeny" data-emoji="🪙"></i> <span id="i-zeny">0</span> zeny</small></div><button class="ksluit" id="i-sluit" title="Close (I)">✕</button></div>
-  <div class="igrid"><div class="iraster" id="i-raster"></div><div class="idetail" id="i-detail"></div></div>
-</div>
-
-<div id="winkel" class="paneel modal" hidden>
-  <h3 id="w-naam">Merchant Bram</h3>
-  <p id="w-tekst"></p>
-  <div id="w-lijst"></div>
-  <div class="rij"><span>You have <b id="w-zeny">0</b> zeny</span><button class="knop alt" id="sluit">Close</button></div>
-</div>
-
-<div id="start" hidden>
-  <div id="sel" class="scherm">
-    <div class="sel-links">
-      <h1 class="logo">Eldoria</h1>
-      <div class="sub">Chronicles of Magic · choose your hero</div>
-      <div class="sel-held"></div>
-    </div>
-    <div class="sel-rechts paneel"><h3>Characters</h3><div id="sel-lijst"></div>
-      <div id="sel-account"><span id="acc-status">Guest account</span><button class="knop alt klein" id="acc-knop">Log in</button></div></div>
-    <div class="sel-knoppen"><button class="knop groot" id="sel-speel">Enter World</button><button class="knop alt" id="sel-nieuw">Create New Character</button><button class="knop alt rood" id="sel-wis">Delete Character</button></div>
-    <div class="hulp"><kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd>–<kbd>9</kbd> skills · <kbd>R</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory · <kbd>J</kbd> quests · <kbd>M</kbd> map · <kbd>Enter</kbd> chat · <kbd>Q</kbd> <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom</div>
-    <a class="terug" href="../">← All games</a>
-  </div>
-  <div id="sel-info"><b id="sel-naam"></b><small id="sel-sub"></small></div>
-  <div id="maak" class="scherm" hidden>
-    <div class="kaart paneel maakkaart">
-      <h2>Create a character</h2>
-      <div class="maakgrid">
-        <div>
-          <label for="maak-naam">Name</label>
-          <input id="maak-naam" maxlength="14" placeholder="e.g. Aria" spellcheck="false" autocomplete="off">
-          <label>Class</label>
-          <div id="maak-klassen" class="klassen"></div>
-          <label>Hair colour · <span id="maak-haarnaam"></span></label>
-          <div id="maak-haar" class="haarkeuze"></div>
-          <div id="maak-fout" class="fout"></div>
+    <!-- In-game HUD: player frame, party, target, status, minimap, chat, hotbar and menu. -->
+    <div id="hud" hidden>
+      <div id="player-frame" class="frame">
+        <div class="portrait">
+          <canvas id="hud-portrait" width="72" height="80"></canvas
+          ><span class="level-badge" id="hud-level">1</span>
+        </div>
+        <div class="player-info">
+          <div class="header">
+            <b id="hud-name">—</b
+            ><small><span id="hud-class">Swordsman</span> · Job <span id="hud-job">1</span></small>
+          </div>
+          <div class="bar hp"><i id="hud-hp"></i><span id="hud-hp-text"></span></div>
+          <div class="bar sp"><i id="hud-sp"></i><span id="hud-sp-text"></span></div>
+          <div class="bar exp" id="hud-exp-bar" title="Experience"><i id="hud-exp"></i></div>
+          <div class="bar job" id="hud-job-bar" title="Job experience">
+            <i id="hud-job-exp"></i>
+          </div>
         </div>
       </div>
-      <div class="rij"><button class="knop alt" id="maak-terug">Back</button><button class="knop" id="maak-ok">Create</button></div>
-    </div>
-  </div>
-  <div id="account" class="scherm" hidden>
-    <div class="kaart paneel maakkaart">
-      <h2 id="acc-titel">Account</h2>
-      <p class="ktip" id="acc-uitleg">Your heroes are saved on the server under a secret key in this browser. With an account you can log in on any device and never lose them.</p>
-      <div class="acctabs"><button class="ktab actief" data-acc="login">Log in</button><button class="ktab" data-acc="registreer">Create account</button><button class="ktab" data-acc="herstel">Recover</button></div>
-      <form id="acc-form" autocomplete="on">
-        <label for="acc-naam">Username</label><input id="acc-naam" maxlength="16" autocomplete="username" spellcheck="false">
-        <div id="acc-code-rij" hidden><label for="acc-code">Recovery code</label><input id="acc-code" maxlength="19" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX"></div>
-        <label for="acc-ww" id="acc-ww-label">Password</label><input id="acc-ww" type="password" maxlength="72" autocomplete="current-password">
-        <div id="acc-fout" class="fout"></div>
-        <div class="rij"><button type="button" class="knop alt" id="acc-terug">Back</button><button type="submit" class="knop" id="acc-ok">Log in</button></div>
-      </form>
-      <div id="acc-klaar" hidden>
-        <p id="acc-klaar-tekst"></p>
-        <div class="herstelcode" id="acc-herstelcode"></div>
-        <p class="ktip">Write this recovery code down. There is no e-mail reset: this code is the only way to set a new password. It is shown once.</p>
-        <div class="rij"><button type="button" class="knop" id="acc-door">Continue</button></div>
+      <div id="party-frame" class="frame flat" hidden></div>
+      <div id="player-card" class="frame flat" hidden></div>
+      <div id="party-invite" class="frame" hidden></div>
+      <div id="target-frame" class="frame flat" hidden>
+        <div class="header"><b id="target-name"></b><small id="target-level"></small></div>
+        <div class="bar hp"><i id="target-hp"></i><span id="target-hp-text"></span></div>
+      </div>
+      <div id="top-right">
+        <div id="status-bar" class="frame flat">
+          <span title="Zeny"
+            ><i data-icon="ui_zeny" data-emoji="🪙"></i> <b id="hud-zeny">0</b></span
+          >
+          <span id="hud-clock" title="Time of day">☀️ 12:00</span>
+          <span title="Players online"
+            ><i class="dot" id="hud-online-dot"></i
+            ><span id="hud-online" class="online-text">offline</span></span
+          >
+        </div>
+        <div id="minimap-frame" class="frame">
+          <canvas id="minimap" width="156" height="156"></canvas>
+          <div id="minimap-zone">Runeveld</div>
+        </div>
+        <div id="quest-tracker" class="frame flat" hidden></div>
+      </div>
+      <div id="announcement"></div>
+      <div id="chat">
+        <div id="chat-log"></div>
+        <form id="chat-form" autocomplete="off">
+          <input id="chat-input" maxlength="120" placeholder="Say something…" /><button
+            type="button"
+            id="chat-close"
+            title="Close chat"
+          >
+            ✕
+          </button>
+        </form>
+      </div>
+      <div id="bottom-bar">
+        <div id="mobile-buttons" class="frame flat">
+          <button id="mobile-chat" title="Chat"><i data-icon="ui_chat" data-emoji="💬"></i></button>
+          <button id="zoom-in" title="Zoom in">+</button>
+          <button id="zoom-out" title="Zoom out">−</button>
+        </div>
+        <!-- The skill slots are added by main.js; the potion and sit slots are always there. -->
+        <div id="hotbar" class="frame">
+          <button class="slot" data-skill="red_potion" title="Red potion: restores 45 HP">
+            <kbd>R</kbd><span class="slot-icon" data-icon="red_potion" data-emoji="🧪"></span
+            ><span class="slot-name">Potion</span><span class="count" id="hud-potions">0</span
+            ><i class="cooldown"></i>
+          </button>
+          <button class="slot" data-skill="sit" title="Sit: recover faster">
+            <kbd>X</kbd><span class="slot-icon" data-icon="ui_sit" data-emoji="🪑"></span
+            ><span class="slot-name">Sit</span><i class="cooldown"></i>
+          </button>
+        </div>
+        <div id="menu" class="frame flat">
+          <button class="menu-btn" id="character-button" title="Character (C)">
+            <i data-icon="ui_character" data-emoji="👤"></i><kbd>C</kbd>
+          </button>
+          <button class="menu-btn" id="inventory-button" title="Inventory (I)">
+            <i data-icon="ui_bag" data-emoji="🎒"></i><kbd>I</kbd>
+          </button>
+          <button class="menu-btn" id="quests-button" title="Quests (J)">
+            <i data-icon="ui_quests" data-emoji="📜"></i><kbd>J</kbd>
+          </button>
+          <button class="menu-btn" id="map-button" title="Map (M)">
+            <i data-icon="ui_map" data-emoji="🗺️"></i><kbd>M</kbd>
+          </button>
+          <button class="menu-btn desktop-only" id="sound-button" title="Sound">🔊</button>
+          <button class="menu-btn" id="admin-button" title="Admin (Ctrl+Shift+A)" hidden>
+            <i data-icon="ui_admin" data-emoji="🛠️"></i>
+          </button>
+          <a class="menu-btn desktop-only" href="../" title="Back to all games"
+            ><i data-icon="ui_home" data-emoji="⌂"></i
+          ></a>
+        </div>
       </div>
     </div>
-  </div>
-  <div id="wis" class="scherm" hidden>
-    <div class="kaart paneel">
-      <h2>Delete character</h2>
-      <p>Delete <b id="wis-naam"></b>? Level, gear, zeny and quests are lost. This cannot be undone.</p>
-      <label for="wis-typ">Type the name to confirm</label>
-      <input id="wis-typ" maxlength="14" spellcheck="false" autocomplete="off">
-      <div class="rij"><button class="knop alt" id="wis-terug">Cancel</button><button class="knop rood" id="wis-ok" disabled>Delete</button></div>
+
+    <!-- Character sheet (C): equipment, stats, skill tree and quests; filled by character-sheet.js. -->
+    <div id="character-sheet" class="panel modal" hidden>
+      <div class="panel-header">
+        <div>
+          <h3 id="sheet-name">—</h3>
+          <small id="sheet-subtitle"></small>
+        </div>
+        <button class="close-btn" id="sheet-close" title="Close (C)">✕</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="equipment">
+          Equipment<span class="tab-badge" hidden></span>
+        </button>
+        <button class="tab" data-tab="stats">Stats<span class="tab-badge" hidden></span></button>
+        <button class="tab" data-tab="skills">Skills<span class="tab-badge" hidden></span></button>
+        <button class="tab" data-tab="quests">Quests<span class="tab-badge" hidden></span></button>
+      </div>
+      <div class="sheet-grid" id="sheet-tab-equipment">
+        <div class="sheet-preview-box">
+          <canvas id="sheet-preview" width="144" height="160"></canvas>
+          <div class="stat-table" id="sheet-stats"></div>
+        </div>
+        <div>
+          <div class="equip-slots" id="sheet-slots"></div>
+          <div class="sheet-bag-box">
+            <h4>Bag</h4>
+            <div class="sheet-items" id="sheet-bag"></div>
+          </div>
+          <p class="hint">
+            Click an item in your bag to equip it, and a slot to take it off again. Without clothes
+            you stand in your underwear.
+          </p>
+        </div>
+      </div>
+      <div id="sheet-tab-stats" hidden>
+        <p class="hint" id="sheet-stat-points"></p>
+        <div class="stat-grid">
+          <div id="sheet-stat-list"></div>
+          <div class="stat-table" id="sheet-derived"></div>
+        </div>
+      </div>
+      <div id="sheet-tab-skills" hidden>
+        <p class="hint" id="sheet-skill-points"></p>
+        <div class="skills" id="sheet-skill-tree"></div>
+      </div>
+      <div id="sheet-tab-quests" hidden><div class="quest-list" id="sheet-quest-list"></div></div>
     </div>
-  </div>
-</div>
-<div id="laden">Loading Eldoria…</div>
-<script type="module" src="./src/main.js"></script>
-</body>
+
+    <!-- World map (M); drawn by world-map.js. -->
+    <div id="world-map" class="panel modal" hidden>
+      <div class="panel-header">
+        <div>
+          <h3>World map</h3>
+          <small
+            >Scroll to zoom · drag to pan · click to walk there ·
+            <span id="world-map-position">—</span></small
+          >
+        </div>
+        <button class="close-btn" id="world-map-close" title="Close (M)">✕</button>
+      </div>
+      <canvas id="world-map-canvas"></canvas>
+      <div class="legend">
+        <span><i style="background: #fff"></i>you</span
+        ><span><i style="background: #7cc4ff"></i>players</span
+        ><span><i style="background: #f87171"></i>monsters</span
+        ><span><i style="background: #ffd1a6"></i>harmless</span
+        ><span><i style="background: #ffc857"></i>villagers</span>
+      </div>
+    </div>
+
+    <!-- Conversation with a villager; filled by dialogue.js. -->
+    <div id="dialogue" class="panel" hidden>
+      <canvas id="dialogue-portrait" width="48" height="64"></canvas>
+      <div class="dialogue-body">
+        <b id="dialogue-name"></b>
+        <p id="dialogue-text"></p>
+        <div id="dialogue-choices"></div>
+      </div>
+    </div>
+
+    <div id="admin" class="panel" hidden>
+      <div class="panel-header">
+        <div>
+          <h3>Admin</h3>
+          <small>Ctrl+Shift+A · local only, nothing here is secret</small>
+        </div>
+        <button class="close-btn" id="admin-close" title="Close">✕</button>
+      </div>
+      <div id="admin-content"></div>
+    </div>
+
+    <!-- Inventory (I); filled by inventory.js. -->
+    <div id="inventory" class="panel modal" hidden>
+      <div class="panel-header">
+        <div>
+          <h3>Inventory</h3>
+          <small
+            ><span id="inventory-count">0 / 20</span> slots ·
+            <i data-icon="ui_zeny" data-emoji="🪙"></i>
+            <span id="inventory-zeny">0</span> zeny</small
+          >
+        </div>
+        <button class="close-btn" id="inventory-close" title="Close (I)">✕</button>
+      </div>
+      <div class="inventory-layout">
+        <div class="item-grid" id="inventory-grid"></div>
+        <div class="item-detail" id="inventory-detail"></div>
+      </div>
+    </div>
+
+    <!-- Shop window; filled by character-sheet.js. -->
+    <div id="shop" class="panel modal" hidden>
+      <h3 id="shop-name">Merchant Bram</h3>
+      <p id="shop-greeting"></p>
+      <div id="shop-list"></div>
+      <div class="row">
+        <span>You have <b id="shop-zeny">0</b> zeny</span
+        ><button class="btn alt" id="shop-close">Close</button>
+      </div>
+    </div>
+
+    <!-- Start screens: character select, create, account and delete. -->
+    <div id="start" hidden>
+      <div id="select" class="screen">
+        <div class="select-left">
+          <h1 class="logo">Eldoria</h1>
+          <div class="sub">Chronicles of Magic · choose your hero</div>
+          <div class="select-hero"></div>
+        </div>
+        <div class="select-right panel">
+          <h3>Characters</h3>
+          <div id="select-list"></div>
+          <div id="select-account">
+            <span id="account-status">Guest account</span
+            ><button class="btn alt small" id="account-button">Log in</button>
+          </div>
+        </div>
+        <div class="select-buttons">
+          <button class="btn large" id="select-play">Enter World</button
+          ><button class="btn alt" id="select-create">Create New Character</button
+          ><button class="btn alt danger" id="select-delete">Delete Character</button>
+        </div>
+        <div class="help">
+          <kbd>click</kbd> walk / attack · <kbd>WASD</kbd> walk · <kbd>1</kbd>–<kbd>9</kbd> skills ·
+          <kbd>R</kbd> potion · <kbd>X</kbd> sit · <kbd>C</kbd> character · <kbd>I</kbd> inventory ·
+          <kbd>J</kbd> quests · <kbd>M</kbd> map · <kbd>Enter</kbd> chat · <kbd>Q</kbd>
+          <kbd>E</kbd> or right mouse button to rotate the camera · <kbd>scroll</kbd> zoom
+        </div>
+        <a class="back" href="../">← All games</a>
+      </div>
+      <div id="select-info"><b id="select-name"></b><small id="select-subtitle"></small></div>
+      <div id="create" class="screen" hidden>
+        <div class="card panel create-card">
+          <h2>Create a character</h2>
+          <div class="create-grid">
+            <div>
+              <label for="create-name">Name</label>
+              <input
+                id="create-name"
+                maxlength="14"
+                placeholder="e.g. Aria"
+                spellcheck="false"
+                autocomplete="off"
+              />
+              <label>Class</label>
+              <div id="create-classes" class="class-options"></div>
+              <label>Hair colour · <span id="create-hair-name"></span></label>
+              <div id="create-hair" class="hair-choices"></div>
+              <div id="create-error" class="error"></div>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn alt" id="create-back">Back</button
+            ><button class="btn" id="create-submit">Create</button>
+          </div>
+        </div>
+      </div>
+      <div id="account" class="screen" hidden>
+        <div class="card panel create-card">
+          <h2 id="account-title">Account</h2>
+          <p class="hint" id="account-hint">
+            Your heroes are saved on the server under a secret key in this browser. With an account
+            you can log in on any device and never lose them.
+          </p>
+          <div class="account-tabs">
+            <button class="tab active" data-account-tab="login">Log in</button
+            ><button class="tab" data-account-tab="register">Create account</button
+            ><button class="tab" data-account-tab="recover">Recover</button>
+          </div>
+          <form id="account-form" autocomplete="on">
+            <label for="account-name">Username</label
+            ><input id="account-name" maxlength="16" autocomplete="username" spellcheck="false" />
+            <div id="account-code-row" hidden>
+              <label for="account-code">Recovery code</label
+              ><input
+                id="account-code"
+                maxlength="19"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="XXXX-XXXX-XXXX-XXXX"
+              />
+            </div>
+            <label for="account-password" id="account-password-label">Password</label
+            ><input
+              id="account-password"
+              type="password"
+              maxlength="72"
+              autocomplete="current-password"
+            />
+            <div id="account-error" class="error"></div>
+            <div class="row">
+              <button type="button" class="btn alt" id="account-back">Back</button
+              ><button type="submit" class="btn" id="account-submit">Log in</button>
+            </div>
+          </form>
+          <div id="account-done" hidden>
+            <p id="account-done-text"></p>
+            <div class="recovery-code" id="account-recovery-code"></div>
+            <p class="hint">
+              Write this recovery code down. There is no e-mail reset: this code is the only way to
+              set a new password. It is shown once.
+            </p>
+            <div class="row">
+              <button type="button" class="btn" id="account-continue">Continue</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="delete" class="screen" hidden>
+        <div class="card panel">
+          <h2>Delete character</h2>
+          <p>
+            Delete <b id="delete-name"></b>? Level, gear, zeny and quests are lost. This cannot be
+            undone.
+          </p>
+          <label for="delete-confirm">Type the name to confirm</label>
+          <input id="delete-confirm" maxlength="14" spellcheck="false" autocomplete="off" />
+          <div class="row">
+            <button class="btn alt" id="delete-back">Cancel</button
+            ><button class="btn danger" id="delete-submit" disabled>Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="loading">Loading Eldoria…</div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
 </html>

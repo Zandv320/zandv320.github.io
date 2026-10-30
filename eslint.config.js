@@ -3,7 +3,16 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["dist/", "node_modules/", "velmora/", "peerjs.min.js", "runeveld/sprites/", "runeveld/_download/"] },
+  {
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "velmora/",
+      "peerjs.min.js",
+      "runeveld/sprites/",
+      "runeveld/_download/",
+    ],
+  },
   js.configs.recommended,
   {
     files: ["runeveld/src/**/*.js"],

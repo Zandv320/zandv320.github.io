@@ -1,0 +1,346 @@
+/* Eldoria – character select, as in WoW: a list of heroes on the right, the chosen hero large in view, and Enter
+   World / Create / Delete at the bottom. Creating takes a name and hair colour; deleting asks you to type the name. */
+import { heroLayers, drawHero, HAIR_CHOICES } from "./appearance.js";
+import { icon } from "./icons.js";
+import { CLASSES } from "./data.js";
+import { inForest, FOREST } from "./regions.js";
+import { escapeHtml } from "./ui.js";
+import { SHEETS } from "./sheets.js";
+import { Sprite2D } from "./sprites.js";
+import * as THREE from "three";
+
+export const MAX_HEROES = 6;
+/* Where the chosen hero stands: in front of the well on the square, facing the camera. */
+export const PODIUM = { x: 0, z: 4.5, yaw: 0, tilt: 36 };
+
+const DEFAULT_HAIR = "plum";
+const DEFAULT_CLASS = "swordsman";
+
+/**
+ * @param {object} deps {heroes() → list of hero records, save(), start(index), lastIndex() → index,
+ *   inVillage(x, z), scene, cameraState, camera, onCreate(hero), onDelete(name)}
+ * Screens: 'select', 'create', 'delete' and 'account' (account.js).
+ */
+export function createCharacterSelect(deps) {
+  const $ = (selector) => document.querySelector(selector);
+  const startScreen = $("#start");
+  const selectScreen = $("#select");
+  const createScreen = $("#create");
+  const deleteScreen = $("#delete");
+  const accountScreen = $("#account");
+  const avatarScale = SHEETS.hero.frameWidth / 64;
+
+  /* The hero really stands in the world: a sprite on the podium that gets the layers of the chosen hero. */
+  const podiumHero = new Sprite2D(SHEETS.hero, {
+    layers: heroLayers(CLASSES.swordsman.starterEquipment, DEFAULT_HAIR),
+  });
+  podiumHero.group.position.set(PODIUM.x, 0, PODIUM.z);
+  podiumHero.group.visible = false;
+  deps.scene.add(podiumHero.group);
+  let podiumKey = "";
+  const projected = new THREE.Vector3();
+
+  function setPodiumHero(layers, key) {
+    if (key === podiumKey) {
+      return;
+    }
+    podiumKey = key;
+    podiumHero.setLayers(layers);
+    podiumHero.play("idle", true);
+  }
+
+  let index = deps.lastIndex() || 0;
+  let hair = DEFAULT_HAIR;
+  let chosenClass = DEFAULT_CLASS;
+  let isOpenNow = false;
+  let screen = "select";
+
+  const classOf = (hero) => CLASSES[hero.classId] || CLASSES.swordsman;
+  const heroes = () => deps.heroes();
+  const zoneOf = (hero) => {
+    if (!hero.level) {
+      return "Never played";
+    }
+    const x = hero.x || 0;
+    const z = hero.z || 0;
+    if (inForest(x, z)) {
+      return FOREST.name;
+    }
+    return deps.inVillage(x, z) ? "Runeveld village" : "Runeveld fields";
+  };
+  const layersOf = (hero) =>
+    heroLayers(hero.equipment || classOf(hero).starterEquipment, hero.hair);
+
+  function renderList() {
+    const list = heroes();
+    index = Math.max(0, Math.min(list.length - 1, index));
+    const cards = list.map(
+      (hero, n) =>
+        `<button class="hero-card${n === index ? " active" : ""}" data-index="${n}"><canvas width="${36 * avatarScale}" height="${40 * avatarScale}"></canvas><div><b>${escapeHtml(hero.name)}</b><small>Level ${hero.level || 1} ${classOf(hero).name}</small><small class="zone">${escapeHtml(zoneOf(hero))}</small></div></button>`,
+    );
+    $("#select-list").innerHTML =
+      cards.join("") + `<div class="select-count">${list.length} / ${MAX_HEROES} characters</div>`;
+    $("#select-list")
+      .querySelectorAll(".hero-card")
+      .forEach((card, n) =>
+        drawHero(card.querySelector("canvas").getContext("2d"), layersOf(list[n]), 0),
+      );
+    const hero = list[index];
+    $("#select-name").textContent = hero ? hero.name : "No characters yet";
+    $("#select-subtitle").textContent = hero
+      ? `Level ${hero.level || 1} ${classOf(hero).name} · ${zoneOf(hero)}`
+      : "Create your first hero to begin.";
+    $("#select-play").disabled = !hero;
+    $("#select-delete").disabled = !hero;
+    $("#select-create").disabled = list.length >= MAX_HEROES;
+  }
+
+  function tick(dt) {
+    if (!isOpenNow) {
+      return;
+    }
+    const list = heroes();
+    const hero =
+      screen === "create"
+        ? { equipment: CLASSES[chosenClass].starterEquipment, hair, classId: chosenClass }
+        : list[index];
+    podiumHero.group.visible = !!hero && screen !== "delete";
+    if (hero) {
+      const layers = layersOf(hero);
+      const key = JSON.stringify([
+        hero.equipment || null,
+        hero.hair || null,
+        hero.classId || null,
+        layers.length,
+      ]);
+      setPodiumHero(layers, key);
+      /* Face the camera, even while it turns. */
+      podiumHero.face(Math.sin(deps.cameraState.yaw), Math.cos(deps.cameraState.yaw));
+      podiumHero.update(dt, deps.cameraState);
+    }
+    /* Name and level under the hero's feet. */
+    const info = $("#select-info");
+    info.hidden = screen !== "select" || !hero;
+    if (!info.hidden) {
+      projected.set(PODIUM.x, -0.15, PODIUM.z).project(deps.camera);
+      const screenX = (((projected.x + 1) / 2) * innerWidth).toFixed(1);
+      const screenY = (((1 - projected.y) / 2) * innerHeight).toFixed(1);
+      info.style.transform = `translate(${screenX}px,${screenY}px) translate(-50%,0)`;
+    }
+  }
+
+  /* What the camera looks at while the select screen is open: the hero a bit left of centre, at chest height. */
+  function cameraTarget() {
+    const isNarrow = matchMedia("(max-width:700px)").matches;
+    return isNarrow ? [PODIUM.x, 0.7, PODIUM.z + 3.6] : [PODIUM.x + 2.4, 0.7, PODIUM.z];
+  }
+
+  function showScreen(name) {
+    screen = name;
+    selectScreen.hidden = name !== "select";
+    createScreen.hidden = name !== "create";
+    deleteScreen.hidden = name !== "delete";
+    accountScreen.hidden = name !== "account";
+    if (name === "select") {
+      renderList();
+    }
+  }
+
+  const focusNameInput = () => {
+    if (!matchMedia("(pointer:coarse)").matches) {
+      $("#create-name").focus();
+    }
+  };
+
+  /* ---- select ---- */
+
+  $("#select-list").addEventListener("click", (event) => {
+    const card = event.target.closest(".hero-card");
+    if (!card) {
+      return;
+    }
+    const clicked = +card.dataset.index;
+    if (clicked === index) {
+      enterWorld();
+      return;
+    }
+    index = clicked;
+    renderList();
+  });
+  $("#select-list").addEventListener("dblclick", (event) => {
+    if (event.target.closest(".hero-card")) {
+      enterWorld();
+    }
+  });
+
+  function enterWorld() {
+    const list = heroes();
+    if (!list[index]) {
+      return;
+    }
+    isOpenNow = false;
+    startScreen.hidden = true;
+    podiumHero.group.visible = false;
+    $("#select-info").hidden = true;
+    deps.start(index);
+  }
+
+  $("#select-play").onclick = enterWorld;
+  $("#select-create").onclick = () => {
+    if (heroes().length >= MAX_HEROES) {
+      return;
+    }
+    hair = DEFAULT_HAIR;
+    chosenClass = DEFAULT_CLASS;
+    $("#create-name").value = "";
+    $("#create-error").textContent = "";
+    renderClasses();
+    renderHair();
+    showScreen("create");
+    focusNameInput();
+  };
+  $("#select-delete").onclick = () => {
+    const hero = heroes()[index];
+    if (!hero) {
+      return;
+    }
+    $("#delete-name").textContent = hero.name;
+    $("#delete-confirm").value = "";
+    $("#delete-submit").disabled = true;
+    showScreen("delete");
+    $("#delete-confirm").focus();
+  };
+
+  /* ---- create ---- */
+
+  function renderClasses() {
+    $("#create-classes").innerHTML = Object.entries(CLASSES)
+      .filter(([, heroClass]) => heroClass.tier === 1)
+      .map(
+        ([id, heroClass]) =>
+          `<button class="class-option${id === chosenClass ? " active" : ""}" data-class="${id}"><div class="class-icon">${icon("class_" + id, heroClass.icon)}</div><div><b>${heroClass.name}</b><small>${escapeHtml(heroClass.description)}</small></div></button>`,
+      )
+      .join("");
+  }
+  $("#create-classes").addEventListener("click", (event) => {
+    const button = event.target.closest(".class-option");
+    if (!button) {
+      return;
+    }
+    chosenClass = button.dataset.class;
+    renderClasses();
+  });
+
+  function renderHair() {
+    $("#create-hair").innerHTML = HAIR_CHOICES.map(
+      ([id, label, [r, g, b]]) =>
+        `<button class="hair${id === hair ? " active" : ""}" data-hair="${id}" title="${label}" style="background:rgb(${r},${g},${b})"></button>`,
+    ).join("");
+    $("#create-hair-name").textContent = HAIR_CHOICES.find((choice) => choice[0] === hair)[1];
+  }
+  $("#create-hair").addEventListener("click", (event) => {
+    const button = event.target.closest(".hair");
+    if (!button) {
+      return;
+    }
+    hair = button.dataset.hair;
+    renderHair();
+  });
+
+  function createHero() {
+    const name = $("#create-name").value.trim();
+    const list = heroes();
+    const error = $("#create-error");
+    if (name.length < 2 || name.length > 14) {
+      error.textContent = "A name has 2 to 14 characters.";
+      return;
+    }
+    if (!/^[\p{L}\p{N} '-]+$/u.test(name)) {
+      error.textContent = "Letters, numbers, spaces and - only.";
+      return;
+    }
+    if (list.some((hero) => hero.name.toLowerCase() === name.toLowerCase())) {
+      error.textContent = "You already have a hero with that name.";
+      return;
+    }
+    list.push({ name, hair, classId: chosenClass });
+    deps.save();
+    if (deps.onCreate) {
+      deps.onCreate(list[list.length - 1]);
+    }
+    index = list.length - 1;
+    showScreen("select");
+  }
+  $("#create-submit").onclick = createHero;
+  $("#create-name").onkeydown = (event) => {
+    if (event.key === "Enter") {
+      createHero();
+    }
+  };
+  $("#create-back").onclick = () => showScreen("select");
+
+  /* ---- delete: typing the name is the confirmation ---- */
+
+  $("#delete-confirm").oninput = () => {
+    const hero = heroes()[index];
+    $("#delete-submit").disabled =
+      !hero || $("#delete-confirm").value.trim().toLowerCase() !== hero.name.toLowerCase();
+  };
+  $("#delete-submit").onclick = () => {
+    const list = heroes();
+    if ($("#delete-submit").disabled || !list[index]) {
+      return;
+    }
+    const removed = list.splice(index, 1)[0];
+    deps.save();
+    if (deps.onDelete) {
+      deps.onDelete(removed.name);
+    }
+    index = Math.max(0, index - 1);
+    showScreen("select");
+  };
+  $("#delete-back").onclick = () => showScreen("select");
+
+  /* Keys: arrows choose, Enter enters the world, Escape goes back. */
+  addEventListener("keydown", (event) => {
+    if (!isOpenNow) {
+      return;
+    }
+    if (screen !== "select") {
+      if (event.key === "Escape") {
+        showScreen("select");
+      }
+      return;
+    }
+    if (document.activeElement && document.activeElement.tagName === "INPUT") {
+      return;
+    }
+    const list = heroes();
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!list.length) {
+        return;
+      }
+      const step = event.key === "ArrowDown" ? 1 : list.length - 1;
+      index = (index + step) % list.length;
+      renderList();
+    } else if (event.key === "Enter") {
+      enterWorld();
+    }
+  });
+
+  function show() {
+    isOpenNow = true;
+    startScreen.hidden = false;
+    showScreen(heroes().length ? "select" : "create");
+    if (screen === "create") {
+      hair = DEFAULT_HAIR;
+      chosenClass = DEFAULT_CLASS;
+      renderClasses();
+      renderHair();
+      focusNameInput();
+    }
+  }
+
+  return { show, tick, isOpen: () => isOpenNow, cameraTarget, showScreen };
+}

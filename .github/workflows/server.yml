@@ -1,10 +1,17 @@
-name: Rol de spelserver uit naar Cloudflare
+name: Deploy the game server to Cloudflare
 
 on:
   push:
     branches: [master]
-    # de server bundelt ook de spelregels en spelgegevens van de client mee
-    paths: ['server/**', '.github/workflows/server.yml', 'runeveld/src/data.js', 'runeveld/src/gebied.js', 'runeveld/src/regels/**']
+    # the server also bundles the client's game rules and game data
+    paths:
+      [
+        "server/**",
+        ".github/workflows/server.yml",
+        "runeveld/src/data.js",
+        "runeveld/src/regions.js",
+        "runeveld/src/rules/**",
+      ]
   workflow_dispatch:
 
 jobs:
@@ -12,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy met wrangler
+      - name: Deploy with wrangler
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

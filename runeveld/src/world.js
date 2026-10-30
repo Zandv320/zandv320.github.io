@@ -1,281 +1,834 @@
-/* Runeveld – renderer, camera, grond, decor en botsingen.
-   Maat: 1 wereld-eenheid = 16 pixels pixel-art (PPU). Een grondtegel van 32 px is 1,5 eenheid.
-   De wereld is een vierkant van -VELD..VELD; in het midden ligt het dorp (-DORP..DORP) achter een palissade
-   met een poort in het noorden en het zuiden. Daarbuiten liggen velden en bos waar de monsters leven. */
-import * as THREE from 'three';
-import {laadTextuur,maakTex,Bord,FACTOR,GLAD,PIXEL,TELEFOON} from './sprites.js';
-import * as B from './bouw.js';
-import {BOS,inBos,inVeld,veldRand,binnenWereld,VALE,inVale,inStad,inKasteel} from './gebied.js';
-export {binnenWereld};
-import {bouwBos} from './bos.js';
-import {bouwStad} from './stad.js';
+/* Eldoria – renderer, camera, ground, scenery and collisions.
+   Scale: 1 world unit = 16 pixels of pixel art (PPU). A 32 px ground tile spans 2 units.
+   The world is a square of -FIELD_SIZE..FIELD_SIZE; in the middle lies the village
+   (-VILLAGE_HALF_SIZE..VILLAGE_HALF_SIZE) behind a palisade with a gate in the north and the south. Around it lie
+   the fields and the forest where the monsters live. */
+import * as THREE from "three";
+import {
+  loadTexture,
+  makeTexture,
+  Billboard,
+  SHEET_SCALE,
+  SMOOTH,
+  PIXEL_SCALE,
+  IS_PHONE,
+} from "./sprites.js";
+import * as builders from "./builders.js";
+import {
+  FOREST,
+  inForest,
+  inFields,
+  fieldEdge,
+  insideWorld,
+  VALE,
+  inVale,
+  inCapital,
+  inCastle,
+} from "./regions.js";
+import { buildForest } from "./forest.js";
+import { buildCapital } from "./capital.js";
 
-export const VELD=60;                     /* halve breedte van de wereld */
-export const DORP=22;                     /* halve breedte van het dorp */
-export const PLEIN=8;                     /* straal van het keienplein */
-export const POORT=2.8;                   /* halve breedte van de poorten (op het pad) */
-export const PPU=16;
-export const canvas=document.getElementById('c');
-export const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
-/* pixel-look: de scene wordt op lage resolutie gerenderd en zonder vervaging opgeschaald (canvas: image-rendering) */
-renderer.setPixelRatio(PIXEL>1?1/PIXEL:Math.min(devicePixelRatio,2));canvas.style.imageRendering=PIXEL>1?'pixelated':'auto';
-renderer.outputColorSpace=THREE.SRGBColorSpace;
-/* harde, pixelige slagschaduwen van de 3D-omgeving (BasicShadowMap: geen verzachting) */
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.BasicShadowMap;
+export { insideWorld };
 
-export const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x87c9ee);
-/* geen mist: de orthografische camera staat op vaste afstand en de wereld eindigt in een bomenrij */
-/* licht voor de 3D-modellen; sprites zijn onbelicht en merken hier niets van */
-export const hemi=new THREE.HemisphereLight(0xdff3ff,0x6a8a46,2.2);scene.add(hemi);
-export const zon=new THREE.DirectionalLight(0xfff1d6,2.6);zon.position.set(20,40,15);scene.add(zon);scene.add(zon.target);
-zon.castShadow=true;zon.shadow.mapSize.set(TELEFOON?2048:4096,TELEFOON?2048:4096);zon.shadow.bias=-.0005;
-/* het bereik dekt het veld en het bos; de zon staat zo dat de projectie het bos (z tot -112) ook raakt */
-zon.position.set(20,40,-10);zon.target.position.set(0,0,-26);
-Object.assign(zon.shadow.camera,{left:-56,right:56,top:66,bottom:-66,near:1,far:160});
-/* de schaduwcamera reist mee met de speler (de wereld is te groot voor één schaduwkaart); op hele eenheden, anders flikkeren de randen */
-/* De schaduwkaart wordt alleen opnieuw getekend als het zicht verschuift of de zoom verandert: alles wat slagschaduw
-   werpt staat stil (sprites hebben een eigen blobschaduw). De kaart dekt precies het zicht plus een rand. */
-renderer.shadowMap.autoUpdate=false;
-let zonX=1e9,zonZ=1e9,zonW=0,zonH=0;
-export function volgZon(x,z){
-  x=Math.round(x);z=Math.round(z);
-  const hw=Math.ceil((camera.right-camera.left)/2+14),hh=Math.ceil((camera.top-camera.bottom)/2/Math.sin(cam.tilt)+18);
-  if(x===zonX&&z===zonZ&&hw===zonW&&hh===zonH)return;
-  zonX=x;zonZ=z;zonW=hw;zonH=hh;zon.position.set(x+20,40,z-10);zon.target.position.set(x,0,z-26);
-  const sc=zon.shadow.camera;sc.left=-hw;sc.right=hw;sc.top=hh;sc.bottom=-hh;sc.updateProjectionMatrix();
-  renderer.shadowMap.needsUpdate=true;
+export const FIELD_SIZE = 60; /* half the width of the world */
+export const VILLAGE_HALF_SIZE = 22; /* half the width of the village */
+export const SQUARE_RADIUS = 8; /* radius of the cobbled village square */
+export const GATE_HALF_WIDTH = 2.8; /* half the width of the gates (on the road) */
+export const PPU = 16;
+
+export const canvas = document.getElementById("game");
+export const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: false,
+  powerPreference: "high-performance",
+});
+/* pixel look: the scene is rendered at low resolution and scaled up without blurring (canvas image-rendering) */
+renderer.setPixelRatio(PIXEL_SCALE > 1 ? 1 / PIXEL_SCALE : Math.min(devicePixelRatio, 2));
+canvas.style.imageRendering = PIXEL_SCALE > 1 ? "pixelated" : "auto";
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+/* hard, pixelated cast shadows from the 3D scenery (BasicShadowMap: no softening) */
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.BasicShadowMap;
+
+export const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87c9ee);
+/* No fog: the orthographic camera sits at a fixed distance and the world ends in a row of trees.
+   The lights are for the 3D models; sprites are unlit and unaffected. */
+export const hemiLight = new THREE.HemisphereLight(0xdff3ff, 0x6a8a46, 2.2);
+scene.add(hemiLight);
+export const sun = new THREE.DirectionalLight(0xfff1d6, 2.6);
+sun.position.set(20, 40, 15);
+scene.add(sun);
+scene.add(sun.target);
+sun.castShadow = true;
+const shadowMapSize = IS_PHONE ? 2048 : 4096;
+sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
+sun.shadow.bias = -0.0005;
+/* the range covers the field and the forest; the sun is placed so the projection also reaches the forest
+   (z down to -112) */
+sun.position.set(20, 40, -10);
+sun.target.position.set(0, 0, -26);
+Object.assign(sun.shadow.camera, { left: -56, right: 56, top: 66, bottom: -66, near: 1, far: 160 });
+
+/* The shadow camera travels with the player (the world is too large for one shadow map), on whole units, otherwise
+   the edges flicker. The shadow map is only redrawn when the view shifts or the zoom changes: everything that casts
+   a shadow stands still (sprites have their own blob shadow). The map covers exactly the view plus a margin. */
+renderer.shadowMap.autoUpdate = false;
+let sunX = 1e9;
+let sunZ = 1e9;
+let sunHalfWidth = 0;
+let sunHalfHeight = 0;
+
+/** Moves the shadow-casting sun along with (x, z) and redraws the shadow map when the covered area changed. */
+export function followSun(x, z) {
+  x = Math.round(x);
+  z = Math.round(z);
+  const halfWidth = Math.ceil((camera.right - camera.left) / 2 + 14);
+  const halfHeight = Math.ceil((camera.top - camera.bottom) / 2 / Math.sin(cameraState.tilt) + 18);
+  if (x === sunX && z === sunZ && halfWidth === sunHalfWidth && halfHeight === sunHalfHeight) {
+    return;
+  }
+  sunX = x;
+  sunZ = z;
+  sunHalfWidth = halfWidth;
+  sunHalfHeight = halfHeight;
+  sun.position.set(x + 20, 40, z - 10);
+  sun.target.position.set(x, 0, z - 26);
+  const shadowCamera = sun.shadow.camera;
+  shadowCamera.left = -halfWidth;
+  shadowCamera.right = halfWidth;
+  shadowCamera.top = halfHeight;
+  shadowCamera.bottom = -halfHeight;
+  shadowCamera.updateProjectionMatrix();
+  renderer.shadowMap.needsUpdate = true;
 }
-export function schaduwVernieuwen(){renderer.shadowMap.needsUpdate=true}
 
-/* Pixelcamera: orthografisch, schuin van boven (zoals RO), met een vaste pixelschaal: cam.px gerenderde pixels per
-   wereld-eenheid. Op 16 valt elke sprite-pixel precies op één gerenderde pixel. De camera klikt op het pixelraster vast
-   (cam.r en cam.u zijn de schermassen), zodat niets verspringt zolang er niets beweegt. */
-export const camera=new THREE.OrthographicCamera(-1,1,1,-1,1,200);
-/* zoomstappen in gerenderde pixels per eenheid. Standaard 32 CSS-pixels per eenheid: in de pixelmodus is dat 16 gerenderde
-   pixels (halve resolutie), in de gladde modus 32 × de pixelverhouding van het scherm, zodat de 2×-sprites 1:1 staan. */
-const PR=GLAD?renderer.getPixelRatio():1;
-export const ZOOMS=(GLAD?[16,24,32,48,64]:[8,12,16,24,32]).map(v=>v*PR);
-export const cam={yaw:0,tilt:THREE.MathUtils.degToRad(50),px:(GLAD?32:16)*PR,doel:new THREE.Vector3(0,0,0),r:new THREE.Vector3(1,0,0),u:new THREE.Vector3(0,1,0),afstand:60};
-const _e=new THREE.Vector3();
-export function schud(kracht=.25,duur=.22){cam.schudK=Math.max(cam.schudK||0,kracht);cam.schudT=duur;cam.schudD=duur}
-export function updateCamera(){
-  const {yaw,tilt,afstand,doel,px}=cam;
-  const h=afstand*Math.sin(tilt),r=afstand*Math.cos(tilt);
-  camera.position.set(doel.x+Math.sin(yaw)*r,doel.y+h,doel.z+Math.cos(yaw)*r);
-  camera.lookAt(doel.x,doel.y,doel.z);camera.updateMatrixWorld();
-  cam.r.setFromMatrixColumn(camera.matrixWorld,0);cam.u.setFromMatrixColumn(camera.matrixWorld,1);
-  if(cam.schudT>0){const k=cam.schudK*(cam.schudT/cam.schudD);camera.position.addScaledVector(cam.r,(Math.random()*2-1)*k).addScaledVector(cam.u,(Math.random()*2-1)*k)}
-  else cam.schudK=0;
-  /* vastklikken op hele gerenderde pixels langs de schermassen */
-  _e.copy(camera.position);
-  const er=_e.dot(cam.r),eu=_e.dot(cam.u);
-  camera.position.addScaledVector(cam.r,Math.round(er*px)/px-er).addScaledVector(cam.u,Math.round(eu*px)/px-eu);
+export function refreshShadows() {
+  renderer.shadowMap.needsUpdate = true;
+}
+
+/* Pixel camera: orthographic, looking down at an angle (like RO), with a fixed pixel scale: cameraState.px rendered
+   pixels per world unit. At 16 every sprite pixel lands exactly on one rendered pixel. The camera snaps to the
+   pixel grid (cameraState.right and cameraState.up are the screen axes), so nothing jitters while nothing moves. */
+export const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 200);
+/* Zoom steps in rendered pixels per unit. Default is 32 CSS pixels per unit: in pixel mode that is 16 rendered
+   pixels (half resolution), in smooth mode 32 × the screen's pixel ratio, so the 2x sprites are 1:1. */
+const pixelRatio = SMOOTH ? renderer.getPixelRatio() : 1;
+export const ZOOM_LEVELS = (SMOOTH ? [16, 24, 32, 48, 64] : [8, 12, 16, 24, 32]).map(
+  (level) => level * pixelRatio,
+);
+export const cameraState = {
+  yaw: 0,
+  tilt: THREE.MathUtils.degToRad(50),
+  px: (SMOOTH ? 32 : 16) * pixelRatio,
+  target: new THREE.Vector3(0, 0, 0),
+  right: new THREE.Vector3(1, 0, 0),
+  up: new THREE.Vector3(0, 1, 0),
+  distance: 60,
+};
+const scratchVector = new THREE.Vector3();
+
+/** Shakes the camera with `strength` units, fading out over `duration` seconds. */
+export function shakeCamera(strength = 0.25, duration = 0.22) {
+  cameraState.shakeStrength = Math.max(cameraState.shakeStrength || 0, strength);
+  cameraState.shakeTime = duration;
+  cameraState.shakeDuration = duration;
+}
+
+export function updateCamera() {
+  const { yaw, tilt, distance, target, px } = cameraState;
+  const height = distance * Math.sin(tilt);
+  const horizontal = distance * Math.cos(tilt);
+  camera.position.set(
+    target.x + Math.sin(yaw) * horizontal,
+    target.y + height,
+    target.z + Math.cos(yaw) * horizontal,
+  );
+  camera.lookAt(target.x, target.y, target.z);
+  camera.updateMatrixWorld();
+  cameraState.right.setFromMatrixColumn(camera.matrixWorld, 0);
+  cameraState.up.setFromMatrixColumn(camera.matrixWorld, 1);
+  if (cameraState.shakeTime > 0) {
+    const amount = cameraState.shakeStrength * (cameraState.shakeTime / cameraState.shakeDuration);
+    camera.position
+      .addScaledVector(cameraState.right, (Math.random() * 2 - 1) * amount)
+      .addScaledVector(cameraState.up, (Math.random() * 2 - 1) * amount);
+  } else {
+    cameraState.shakeStrength = 0;
+  }
+  /* snap to whole rendered pixels along the screen axes */
+  scratchVector.copy(camera.position);
+  const alongRight = scratchVector.dot(cameraState.right);
+  const alongUp = scratchVector.dot(cameraState.up);
+  camera.position
+    .addScaledVector(cameraState.right, Math.round(alongRight * px) / px - alongRight)
+    .addScaledVector(cameraState.up, Math.round(alongUp * px) / px - alongUp);
   camera.updateMatrixWorld();
 }
-/* zet een wereldpositie op het pixelraster van de huidige camera (voor sprites, zodat hun pixels niet verschuiven) */
-export function snap(v){const er=v.dot(cam.r),eu=v.dot(cam.u),px=cam.px;return v.addScaledVector(cam.r,Math.round(er*px)/px-er).addScaledVector(cam.u,Math.round(eu*px)/px-eu)}
-export function pasAan(){
-  const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);
-  const rw=Math.floor(w*renderer.getPixelRatio()),rh=Math.floor(h*renderer.getPixelRatio());   /* gerenderde pixels */
-  camera.left=-rw/cam.px/2;camera.right=rw/cam.px/2;camera.top=rh/cam.px/2;camera.bottom=-rh/cam.px/2;camera.updateProjectionMatrix();
-}
-export function zetZoom(px){cam.px=px;pasAan()}
-addEventListener('resize',pasAan);pasAan();
 
-/* ---------- gebieden ---------- */
-export const inDorp=(x,z)=>Math.abs(x)<DORP&&Math.abs(z)<DORP;
-export const opPad=(x,z)=>Math.abs(x)<1.6;
-
-/* ---------- botsingen ---------- */
-export const obstakels=[];                /* {x,z,r} */
-/* buiten de wereld? dan terug naar binnen: in kleine stappen richting het dorp of het bosmidden, wat het dichtst bij is */
-function klem(x,z,m=1.2){
-  if(binnenWereld(x,z,m))return[x,z];
-  let best=null,bd=1e9;
-  for(const[cx,cz]of[[0,0],[BOS.cx,BOS.cz],[VALE.cx,VALE.cz]]){const dx=cx-x,dz=cz-z,d=Math.hypot(dx,dz)||1;
-    for(let s=.3;s<60;s+=.3){const px=x+dx/d*s,pz=z+dz/d*s;if(binnenWereld(px,pz,m)){if(s<bd){bd=s;best=[px,pz]}break}}}
-  return best||[0,4];
+/** Puts a world position on the current camera's pixel grid (for sprites, so their pixels do not shift). */
+export function snapToPixel(position) {
+  const alongRight = position.dot(cameraState.right);
+  const alongUp = position.dot(cameraState.up);
+  const px = cameraState.px;
+  return position
+    .addScaledVector(cameraState.right, Math.round(alongRight * px) / px - alongRight)
+    .addScaledVector(cameraState.up, Math.round(alongUp * px) / px - alongUp);
 }
-export function botsing(x,z,r=.35){
-  [x,z]=klem(x,z);
-  for(const o of obstakels){const dx=x-o.x,dz=z-o.z,d=Math.hypot(dx,dz),min=o.r+r;
-    if(d<min){if(d<1e-4){x+=min}else{x=o.x+dx/d*min;z=o.z+dz/d*min}}}
-  return[x,z];
-}
-export function vrij(x,z,r=.5){if(!binnenWereld(x,z))return false;for(const o of obstakels)if(Math.hypot(x-o.x,z-o.z)<o.r+r)return false;return true}
 
-/* ---------- muis → grondpunt ---------- */
-const ray=new THREE.Raycaster(),grondVlak=new THREE.Plane(new THREE.Vector3(0,1,0),0),_v=new THREE.Vector2(),_p=new THREE.Vector3();
-export function straal(cx,cy){_v.set(cx/innerWidth*2-1,-(cy/innerHeight)*2+1);ray.setFromCamera(_v,camera);return ray}
-export function grondPunt(cx,cy){straal(cx,cy);return ray.ray.intersectPlane(grondVlak,_p)?_p.clone():null}
-
-/* ---------- grond: tegelkaart ---------- */
-const TILE=32,CPU=2;                      /* eenheden per grondtegel: 32 px op 2 eenheden = 16 px per eenheid, net als de sprites */
-/* de grondkaart dekt het veld en het bos erboven */
-const X0=-VELD-10,X1=VELD+10,Z0=BOS.z0,Z1=VELD+10,NX=Math.round((X1-X0)/CPU),NZ=Math.round((Z1-Z0)/CPU);
-export function celType(x,z){ /* wereldcoördinaten → 'g' gras, 'c' keien, 'p' pad */
-  if(Math.hypot(x,z)<PLEIN)return 'c';
-  if(opPad(x,z))return 'p';
-  return 'g';
+export function resize() {
+  const width = innerWidth;
+  const height = innerHeight;
+  renderer.setSize(width, height, false);
+  /* rendered pixels */
+  const renderedWidth = Math.floor(width * renderer.getPixelRatio());
+  const renderedHeight = Math.floor(height * renderer.getPixelRatio());
+  camera.left = -renderedWidth / cameraState.px / 2;
+  camera.right = renderedWidth / cameraState.px / 2;
+  camera.top = renderedHeight / cameraState.px / 2;
+  camera.bottom = -renderedHeight / cameraState.px / 2;
+  camera.updateProjectionMatrix();
 }
-function toeval(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
-function bouwGrond(atlas,decor){
-  const R=toeval(12345);
-  const c=document.createElement('canvas');c.width=NX*TILE;c.height=NZ*TILE;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
-  const w2px=v=>(v-X0)/CPU*TILE,w2pz=v=>(v-Z0)/CPU*TILE;          /* wereld → canvaspixels */
-  for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
-    const x=(i+.5)*CPU+X0,z=(j+.5)*CPU+Z0;
-    const idx=(R()<.12?2:R()<.3?1:0);   /* plein en pad zijn 3D-vlakken met kit-texturen (bouw.js) */
-    g.drawImage(atlas,idx*TILE,0,TILE,TILE,i*TILE,j*TILE,TILE,TILE);
+
+export function setZoom(px) {
+  cameraState.px = px;
+  resize();
+}
+
+addEventListener("resize", resize);
+resize();
+
+/* ---------- areas ---------- */
+export const inVillage = (x, z) =>
+  Math.abs(x) < VILLAGE_HALF_SIZE && Math.abs(z) < VILLAGE_HALF_SIZE;
+export const onRoad = (x) => Math.abs(x) < 1.6;
+
+/* ---------- collisions ---------- */
+export const obstacles = []; /* {x, z, r} */
+
+/* Outside the world? Then back inside: in small steps towards the village, the forest centre or the vale centre,
+   whichever is closest. */
+function clampToWorld(x, z, margin = 1.2) {
+  if (insideWorld(x, z, margin)) {
+    return [x, z];
   }
-  /* het bos: donkerder, koeler gras; buiten de wereld (achter de bomenrand) nog donkerder. Per halve tegel, zodat de
-     golvende randen te volgen zijn; de bomen eroverheen maken de trapjes onzichtbaar */
-  const H=TILE/4,S=CPU/4;
-  for(let j=0;j<NZ*4;j++)for(let i=0;i<NX*4;i++){const x=(i+.5)*S+X0,z=(j+.5)*S+Z0;
-    if(inBos(x,z)&&!inVeld(x,z))g.fillStyle='rgba(22,44,38,.34)';else if(!inBos(x,z,-2.5)&&!inVeld(x,z,-2.5)&&!inVale(x,z,-2.5))g.fillStyle='rgba(10,28,20,.5)';else continue;
-    g.fillRect(i*H,j*H,H,H)}
-  /* wat bloemen en steentjes in het gras, spaarzaam en alleen buiten het dorp wat dichter; in het bos alleen steentjes */
-  for(let k=0;k<380;k++){const x=X0+R()*(X1-X0),z=Z0+R()*(Z1-Z0);
-    if(inVeld(x,z)){if(celType(x,z)!=='g'||(inDorp(x,z)&&R()<.7))continue}else if(!inBos(x,z))continue;
-    const img=inBos(x,z)?decor.rots2:[decor.bloemen,decor.bloemen2,decor.rots2,decor.bloemen][Math.floor(R()*4)];
-    g.drawImage(img,Math.round(w2px(x)-img.width/2),Math.round(w2pz(z)-img.height/2))}
-  const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
-  if(GLAD){tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4}else{tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false}
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0),new THREE.MeshBasicMaterial({map:tex}));
-  mesh.rotation.x=-Math.PI/2;mesh.position.set((X0+X1)/2,0,(Z0+Z1)/2);scene.add(mesh);
-  /* schaduwvanger: een doorzichtig vlak dat alleen de slagschaduwen van gebouwen en hekken toont, in de omlijningskleur */
-  const vanger=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0),new THREE.ShadowMaterial({color:0x1a1540,opacity:.38}));
-  vanger.rotation.x=-Math.PI/2;vanger.position.set((X0+X1)/2,.03,(Z0+Z1)/2);vanger.receiveShadow=true;vanger.renderOrder=1;scene.add(vanger);
-  /* wijde omgeving buiten de wereld */
-  bouwGrondVale(atlas,decor);
-  const buiten=new THREE.Mesh(new THREE.PlaneGeometry(700,700),new THREE.MeshBasicMaterial({color:0x4f7f2a}));
-  buiten.rotation.x=-Math.PI/2;buiten.position.y=-.01;scene.add(buiten);
-}
-
-/* de grond van Kingsvale: een eigen tegelkaart (één grote kaart voor alles zou te veel textuurgeheugen vragen).
-   Waar het veld overlapt blijft hij doorzichtig; de weiden zijn iets warmer van kleur, de stad krijgt aangestampte aarde. */
-function bouwGrondVale(atlas,decor){
-  const R=toeval(31337);
-  const VX0=VALE.x0-8,VX1=-60,VZ0=VALE.z0-6,VZ1=VALE.z1+6,VNX=Math.round((VX1-VX0)/CPU),VNZ=Math.round((VZ1-VZ0)/CPU);
-  const c=document.createElement('canvas');c.width=VNX*TILE;c.height=VNZ*TILE;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
-  const w2px=v=>(v-VX0)/CPU*TILE,w2pz=v=>(v-VZ0)/CPU*TILE;
-  for(let j=0;j<VNZ;j++)for(let i=0;i<VNX;i++){
-    const x=(i+.5)*CPU+VX0,z=(j+.5)*CPU+VZ0;
-    if(inVeld(x,z,-1)&&x>-70)continue;                       /* daar ligt de grond van het veld al */
-    const idx=(R()<.12?2:R()<.3?1:0);g.drawImage(atlas,idx*TILE,0,TILE,TILE,i*TILE,j*TILE,TILE,TILE);
-  }
-  const H=TILE/4,S=CPU/4;
-  for(let j=0;j<VNZ*4;j++)for(let i=0;i<VNX*4;i++){const x=(i+.5)*S+VX0,z=(j+.5)*S+VZ0;
-    if(inVeld(x,z,-1)&&x>-70)continue;
-    if(inStad(x,z,.7))g.fillStyle=inKasteel(x,z)?'rgba(120,110,100,.5)':'rgba(150,122,80,.42)';
-    else if(inVale(x,z))g.fillStyle='rgba(140,120,30,.1)';
-    else if(!inVale(x,z,-2.5)&&!inVeld(x,z,-2.5))g.fillStyle='rgba(10,28,20,.5)';else continue;
-    g.fillRect(i*H,j*H,H,H)}
-  for(let k=0;k<420;k++){const x=VX0+R()*(VX1-VX0),z=VZ0+R()*(VZ1-VZ0);
-    if(!inVale(x,z)||inVeld(x,z)||inStad(x,z,-1))continue;
-    const img=[decor.bloemen,decor.bloemen2,decor.rots2,decor.bloemen][Math.floor(R()*4)];
-    g.drawImage(img,Math.round(w2px(x)-img.width/2),Math.round(w2pz(z)-img.height/2))}
-  const tex=maakTex(c,false);tex.magFilter=GLAD?THREE.LinearFilter:THREE.NearestFilter;
-  if(GLAD){tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=4}else{tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false}
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(VX1-VX0,VZ1-VZ0),new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:.5}));
-  mesh.rotation.x=-Math.PI/2;mesh.position.set((VX0+VX1)/2,.006,(VZ0+VZ1)/2);scene.add(mesh);
-  const vanger=new THREE.Mesh(new THREE.PlaneGeometry(VX1-VX0,VZ1-VZ0),new THREE.ShadowMaterial({color:0x1a1540,opacity:.38}));
-  vanger.rotation.x=-Math.PI/2;vanger.position.set((VX0+VX1)/2,.031,(VZ0+VZ1)/2);vanger.receiveShadow=true;vanger.renderOrder=1;scene.add(vanger);
-}
-
-/* ---------- decor ---------- */
-export const borden=[];
-/* Billboards (bomen, struiken, kleine spullen): dorpsobjecten (32px-kit) op .65, bomen en rotsen (16px-kit) op 1.3,
-   dan kloppen ze met de held van 24 px. */
-async function prop(naam,x,z,{r=0,schaduw=0,schaal=.65}={}){
-  const tex=await laadTextuur('sprites/'+naam+'.png');if(!tex)throw new Error('Sprite ontbreekt: '+naam);
-  const w=tex.image.width/FACTOR/PPU*schaal,h=tex.image.height/FACTOR/PPU*schaal;
-  if(r>0)obstakels.push({x,z,r});
-  const b=new Bord(tex,w,h,{schaduw});b.g.position.set(x,0,z);scene.add(b.g);borden.push(b);b.naam=naam;b.x=x;b.z=z;b.schaal=schaal;
-  return b;
-}
-/* pixel-3D-bouwsels (bouw.js): gebouwen, kramen, put, hekken, tonnen. `rot`: draaiing om de y-as; de voorkant wijst naar +z. */
-function bouw(g,x,z,{rot=0,r=0}={}){g.position.set(x,0,z);g.rotation.y=rot;g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});scene.add(g);if(r>0)obstakels.push({x,z,r});return g}
-
-export async function bouwWereld(){
-  const[atlas,bloemen,bloemen2,rots2]=await Promise.all(['grond','bloemen','bloemen2','rots2'].map(n=>laadTextuur('sprites/'+n+'.png',{ruw:true})));
-  if(!atlas||!bloemen||!bloemen2||!rots2)throw new Error('Grondsprites ontbreken');
-  bouwGrond(atlas.image,{bloemen:bloemen.image,bloemen2:bloemen2.image,rots2:rots2.image});
-  await B.laadTexturen();
-  const P=[];
-  /* ----- het dorp: een plein met de put, een kruising van wegen, huizen aan de wegen, en leven eromheen ----- */
-  scene.add(B.plein(PLEIN));
-  scene.add(B.pad(3.2,VELD*2));                                   /* de doorgaande weg noord-zuid, door beide poorten */
-  scene.add(B.pad(2.6,DORP*2-2,{rot:Math.PI/2}));                 /* de dorpsweg oost-west */
-  bouw(B.put(),0,0,{r:1.1});
-  /* het plein: kramen, bankjes, lantaarns, koopwaar */
-  bouw(B.kraam({stof:'stof_rood'}),-8.2,-6.2,{r:1.7,rot:.25});bouw(B.kraam({stof:'stof_groen',w:2.8}),8.4,-6.4,{r:1.6,rot:-.25});
-  bouw(B.ton(),-5.6,-8.6,{r:.45});bouw(B.ton(),-4.6,-8.9,{r:.45});bouw(B.kist(),-11,-8.4,{r:.5,rot:.3});bouw(B.kist(.7),11.4,-8.2,{r:.45,rot:.5});bouw(B.ton(),12.2,-7.4,{r:.45});
-  /* vier bankjes op de diagonalen rond de put, allemaal naar de put gericht */
-  for(const hoek of[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4])bouw(B.bank(),Math.sin(hoek)*4.6,Math.cos(hoek)*4.6,{r:.8,rot:hoek+Math.PI});
-  for(const[x,z]of[[-6.5,6.5],[6.5,6.5],[6.5,-6.5],[-6.5,-6.5]])P.push(prop('lantaarn',x*1.3,z*1.3,{r:.25}));
-  /* huizen aan de oost-westweg, elk met een paadje van de deur naar de weg */
-  const huizen=[
-    ['vakwerk',{w:6,d:5,muur:'muur'},-13,-10,0],
-    ['taverne',{w:7.5,d:5.5,h:3.4,dakH:2.6,muur:'muur',ramen:3},13,-10,0],
-    ['houten',{w:6.5,d:5,muur:'hout',ramen:2},13.5,10.5,Math.PI],
-    ['smid',{w:6,d:5,h:2.8,dakH:2,muur:'steen',ramen:1},-13.5,10.5,Math.PI],
+  let best = null;
+  let bestDistance = 1e9;
+  const anchors = [
+    [0, 0],
+    [FOREST.cx, FOREST.cz],
+    [VALE.cx, VALE.cz],
   ];
-  for(const[,opt,x,z,rot]of huizen){
-    bouw(B.huis(opt),x,z,{r:Math.max(opt.w,opt.d)/2+.4,rot});
-    const deurX=x+(rot?1:-1)*(-opt.w/2+1.3),deurZ=z+(rot?-1:1)*opt.d/2;        /* de deur zit links in de voorgevel */
-    scene.add(B.pad(1.6,Math.abs(deurZ)-1.3,{x:deurX,z:(deurZ+(rot?-1.3:1.3))/2}));
+  for (const [anchorX, anchorZ] of anchors) {
+    const dx = anchorX - x;
+    const dz = anchorZ - z;
+    const length = Math.hypot(dx, dz) || 1;
+    for (let step = 0.3; step < 60; step += 0.3) {
+      const px = x + (dx / length) * step;
+      const pz = z + (dz / length) * step;
+      if (insideWorld(px, pz, margin)) {
+        if (step < bestDistance) {
+          bestDistance = step;
+          best = [px, pz];
+        }
+        break;
+      }
+    }
   }
-  /* smidse naast de smid: aambeeld, houtstapel, kist */
-  P.push(prop('aambeeld',-9.2,8.2,{r:.5,schaduw:1}),prop('hout',-16.5,6.4,{r:.6,schaduw:1.2}));bouw(B.kist(),-9.8,10.6,{r:.5,rot:.4});
-  /* achter de taverne: tonnen en hooi */
-  bouw(B.ton(),17.6,-12.4,{r:.45});bouw(B.ton(),18.4,-11.6,{r:.45});bouw(B.hooibaal(),17.2,-7.6,{r:.7,rot:.4});bouw(B.hooibaal(),18.6,-8.4,{r:.7,rot:-.2});
-  /* moestuinen en een vijver */
-  bouw(B.moestuin(4.5,3),-14,-17.5,{r:2.4});bouw(B.moestuin(4,3),14,17.6,{r:2.2});
-  bouw(B.vijver(2.4),6.5,15.5,{r:3.1});
-  for(const[x,z]of[[3.6,13.2],[9.8,13.6],[4.2,18.2]])P.push(prop('rots',x,z,{r:.5,schaduw:1.2,schaal:1.1}));P.push(prop('struik',9.6,17.8,{schaduw:1,schaal:1.3}),prop('bloemen',3.2,16.4,{schaal:1.6}));
-  P.push(prop('kar',-7.6,-14.8,{r:1.2,schaduw:2.6}));
-  /* borden bij de poorten en bij het plein */
-  P.push(prop('bord',2.4,9.2,{r:.4}),prop('bord',3.4,-DORP+2.6,{r:.4}),prop('bord',-3.4,DORP-2.6,{r:.4}));
-  P.push(prop('lantaarn',-DORP+1.2,3.2,{r:.25}),prop('lantaarn',-DORP+1.2,-3.2,{r:.25}),prop('bord',-DORP+2.6,3.4,{r:.4}),prop('lantaarn',3.2,-DORP+1.2,{r:.25}),prop('lantaarn',-3.2,-DORP+1.2,{r:.25}),prop('lantaarn',3.2,DORP-1.2,{r:.25}),prop('lantaarn',-3.2,DORP-1.2,{r:.25}));
-  /* beplanting: bomen in de hoeken, struiken bij de huizen, bloemen langs het plein */
-  const dorpsbomen=[['boom',-19,-19],['den',-16,-20],['boom2',-19.5,-4],['boom',19,-19],['den2',20,-15],['boom2',19.5,4],['boom',-19,18.5],['den',-20,14],['boom2',19.5,19],['den',-6,19.5],['boom',10,-19.5]];
-  for(const[n,x,z]of dorpsbomen)P.push(prop(n,x,z,{r:.55,schaduw:1.8,schaal:1.3}));
-  for(const[x,z]of[[-9.6,-11.6],[-16.6,-12],[9.4,-13],[17,-13.8],[10,13.2],[17.4,12.6],[-17.2,12.8],[-10,13.4],[-5,-10.6],[5.4,-10.8],[-10.4,3],[10.6,3]])P.push(prop('struik',x,z,{schaduw:1,schaal:1.3}));
-  for(const[x,z]of[[-9,0],[9,0],[-4,9.6],[4,9.6],[-9.4,-3.4],[9.4,3.4],[-15.6,-6.2],[15.8,6]])P.push(prop('bloemen',x,z,{schaal:1.6}));
-  /* palissade rond het dorp, met poorten op het pad in het noorden en zuiden */
-  const STAP=2.6;
-  for(let i=-DORP+STAP/2;i<DORP;i+=STAP){
-    if(Math.abs(i)>POORT){bouw(B.hek(STAP),i,-DORP,{r:1.2});bouw(B.hek(STAP),i,DORP,{r:1.2})}
-    if(Math.abs(i)>POORT)bouw(B.hek(STAP),-DORP,i,{r:1.2,rot:Math.PI/2});bouw(B.hek(STAP),DORP,i,{r:1.2,rot:Math.PI/2});
-  }
-  /* ----- buiten het dorp: velden en bos ----- */
-  const R=toeval(777);
-  const buiten=(x,z,marge)=>Math.abs(x)>DORP+marge||Math.abs(z)>DORP+marge;
-  const soorten=['boom','boom','boom2','den','den','den2','struik'];
-  let n=0,pogingen=0;
-  while(n<170&&pogingen++<4000){
-    const x=R()*2*(VELD-2)-(VELD-2),z=R()*2*(VELD-2)-(VELD-2);
-    if(!buiten(x,z,2.5)||Math.abs(x)<3.5||(x<-DORP&&Math.abs(z)<3.2))continue;   /* niet in het dorp, niet op de wegen */
-    const rand=Math.max(Math.abs(x),Math.abs(z));
-    if(rand<VELD-10&&R()<.45)continue;                                     /* dichter bos aan de rand van de wereld */
-    if(!vrij(x,z,2.2))continue;
-    const s=soorten[Math.floor(R()*soorten.length)];
-    P.push(prop(s,x,z,s==='struik'?{schaduw:1,schaal:1.3}:{r:.55,schaduw:1.8,schaal:1.3}));n++;
-  }
-  for(let k=0;k<28;k++){const x=R()*2*(VELD-3)-(VELD-3),z=R()*2*(VELD-3)-(VELD-3);if(!buiten(x,z,2)||Math.abs(x)<3||(x<-DORP&&Math.abs(z)<3)||!vrij(x,z,1.5))continue;P.push(prop('rots',x,z,{r:.6,schaduw:1.4,schaal:1.2}))}
-  /* een bomenrij als rand van de wereld */
-  /* een bomenrand langs de golvende rand van het veld: de binnenste rij sluit af (botsing), daarbuiten nog drie
-     losse rijen zodat de wereld in bos overgaat. Waar het bos het veld overlapt (de noordpoort) staat niets. */
-  for(let th=0;th<Math.PI*2;th+=2.3/60){const r=veldRand(th);
-    for(const[k,dicht,kans]of[[-1.3,true,1],[1.6,false,1],[4.4,false,.85],[7.4,false,.7],[10.4,false,.5]]){
-      const rr=r+k+(dicht?0:(R()-.5)*1.6),x=Math.sin(th)*rr+(dicht?0:(R()-.5)*1.2),z=Math.cos(th)*rr;
-      if(inBos(x,z)||inVale(x,z)||R()>kans)continue;
-      const s=R()<.6?'den':R()<.5?'boom':'boom2';
-      P.push(prop(s,x,z,{r:dicht?.7:0,schaduw:1.8,schaal:1.3}))}}
-  bouwBos({scene,prop,bouw,vrij,toeval,P});
-  bouwStad({scene,prop,bouw,vrij,toeval,P,obstakels});
-  await Promise.all(P);renderer.shadowMap.needsUpdate=true;
+  return best || [0, 4];
 }
-export function updateBorden(){for(const b of borden)b.update(cam)}
+
+/** Moves a circle of radius r at (x, z) inside the world and out of every obstacle; returns the new [x, z]. */
+export function resolveCollision(x, z, r = 0.35) {
+  [x, z] = clampToWorld(x, z);
+  for (const obstacle of obstacles) {
+    const dx = x - obstacle.x;
+    const dz = z - obstacle.z;
+    const distance = Math.hypot(dx, dz);
+    const minDistance = obstacle.r + r;
+    if (distance < minDistance) {
+      if (distance < 1e-4) {
+        x += minDistance;
+      } else {
+        x = obstacle.x + (dx / distance) * minDistance;
+        z = obstacle.z + (dz / distance) * minDistance;
+      }
+    }
+  }
+  return [x, z];
+}
+
+/** True when a circle of radius r at (x, z) lies inside the world and touches no obstacle. */
+export function isFree(x, z, r = 0.5) {
+  if (!insideWorld(x, z)) {
+    return false;
+  }
+  for (const obstacle of obstacles) {
+    if (Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.r + r) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* ---------- mouse → ground point ---------- */
+const raycaster = new THREE.Raycaster();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const pointerNdc = new THREE.Vector2();
+const groundHit = new THREE.Vector3();
+
+/** The camera ray through screen point (clientX, clientY). */
+export function screenRay(clientX, clientY) {
+  pointerNdc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointerNdc, camera);
+  return raycaster;
+}
+
+/** The point on the ground (y = 0) under screen point (clientX, clientY), or null. */
+export function groundPoint(clientX, clientY) {
+  screenRay(clientX, clientY);
+  return raycaster.ray.intersectPlane(groundPlane, groundHit) ? groundHit.clone() : null;
+}
+
+/* ---------- ground: tile map ---------- */
+const TILE = 32;
+const UNITS_PER_TILE = 2; /* 32 px over 2 units = 16 px per unit, just like the sprites */
+/* the ground map covers the field and the forest above it */
+const GROUND_X0 = -FIELD_SIZE - 10;
+const GROUND_X1 = FIELD_SIZE + 10;
+const GROUND_Z0 = FOREST.z0;
+const GROUND_Z1 = FIELD_SIZE + 10;
+const GROUND_TILES_X = Math.round((GROUND_X1 - GROUND_X0) / UNITS_PER_TILE);
+const GROUND_TILES_Z = Math.round((GROUND_Z1 - GROUND_Z0) / UNITS_PER_TILE);
+
+/** World coordinates → 'grass', 'cobbles' or 'path'. */
+export function tileType(x, z) {
+  if (Math.hypot(x, z) < SQUARE_RADIUS) {
+    return "cobbles";
+  }
+  if (onRoad(x, z)) {
+    return "path";
+  }
+  return "grass";
+}
+
+/* a small deterministic random generator (LCG), so the scenery is the same for everybody */
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+/* filtering for a ground canvas texture: soft with mipmaps in smooth mode, crisp otherwise */
+function applyGroundFilter(texture) {
+  texture.magFilter = SMOOTH ? THREE.LinearFilter : THREE.NearestFilter;
+  if (SMOOTH) {
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.generateMipmaps = true;
+    texture.anisotropy = 4;
+  } else {
+    texture.minFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+  }
+}
+
+/* a transparent plane that only shows the cast shadows of buildings and fences, in the outline colour */
+function addShadowCatcher(width, depth, x, y, z) {
+  const catcher = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, depth),
+    new THREE.ShadowMaterial({ color: 0x1a1540, opacity: 0.38 }),
+  );
+  catcher.rotation.x = -Math.PI / 2;
+  catcher.position.set(x, y, z);
+  catcher.receiveShadow = true;
+  catcher.renderOrder = 1;
+  scene.add(catcher);
+}
+
+/* picks one of the three grass tiles: mostly plain, sometimes a variant */
+function grassTileIndex(random) {
+  if (random() < 0.12) {
+    return 2;
+  }
+  return random() < 0.3 ? 1 : 0;
+}
+
+function buildGround(atlas, decor) {
+  const random = seededRandom(12345);
+  const groundCanvas = document.createElement("canvas");
+  groundCanvas.width = GROUND_TILES_X * TILE;
+  groundCanvas.height = GROUND_TILES_Z * TILE;
+  const ctx = groundCanvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  /* world → canvas pixels */
+  const toCanvasX = (worldX) => ((worldX - GROUND_X0) / UNITS_PER_TILE) * TILE;
+  const toCanvasZ = (worldZ) => ((worldZ - GROUND_Z0) / UNITS_PER_TILE) * TILE;
+  for (let j = 0; j < GROUND_TILES_Z; j++) {
+    for (let i = 0; i < GROUND_TILES_X; i++) {
+      /* plaza and path are 3D surfaces with kit textures (builders.js) */
+      const tileIndex = grassTileIndex(random);
+      ctx.drawImage(atlas, tileIndex * TILE, 0, TILE, TILE, i * TILE, j * TILE, TILE, TILE);
+    }
+  }
+  /* The forest: darker, cooler grass; outside the world (behind the tree line) darker still. Per quarter tile, so
+     the wavy edges can be followed; the trees on top hide the staircase. */
+  const cellPixels = TILE / 4;
+  const cellUnits = UNITS_PER_TILE / 4;
+  for (let j = 0; j < GROUND_TILES_Z * 4; j++) {
+    for (let i = 0; i < GROUND_TILES_X * 4; i++) {
+      const x = (i + 0.5) * cellUnits + GROUND_X0;
+      const z = (j + 0.5) * cellUnits + GROUND_Z0;
+      if (inForest(x, z) && !inFields(x, z)) {
+        ctx.fillStyle = "rgba(22,44,38,.34)";
+      } else if (!inForest(x, z, -2.5) && !inFields(x, z, -2.5) && !inVale(x, z, -2.5)) {
+        ctx.fillStyle = "rgba(10,28,20,.5)";
+      } else {
+        continue;
+      }
+      ctx.fillRect(i * cellPixels, j * cellPixels, cellPixels, cellPixels);
+    }
+  }
+  /* some flowers and pebbles in the grass, sparse, and thinner inside the village; only pebbles in the forest */
+  for (let k = 0; k < 380; k++) {
+    const x = GROUND_X0 + random() * (GROUND_X1 - GROUND_X0);
+    const z = GROUND_Z0 + random() * (GROUND_Z1 - GROUND_Z0);
+    if (inFields(x, z)) {
+      if (tileType(x, z) !== "grass" || (inVillage(x, z) && random() < 0.7)) {
+        continue;
+      }
+    } else if (!inForest(x, z)) {
+      continue;
+    }
+    const img = inForest(x, z)
+      ? decor.rock2
+      : [decor.flowers, decor.flowers2, decor.rock2, decor.flowers][Math.floor(random() * 4)];
+    ctx.drawImage(
+      img,
+      Math.round(toCanvasX(x) - img.width / 2),
+      Math.round(toCanvasZ(z) - img.height / 2),
+    );
+  }
+  const texture = makeTexture(groundCanvas, false);
+  applyGroundFilter(texture);
+  const width = GROUND_X1 - GROUND_X0;
+  const depth = GROUND_Z1 - GROUND_Z0;
+  const centerX = (GROUND_X0 + GROUND_X1) / 2;
+  const centerZ = (GROUND_Z0 + GROUND_Z1) / 2;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, depth),
+    new THREE.MeshBasicMaterial({ map: texture }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(centerX, 0, centerZ);
+  scene.add(mesh);
+  addShadowCatcher(width, depth, centerX, 0.03, centerZ);
+  /* the wide surroundings outside the world */
+  buildValeGround(atlas, decor);
+  const outside = new THREE.Mesh(
+    new THREE.PlaneGeometry(700, 700),
+    new THREE.MeshBasicMaterial({ color: 0x4f7f2a }),
+  );
+  outside.rotation.x = -Math.PI / 2;
+  outside.position.y = -0.01;
+  scene.add(outside);
+}
+
+/* The ground of Kingsvale: a tile map of its own (one huge map for everything would need too much texture memory).
+   Where it overlaps the field it stays transparent; the meadows are slightly warmer in colour, the city gets
+   trodden earth. */
+function buildValeGround(atlas, decor) {
+  const random = seededRandom(31337);
+  const valeX0 = VALE.x0 - 8;
+  const valeX1 = -60;
+  const valeZ0 = VALE.z0 - 6;
+  const valeZ1 = VALE.z1 + 6;
+  const tilesX = Math.round((valeX1 - valeX0) / UNITS_PER_TILE);
+  const tilesZ = Math.round((valeZ1 - valeZ0) / UNITS_PER_TILE);
+  const valeCanvas = document.createElement("canvas");
+  valeCanvas.width = tilesX * TILE;
+  valeCanvas.height = tilesZ * TILE;
+  const ctx = valeCanvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const toCanvasX = (worldX) => ((worldX - valeX0) / UNITS_PER_TILE) * TILE;
+  const toCanvasZ = (worldZ) => ((worldZ - valeZ0) / UNITS_PER_TILE) * TILE;
+  /* the field's own ground already lies there */
+  const coveredByField = (x, z) => inFields(x, z, -1) && x > -70;
+  for (let j = 0; j < tilesZ; j++) {
+    for (let i = 0; i < tilesX; i++) {
+      const x = (i + 0.5) * UNITS_PER_TILE + valeX0;
+      const z = (j + 0.5) * UNITS_PER_TILE + valeZ0;
+      if (coveredByField(x, z)) {
+        continue;
+      }
+      const tileIndex = grassTileIndex(random);
+      ctx.drawImage(atlas, tileIndex * TILE, 0, TILE, TILE, i * TILE, j * TILE, TILE, TILE);
+    }
+  }
+  const cellPixels = TILE / 4;
+  const cellUnits = UNITS_PER_TILE / 4;
+  for (let j = 0; j < tilesZ * 4; j++) {
+    for (let i = 0; i < tilesX * 4; i++) {
+      const x = (i + 0.5) * cellUnits + valeX0;
+      const z = (j + 0.5) * cellUnits + valeZ0;
+      if (coveredByField(x, z)) {
+        continue;
+      }
+      if (inCapital(x, z, 0.7)) {
+        ctx.fillStyle = inCastle(x, z) ? "rgba(120,110,100,.5)" : "rgba(150,122,80,.42)";
+      } else if (inVale(x, z)) {
+        ctx.fillStyle = "rgba(140,120,30,.1)";
+      } else if (!inVale(x, z, -2.5) && !inFields(x, z, -2.5)) {
+        ctx.fillStyle = "rgba(10,28,20,.5)";
+      } else {
+        continue;
+      }
+      ctx.fillRect(i * cellPixels, j * cellPixels, cellPixels, cellPixels);
+    }
+  }
+  for (let k = 0; k < 420; k++) {
+    const x = valeX0 + random() * (valeX1 - valeX0);
+    const z = valeZ0 + random() * (valeZ1 - valeZ0);
+    if (!inVale(x, z) || inFields(x, z) || inCapital(x, z, -1)) {
+      continue;
+    }
+    const img = [decor.flowers, decor.flowers2, decor.rock2, decor.flowers][
+      Math.floor(random() * 4)
+    ];
+    ctx.drawImage(
+      img,
+      Math.round(toCanvasX(x) - img.width / 2),
+      Math.round(toCanvasZ(z) - img.height / 2),
+    );
+  }
+  const texture = makeTexture(valeCanvas, false);
+  applyGroundFilter(texture);
+  const width = valeX1 - valeX0;
+  const depth = valeZ1 - valeZ0;
+  const centerX = (valeX0 + valeX1) / 2;
+  const centerZ = (valeZ0 + valeZ1) / 2;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, depth),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.5 }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(centerX, 0.006, centerZ);
+  scene.add(mesh);
+  addShadowCatcher(width, depth, centerX, 0.031, centerZ);
+}
+
+/* ---------- scenery ---------- */
+export const billboards = [];
+
+/* Billboards (trees, bushes, small objects): village objects (32 px kit) at scale .65, trees and rocks (16 px kit)
+   at 1.3; then they match the 24 px hero. Resolves to the Billboard. */
+async function prop(name, x, z, { radius = 0, shadow = 0, scale = 0.65 } = {}) {
+  const texture = await loadTexture("sprites/" + name + ".png");
+  if (!texture) {
+    throw new Error("Sprite missing: " + name);
+  }
+  const width = (texture.image.width / SHEET_SCALE / PPU) * scale;
+  const height = (texture.image.height / SHEET_SCALE / PPU) * scale;
+  if (radius > 0) {
+    obstacles.push({ x, z, r: radius });
+  }
+  const billboard = new Billboard(texture, width, height, { shadow });
+  billboard.group.position.set(x, 0, z);
+  scene.add(billboard.group);
+  billboards.push(billboard);
+  billboard.name = name;
+  billboard.x = x;
+  billboard.z = z;
+  billboard.scale = scale;
+  return billboard;
+}
+
+/* Places a pixel-3D build (builders.js): buildings, stalls, well, fences, barrels. `rotation`: turn around the
+   y axis; the front faces +z. A radius > 0 adds a collision circle. */
+function place(group, x, z, { rotation = 0, radius = 0 } = {}) {
+  group.position.set(x, 0, z);
+  group.rotation.y = rotation;
+  group.traverse((object) => {
+    if (object.isMesh) {
+      object.castShadow = true;
+      object.receiveShadow = true;
+    }
+  });
+  scene.add(group);
+  if (radius > 0) {
+    obstacles.push({ x, z, r: radius });
+  }
+  return group;
+}
+
+/** Builds the whole world: ground, village, fields, forest and the capital. Resolves when every sprite is loaded. */
+export async function buildWorld() {
+  const [atlas, flowers, flowers2, rock2] = await Promise.all(
+    ["ground", "flowers", "flowers2", "rock2"].map((name) =>
+      loadTexture("sprites/" + name + ".png", { raw: true }),
+    ),
+  );
+  if (!atlas || !flowers || !flowers2 || !rock2) {
+    throw new Error("Ground sprites missing");
+  }
+  buildGround(atlas.image, {
+    flowers: flowers.image,
+    flowers2: flowers2.image,
+    rock2: rock2.image,
+  });
+  await builders.loadTextures();
+  /* promises of every prop being loaded */
+  const pending = [];
+  const lantern = (x, z) => pending.push(prop("lantern", x, z, { radius: 0.25 }));
+  const treeOptions = { radius: 0.55, shadow: 1.8, scale: 1.3 };
+  const bushOptions = { shadow: 1, scale: 1.3 };
+
+  /* ----- the village: a square with the well, a crossing of roads, houses along the roads, and life around it ----- */
+  scene.add(builders.plaza(SQUARE_RADIUS));
+  /* the through road north-south, through both gates */
+  scene.add(builders.path(3.2, FIELD_SIZE * 2));
+  /* the village road east-west */
+  scene.add(builders.path(2.6, VILLAGE_HALF_SIZE * 2 - 2, { rotation: Math.PI / 2 }));
+  place(builders.well(), 0, 0, { radius: 1.1 });
+
+  /* the square: stalls, benches, lanterns, wares */
+  place(builders.stall({ cloth: "cloth_red" }), -8.2, -6.2, { radius: 1.7, rotation: 0.25 });
+  place(builders.stall({ cloth: "cloth_green", w: 2.8 }), 8.4, -6.4, {
+    radius: 1.6,
+    rotation: -0.25,
+  });
+  place(builders.barrel(), -5.6, -8.6, { radius: 0.45 });
+  place(builders.barrel(), -4.6, -8.9, { radius: 0.45 });
+  place(builders.chest(), -11, -8.4, { radius: 0.5, rotation: 0.3 });
+  place(builders.chest(0.7), 11.4, -8.2, { radius: 0.45, rotation: 0.5 });
+  place(builders.barrel(), 12.2, -7.4, { radius: 0.45 });
+  /* four benches on the diagonals around the well, all facing the well */
+  for (const angle of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
+    place(builders.bench(), Math.sin(angle) * 4.6, Math.cos(angle) * 4.6, {
+      radius: 0.8,
+      rotation: angle + Math.PI,
+    });
+  }
+  for (const [x, z] of [
+    [-6.5, 6.5],
+    [6.5, 6.5],
+    [6.5, -6.5],
+    [-6.5, -6.5],
+  ]) {
+    lantern(x * 1.3, z * 1.3);
+  }
+
+  /* houses along the east-west road, each with a little path from the door to the road */
+  const houses = [
+    /* half-timbered house */
+    [{ w: 6, d: 5, wallTexture: "wall" }, -13, -10, 0],
+    /* tavern */
+    [{ w: 7.5, d: 5.5, h: 3.4, roofHeight: 2.6, wallTexture: "wall", windows: 3 }, 13, -10, 0],
+    /* wooden house */
+    [{ w: 6.5, d: 5, wallTexture: "wood", windows: 2 }, 13.5, 10.5, Math.PI],
+    /* smithy */
+    [{ w: 6, d: 5, h: 2.8, roofHeight: 2, wallTexture: "stone", windows: 1 }, -13.5, 10.5, Math.PI],
+  ];
+  for (const [options, x, z, rotation] of houses) {
+    place(builders.house(options), x, z, {
+      radius: Math.max(options.w, options.d) / 2 + 0.4,
+      rotation,
+    });
+    /* the door sits on the left of the front wall */
+    const doorX = x + (rotation ? 1 : -1) * (-options.w / 2 + 1.3);
+    const doorZ = z + ((rotation ? -1 : 1) * options.d) / 2;
+    scene.add(
+      builders.path(1.6, Math.abs(doorZ) - 1.3, {
+        x: doorX,
+        z: (doorZ + (rotation ? -1.3 : 1.3)) / 2,
+      }),
+    );
+  }
+  /* the forge next to the smithy: anvil, woodpile, chest */
+  pending.push(
+    prop("anvil", -9.2, 8.2, { radius: 0.5, shadow: 1 }),
+    prop("woodpile", -16.5, 6.4, { radius: 0.6, shadow: 1.2 }),
+  );
+  place(builders.chest(), -9.8, 10.6, { radius: 0.5, rotation: 0.4 });
+  /* behind the tavern: barrels and hay */
+  place(builders.barrel(), 17.6, -12.4, { radius: 0.45 });
+  place(builders.barrel(), 18.4, -11.6, { radius: 0.45 });
+  place(builders.hayBale(), 17.2, -7.6, { radius: 0.7, rotation: 0.4 });
+  place(builders.hayBale(), 18.6, -8.4, { radius: 0.7, rotation: -0.2 });
+  /* vegetable gardens and a pond */
+  place(builders.garden(4.5, 3), -14, -17.5, { radius: 2.4 });
+  place(builders.garden(4, 3), 14, 17.6, { radius: 2.2 });
+  place(builders.pond(2.4), 6.5, 15.5, { radius: 3.1 });
+  for (const [x, z] of [
+    [3.6, 13.2],
+    [9.8, 13.6],
+    [4.2, 18.2],
+  ]) {
+    pending.push(prop("rock", x, z, { radius: 0.5, shadow: 1.2, scale: 1.1 }));
+  }
+  pending.push(prop("bush", 9.6, 17.8, bushOptions), prop("flowers", 3.2, 16.4, { scale: 1.6 }));
+  pending.push(prop("cart", -7.6, -14.8, { radius: 1.2, shadow: 2.6 }));
+  /* signs at the gates and by the square */
+  pending.push(
+    prop("sign", 2.4, 9.2, { radius: 0.4 }),
+    prop("sign", 3.4, -VILLAGE_HALF_SIZE + 2.6, { radius: 0.4 }),
+    prop("sign", -3.4, VILLAGE_HALF_SIZE - 2.6, { radius: 0.4 }),
+  );
+  lantern(-VILLAGE_HALF_SIZE + 1.2, 3.2);
+  lantern(-VILLAGE_HALF_SIZE + 1.2, -3.2);
+  pending.push(prop("sign", -VILLAGE_HALF_SIZE + 2.6, 3.4, { radius: 0.4 }));
+  lantern(3.2, -VILLAGE_HALF_SIZE + 1.2);
+  lantern(-3.2, -VILLAGE_HALF_SIZE + 1.2);
+  lantern(3.2, VILLAGE_HALF_SIZE - 1.2);
+  lantern(-3.2, VILLAGE_HALF_SIZE - 1.2);
+
+  /* planting: trees in the corners, bushes by the houses, flowers around the square */
+  const villageTrees = [
+    ["tree", -19, -19],
+    ["pine", -16, -20],
+    ["tree2", -19.5, -4],
+    ["tree", 19, -19],
+    ["pine2", 20, -15],
+    ["tree2", 19.5, 4],
+    ["tree", -19, 18.5],
+    ["pine", -20, 14],
+    ["tree2", 19.5, 19],
+    ["pine", -6, 19.5],
+    ["tree", 10, -19.5],
+  ];
+  for (const [name, x, z] of villageTrees) {
+    pending.push(prop(name, x, z, treeOptions));
+  }
+  const villageBushes = [
+    [-9.6, -11.6],
+    [-16.6, -12],
+    [9.4, -13],
+    [17, -13.8],
+    [10, 13.2],
+    [17.4, 12.6],
+    [-17.2, 12.8],
+    [-10, 13.4],
+    [-5, -10.6],
+    [5.4, -10.8],
+    [-10.4, 3],
+    [10.6, 3],
+  ];
+  for (const [x, z] of villageBushes) {
+    pending.push(prop("bush", x, z, bushOptions));
+  }
+  const villageFlowers = [
+    [-9, 0],
+    [9, 0],
+    [-4, 9.6],
+    [4, 9.6],
+    [-9.4, -3.4],
+    [9.4, 3.4],
+    [-15.6, -6.2],
+    [15.8, 6],
+  ];
+  for (const [x, z] of villageFlowers) {
+    pending.push(prop("flowers", x, z, { scale: 1.6 }));
+  }
+
+  /* palisade around the village, with gates on the road in the north and south and an opening for the village
+     road in the west; the east side is closed */
+  const FENCE_STEP = 2.6;
+  for (let i = -VILLAGE_HALF_SIZE + FENCE_STEP / 2; i < VILLAGE_HALF_SIZE; i += FENCE_STEP) {
+    const inGate = Math.abs(i) <= GATE_HALF_WIDTH;
+    if (!inGate) {
+      place(builders.fence(FENCE_STEP), i, -VILLAGE_HALF_SIZE, { radius: 1.2 });
+      place(builders.fence(FENCE_STEP), i, VILLAGE_HALF_SIZE, { radius: 1.2 });
+      place(builders.fence(FENCE_STEP), -VILLAGE_HALF_SIZE, i, {
+        radius: 1.2,
+        rotation: Math.PI / 2,
+      });
+    }
+    place(builders.fence(FENCE_STEP), VILLAGE_HALF_SIZE, i, { radius: 1.2, rotation: Math.PI / 2 });
+  }
+
+  /* ----- outside the village: fields and forest ----- */
+  const random = seededRandom(777);
+  const outsideVillage = (x, z, margin) =>
+    Math.abs(x) > VILLAGE_HALF_SIZE + margin || Math.abs(z) > VILLAGE_HALF_SIZE + margin;
+  const fieldPlants = ["tree", "tree", "tree2", "pine", "pine", "pine2", "bush"];
+  let placed = 0;
+  let attempts = 0;
+  while (placed < 170 && attempts++ < 4000) {
+    const x = random() * 2 * (FIELD_SIZE - 2) - (FIELD_SIZE - 2);
+    const z = random() * 2 * (FIELD_SIZE - 2) - (FIELD_SIZE - 2);
+    /* not in the village, not on the roads */
+    if (
+      !outsideVillage(x, z, 2.5) ||
+      Math.abs(x) < 3.5 ||
+      (x < -VILLAGE_HALF_SIZE && Math.abs(z) < 3.2)
+    ) {
+      continue;
+    }
+    /* denser forest towards the edge of the world */
+    const edgeDistance = Math.max(Math.abs(x), Math.abs(z));
+    if (edgeDistance < FIELD_SIZE - 10 && random() < 0.45) {
+      continue;
+    }
+    if (!isFree(x, z, 2.2)) {
+      continue;
+    }
+    const name = fieldPlants[Math.floor(random() * fieldPlants.length)];
+    pending.push(prop(name, x, z, name === "bush" ? bushOptions : treeOptions));
+    placed++;
+  }
+  for (let k = 0; k < 28; k++) {
+    const x = random() * 2 * (FIELD_SIZE - 3) - (FIELD_SIZE - 3);
+    const z = random() * 2 * (FIELD_SIZE - 3) - (FIELD_SIZE - 3);
+    if (
+      !outsideVillage(x, z, 2) ||
+      Math.abs(x) < 3 ||
+      (x < -VILLAGE_HALF_SIZE && Math.abs(z) < 3) ||
+      !isFree(x, z, 1.5)
+    ) {
+      continue;
+    }
+    pending.push(prop("rock", x, z, { radius: 0.6, shadow: 1.4, scale: 1.2 }));
+  }
+
+  /* A tree border along the wavy edge of the field: the inner row closes it off (collision), outside it three more
+     loose rows so the world fades into forest. Nothing stands where the forest or the vale overlaps the field. */
+  const borderRows = [
+    /* [offset from the edge, closed row, chance] */
+    [-1.3, true, 1],
+    [1.6, false, 1],
+    [4.4, false, 0.85],
+    [7.4, false, 0.7],
+    [10.4, false, 0.5],
+  ];
+  for (let theta = 0; theta < Math.PI * 2; theta += 2.3 / 60) {
+    const edge = fieldEdge(theta);
+    for (const [offset, isClosed, chance] of borderRows) {
+      const distance = edge + offset + (isClosed ? 0 : (random() - 0.5) * 1.6);
+      const x = Math.sin(theta) * distance + (isClosed ? 0 : (random() - 0.5) * 1.2);
+      const z = Math.cos(theta) * distance;
+      if (inForest(x, z) || inVale(x, z) || random() > chance) {
+        continue;
+      }
+      let name;
+      if (random() < 0.6) {
+        name = "pine";
+      } else {
+        name = random() < 0.5 ? "tree" : "tree2";
+      }
+      pending.push(prop(name, x, z, { radius: isClosed ? 0.7 : 0, shadow: 1.8, scale: 1.3 }));
+    }
+  }
+
+  const context = { scene, prop, place, isFree, seededRandom, pending, obstacles };
+  buildForest(context);
+  buildCapital(context);
+  await Promise.all(pending);
+  renderer.shadowMap.needsUpdate = true;
+}
+
+export function updateBillboards() {
+  for (const billboard of billboards) {
+    billboard.update(cameraState);
+  }
+}
