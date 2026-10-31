@@ -6,6 +6,7 @@ import { VILLAGE_HALF_SIZE, FIELD_SIZE } from "./world.js";
 import * as THREE from "three";
 import * as UI from "./ui.js";
 import { SMOOTH } from "./sprites.js";
+import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -274,6 +275,9 @@ export function createAdminPanel(ctx) {
       ["Bandit camp", () => ctx.teleport(-110, -45)],
       ["Boars", () => ctx.teleport(50, 45)],
       ["World edge", () => ctx.teleport(FIELD_SIZE - 3, 0)],
+      ["Crypt stairs", () => ctx.teleport(CRYPT_STAIRS[0], CRYPT_STAIRS[1] + 2.4)],
+      ["Crypt", () => ctx.teleport(...CRYPT_ENTRY)],
+      ["Sanctum", () => ctx.teleport(...cryptPoint(-9, -12))],
     ]);
 
     /* ---------- monsters ---------- */
