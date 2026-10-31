@@ -43,6 +43,16 @@ import {
   inCrypt,
 } from "./regions.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
+import { buildSeals, sealClickables, clickSeal } from "./seals.js";
+import {
+  refreshRuneSlot,
+  bindRune,
+  useRunePower,
+  updateRunePowers,
+  isRunePowerActive,
+  runeCooldownShare,
+} from "./rune-powers.js";
+import { RUNES } from "./rules/runes.js";
 import {
   buildCrypt,
   cryptClickables,
@@ -213,8 +223,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
   await loadSheets();
-  await buildWorld([buildCrypt]);
-  clickables.push(...cryptClickables());
+  await buildWorld([buildCrypt, buildSeals]);
+  clickables.push(...cryptClickables(), ...sealClickables());
   createMerchant();
   createVillagers(scene, clickables);
   showNpcs(false);
@@ -378,9 +388,11 @@ function applyHeroRecord(hero) {
     equipmentMods: hero.equipmentMods || {},
     bag: hero.bag,
     quests: hero.quests,
+    runes: hero.runes || [],
     professions: hero.professions || {},
     buffs: hero.buffs || {},
   });
+  refreshRuneSlot();
   player.hp = Math.min(player.hp, hpMax());
   player.sp = Math.min(player.sp, spMax());
   if (hasNewClass) {
@@ -428,6 +440,8 @@ function restoreHero(hero) {
   if (hero.quests && typeof hero.quests === "object") {
     player.quests = hero.quests;
   }
+  player.runes = Array.isArray(hero.runes) ? hero.runes.filter((id) => RUNES[id]) : [];
+  refreshRuneSlot();
   player.equipmentMods = {};
   for (const [slot, mods] of Object.entries(hero.equipmentMods || {})) {
     const valid = player.equipment[slot] && validModsFor(player.equipment[slot], mods);
@@ -663,6 +677,7 @@ function createPanels(name) {
         visit(villager.spec.name, villager.label);
       }
     },
+    grantRune: bindRune,
     onAccepted: (id) => game.guide.onAccepted(id),
     onTurnedIn: (id) => game.guide.onTurnedIn(id),
   });
@@ -731,7 +746,7 @@ function showNpcs(isVisible) {
 function buildHotbar() {
   const hotbar = $("#hotbar");
   hotbar.querySelectorAll(".slot[data-skill]").forEach((slot) => {
-    if (slot.dataset.skill !== "red_potion" && slot.dataset.skill !== "sit") {
+    if (!["red_potion", "rune", "sit"].includes(slot.dataset.skill)) {
       slot.remove();
     }
   });
@@ -798,6 +813,7 @@ function saveProgress() {
     equipmentMods: player.equipmentMods,
     bag: player.bag,
     quests: player.quests,
+    runes: player.runes,
     professions: player.professions,
     buffs: player.buffs,
     x,
@@ -1396,6 +1412,11 @@ function handleClick(clientX, clientY, mode = "select") {
       clickCryptObject(data.cryptObject);
       return;
     }
+    if (data.sealObject) {
+      clearTarget();
+      clickSeal(data.sealObject);
+      return;
+    }
     if (data.station) {
       clearTarget();
       game.gathering.clickStation(data.station);
@@ -1626,6 +1647,8 @@ function setupKeyboardInput() {
       }
     } else if (event.code === "KeyR") {
       useSkill("red_potion");
+    } else if (event.code === "KeyQ") {
+      useRunePower();
     } else if (event.code === "KeyX") {
       useSkill("sit");
     } else if (event.code === "KeyC") {
@@ -1661,6 +1684,7 @@ function setupButtons() {
   document
     .querySelectorAll('.slot[data-skill="red_potion"],.slot[data-skill="sit"]')
     .forEach((button) => button.addEventListener("click", () => useSkill(button.dataset.skill)));
+  $('.slot[data-skill="rune"]').addEventListener("click", useRunePower);
   $("#chat-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const text = chatInput.value.trim();
@@ -1807,6 +1831,8 @@ function updateHotbar(time) {
     ((player.cooldowns.red_potion || 0) - time) / ITEMS.red_potion.cooldown,
   );
   UI.setSlotState("sit", false, player.isSitting);
+  UI.setCooldown("rune", runeCooldownShare());
+  UI.setSlotState("rune", false, isRunePowerActive());
   UI.setSlotState("red_potion", bagCount("red_potion") <= 0, false);
 }
 
@@ -1814,6 +1840,7 @@ function updateHotbar(time) {
 function stepWorld(dt, time) {
   updatePlayer(dt);
   updateCrypt(dt);
+  updateRunePowers();
   if (game.host) {
     hostTick(dt);
   }

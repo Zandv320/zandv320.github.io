@@ -8,7 +8,7 @@
    Everything follows from the hero's quest progress (rules/quests.js), so it needs no state of its own apart from
    the cards already seen (kept in this browser). */
 import * as THREE from "three";
-import { QUESTS, CHAPTERS, SAGA, mainStoryStep, turnInNpc } from "./rules/quests.js";
+import { QUESTS, CHAPTERS, mainStoryStep, sagaOfChapter, turnInNpc } from "./rules/quests.js";
 import { GATHER_NODES } from "./rules/gather-nodes.js";
 import { inCrypt, CRYPT_STAIRS, CRYPT_EXIT } from "./rules/crypt.js";
 import { RECIPES, PROFESSIONS, STATION_PLACES } from "./rules/professions.js";
@@ -131,6 +131,7 @@ export function createGuide(deps) {
       case "visit":
         return npcTarget(goal.npc);
       case "reach":
+      case "ritual":
         return { x: goal.x, z: goal.z, height: 0.5 };
       case "kill":
         return nearestMonster(goal.monster);
@@ -160,7 +161,7 @@ export function createGuide(deps) {
   function describe(step) {
     const { player, questLog } = deps;
     const { id, state, quest } = step;
-    const chapter = `${SAGA.title} · Chapter ${quest.chapter}: ${CHAPTERS[quest.chapter]}`;
+    const chapter = `${sagaOfChapter(quest.chapter).title} · Chapter ${quest.chapter}: ${CHAPTERS[quest.chapter]}`;
     if (state === "locked") {
       return {
         chapter,

@@ -100,7 +100,7 @@ export const GUIDE_TOPICS = {
     icons: ["amulet_of_aurelia", "ui_quests"],
     body: [
       "The crossed-out crown is broken and the King knows your name. That is the end of <b>Saga I: The Crossed-Out Crown</b>.",
-      "The story continues in Saga II. Until then: finish the side quests, bring your professions to 50, refine your weapon to +10 and choose your advanced class at job level 50.",
+      "The story goes on at once in <b>Saga II: The Shattered Runes</b>. Captain Aldric has a message for you: the court archmage wants to see you.",
     ],
   },
 };

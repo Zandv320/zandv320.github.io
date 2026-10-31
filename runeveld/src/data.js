@@ -400,6 +400,13 @@ export const ITEMS = {
     stack: 99,
     description: "Heavy and branching. Good for hilts, says Ragnar.",
   },
+  travel_papers: {
+    name: "Travel papers",
+    price: 1,
+    icon: "📜",
+    description:
+      "Sealed by Captain Aldric: passage on the Northroad, and a letter for the harbormaster of Saltmere.",
+  },
   grave_dust: {
     name: "Grave dust",
     price: 20,

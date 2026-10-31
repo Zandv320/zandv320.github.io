@@ -39,6 +39,8 @@ export const player = {
   equipmentMods: {},
   bag: STARTER_BAG.map((entry) => ({ ...entry })),
   quests: {},
+  /* the runes bound to the hero (rules/runes.js), oldest first */
+  runes: [],
   /* profession levels {id: {level, exp}} and running elixirs {stat: {amount, until}} */
   professions: {},
   buffs: {},

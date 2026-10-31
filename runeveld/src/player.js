@@ -35,6 +35,7 @@ import { groundRing, launchProjectile } from "./skill-effects.js";
 import { hitStop, buzz, flyToHud, screenFlash } from "./feel.js";
 import { burst } from "./particles.js";
 import { inCrypt, CRYPT_ENTRY } from "./rules/crypt.js";
+import { absorbWithRunes } from "./rune-powers.js";
 import { useSkill } from "./abilities.js";
 
 /** Keys held down (KeyboardEvent.code), filled by the input handlers in main.js. */
@@ -491,6 +492,13 @@ export function takeDamage(damage, spec, attacker) {
   }
   const isResolute = now() < (player.ironResolveUntil || 0);
   damage = applyDefense(damage, stats.def + (isResolute ? player.ironResolveDef || 0 : 0));
+
+  /* Moonward (the Moon Rune) takes the blow first */
+  damage = absorbWithRunes(damage);
+  if (damage <= 0) {
+    player.sprite.flashHit();
+    return;
+  }
 
   /* Mana Ward / Mana Shell: part of the damage is taken from SP */
   if (now() < player.wardUntil && player.sp > 0) {

@@ -44,6 +44,7 @@ import {
 import { migrateHero } from "./legacy.js";
 import { applyMods, modsOf, validModsFor, priceFactor } from "./item-mods.js";
 import { sanitizeProfessions } from "./professions.js";
+import { sanitizeRunes } from "./runes.js";
 
 const MAGE_CLASSES = ["mage", "wizard", "sage"];
 
@@ -538,7 +539,8 @@ export function markQuestProgress(hero, id) {
   if (!progress || !quest || progress.state !== "active") {
     return false;
   }
-  if ((quest.goal.type === "visit" || quest.goal.type === "reach") && !progress.count) {
+  const isPlaceGoal = ["visit", "reach", "ritual"].includes(quest.goal.type);
+  if (isPlaceGoal && !progress.count) {
     progress.count = 1;
     return true;
   }
@@ -599,6 +601,9 @@ export function turnInQuest(hero, id) {
     const itemId = isMage && rewardItem.mage ? rewardItem.mage : rewardItem.id;
     addToBag(hero, itemId, rewardItem.count);
   }
+  if (reward.rune) {
+    hero.runes = sanitizeRunes([...(hero.runes || []), reward.rune], hero.quests);
+  }
   return true;
 }
 
@@ -622,6 +627,7 @@ export function newHero({ name, hair, classId }) {
     equipmentMods: {},
     bag: STARTER_BAG.map((entry) => ({ ...entry })),
     quests: {},
+    runes: [],
     professions: {},
     buffs: {},
     x: 0,
@@ -732,6 +738,8 @@ export function sanitizeHero(input) {
       };
     }
   }
+  /* a rune only with the quest that restored its seal */
+  hero.runes = sanitizeRunes(source.runes, hero.quests);
 
   const derived = derivedStatsOf(hero);
   hero.hp = clampInt(source.hp, 1, derived.hpMax, derived.hpMax);

@@ -120,11 +120,40 @@ export function createQuestLog(player, deps) {
     if (deps.playEffect) {
       deps.playEffect("sparkle");
     }
+    if (reward.rune && deps.grantRune) {
+      deps.grantRune(reward.rune);
+    }
     refresh();
     if (deps.onTurnedIn) {
       deps.onTurnedIn(id);
     }
     return true;
+  }
+
+  /** The runes of a seal were woken (seals.js): every active ritual quest for that seal is done. */
+  function onRitual(seal) {
+    let changed = false;
+    for (const id in player.quests) {
+      const record = player.quests[id];
+      const goal = QUESTS[id].goal;
+      if (
+        record.state === "active" &&
+        goal.type === "ritual" &&
+        goal.seal === seal &&
+        !record.count
+      ) {
+        record.count = 1;
+        changed = true;
+        reportProgress(id);
+        logLevelMessage(
+          `${UI.escapeHtml(QUESTS[id].title)}: you woke ${UI.escapeHtml(goal.label)}. Return to ${UI.escapeHtml(turnInNpc(id))}.`,
+        );
+      }
+    }
+    if (changed) {
+      refresh();
+    }
+    return changed;
   }
 
   /* ---- events ---- */
@@ -314,6 +343,7 @@ export function createQuestLog(player, deps) {
     onVisit,
     onBagChanged,
     onPosition,
+    onRitual,
     onStateChanged,
     refresh,
     list,

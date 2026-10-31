@@ -390,6 +390,26 @@ const VILLAGERS = [
     night: ["The ledgers do not sleep, so neither do I."],
     after: { corvin_audience: ["His Majesty spoke of you at supper. Twice."] },
   },
+  /* Saga II: the court archmage, who knows what the old altar really is */
+  {
+    name: "Archmage Selwyn",
+    hair: "silver",
+    outfit: "armor1",
+    tunicColor: "violet",
+    route: [
+      [-149, 8.5],
+      [-147.5, 11],
+    ],
+    speed: 0.6,
+    pause: [8, 16],
+    lines: [
+      "Seven seals, and the old mages wrote the map in invisible ink. Of course they did.",
+      "Do not touch the astrolabe.",
+      "The stars over Whisperwood have been wrong since the altar burned.",
+    ],
+    night: ["At night the chart almost reads itself. Almost."],
+    after: { selwyn_altar: ["The moon answered you. It does not answer many."] },
+  },
   {
     name: "Lady Elara",
     hair: "blond",

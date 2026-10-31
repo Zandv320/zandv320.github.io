@@ -2,14 +2,16 @@
    No DOM and no game state; a hero's progress is an object {[id]: {state: 'active'|'done', count}} that the
    server keeps just as well as the client.
 
-   Saga I, "The Crossed-Out Crown", is the main story: the quests with `main: true`, in order, each one opening the
-   next (`after`). The chapters are in CHAPTERS. The other quests are side quests; the main story never needs them,
+   The main story runs through the sagas (SAGAS): Saga I, "The Crossed-Out Crown" (chapters 1 to 5), and Saga II,
+   "The Shattered Runes" (from chapter 6). Its quests have `main: true` and come in order, each one opening the next
+   (`after`). The chapters are in CHAPTERS. The other quests are side quests; the main story never needs them,
    although a level gate can make them a good way to grow.
 
    goal.type: 'kill'        defeat `count` monsters of type `monster`
               'item'        hand in `count` of `item` (taken from the bag on turn-in)
               'visit'       talk to `npc`
               'reach'       come within `r` of (x, z); `label` describes the place in the tracker
+              'ritual'      wake the runes of a seal (`seal`) at (x, z) (seals.js); `label` as with 'reach'
               'equip'       wear something in `slot`                   } checked against the hero's state
               'stat'        raise any stat once                        } (syncStateQuests in progression.js)
               'skill'       learn any skill                            }
@@ -18,7 +20,7 @@
               'craft'       make `count` of `item`                     } hero did before accepting does
               'disenchant'  break down `count` items at an altar       } not count
               'refine'      refine an item `count` times               }
-   A reward item can differ per class: {id, count, mage: id-for-mages}. A quest can require a minimum level
+   A reward item can differ per class: {id, count, mage: id-for-mages}; `reward.rune` binds a rune (rules/runes.js). A quest can require a minimum level
    (`level`) and a preceding quest (`after`). Other fields:
      turnIn    the npc it is handed in to, when that is not the giver (a 'visit' quest ends at the npc visited)
      gives     items handed over when the quest is accepted (a tool, a badge)
@@ -26,17 +28,32 @@
      where     where the guide points: {monster} (the nearest one alive), {npc}, {station} (the nearest of that kind)
      ui        which panel the guide highlights: 'inventory' or 'character'
      tutorial  the guide card shown on accepting it (guide.js)
-     final     the last quest of the saga */
+     final     the last quest of a saga */
 
-export const SAGA = { title: "Saga I", name: "The Crossed-Out Crown" };
+/* The sagas, with the first chapter of each. */
+export const SAGAS = [
+  { title: "Saga I", name: "The Crossed-Out Crown", firstChapter: 1 },
+  { title: "Saga II", name: "The Shattered Runes", firstChapter: 6 },
+];
 
-/* The chapters of Saga I, by number. */
+/** The saga a chapter belongs to. */
+export const sagaOfChapter = (chapter) =>
+  SAGAS.filter((saga) => saga.firstChapter <= chapter).pop() || SAGAS[0];
+
+/** The chapter numbers of a saga, in order. */
+export const chaptersOf = (saga) =>
+  Object.keys(CHAPTERS)
+    .map(Number)
+    .filter((chapter) => sagaOfChapter(chapter) === saga);
+
+/* The chapters of the main story, by number. */
 export const CHAPTERS = {
   1: "A stranger in Runeveld",
   2: "Hands that work",
   3: "Teeth in the dark",
   4: "Whisperwood",
   5: "The Kingsroad",
+  6: "The Seventh Seal",
 };
 
 export const QUESTS = {
@@ -628,6 +645,86 @@ export const QUESTS = {
       ],
     },
   },
+
+  /* ==== Saga II: The Shattered Runes ==== */
+  /* ---- chapter 6: the seventh seal, Aurelia and the old altar, level 20 to 22 ---- */
+  selwyn_summons: {
+    giver: "Captain Aldric",
+    turnIn: "Archmage Selwyn",
+    hint: "Archmage Selwyn waits in the castle courtyard, beside the keep.",
+    chapter: 6,
+    main: true,
+    title: "A summons from the tower",
+    level: 20,
+    after: "corvin_audience",
+    intro:
+      "Before you get comfortable: the court archmage has asked for you three times since the night the altar in Whisperwood burned violet. Selwyn does not ask three times for anyone. You will find him in the castle courtyard, by the keep.",
+    progressText: "Archmage Selwyn waits in the castle courtyard, beside the keep.",
+    completeText:
+      "So you are the one who walked out of the crypt alive. Good. Sit. What I am about to tell you, the King has heard only half of.",
+    goal: { type: "visit", npc: "Archmage Selwyn" },
+    reward: { exp: 900, zeny: 300 },
+  },
+  selwyn_altar: {
+    giver: "Archmage Selwyn",
+    hint: "Go back to the old altar at the end of the Whisperwood path and tap it. The runes wake in the order of the moon, as the plaque in the crypt said.",
+    chapter: 6,
+    main: true,
+    title: "What the altar remembers",
+    level: 20,
+    after: "selwyn_summons",
+    intro:
+      "That altar is no altar. It is a seal: the seventh of seven, set by the old mages to hold something they called the Hollow. When it cracked, your count woke. Go back, lay your hand on the stones and wake the runes in the order of the moon. If the seal still knows its makers, it will bind its rune to you.",
+    progressText:
+      "Tap the old altar at the end of the Whisperwood path. The runes wake in the order of the moon.",
+    completeText:
+      "You feel that? The cold behind your eyes, like moonlight on water. That is the Moon Rune, bound to you now. Call it when the blows come (Q) and it will take them for you.",
+    goal: {
+      type: "ritual",
+      seal: "moon",
+      x: 0,
+      z: -103,
+      r: 3,
+      label: "the runes of the old altar",
+    },
+    reward: { exp: 1400, zeny: 500, rune: "moon" },
+  },
+  selwyn_chart: {
+    giver: "Archmage Selwyn",
+    where: { station: "enchanting_altar" },
+    hint: "Arcane dust: break gear down at an enchanting altar, or take it from grave witches in the crypt.",
+    chapter: 6,
+    main: true,
+    title: "The chart of seals",
+    level: 21,
+    after: "selwyn_altar",
+    intro:
+      "The old mages drew their seals on a sea chart, and the ink only shows under arcane light. Bring me five handfuls of arcane dust and I will make that light.",
+    progressText:
+      "Five arcane dust. An enchanting altar breaks gear down into it; the grave witches in the crypt carry it too.",
+    completeText:
+      "There. Seven marks. One here, under Whisperwood. One on an island of fire across the Grey Sea. The rest further still, in lands no chart of ours has a name for. And two of the marks are already pale. Cracking.",
+    goal: { type: "item", item: "arcane_dust", count: 5 },
+    reward: { exp: 1600, zeny: 600, items: [{ id: "orange_potion", count: 4 }] },
+  },
+  selwyn_papers: {
+    giver: "Archmage Selwyn",
+    turnIn: "Captain Aldric",
+    hint: "Captain Aldric stands just inside the east gate of Aurelia.",
+    chapter: 6,
+    main: true,
+    title: "Papers for the north",
+    level: 22,
+    after: "selwyn_chart",
+    intro:
+      "The island of fire first. No ship sails there from here: you need Saltmere, the great harbor at the end of the Northroad. Captain Aldric will write you papers for the road and a letter for the harbormaster. I will keep the chart safe until you are ready.",
+    progressText:
+      "Captain Aldric stands just inside the east gate. He will write your papers for the north.",
+    completeText:
+      "North, then. Papers for Fort Harrow, and a letter for Harbormaster Quill in Saltmere. The road is long and not kind. Watch the sky: travelers say the storms up there have teeth.",
+    goal: { type: "visit", npc: "Captain Aldric" },
+    reward: { exp: 1200, zeny: 800, items: [{ id: "travel_papers", count: 1 }] },
+  },
 };
 
 export const QUEST_ORDER = Object.keys(QUESTS);
@@ -756,6 +853,9 @@ export function progressText(id, progress, monsterName, itemName) {
   }
   if (goal.type === "reach") {
     return count ? `Visited ${goal.label}` : `Go to ${goal.label}`;
+  }
+  if (goal.type === "ritual") {
+    return count ? `Woke ${goal.label}` : `Wake ${goal.label}`;
   }
   if (goal.type === "gather") {
     return `${itemName(goal.item)} gathered ${count}/${goal.count}`;

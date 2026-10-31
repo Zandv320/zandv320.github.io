@@ -6,7 +6,15 @@ import { STATS, MAX_STAT, statCost } from "./rules/stats.js";
 import { SKILLS, canLearn, jobExpForLevel, SKILL_TREES, TREE_BRANCHES } from "./rules/skills.js";
 import { escapeHtml } from "./ui.js";
 import { ENCHANTMENTS, applyMods, displayName, modsOf } from "./rules/item-mods.js";
-import { SAGA, CHAPTERS, MAIN_QUESTS, QUESTS, mainStoryStep } from "./rules/quests.js";
+import {
+  SAGAS,
+  CHAPTERS,
+  MAIN_QUESTS,
+  QUESTS,
+  mainStoryStep,
+  sagaOfChapter,
+  chaptersOf,
+} from "./rules/quests.js";
 import { GUIDE_TOPICS, GUIDE_ORDER } from "./guide-topics.js";
 import {
   PROFESSIONS,
@@ -193,21 +201,25 @@ export function createCharacterSheet(player, deps) {
     return " · " + icon(id, ITEMS[id].icon, "small") + " " + escapeHtml(ITEMS[id].name) + count;
   }
 
-  /* the main story at a glance: the current chapter and a bar per chapter */
+  /* the main story at a glance: the current saga, its chapter and a bar per chapter of that saga */
   function sagaProgressHtml() {
     const step = mainStoryStep(player.quests || {}, player.level);
-    const doneCount = MAIN_QUESTS.filter((id) => player.quests?.[id]?.state === "done").length;
-    const chapter = step ? step.quest.chapter : Object.keys(CHAPTERS).length + 1;
-    const bars = Object.keys(CHAPTERS)
+    const lastSaga = SAGAS[SAGAS.length - 1];
+    const saga = step ? sagaOfChapter(step.quest.chapter) : lastSaga;
+    const chapters = chaptersOf(saga);
+    const sagaQuests = MAIN_QUESTS.filter((id) => chapters.includes(QUESTS[id].chapter));
+    const doneCount = sagaQuests.filter((id) => player.quests?.[id]?.state === "done").length;
+    const chapter = step ? step.quest.chapter : Infinity;
+    const bars = chapters
       .map((number) => {
-        const state = +number < chapter ? "done" : +number === chapter ? "current" : "";
+        const state = number < chapter ? "done" : number === chapter ? "current" : "";
         return `<span class="${state}" title="${escapeHtml(CHAPTERS[number])}"></span>`;
       })
       .join("");
     const where = step
       ? `Chapter ${step.quest.chapter}: ${escapeHtml(CHAPTERS[step.quest.chapter])}`
-      : "Complete. The story continues in Saga II.";
-    return `<div class="saga-progress"><b>${escapeHtml(SAGA.title)}: ${escapeHtml(SAGA.name)}</b><small>${where} · ${doneCount} / ${MAIN_QUESTS.length} steps</small><div class="saga-chapters">${bars}</div></div>`;
+      : "Complete for now. The road north opens soon.";
+    return `<div class="saga-progress"><b>${escapeHtml(saga.title)}: ${escapeHtml(saga.name)}</b><small>${where} · ${doneCount} / ${sagaQuests.length} steps</small><div class="saga-chapters">${bars}</div></div>`;
   }
 
   /* every guide card, to read again */
