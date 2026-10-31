@@ -1831,13 +1831,13 @@ def build_smooth(out_dir):
     print("smooth sprites:", len(list(smooth_dir.glob("*.png"))))
 
 
-# ---------- shields for the crusader: in the free (left) hand ----------
+# ---------- shields for the crusader: always in the left hand, the sword in the right ----------
 # Drawn as pixel art per view and placed per frame:
-#   front  the full face, beside the torso on screen right (the left arm)
-#   right  the face, a little turned, at the front edge of the body: the near arm holds it out
-#   left   the left hand is the far one, at the back: the shield sticks out behind the back (_back layer, over the
-#          cape's back but under the body), away from the sword in the near hand
-#   back   in front of the hero, so hidden by the body: nothing is drawn
+#   front  the full face, beside the torso on screen right (the left hand)
+#   right  the left arm is the near one: the face, a little turned, held out at the front edge of the body
+#   left   the left arm is the far one and holds the shield up before the chest: the face at the front edge, over
+#          the body, with the sword arm in front of it (the weapon layer is drawn last)
+#   back   the left hand is on screen left: the back of the shield (steel, boss and strap), over the cape
 # Anchors: the neck (the top of the body under the skull) and the edges of the torso in the rows under it. Not the
 # eyes: standing still only the head breathes, and a shield that rose and fell with it would float.
 SHIELD_FRONT = """
@@ -1864,6 +1864,17 @@ ormmdo
 .ormo.
 ..oo..
 """
+SHIELD_BACK = """
+.ooooo.
+orrrrro
+ormmmro
+ormbmro
+ombbbmo
+ormbmro
+.ormro.
+..oro..
+...o...
+"""
 SHIELDS = {
     # the templar shield: steel with a red cross
     "shield1": {
@@ -1872,6 +1883,7 @@ SHIELDS = {
         "m": (150, 160, 180),
         "d": (96, 104, 124),
         "c": (178, 45, 45),
+        "b": (74, 52, 40),
     },
     # the dawn aegis: white with a golden rim and cross
     "shield2": {
@@ -1880,27 +1892,32 @@ SHIELDS = {
         "m": (236, 236, 240),
         "d": (176, 180, 196),
         "c": (222, 182, 70),
+        "b": (74, 52, 40),
     },
 }
 
 
 def shield_spot(view, piece, xc, neck, left, right):
-    """Top left corner of the shield piece in a frame and whether it goes behind the body; None when hidden."""
+    """Top left corner of the shield piece in a frame."""
     if view == 0:
-        return int(round(xc + 5 - piece.width / 2)), neck + 3, False
+        return int(round(xc + 5 - piece.width / 2)), neck + 3
     if view == 2:
-        return right - 2, neck + 1, False
+        return right - 2, neck + 1
     if view == 1:
-        return right - 2, neck + 1, True
-    return None
+        return left - piece.width + 3, neck + 1
+    return left - 3, neck + 2
 
 
 def shield(head, body, colors, fw=64, fh=64):
-    """The shield layers (front, back) for the whole hero sheet; none in the death frames once the hero falls."""
+    """The shield layer for the whole hero sheet; none in the death frames once the hero falls."""
     side = pixel_drawing(SHIELD_SIDE, colors)
-    pieces = {0: pixel_drawing(SHIELD_FRONT, colors), 1: side, 2: side, 3: None}
-    front = Image.new("RGBA", head.size, TRANSPARENT)
-    back = Image.new("RGBA", head.size, TRANSPARENT)
+    pieces = {
+        0: pixel_drawing(SHIELD_FRONT, colors),
+        1: mirror(side),
+        2: side,
+        3: pixel_drawing(SHIELD_BACK, colors),
+    }
+    out = Image.new("RGBA", head.size, TRANSPARENT)
     src = head.load()
     body_px = body.load()
     for r in range(head.height // fh):
@@ -1908,7 +1925,7 @@ def shield(head, body, colors, fw=64, fh=64):
         piece = pieces[view]
         is_death = r // 4 == 4
         for c in range(head.width // fw):
-            if piece is None or (is_death and c >= 2):
+            if is_death and c >= 2:
                 continue
             hair = [
                 (x, y)
@@ -1928,25 +1945,18 @@ def shield(head, body, colors, fw=64, fh=64):
             neck = min(necks)
             torso = [x for y in range(neck + 1, neck + 7) for x in range(c * fw, (c + 1) * fw) if body_px[x, y][3] > 0]
             left, right = min(torso), max(torso)
-            spot = shield_spot(view, piece, xc, neck, left, right)
-            if spot:
-                x0, y0, is_behind = spot
-                (back if is_behind else front).alpha_composite(piece, (x0, y0))
-    return front, back
+            out.alpha_composite(piece, shield_spot(view, piece, xc, neck, left, right))
+    return out
 
 
 def build_shields(out_dir):
-    """shield1/2 and their _back layers, from the hero's own head and body layers; returns the names written."""
+    """shield1 and shield2, from the hero's own head and body layers; returns the names written."""
     head = open_rgba(out_dir / "hero_head.png")
     body = open_rgba(out_dir / "hero_body.png")
-    written = []
     for name, colors in SHIELDS.items():
-        front, back = shield(head, body, colors)
-        front.save(out_dir / f"{name}.png")
-        back.save(out_dir / f"{name}_back.png")
-        written += [name, f"{name}_back"]
-    print("shields:", written)
-    return written
+        shield(head, body, colors).save(out_dir / f"{name}.png")
+    print("shields:", list(SHIELDS))
+    return list(SHIELDS)
 
 
 # ---------- the Sunken Crypt: vampires, an ooze, crypt props and textures ----------
