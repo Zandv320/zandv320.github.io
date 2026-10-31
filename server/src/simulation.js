@@ -16,9 +16,11 @@ import {
   BANDIT_CAMP,
   distanceToPath,
   insideWorld,
+  inCrypt,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
+import { spotFor } from "../../runeveld/src/rules/crypt.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
 const VILLAGE_HALF_SIZE = 22;
@@ -32,6 +34,8 @@ const STATE_DEAD = 3;
 
 const ATTACK_COOLDOWN = 1.6;
 const MAX_CHASE_DISTANCE = 13;
+/* how far a crypt monster follows anyone away from its own spot */
+const LEASH_DISTANCE = 16;
 const MIN_SPAWN_DISTANCE_TO_PLAYER = 6;
 const WANDER_SPEED_FACTOR = 0.55;
 const MAX_HIT_DAMAGE = 99999;
@@ -95,7 +99,12 @@ export function createSimulation(emit) {
     return null;
   }
 
-  function spawnPoint(spec, players) {
+  /* the crypt's monsters have spots of their own (rules/crypt.js) */
+  function spawnPoint(spec, players, id) {
+    const spot = spotFor(spec.key, id);
+    if (spot) {
+      return spot;
+    }
     const isAwayFromPlayers = (x, z) =>
       players.every(
         (player) => Math.hypot(x - player.x, z - player.z) > MIN_SPAWN_DISTANCE_TO_PLAYER,
@@ -197,6 +206,9 @@ export function createSimulation(emit) {
     if (spec.area === "camp" || spec.area === "vale") {
       return inVale(x, z) && !inCapital(x, z, -3);
     }
+    if (spec.area === "crypt") {
+      return inCrypt(x, z);
+    }
     return true;
   }
 
@@ -208,12 +220,13 @@ export function createSimulation(emit) {
       const spec = MONSTERS[entry.monster];
       for (let i = 0; i < entry.count; i++) {
         const id = entry.monster + "#" + i;
-        const [x, z] = spawnPoint(spec, players);
+        const [x, z] = spawnPoint(spec, players, id);
         monsters.set(id, {
           id,
           spec,
           x,
           z,
+          home: spec.area === "crypt" ? [x, z] : null,
           faceX: 0,
           faceZ: 1,
           state: STATE_IDLE,
@@ -273,11 +286,12 @@ export function createSimulation(emit) {
     if (monster.respawnTimer > 0) {
       return;
     }
-    const [x, z] = spawnPoint(monster.spec, players);
+    const [x, z] = spawnPoint(monster.spec, players, monster.id);
     monster.isDead = false;
     monster.hp = monster.spec.hp;
     monster.x = x;
     monster.z = z;
+    monster.home = monster.spec.area === "crypt" ? [x, z] : null;
     monster.targetId = null;
     monster.state = STATE_IDLE;
     resetBoss(monster);
@@ -317,7 +331,9 @@ export function createSimulation(emit) {
       (target.isDead ||
         isSafe(target.x, target.z) ||
         Math.hypot(target.x - monster.x, target.z - monster.z) > MAX_CHASE_DISTANCE ||
-        !isHuntingGround(spec, target.x, target.z))
+        !isHuntingGround(spec, target.x, target.z) ||
+        (monster.home &&
+          Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > LEASH_DISTANCE))
     ) {
       target = null;
       monster.targetId = null;
@@ -387,7 +403,13 @@ export function createSimulation(emit) {
       } else {
         const wanderX = monster.x + randomBetween(-4, 4);
         const wanderZ = monster.z + randomBetween(-4, 4);
-        monster.wanderTarget = isHome(spec, wanderX, wanderZ) ? [wanderX, wanderZ] : null;
+        if (monster.home) {
+          /* the crypt's monsters keep watch on their spot, and walk back to it after a fight */
+          const isAway = Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > 0.6;
+          monster.wanderTarget = isAway ? monster.home : null;
+        } else {
+          monster.wanderTarget = isHome(spec, wanderX, wanderZ) ? [wanderX, wanderZ] : null;
+        }
         monster.wanderTimer = randomBetween(2, 5);
       }
     }

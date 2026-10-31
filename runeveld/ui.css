@@ -4205,3 +4205,20 @@ body.rpg-cursor #game[data-cursor="gather"] {
     transform: scaleX(0);
   }
 }
+
+/* going down into the crypt or back up: black for a moment (crypt.js) */
+#travel-fade {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  transition: opacity 0.4s;
+}
+#travel-fade.on {
+  opacity: 1;
+}

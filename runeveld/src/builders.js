@@ -24,6 +24,10 @@ const TEXTURE_NAMES = [
   "path",
   "hay",
   "soil",
+  "crypt_wall",
+  "crypt_floor",
+  "iron",
+  "carpet",
 ];
 const OUTLINE_COLOR = 0x0c0f2a;
 
@@ -1237,4 +1241,315 @@ export function enchantingAltar() {
   }
   group.userData.mapKind = "station";
   return group;
+}
+
+/* ---------- the Sunken Crypt (crypt.js): walls, floor, pillars, braziers, tombs, gates, levers, rune stones ---------- */
+
+/** A crypt wall of w × h × d: dark bricks on the sides, the top almost black (you look onto the thick wall). Every
+    wall has a material of its own, so crypt.js can fade the ones in front of the hero. */
+export function cryptWall(w, h, d) {
+  const geometry = new THREE.BoxGeometry(w, h, d);
+  const uv = geometry.attributes.uv;
+  const tw = tileWidth("crypt_wall");
+  const th = tileHeight("crypt_wall");
+  /* face order of BoxGeometry: +x −x +y −y +z −z */
+  const faceSizes = [
+    [d, h],
+    [d, h],
+    [w, d],
+    [w, d],
+    [w, h],
+    [w, h],
+  ];
+  const faceTints = [0.8, 0.8, 0.32, 0.3, 1, 0.75];
+  const colors = [];
+  for (let face = 0; face < 6; face++) {
+    const [faceWidth, faceHeight] = faceSizes[face];
+    for (let i = face * 4; i < face * 4 + 4; i++) {
+      uv.setXY(i, (uv.getX(i) * faceWidth) / tw, (uv.getY(i) * faceHeight) / th);
+      colors.push(faceTints[face], faceTints[face], faceTints[face]);
+    }
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  const wallMaterial = new THREE.MeshLambertMaterial({
+    map: texture("crypt_wall", 1, 1),
+    vertexColors: true,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+  });
+  const mesh = outline(new THREE.Mesh(geometry, wallMaterial));
+  mesh.position.y = h / 2;
+  mesh.userData.mapKind = "crypt_wall";
+  return mesh;
+}
+
+/** The crypt floor: cracked slabs over w × d units, centred on the group's origin. */
+export function cryptFloor(w, d, textureName = "crypt_floor") {
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, d), groundMaterial(textureName, w, d));
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.receiveShadow = true;
+  mesh.userData.mapKind = "crypt_floor";
+  return mesh;
+}
+
+/** A pillar of dark bricks on a stone foot, with a stone capital. */
+export function cryptPillar(h = 2.4) {
+  const group = new THREE.Group();
+  group.add(block(1, 0.3, 1, "stone", 0.62));
+  const shaft = block(0.72, h - 0.55, 0.72, "crypt_wall", 0.95);
+  shaft.position.y += 0.3;
+  group.add(shaft);
+  const capital = block(0.95, 0.25, 0.95, "stone", 0.66);
+  capital.position.y += h - 0.25;
+  group.add(capital);
+  group.userData.mapKind = "crypt_pillar";
+  return group;
+}
+
+/** A brazier: an iron bowl of glowing coals on a stone pedestal (crypt.js puts the fire in it). */
+export function brazier() {
+  const group = new THREE.Group();
+  group.add(block(0.62, 0.15, 0.62, "stone", 0.6));
+  const pedestal = block(0.42, 0.62, 0.42, "stone", 0.7);
+  pedestal.position.y += 0.15;
+  group.add(pedestal);
+  const bowl = outline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.28, 0.3, 8), material("iron", 1.6, 0.3)),
+    40,
+  );
+  bowl.position.y = 0.92;
+  group.add(bowl);
+  const coals = new THREE.Mesh(new THREE.CircleGeometry(0.42, 8), glowMaterial(0xff7a2a));
+  coals.rotation.x = -Math.PI / 2;
+  coals.position.y = 1.06;
+  group.add(coals);
+  group.userData.mapKind = "brazier";
+  return group;
+}
+
+/** A torch in an iron bracket on a wall, facing +z (crypt.js puts the flame on it). */
+export function wallTorch() {
+  const group = new THREE.Group();
+  const plate = box(0.22, 0.34, 0.06, material("iron", 0.22, 0.34));
+  plate.position.set(0, 1.25, 0.03);
+  group.add(plate);
+  const stick = outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.035, 0.55, 5),
+      material("wood_dark", 0.2, 0.55),
+    ),
+    40,
+  );
+  stick.rotation.x = 0.5;
+  stick.position.set(0, 1.5, 0.18);
+  group.add(stick);
+  return group;
+}
+
+/** A stone tomb: a plinth and a heavy lid, 1.2 wide and 2.2 long along z. */
+export function sarcophagus() {
+  const group = new THREE.Group();
+  group.add(block(1.1, 0.65, 2.1, "stone", 0.62));
+  const lid = block(1.25, 0.22, 2.25, "stone", 0.74);
+  lid.position.y += 0.65;
+  group.add(lid);
+  const ridge = block(0.5, 0.12, 1.8, "stone", 0.8);
+  ridge.position.y += 0.87;
+  group.add(ridge);
+  group.userData.mapKind = "crypt_tomb";
+  return group;
+}
+
+/** An iron gate across a passage `width` wide (bars along x); userData.bars is the part that rises when it opens. */
+export function ironGate(width, h = 2.4) {
+  const group = new THREE.Group();
+  const bars = new THREE.Group();
+  const ironMaterial = material("iron", 0.12, h);
+  const count = Math.round(width / 0.32);
+  for (let i = 0; i <= count; i++) {
+    const bar = box(0.1, h, 0.1, ironMaterial);
+    bar.position.x = -width / 2 + (i / count) * width;
+    bars.add(bar);
+  }
+  for (const y of [0.35, h - 0.45]) {
+    const rail = box(width, 0.12, 0.14, material("iron", width, 0.12));
+    rail.position.y = y;
+    bars.add(rail);
+  }
+  group.add(bars);
+  group.userData.bars = bars;
+  group.userData.mapKind = "crypt_gate";
+  return group;
+}
+
+/** A lever on a stone block; userData.handle tips over (rotation.x) when it is pulled. */
+export function lever() {
+  const group = new THREE.Group();
+  group.add(block(0.7, 0.45, 0.5, "stone", 0.66));
+  const handle = new THREE.Group();
+  const rod = outline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 5), material("iron", 0.2, 0.8)),
+    40,
+  );
+  rod.position.y = 0.4;
+  handle.add(rod);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), glowMaterial(0x8a2230));
+  knob.position.y = 0.82;
+  handle.add(knob);
+  handle.position.y = 0.45;
+  handle.rotation.x = -0.6;
+  group.add(handle);
+  group.userData.handle = handle;
+  group.userData.mapKind = "lever";
+  return group;
+}
+
+/** A rune stone with `glyph` (a texture) on its face towards +z; userData.glyph is that face, lit when touched. */
+export function runeStone(glyph) {
+  const group = new THREE.Group();
+  group.add(block(0.95, 0.2, 0.75, "stone", 0.58));
+  const stone = block(0.75, 1.3, 0.55, "stone", 0.72);
+  stone.position.y += 0.2;
+  group.add(stone);
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.5, 0.5),
+    new THREE.MeshBasicMaterial({ map: glyph, color: 0x9a8ab8, transparent: true }),
+  );
+  face.position.set(0, 1, 0.281);
+  group.add(face);
+  group.userData.glyph = face;
+  group.userData.mapKind = "rune_stone";
+  return group;
+}
+
+/** The stairs into the crypt at the altar: a low stone frame around steps that go down into the dark. */
+export function cryptEntrance() {
+  const group = new THREE.Group();
+  const pit = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 2.4), glowMaterial(0x07060c));
+  pit.rotation.x = -Math.PI / 2;
+  pit.position.y = 0.02;
+  group.add(pit);
+  for (let i = 0; i < 4; i++) {
+    const step = block(1.8, 0.03, 0.42, "stone", 0.75 - i * 0.17);
+    step.position.set(0, 0.02, 0.95 - i * 0.45);
+    group.add(step);
+  }
+  for (const x of [-1.15, 1.15]) {
+    const side = block(0.4, 0.55, 2.9, "stone", 0.8);
+    side.position.x = x;
+    group.add(side);
+  }
+  const back = block(2.7, 0.75, 0.4, "stone", 0.86);
+  back.position.z = -1.35;
+  group.add(back);
+  group.userData.solids = [
+    { x: -1.15, z: 0, w: 0.4, d: 2.9 },
+    { x: 1.15, z: 0, w: 0.4, d: 2.9 },
+    { x: 0, z: -1.35, w: 2.7, d: 0.4 },
+  ];
+  group.userData.mapKind = "crypt_entrance";
+  return group;
+}
+
+/** Stairs going up out of the crypt, towards −z; the top step lies against the wall behind them. */
+export function cryptStairsUp() {
+  const group = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const step = block(2.4, 0.18 * (i + 1), 0.4, "stone", 0.82 - i * 0.04);
+    step.position.z = 0.8 - i * 0.4;
+    group.add(step);
+  }
+  group.userData.solids = [];
+  group.userData.mapKind = "crypt_stairs";
+  return group;
+}
+
+/** A spike trap: an iron plate with holes; userData.spikes rises out of it (crypt.js moves it). */
+export function spikeTrap(size = 1.8) {
+  const group = new THREE.Group();
+  const plate = box(size, 0.05, size, material("iron", size, size));
+  group.add(plate);
+  const spikes = new THREE.Group();
+  const spikeMaterial = material("iron", 0.2, 0.5, 1.25);
+  const rows = 4;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < rows; j++) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.5, 4), spikeMaterial);
+      spike.position.set(
+        -size / 2 + ((i + 0.5) * size) / rows,
+        0.25,
+        -size / 2 + ((j + 0.5) * size) / rows,
+      );
+      spikes.add(spike);
+    }
+  }
+  spikes.position.y = -0.5;
+  group.add(spikes);
+  group.userData.spikes = spikes;
+  group.userData.solids = [];
+  return group;
+}
+
+/** A pressure plate: a slab that sinks a little when stepped on (userData.plate). */
+export function pressurePlate(size = 1.1) {
+  const group = new THREE.Group();
+  const plate = block(size, 0.08, size, "stone", 0.7);
+  group.add(plate);
+  group.userData.plate = plate;
+  group.userData.solids = [];
+  return group;
+}
+
+/** The Count's throne: dark stone with a high back and a red seat, facing +z. */
+export function throne() {
+  const group = new THREE.Group();
+  group.add(block(2.2, 0.3, 1.8, "stone", 0.55));
+  const seat = block(1.4, 0.55, 1.1, "crypt_wall", 0.9);
+  seat.position.y += 0.3;
+  group.add(seat);
+  const cushion = block(1.1, 0.1, 0.9, "carpet", 1);
+  cushion.position.y += 0.85;
+  group.add(cushion);
+  const back = block(1.5, 2.2, 0.35, "crypt_wall", 0.85);
+  back.position.set(0, back.position.y + 0.3, -0.5);
+  group.add(back);
+  for (const x of [-0.85, 0.85]) {
+    const post = block(0.3, 2.9, 0.4, "stone", 0.6);
+    post.position.set(x, post.position.y, -0.5);
+    group.add(post);
+  }
+  group.userData.mapKind = "throne";
+  return group;
+}
+
+/** A wall section with a crack through it (the way into the vault); like cryptWall, plus dark zigzag lines. */
+export function crackedWall(w, h, d) {
+  const mesh = cryptWall(w, h, d);
+  const points = [];
+  const zigzag = [
+    [-0.1, 0.5],
+    [0.15, 0.25],
+    [-0.05, 0.05],
+    [0.2, -0.15],
+    [0, -0.35],
+    [0.18, -0.5],
+  ];
+  for (const side of [1, -1]) {
+    for (let i = 0; i < zigzag.length - 1; i++) {
+      const [ax, ay] = zigzag[i];
+      const [bx, by] = zigzag[i + 1];
+      points.push(
+        new THREE.Vector3(ax * w, ay * h, (side * d) / 2 + side * 0.01),
+        new THREE.Vector3(bx * w, by * h, (side * d) / 2 + side * 0.01),
+      );
+    }
+  }
+  mesh.add(
+    new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: 0x08070c }),
+    ),
+  );
+  return mesh;
 }

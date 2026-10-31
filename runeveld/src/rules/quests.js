@@ -478,6 +478,46 @@ export const QUESTS = {
       items: [{ id: "steel_sword", count: 1, mage: "crystal_staff" }],
     },
   },
+  /* ---- chapter 4, the end: the Sunken Crypt under the altar (rules/crypt.js), level 13 to 17 ---- */
+  mette_runes: {
+    giver: "Old Mette",
+    hint: "Behind the old altar in Whisperwood, stairs now lead down into the dark. Tap them to go down.",
+    chapter: 4,
+    main: true,
+    title: "The waking runes",
+    level: 13,
+    after: "rolf_dire_boar",
+    intro:
+      "The night your boar died, the runes on the old altar burned violet until dawn. And behind it, the ground has opened: stairs, going down. My grandmother said a count was buried under that forest, with everything he owned. Go and see what woke up. Take a torch.",
+    progressText:
+      "The stairs lie just behind the old altar at the end of the forest path. Go down and look around.",
+    completeText:
+      "A crypt. Of course there is a crypt. And it was not empty, was it? Sit, drink this, and then tell me everything.",
+    goal: { type: "reach", x: 0, z: 537.5, r: 4, label: "the crypt under the altar" },
+    reward: { exp: 1200, zeny: 400, items: [{ id: "orange_potion", count: 4 }] },
+  },
+  mette_count: {
+    giver: "Old Mette",
+    where: { monster: "crimson_count" },
+    hint: "Count Vaelor waits in the Crimson Sanctum, the deepest room of the crypt. A lever in the ossuary opens the iron gate; the plaque in the chamber of runes tells you the order of the stones. Step out of the red circles.",
+    chapter: 4,
+    main: true,
+    title: "The Crimson Count",
+    level: 15,
+    after: "mette_runes",
+    intro:
+      "Thralls, and a witch, and a sealed door with moons on it. It is him, then: Count Vaelor, the crimson count from my grandmother's stories. They say he walks again when the forest bleeds. Finish what the old village could not. Rest well first.",
+    progressText:
+      "The count waits behind the rune door. Pull the lever in the ossuary, wake the stones in the right order, and mind his blood runes.",
+    completeText:
+      "Dust, at last. You have done what three generations of this village only whispered about. Here: the old stories say he guarded this. Now it is yours.",
+    goal: { type: "kill", monster: "crimson_count", count: 1 },
+    reward: {
+      exp: 3200,
+      zeny: 1800,
+      items: [{ id: "bloodfang_blade", count: 1, mage: "nightveil_staff" }],
+    },
+  },
   /* ---- chapter 5: the Kingsroad, Kingsvale and Aurelia, level 15 to 24 ---- */
   rolf_road_west: {
     giver: "Guard Rolf",
@@ -488,7 +528,7 @@ export const QUESTS = {
     main: true,
     title: "The road west",
     level: 15,
-    after: "rolf_dire_boar",
+    after: "mette_count",
     intro:
       "The Kingsroad runs west from our gate to Aurelia, the capital. Captain Aldric at the east gate of the city asked for anyone who can fight. Go and report to him. Mind the road: bandits.",
     progressText:

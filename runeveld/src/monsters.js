@@ -13,11 +13,14 @@ import {
   CAPITAL,
   inCapital,
   BANDIT_CAMP,
+  inCrypt,
 } from "./regions.js";
 import { isNight } from "./daylight.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
+import { spotFor } from "./rules/crypt.js";
 import { sfx } from "./audio.js";
 import { chargeDust } from "./boss-effects.js";
+import { setSanctumDark } from "./crypt.js";
 import { SHEETS } from "./sheets.js";
 import { recolor, HAIR_SOURCE, HAIR_PALETTES } from "./appearance.js";
 import { Sprite2D } from "./sprites.js";
@@ -40,6 +43,8 @@ export const MONSTER_STATE = { idle: 0, walking: 1, dead: 3 };
 
 /* how far a hunting monster follows a player before giving up */
 const CHASE_DISTANCE = 13;
+/* how far a crypt monster follows anyone away from its own spot */
+const LEASH_DISTANCE = 16;
 /* seconds between two attacks of a monster */
 const MONSTER_ATTACK_INTERVAL = 1.6;
 /* seconds between two monster snapshots sent by the host */
@@ -119,8 +124,13 @@ export function ensureMonster(id) {
   return monster;
 }
 
-/* A spot in this monster's area: outside the palisade, free of obstacles, not on the path at the gates. */
-function spawnPoint(spec) {
+/* A spot in this monster's area: outside the palisade, free of obstacles, not on the path at the gates. The crypt's
+   monsters have spots of their own. */
+function spawnPoint(spec, id) {
+  const spot = spotFor(spec.key, id);
+  if (spot) {
+    return spot;
+  }
   if (spec.area === "camp") {
     const [campX, campZ] = BANDIT_CAMP;
     for (let i = 0; i < 80; i++) {
@@ -232,6 +242,9 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "camp" || spec.area === "vale") {
     return inVale(x, z) && !inCapital(x, z, -3);
   }
+  if (spec.area === "crypt") {
+    return inCrypt(x, z);
+  }
   return true;
 }
 
@@ -245,6 +258,10 @@ export function monsterDied(monster) {
   }
   monster.isDead = true;
   monster.hp = 0;
+  /* a boss that darkened its room lights it again when it falls */
+  if (bossOf(monster.spec.key)?.enrage?.darkness) {
+    setSanctumDark(false);
+  }
   monster.state = MONSTER_STATE.dead;
   monster.aggroTarget = null;
   const respawnRange = monster.spec.respawn || RESPAWN_SECONDS;
@@ -266,12 +283,16 @@ export function monsterDied(monster) {
 
 function reviveMonster(monster, [x, z]) {
   resetBoss(monster);
+  if (monster.isEnraged && bossOf(monster.spec.key)?.enrage?.darkness) {
+    setSanctumDark(false);
+  }
   monster.isEnraged = false;
   monster.charge = null;
   monster.isDead = false;
   monster.hp = monster.hpMax;
   monster.x = monster.targetX = x;
   monster.z = monster.targetZ = z;
+  monster.home = monster.spec.area === "crypt" ? [x, z] : null;
   monster.aggroTarget = null;
   monster.state = MONSTER_STATE.idle;
   monster.hideAt = 0;
@@ -287,9 +308,10 @@ export function becomeHost() {
     for (const spawn of SPAWNS) {
       for (let i = 0; i < spawn.count; i++) {
         const monster = ensureMonster(spawn.monster + "#" + i);
-        const [x, z] = spawnPoint(monster.spec);
+        const [x, z] = spawnPoint(monster.spec, monster.id);
         monster.x = monster.targetX = x;
         monster.z = monster.targetZ = z;
+        monster.home = monster.spec.area === "crypt" ? [x, z] : null;
         monster.isNew = false;
       }
     }
@@ -354,7 +376,8 @@ function findTarget(monster, players, nightFactors) {
     (target.isDead ||
       isSafe(target.x, target.z) ||
       Math.hypot(target.x - monster.x, target.z - monster.z) > CHASE_DISTANCE ||
-      !isHuntingGround(spec, target.x, target.z));
+      !isHuntingGround(spec, target.x, target.z) ||
+      isFarFromHome(monster));
   if (shouldGiveUp) {
     target = null;
     monster.aggroTarget = null;
@@ -379,6 +402,11 @@ function findTarget(monster, players, nightFactors) {
   }
   return target;
 }
+
+/* a crypt monster that has followed someone too far from its spot turns back */
+const isFarFromHome = (monster) =>
+  !!monster.home &&
+  Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > LEASH_DISTANCE;
 
 /* Host: walk to the target and attack it when in range. */
 function chase(monster, target, nightFactors, dt) {
@@ -422,7 +450,13 @@ function wander(monster, dt) {
     } else {
       const wanderX = monster.x + randomBetween(-4, 4);
       const wanderZ = monster.z + randomBetween(-4, 4);
-      monster.wanderTarget = isHome(spec, wanderX, wanderZ) ? [wanderX, wanderZ] : null;
+      if (monster.home) {
+        /* the crypt's monsters keep watch on their spot, and walk back to it after a fight */
+        const isAway = Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > 0.6;
+        monster.wanderTarget = isAway ? monster.home : null;
+      } else {
+        monster.wanderTarget = isHome(spec, wanderX, wanderZ) ? [wanderX, wanderZ] : null;
+      }
       monster.wanderTimer = randomBetween(2, 5);
     }
   }
@@ -488,7 +522,7 @@ export function hostTick(dt) {
       }
       monster.respawnTimer -= dt;
       if (monster.respawnTimer <= 0) {
-        reviveMonster(monster, spawnPoint(monster.spec));
+        reviveMonster(monster, spawnPoint(monster.spec, monster.id));
       }
       continue;
     }
@@ -626,16 +660,23 @@ export function updateMonsters(dt) {
       monster.x += (monster.targetX - monster.x) * follow;
       monster.z += (monster.targetZ - monster.z) * follow;
     }
-    if (isCharging) {
+    /* a dive goes up and comes down again */
+    const lift =
+      isCharging && charge.arc
+        ? Math.sin(Math.min(1, (time - charge.t0) / charge.duration) * Math.PI) * charge.arc
+        : 0;
+    if (isCharging && !charge.arc) {
       chargeDust(monster, dt);
-    } else if (charge) {
+    } else if (charge && !isCharging) {
       monster.charge = null;
       monster.targetX = charge.x1;
       monster.targetZ = charge.z1;
     }
-    monster.sprite.group.position.set(monster.x, 0, monster.z);
+    monster.sprite.group.position.set(monster.x, lift, monster.z);
     monster.sprite.face(monster.faceX, monster.faceZ);
-    if (time >= monster.attackAnimUntil) {
+    if (isCharging && charge.anim) {
+      monster.sprite.play(charge.anim);
+    } else if (time >= monster.attackAnimUntil) {
       monster.sprite.play(isCharging || monster.state === MONSTER_STATE.walking ? "walk" : "idle");
     }
     /* frozen monsters turn icy blue, an enraged boss red */

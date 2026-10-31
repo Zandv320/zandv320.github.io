@@ -10,6 +10,7 @@
 import * as THREE from "three";
 import { QUESTS, CHAPTERS, SAGA, mainStoryStep, turnInNpc } from "./rules/quests.js";
 import { GATHER_NODES } from "./rules/gather-nodes.js";
+import { inCrypt, CRYPT_STAIRS, CRYPT_EXIT } from "./rules/crypt.js";
 import { RECIPES, PROFESSIONS, STATION_PLACES } from "./rules/professions.js";
 import { GUIDE_TOPICS } from "./guide-topics.js";
 import { icon } from "./icons.js";
@@ -95,8 +96,25 @@ export function createGuide(deps) {
 
   const npcTarget = (name) => deps.npcPosition(name);
 
+  /* A target down in the crypt while the hero is above (or the other way round): the stairs first. */
+  function viaStairs(place) {
+    if (!place) {
+      return place;
+    }
+    const isTargetBelow = inCrypt(place.x, place.z);
+    if (isTargetBelow === inCrypt(deps.player.x, deps.player.z)) {
+      return place;
+    }
+    const [x, z] = isTargetBelow ? CRYPT_STAIRS : CRYPT_EXIT;
+    return { x, z, height: 0.5 };
+  }
+
   /* The place the step points to, or null (a step done in a panel, or a monster not in sight). */
   function targetOf(id, state) {
+    return viaStairs(placeOf(id, state));
+  }
+
+  function placeOf(id, state) {
     const quest = QUESTS[id];
     if (state === "available") {
       return npcTarget(quest.giver);

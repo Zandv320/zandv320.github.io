@@ -10,7 +10,8 @@
      isLineClear(x0, z0, x1, z1, r)  a circle of radius r can move along the line
      findPath(x0, z0, x1, z1, r) waypoints [[x, z], …] from start to goal around obstacles (A* on a grid of
                                  whole units, then shortened to the fewest straight legs), or null
-   `obstacles` may grow later (the world is built bit by bit); new ones are filed when they are first needed. */
+   `obstacles` may grow later (the world is built bit by bit); new ones are filed when they are first needed. An
+   obstacle with `isOpen` set (a raised gate, a wall that has crumbled) blocks nothing until it is cleared again. */
 
 const GRID_CELL = 8;
 /* obstacles are filed with this much extra room: checks for figures up to this radius use the grid */
@@ -176,6 +177,9 @@ export function createCollision(obstacles, isInside = () => true) {
 
   function pushOut(x, z, r) {
     for (const obstacle of near(x, z, r)) {
+      if (obstacle.isOpen) {
+        continue;
+      }
       const dx = x - obstacle.x;
       const dz = z - obstacle.z;
       const distance = Math.hypot(dx, dz);
@@ -200,7 +204,7 @@ export function createCollision(obstacles, isInside = () => true) {
 
   function touches(x, z, r) {
     for (const obstacle of near(x, z, r)) {
-      if (Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.r + r) {
+      if (!obstacle.isOpen && Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.r + r) {
         if (!obstacle.box || boxPush(obstacle, x, z, r)) {
           return true;
         }

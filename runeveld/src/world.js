@@ -721,7 +721,8 @@ function buildBillboardBatches() {
 }
 
 /** Builds the whole world: ground, village, fields, forest and the capital. Resolves when every sprite is loaded. */
-export async function buildWorld() {
+/** Builds the world; `extraBuilders` (such as the crypt's) get the same build context as the forest and the city. */
+export async function buildWorld(extraBuilders = []) {
   const [atlas, flowers, flowers2, rock2] = await Promise.all(
     ["ground", "flowers", "flowers2", "rock2"].map((name) =>
       loadTexture("sprites/" + name + ".png", { raw: true }),
@@ -999,6 +1000,9 @@ export async function buildWorld() {
   buildForest(context);
   buildCapital(context);
   buildProfessionSites(context);
+  for (const build of extraBuilders) {
+    build(context);
+  }
   await Promise.all(pending);
   /* draw the static scenery in bulk (batching.js): the same picture, far fewer draw calls */
   buildBillboardBatches();

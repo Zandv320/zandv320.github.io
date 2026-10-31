@@ -9,6 +9,8 @@ import { burst, ringBurst } from "./particles.js";
 import { screenFlash } from "./feel.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
+import { bossOf } from "./rules/bosses.js";
+import { setSanctumDark } from "./crypt.js";
 
 /* a warning on the ground draws over the night haze (renderOrder 10000), so it is never missed */
 const WARNING_ORDER = 10001;
@@ -163,7 +165,7 @@ export function bossSummon(data) {
   if (!boss) {
     return;
   }
-  UI.speechBubble(boss.label, "To me, lads!");
+  UI.speechBubble(boss.label, boss.spec.lines?.summon || "To me, lads!");
   for (let k = 0; k < 6; k++) {
     const angle = (k / 6) * Math.PI * 2;
     playEffect("smoke", boss.x + Math.cos(angle) * 2.5, boss.z + Math.sin(angle) * 2.5, {
@@ -193,6 +195,40 @@ export function bossSmoke(data) {
   }
 }
 
+/** boss_dive: it takes to the air (its 'fly' frames) and comes down on the circle shown on the ground. */
+export function bossDive(data) {
+  const boss = bossById(data.id);
+  if (!boss) {
+    return;
+  }
+  boss.charge = {
+    x0: boss.x,
+    z0: boss.z,
+    x1: data.x1,
+    z1: data.z1,
+    t0: now(),
+    duration: data.duration,
+    arc: 2.6,
+    anim: "fly",
+  };
+  burst(boss.x, 1.2, boss.z, { color: 0x2a1830, count: 14, speed: 3, size: 3 });
+  if (distanceToPlayer(boss.x, boss.z) < HEARING_DISTANCE) {
+    sfx.bossRoar();
+  }
+}
+
+/** boss_reset: nobody left to fight it, so it healed and starts over. */
+export function bossReset(data) {
+  const boss = bossById(data.id);
+  if (!boss) {
+    return;
+  }
+  boss.isEnraged = false;
+  if (bossOf(boss.spec.key)?.enrage?.darkness) {
+    setSanctumDark(false);
+  }
+}
+
 /** boss_enrage: low on health, it turns red and hits harder and sooner. */
 export function bossEnrage(data) {
   const boss = bossById(data.id);
@@ -200,7 +236,11 @@ export function bossEnrage(data) {
     return;
   }
   boss.isEnraged = true;
-  UI.speechBubble(boss.label, "Enough games!");
+  /* the Count calls the dark: the sanctum's fires go out */
+  if (bossOf(boss.spec.key)?.enrage?.darkness) {
+    setSanctumDark(true);
+  }
+  UI.speechBubble(boss.label, boss.spec.lines?.enrage || "Enough games!");
   UI.floatingText(boss.x, boss.sprite.height * boss.scale, boss.z, camera, "Enraged!", "crit");
   groundRing(boss.x, boss.z, WARNING_COLOR, 0.5, 4, 0.6, 0.8);
   ringBurst(boss.x, boss.z, 1, { color: 0xff6a4a, count: 36, size: 3 });

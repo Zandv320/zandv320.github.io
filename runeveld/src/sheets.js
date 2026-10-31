@@ -56,6 +56,8 @@ const HERO_LAYER_FILES = [
   "cloak3_back",
   "cloak4",
   "cloak4_back",
+  "cloak5",
+  "cloak5_back",
 ];
 
 function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {
@@ -73,6 +75,31 @@ function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {
       attack: { row: 8, frames: attack, fps: 12, once: true },
       hurt: { row: 12, frames: 4, fps: 10, once: true },
       death: { row: 16, frames: 6, fps: 8, once: true },
+    },
+  };
+}
+
+/* The crypt's vampires and its ooze: 64x64 frames like the hero, rows down/up/left/right like the animals. The
+   count also has 'fly' (the flight he dives with). */
+function cryptSheet(
+  name,
+  { idle = 4, walk = 6, attack = 12, death = 11, hurt = 4, feet = 20, height = 27 },
+) {
+  return {
+    url: `sprites/${name}.png`,
+    frameWidth: 64,
+    frameHeight: 64,
+    scale: 1 / 16,
+    feet,
+    height,
+    directions: ANIMAL_DIRECTIONS,
+    anims: {
+      idle: { row: 0, frames: idle, fps: 6 },
+      walk: { row: 4, frames: walk, fps: 10 },
+      attack: { row: 8, frames: attack, fps: 18, once: true },
+      hurt: { row: 12, frames: hurt, fps: 10, once: true },
+      death: { row: 16, frames: death, fps: 10, once: true },
+      fly: { row: 20, frames: 8, fps: 14 },
     },
   };
 }
@@ -115,6 +142,18 @@ export const SHEETS = {
   stag: animalSheet("stag", { walk: 6, attack: 6, scale: 1 / 15, height: 26 }),
   wolf: animalSheet("wolf", { walk: 6, attack: 6, scale: 1 / 13, height: 22 }),
   dire_boar: animalSheet("dire_boar", { walk: 6, attack: 5, scale: 1 / 11, height: 26 }),
+  crypt_thrall: cryptSheet("crypt_thrall", {}),
+  grave_witch: cryptSheet("grave_witch", { height: 28 }),
+  crimson_count: cryptSheet("crimson_count", { height: 27 }),
+  grave_ooze: cryptSheet("grave_ooze", {
+    idle: 6,
+    walk: 8,
+    attack: 11,
+    hurt: 5,
+    death: 10,
+    feet: 24,
+    height: 20,
+  }),
 };
 
 /**

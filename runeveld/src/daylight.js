@@ -67,7 +67,7 @@ export function hazeColor(light = daylight()) {
 /**
  * Sets up the day/night cycle.
  * lights: light sources {x, z, radius (units), color: [r,g,b], strength 0..1, y (height of the glow)}.
- * Returns {update(cameraState, extraLights)}.
+ * Returns {update(cameraState, extraLights), setIndoor(indoor)}.
  */
 export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights }) {
   const overlay = document.getElementById("night-overlay");
@@ -115,21 +115,29 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
   const skyDayColor = new THREE.Color(0x87c9ee);
   const skyNightColor = new THREE.Color(0x0e1630);
   let lastNight = -1;
+  /* underground (the crypt): {haze: [r, g, b], lights}, its own dark and its own light sources, whatever the hour */
+  let indoor = null;
 
   function update(cameraState, extraLights = []) {
-    const light = daylight();
+    const light = indoor ? 0 : daylight();
     const night = 1 - light;
-    /* sun, sky light and sky */
-    sun.intensity = 1.1 + 1.5 * light;
-    sun.color.copy(sunNightColor).lerp(sunDayColor, light);
-    hemiLight.intensity = 1.4 + 0.8 * light;
-    hemiLight.color.copy(hemiNightColor).lerp(hemiDayColor, light);
-    scene.background.copy(skyNightColor).lerp(skyDayColor, light);
+    /* sun, sky light and sky. Underground the scene is lit as by day and the haze makes it dark: then the light
+       holes show the true colours, and around them is black */
+    const lit = indoor ? 1 : light;
+    sun.intensity = 1.1 + 1.5 * lit;
+    sun.color.copy(sunNightColor).lerp(sunDayColor, lit);
+    hemiLight.intensity = 1.4 + 0.8 * lit;
+    hemiLight.color.copy(hemiNightColor).lerp(hemiDayColor, lit);
+    if (indoor) {
+      scene.background.setRGB(0.008, 0.007, 0.012);
+    } else {
+      scene.background.copy(skyNightColor).lerp(skyDayColor, light);
+    }
     for (const glow of glows) {
       glow.mesh.material.opacity = night * (glow.light.strength ?? 0.8) * 0.4;
       glow.mesh.rotation.y = cameraState.yaw;
       glow.mesh.rotation.x = -cameraState.tilt;
-      glow.mesh.visible = night > 0.02;
+      glow.mesh.visible = night > 0.02 && !indoor;
     }
 
     /* the haze */
@@ -146,10 +154,11 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
     lastNight = night;
     const width = innerWidth;
     const height = innerHeight;
-    const [r, g, b] = hazeColor(light);
+    const [r, g, b] = indoor ? indoor.haze : hazeColor(light);
+    const sources = (indoor ? indoor.lights : lights).concat(extraLights);
     const pxPerUnit = cameraState.px / renderer.getPixelRatio(); /* CSS pixels per unit */
     if (hazeMesh) {
-      updateHazeMesh(hazeMesh, [r, g, b], lights.concat(extraLights), pxPerUnit, night);
+      updateHazeMesh(hazeMesh, [r, g, b], sources, pxPerUnit, night);
       return;
     }
     overlay.style.display = "block";
@@ -163,7 +172,7 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
 
     /* warm holes at the light sources: brighten where lamps stand */
     ctx.globalCompositeOperation = "lighter";
-    for (const source of lights.concat(extraLights)) {
+    for (const source of sources) {
       projected.set(source.x, source.y ?? 0.8, source.z).project(camera);
       if (projected.z > 1 || Math.abs(projected.x) > 1.5 || Math.abs(projected.y) > 1.5) {
         continue;
@@ -215,7 +224,12 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
     mesh.visible = true;
   }
 
-  return { update };
+  /** Underground: `{haze: [r, g, b], lights}` (light sources as above), or null for the sky again. */
+  function setIndoor(value) {
+    indoor = value;
+  }
+
+  return { update, setIndoor };
 }
 
 /* the most light holes the haze pass draws at once (more than ever fit on a screen) */

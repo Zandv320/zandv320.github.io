@@ -2,6 +2,7 @@
    stands in the scene (userData.mapKind on built objects and ground planes, the billboards from `billboards`); the
    live layer (player, other players, monsters, npcs with quest markers) is redrawn every frame while the map is open. */
 import * as THREE from "three";
+import { CRYPT_ROOMS, cryptFloorCells, inCrypt, CRYPT_EXIT } from "./rules/crypt.js";
 import {
   FOREST,
   inForest,
@@ -19,6 +20,9 @@ import {
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
 const COLORS = {
   outside: "#2f4a22",
+  cryptOutside: "#08070c",
+  cryptWall: "#2a2738",
+  cryptFloor: "#5a5674",
   grass: "#86b54c",
   forest: "#4c7a3b",
   village: "#8fbb52",
@@ -466,6 +470,47 @@ export function createWorldMap(deps) {
     return layer;
   }
 
+  /* The crypt is far from everything else: a small map of its own, floor and walls, for the minimap down there. */
+  let cryptLayer = null;
+  const cryptBounds = Object.values(CRYPT_ROOMS).reduce(
+    ([x0, z0, x1, z1], { rect }) => [
+      Math.min(x0, rect[0] - 2),
+      Math.min(z0, rect[1] - 2),
+      Math.max(x1, rect[2] + 2),
+      Math.max(z1, rect[3] + 2),
+    ],
+    [Infinity, Infinity, -Infinity, -Infinity],
+  );
+  function ensureCryptLayer(scale) {
+    if (cryptLayer && cryptLayer.scale === scale) {
+      return cryptLayer;
+    }
+    const [x0, z0, x1, z1] = cryptBounds;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil((x1 - x0) * scale);
+    canvas.height = Math.ceil((z1 - z0) * scale);
+    const g = canvas.getContext("2d");
+    const floor = cryptFloorCells();
+    /* walls first, a cell wider than the floor all round, then the floor over them */
+    g.fillStyle = COLORS.cryptWall;
+    for (const key of floor) {
+      const [x, z] = key.split(",").map(Number);
+      g.fillRect((x - 1 - x0) * scale, (z - 1 - z0) * scale, 3 * scale, 3 * scale);
+    }
+    g.fillStyle = COLORS.cryptFloor;
+    for (const key of floor) {
+      const [x, z] = key.split(",").map(Number);
+      g.fillRect((x - x0) * scale, (z - z0) * scale, scale + 0.5, scale + 0.5);
+    }
+    /* the stairs up */
+    g.font = `${Math.round(scale * 2.2)}px system-ui`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("🪜", (CRYPT_EXIT[0] - x0) * scale, (CRYPT_EXIT[1] - z0) * scale);
+    cryptLayer = { canvas, scale, x0, z0 };
+    return cryptLayer;
+  }
+
   function ensureStaticLayer(scale) {
     if (!staticLayer || cachedScale !== scale) {
       cachedScale = scale;
@@ -822,7 +867,12 @@ export function createWorldMap(deps) {
     }
     const scale = MINIMAP_SCALE * ratio;
     const layerScale = STATIC_SCALE * ratio;
-    const layer = ensureStaticLayer(layerScale);
+    /* down in the crypt its own map, with its own corner */
+    const isBelow = inCrypt(deps.player.x, deps.player.z);
+    const crypt = isBelow ? ensureCryptLayer(layerScale) : null;
+    const layer = crypt ? crypt.canvas : ensureStaticLayer(layerScale);
+    const layerX0 = crypt ? crypt.x0 : X0;
+    const layerZ0 = crypt ? crypt.z0 : Z0;
     const width = minimap.width;
     const height = minimap.height;
     const worldX0 = deps.player.x - width / 2 / scale;
@@ -836,13 +886,13 @@ export function createWorldMap(deps) {
       minimapContext.rect(0, 0, width, height);
     }
     minimapContext.clip();
-    minimapContext.fillStyle = COLORS.outside;
+    minimapContext.fillStyle = isBelow ? COLORS.cryptOutside : COLORS.outside;
     minimapContext.fillRect(0, 0, width, height);
     minimapContext.imageSmoothingEnabled = true;
     minimapContext.drawImage(
       layer,
-      (worldX0 - X0) * layerScale,
-      (worldZ0 - Z0) * layerScale,
+      (worldX0 - layerX0) * layerScale,
+      (worldZ0 - layerZ0) * layerScale,
       (width / scale) * layerScale,
       (height / scale) * layerScale,
       0,

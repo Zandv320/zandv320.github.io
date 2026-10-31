@@ -398,12 +398,50 @@ export const ITEMS = {
     stack: 99,
     description: "Heavy and branching. Good for hilts, says Ragnar.",
   },
+  grave_dust: {
+    name: "Grave dust",
+    price: 20,
+    icon: "⚱️",
+    stack: 99,
+    description: "Fine grey dust from the crypt floor. Alchemists buy it and do not say why.",
+  },
+  vampire_fang: {
+    name: "Vampire fang",
+    price: 60,
+    icon: "🦇",
+    stack: 99,
+    description: "Long, hollow and sharp. Proof that the old stories were true.",
+  },
   dire_tusk: {
     name: "Dire tusk",
     price: 140,
     icon: "🦷",
     stack: 99,
     description: "As long as your forearm. Something to brag about.",
+  },
+  /* the Crimson Count's weapons (the crypt, rules/crypt.js) */
+  bloodfang_blade: {
+    name: "Bloodfang blade",
+    slot: "weapon",
+    layer: "sword3",
+    atk: 30,
+    bonus: { str: 2 },
+    price: 3200,
+    icon: "🗡️",
+    forClass: "swordsman",
+    description: "Count Vaelor's own. The edge is never quite dry.",
+  },
+  nightveil_staff: {
+    name: "Nightveil staff",
+    slot: "weapon",
+    layer: "staff3",
+    atk: 8,
+    matk: 42,
+    bonus: { int: 2 },
+    price: 3200,
+    icon: "🪄",
+    forClass: "mage",
+    description: "Black wood that drinks the candlelight around it.",
   },
   /* Cloaks (visible on the hero), rings, necklaces, belts, pants and boots. */
   travelers_cloak: {
@@ -446,6 +484,17 @@ export const ITEMS = {
     icon: "🧥",
     description: "Crimson with a golden hem. Worn by the champions of Aurelia.",
   },
+  crimson_mantle: {
+    name: "Crimson mantle",
+    slot: "cloak",
+    layer: "cloak5",
+    def: 7,
+    flee: 6,
+    hp: 40,
+    price: 3000,
+    icon: "🧥",
+    description: "Blood red with a silver hem. It moves a moment after you do.",
+  },
   copper_ring: {
     name: "Copper ring",
     slot: "ring",
@@ -478,6 +527,14 @@ export const ITEMS = {
     price: 900,
     icon: "💍",
     description: "A thin band set with a green stone. Light as air.",
+  },
+  counts_signet: {
+    name: "Count's signet",
+    slot: "ring",
+    bonus: { str: 2, vit: 2, int: 2 },
+    price: 3500,
+    icon: "💍",
+    description: "A bat in red enamel. It is warm, which a ring should not be.",
   },
   royal_signet: {
     name: "Royal signet",
@@ -1409,6 +1466,87 @@ export const VALE_MONSTERS = {
 };
 Object.assign(MONSTERS, VALE_MONSTERS);
 
+/* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
+   rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
+export const CRYPT_MONSTERS = {
+  grave_ooze: {
+    name: "Grave Ooze",
+    level: 13,
+    hp: 780,
+    atk: 52,
+    exp: 250,
+    zeny: [30, 70],
+    speed: 2.2,
+    aggressive: true,
+    range: 1.3,
+    aggroRange: 5,
+    area: "crypt",
+    respawn: [45, 70],
+    materials: { grave_dust: 0.7 },
+    loot: { red_potion: 0.25, orange_potion: 0.08 },
+  },
+  crypt_thrall: {
+    name: "Crypt Thrall",
+    level: 14,
+    hp: 950,
+    atk: 58,
+    exp: 300,
+    zeny: [40, 90],
+    speed: 3.1,
+    aggressive: true,
+    range: 1.4,
+    aggroRange: 6.5,
+    area: "crypt",
+    respawn: [45, 70],
+    materials: { vampire_fang: 0.45, grave_dust: 0.3 },
+    loot: { orange_potion: 0.12, shadow_cloak: 0.02, steel_armor: 0.02 },
+  },
+  grave_witch: {
+    name: "Grave Witch",
+    level: 15,
+    hp: 820,
+    atk: 62,
+    exp: 340,
+    zeny: [50, 110],
+    speed: 2.6,
+    aggressive: true,
+    range: 5.5,
+    aggroRange: 8,
+    projectile: 0xb86bff,
+    area: "crypt",
+    respawn: [55, 80],
+    materials: { vampire_fang: 0.35, arcane_dust: 0.4 },
+    loot: { orange_potion: 0.15, archmage_robe: 0.02, starry_hat: 0.02 },
+  },
+  crimson_count: {
+    name: "Count Vaelor",
+    title: "The Crimson Count",
+    level: 17,
+    hp: 4600,
+    atk: 70,
+    exp: 1300,
+    zeny: [300, 600],
+    speed: 3.2,
+    aggressive: true,
+    range: 1.6,
+    aggroRange: 9,
+    scale: 1.4,
+    /* what he calls out when his helpers come and when the dark falls (boss-effects.js) */
+    lines: { summon: "Rise, my children!", enrage: "Let the dark have you!" },
+    area: "crypt",
+    respawn: [120, 180],
+    materials: { vampire_fang: 1 },
+    loot: {
+      bloodfang_blade: 0.22,
+      nightveil_staff: 0.22,
+      crimson_mantle: 0.3,
+      counts_signet: 0.2,
+      orange_potion: 0.6,
+    },
+  },
+};
+Object.assign(MONSTERS, CRYPT_MONSTERS);
+
 /* every monster knows its own key (rules/bosses.js looks bosses up by it) */
 for (const [key, spec] of Object.entries(MONSTERS)) {
   spec.key = key;
@@ -1426,6 +1564,11 @@ export const SPAWNS = [
   { monster: "dire_wolf", count: 7 },
   { monster: "bandit_brute", count: 6 },
   { monster: "bandit_chief", count: 1 },
+  /* the crypt: one of each per spot in rules/crypt.js */
+  { monster: "grave_ooze", count: 7 },
+  { monster: "crypt_thrall", count: 9 },
+  { monster: "grave_witch", count: 4 },
+  { monster: "crimson_count", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

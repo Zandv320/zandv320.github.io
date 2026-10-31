@@ -40,7 +40,18 @@ import {
   inCastle,
   CASTLE,
   BANDIT_CAMP,
+  inCrypt,
 } from "./regions.js";
+import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
+import {
+  buildCrypt,
+  cryptClickables,
+  clickCryptObject,
+  openDoor,
+  updateCrypt,
+  heroLightIn,
+  isHeroInCrypt,
+} from "./crypt.js";
 import { createWorldMap } from "./world-map.js";
 import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight.js";
 import { createPerfOverlay } from "./perf-overlay.js";
@@ -53,6 +64,8 @@ import {
   bossSummon,
   bossSmoke,
   bossEnrage,
+  bossDive,
+  bossReset,
   updateBossEffects,
 } from "./boss-effects.js";
 import { bossCameraFocus, updateBossPresentation } from "./boss-presentation.js";
@@ -155,7 +168,12 @@ import {
   drop,
   sortBag,
 } from "./bag.js";
-import { groundRing, updateSkillEffects, updateTargetRing } from "./skill-effects.js";
+import {
+  groundRing,
+  launchProjectile,
+  updateSkillEffects,
+  updateTargetRing,
+} from "./skill-effects.js";
 import { createGathering } from "./gathering.js";
 import { createWorkbench } from "./workbench.js";
 import { createGuide } from "./guide.js";
@@ -179,6 +197,8 @@ const ZONES = {
   fields: ["Runeveld", "Fields and village."],
   vale: [VALE.name, "Meadows along the Kingsroad. Bandits roam here."],
   capital: [CAPITAL.name, "The capital of Eldoria. Safe within the walls."],
+  /* the stairs announce the crypt themselves (crypt.js) */
+  crypt: null,
 };
 
 /* the normal camera zoom and tilt; the character select screen uses its own until Enter World */
@@ -193,7 +213,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
   await loadSheets();
-  await buildWorld();
+  await buildWorld([buildCrypt]);
+  clickables.push(...cryptClickables());
   createMerchant();
   createVillagers(scene, clickables);
   showNpcs(false);
@@ -994,6 +1015,12 @@ function startNetwork() {
   network.on("kill", onKillEvent);
   network.on("monster_attack", onMonsterAttackEvent);
   network.on("provoke", onProvokeEvent);
+  /* someone opened a gate or crumbled the wall in the crypt: open it here too */
+  network.on("crypt_open", (data, from, isMe) => {
+    if (!isMe) {
+      openDoor(String(data.door), true);
+    }
+  });
   /* a boss's moves (rules/bosses.js), shown by boss-effects.js */
   const bossEvents = {
     boss_telegraph: bossTelegraph,
@@ -1002,6 +1029,8 @@ function startNetwork() {
     boss_summon: bossSummon,
     boss_smoke: bossSmoke,
     boss_enrage: bossEnrage,
+    boss_dive: bossDive,
+    boss_reset: bossReset,
   };
   for (const [type, show] of Object.entries(bossEvents)) {
     network.on(type, (data, from) => {
@@ -1025,7 +1054,9 @@ function startNetwork() {
   network.onMessage("node_states", (message) => game.gathering.onNodeStates(message.nodes));
   UI.setOnlineStatus(false, 1);
   /* the server simulates the monsters and only knows the world as these shapes: circles and building boxes */
-  network.setWorldObstacles(() => obstacles.map(packObstacle));
+  network.setWorldObstacles(() =>
+    obstacles.filter((obstacle) => !obstacle.isDoor).map(packObstacle),
+  );
   /* without a server the first player is the host */
   if (network.isHost()) {
     becomeHost();
@@ -1103,13 +1134,30 @@ function onMonsterAttackEvent(data, from) {
     return;
   }
   const monster = monsters.get(data.id);
+  const victim = data.target === network.me ? player : peers.get(data.target);
   if (monster && !monster.isDead) {
     monster.sprite.play("attack", true);
     monster.attackAnimUntil = now() + 0.5;
-    const victim = data.target === network.me ? player : peers.get(data.target);
     if (victim) {
       monster.sprite.nudge(victim.x - monster.x, victim.z - monster.z, 0.22);
     }
+  }
+  /* a caster's bolt flies first; the blow lands when it arrives */
+  if (monster && monster.spec.projectile && victim) {
+    launchProjectile(
+      monster.x,
+      monster.z,
+      victim,
+      monster.spec.projectile,
+      () => {
+        if (data.target === network.me) {
+          takeDamage(data.damage, monster.spec, monster);
+        }
+      },
+      "comet",
+      1.6,
+    );
+    return;
   }
   if (data.target === network.me && monster) {
     takeDamage(data.damage, monster.spec, monster);
@@ -1341,6 +1389,11 @@ function handleClick(clientX, clientY, mode = "select") {
     if (data.node) {
       clearTarget();
       game.gathering.clickNode(data.node);
+      return;
+    }
+    if (data.cryptObject) {
+      clearTarget();
+      clickCryptObject(data.cryptObject);
       return;
     }
     if (data.station) {
@@ -1707,6 +1760,9 @@ const portraitContext = $("#hud-portrait").getContext("2d");
 
 /* the area the player is in, for the area banner and the minimap */
 function zoneAt(x, z) {
+  if (inCrypt(x, z)) {
+    return "crypt";
+  }
   if (inCapital(x, z)) {
     return "capital";
   }
@@ -1720,6 +1776,10 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "crypt") {
+    const room = CRYPT_ROOMS[cryptRoomAt(x, z)];
+    return (room && room.name) || "The Sunken Crypt";
+  }
   if (zone === "capital") {
     return inCastle(x, z) ? "Aurelia Castle" : CAPITAL.name;
   }
@@ -1753,6 +1813,7 @@ function updateHotbar(time) {
 /* everything that only runs once the hero is in the world */
 function stepWorld(dt, time) {
   updatePlayer(dt);
+  updateCrypt(dt);
   if (game.host) {
     hostTick(dt);
   }
@@ -1790,7 +1851,7 @@ function stepWorld(dt, time) {
 
   /* the area name on screen when walking into another area */
   const zone = zoneAt(player.x, player.z);
-  if (currentZone && zone !== currentZone) {
+  if (currentZone && zone !== currentZone && ZONES[zone]) {
     UI.announce(ZONES[zone][0], ZONES[zone][1]);
   }
   if (zone !== currentZone || questCheckTimer === 0) {
@@ -1849,7 +1910,7 @@ function step(dt) {
   if (game.ambience) {
     /* dust behind everyone walking near the camera; villagers too, they make the streets feel alive */
     const movers = game.isStarted ? [player, ...peers.values(), ...villagers()] : [];
-    game.ambience.update(dt, time, cameraState, renderer, movers, 1 - daylight());
+    game.ambience.update(dt, time, cameraState, renderer, movers, 1 - daylight(), isHeroInCrypt());
   }
   if (game.effects) {
     game.effects.update(dt, cameraState);
@@ -1864,6 +1925,7 @@ function step(dt) {
       color: [255, 240, 220],
       strength: 0.4,
     };
+    heroLightIn(isHeroInCrypt(), heroLight);
     game.daylight.update(cameraState, game.isStarted && !player.isDead ? [heroLight] : []);
   }
   clockTimer += dt;

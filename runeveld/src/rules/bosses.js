@@ -13,7 +13,9 @@
      boss_stunned  {duration}          it hit something and is dazed
      boss_summon   {}                  it calls for help (the helpers appear like any other monster)
      boss_smoke    {x0, z0, x1, z1}    a smoke bomb: it vanishes at (x0, z0) and appears at (x1, z1)
-     boss_enrage   {}                  low on health: faster and harder
+     boss_enrage   {}                  low on health: faster and harder (and with `darkness`, the room goes dark)
+     boss_dive     {x0, z0, x1, z1, duration}  it flies up and comes down on (x1, z1)
+     boss_reset    {}                  nobody left to fight: it heals and starts over
    Damage goes out as the usual monster_attack {id, target, damage}, per player that is hit. */
 
 /* the bosses and their moves; numbers in seconds, units and multiples of the boss's ATK */
@@ -35,7 +37,16 @@ export const BOSSES = {
     smoke: { every: [11, 15], below: 0.9 },
     enrage: { below: 0.25, cooldownFactor: 0.6, damageFactor: 1.3 },
   },
+  /* the Sunken Crypt (rules/crypt.js) */
+  crimson_count: {
+    bloodRunes: { every: [7, 9], windup: 1.3, radius: 1.7, damage: 1.5, range: 12 },
+    dive: { every: [11, 14], windup: 1.1, radius: 2.4, damage: 2, minDistance: 4 },
+    summon: { below: 0.6, helper: "crypt_thrall", count: 2 },
+    enrage: { below: 0.3, cooldownFactor: 0.7, damageFactor: 1.25, darkness: true },
+  },
 };
+/* a boss with nobody to fight for this long heals and starts over */
+const RESET_SECONDS = 8;
 
 /* the body of a charging boss, for what it runs into */
 const CHARGE_RADIUS = 0.5;
@@ -66,6 +77,9 @@ function brain(monster, now) {
       nextCharge: now + 1.5 /* opens with a charge at whoever keeps their distance */,
       nextCleave: now + 3,
       nextSmoke: now + 6,
+      nextRunes: now + 4,
+      nextDive: now + 7,
+      idleFor: 0,
       hasSummoned: false,
       isEnraged: false,
     };
@@ -125,6 +139,15 @@ export function bossTick(monster, target, dt, ctx) {
   const now = ctx.now;
   const state = brain(monster, now);
   const health = monster.hp / monster.spec.hp;
+
+  /* nobody left to fight: heal, and start over (a dark room lights up again) */
+  state.idleFor = target ? 0 : state.idleFor + dt;
+  if (!state.move && state.idleFor > RESET_SECONDS && (health < 1 || state.isEnraged)) {
+    monster.hp = monster.spec.hp;
+    monster.boss = null;
+    ctx.emit("boss_reset", { id: monster.id });
+    return false;
+  }
 
   /* dazed after running into something */
   if (now < state.stunnedUntil) {
@@ -191,6 +214,35 @@ export function bossTick(monster, target, dt, ctx) {
       }
       return true;
     }
+    if (move.kind === "runes-windup") {
+      if (now >= move.until) {
+        const runes = rules.bloodRunes;
+        const hit = ctx.players.filter(
+          (player) =>
+            !player.isDead &&
+            move.spots.some(([x, z]) => Math.hypot(player.x - x, player.z - z) <= runes.radius),
+        );
+        strike(monster, hit, runes.damage, ctx);
+        state.move = null;
+      }
+      return true;
+    }
+    if (move.kind === "dive") {
+      /* through the air, like the charge: the positions sent along match the flight */
+      const progress = Math.min(1, 1 - (move.until - now) / move.duration);
+      monster.x = move.x0 + (move.x1 - move.x0) * progress;
+      monster.z = move.z0 + (move.z1 - move.z0) * progress;
+      if (now >= move.until) {
+        const dive = rules.dive;
+        const hit = ctx.players.filter(
+          (player) =>
+            !player.isDead && Math.hypot(player.x - move.x1, player.z - move.z1) <= dive.radius,
+        );
+        strike(monster, hit, dive.damage, ctx);
+        state.move = null;
+      }
+      return true;
+    }
     if (move.kind === "cleave-windup") {
       if (now >= move.until) {
         const cleave = rules.cleave;
@@ -246,6 +298,69 @@ export function bossTick(monster, target, dt, ctx) {
       });
       return true;
     }
+  }
+
+  /* blood runes: a circle under every player nearby, that bursts a moment later */
+  if (rules.bloodRunes && now >= state.nextRunes) {
+    const runes = rules.bloodRunes;
+    const spots = ctx.players
+      .filter(
+        (player) =>
+          !player.isDead && Math.hypot(player.x - monster.x, player.z - monster.z) <= runes.range,
+      )
+      .map((player) => [+player.x.toFixed(2), +player.z.toFixed(2)]);
+    state.nextRunes =
+      now + runes.windup + randomBetween(runes.every) * rageFactors(monster).cooldown;
+    if (spots.length) {
+      state.move = { kind: "runes-windup", until: now + runes.windup, spots };
+      for (const [x, z] of spots) {
+        ctx.emit("boss_telegraph", {
+          id: monster.id,
+          kind: "circle",
+          x,
+          z,
+          radius: runes.radius,
+          duration: runes.windup,
+        });
+      }
+      return true;
+    }
+  }
+
+  /* the dive: up into the air, and down on whoever keeps their distance; the landing shows on the ground first */
+  if (rules.dive && now >= state.nextDive && distance >= rules.dive.minDistance) {
+    const dive = rules.dive;
+    state.nextDive = now + dive.windup + randomBetween(dive.every) * rageFactors(monster).cooldown;
+    const x1 = +target.x.toFixed(2);
+    const z1 = +target.z.toFixed(2);
+    state.move = {
+      kind: "dive",
+      until: now + dive.windup,
+      duration: dive.windup,
+      x0: monster.x,
+      z0: monster.z,
+      x1,
+      z1,
+    };
+    monster.faceX = dx / distance;
+    monster.faceZ = dz / distance;
+    ctx.emit("boss_telegraph", {
+      id: monster.id,
+      kind: "circle",
+      x: x1,
+      z: z1,
+      radius: dive.radius,
+      duration: dive.windup,
+    });
+    ctx.emit("boss_dive", {
+      id: monster.id,
+      x0: +monster.x.toFixed(2),
+      z0: +monster.z.toFixed(2),
+      x1,
+      z1,
+      duration: dive.windup,
+    });
+    return true;
   }
 
   /* the cleave: a circle around the boss that lights up, then everyone still inside is hit */

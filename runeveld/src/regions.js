@@ -1,8 +1,12 @@
-/* Eldoria – regions of the world. No imports, so every file (client and server) can use this.
+/* Eldoria – regions of the world. Its only import is the crypt's layout (pure rules), so every file (client and
+   server) can use this.
    The fields around the village and the forest "Whisperwood" north of it have organic edges: a radius that
    undulates with the angle (fixed phases, so the shape is the same every time). The forest overlaps the fields
    by a few units at the north gate; that is the only way in. The rectangles (FOREST, FIELD_SIZE) are the bounding
    boxes for the ground map and the world map; the real shape comes from inFields() and inForest(). */
+import { inCrypt } from "./rules/crypt.js";
+
+export { inCrypt };
 
 /* Half width of the ground map around the village. */
 export const FIELD_SIZE = 60;
@@ -130,9 +134,10 @@ export const KINGS_ROAD = [
 /* The bandit camp: in the meadows north-east of the city, between the north gate and the farm. */
 export const BANDIT_CAMP = [-82, -44];
 
-/** Is (x, z) inside the world (the fields, the forest or the vale), with a margin to the edge? */
+/** Is (x, z) inside the world (the fields, the forest, the vale or the crypt), with a margin to the edge? The
+    crypt needs none: its walls are obstacles. */
 export function insideWorld(x, z, margin = 1.5) {
-  return inFields(x, z, margin) || inForest(x, z, margin) || inVale(x, z, margin);
+  return inFields(x, z, margin) || inForest(x, z, margin) || inVale(x, z, margin) || inCrypt(x, z);
 }
 
 /* The winding path through the forest, from the entrance to the clearing. */

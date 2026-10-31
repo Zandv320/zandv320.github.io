@@ -1831,12 +1831,146 @@ def build_smooth(out_dir):
     print("smooth sprites:", len(list(smooth_dir.glob("*.png"))))
 
 
+# ---------- the Sunken Crypt: vampires, an ooze, crypt props and textures ----------
+# Four more Craftpix freebies: the vampire characters (64x64 frames like the hero, rows down/up/left/right), the slime
+# mobs, the undead tileset (bones, ruins, tombstones) and the dungeon pack (floor tiles, pots, chests).
+VAMPIRE_DIR = "free-vampire-4-direction-pixel-character-sprite-pack/Tiled"
+SLIME_DIR = "free-slime-mobs-pixel-art-top-down-sprite-pack/Tiled_files"
+UNDEAD_DIR = "free-undead-tileset-top-down-pixel-art/PNG"
+DUNGEON_DIR = "free-2d-top-down-pixel-dungeon-asset-pack/PNG"
+# monster name -> (sheet prefix, animations in sheet order, whether the attack carries a magic layer)
+CRYPT_MONSTERS = {
+    "crypt_thrall": (VAMPIRE_DIR, "Vampires1", ("Idle", "Walk", "Attack", "Hurt", "Death"), False),
+    "grave_witch": (VAMPIRE_DIR, "Vampires2", ("Idle", "Walk", "Attack", "Hurt", "Death"), True),
+    # the count also has his flight (the 'Run' sheet): idle, walk, attack, hurt, death, fly
+    "crimson_count": (VAMPIRE_DIR, "Vampires3", ("Idle", "Walk", "Attack", "Hurt", "Death", "Run"), True),
+    "grave_ooze": (SLIME_DIR, "Slime2", ("Idle", "Walk", "Attack", "Hurt", "Death"), False),
+}
+# prop name -> (pack folder, sheet, crop box)
+CRYPT_PROPS = {
+    "crypt_bone_king": (UNDEAD_DIR, "Objects.png", (0, 3, 160, 128)),
+    "crypt_ruin": (UNDEAD_DIR, "Objects.png", (0, 128, 80, 223)),
+    "crypt_arch": (UNDEAD_DIR, "Objects.png", (0, 305, 80, 367)),
+    "crypt_skulls": (UNDEAD_DIR, "Objects.png", (199, 375, 271, 426)),
+    "crypt_skull_maw": (UNDEAD_DIR, "Objects.png", (633, 376, 664, 423)),
+    "crypt_bones": (UNDEAD_DIR, "Objects.png", (533, 550, 567, 585)),
+    "crypt_horned_skull": (UNDEAD_DIR, "Objects.png", (3, 548, 46, 587)),
+    "crypt_tombs": (UNDEAD_DIR, "Objects.png", (96, 630, 160, 649)),
+    "crypt_tomb": (UNDEAD_DIR, "Objects.png", (280, 627, 298, 651)),
+    "crypt_hand": (UNDEAD_DIR, "Objects.png", (673, 118, 704, 171)),
+    "crypt_vase": (DUNGEON_DIR, "Objects.png", (193, 64, 207, 83)),
+    "crypt_pots": (DUNGEON_DIR, "Objects.png", (359, 32, 380, 56)),
+    "crypt_urn": (DUNGEON_DIR, "Objects.png", (241, 64, 255, 83)),
+    "crypt_gold": (DUNGEON_DIR, "Objects.png", (197, 38, 219, 55)),
+    "crypt_crates": (DUNGEON_DIR, "Objects.png", (258, 10, 283, 40)),
+    "crypt_chest": (DUNGEON_DIR, "doors_lever_chest_animation.png", (7, 132, 26, 150)),
+    "crypt_chest_open": (DUNGEON_DIR, "doors_lever_chest_animation.png", (135, 128, 154, 150)),
+}
+CRIMSON_CLOAK = ([(30, 6, 12), (62, 12, 22), (104, 20, 34), (150, 36, 52)], (170, 176, 196))
+PALETTE.update(
+    {
+        "crypt_brick": (66, 63, 86),
+        "crypt_brick_light": (92, 89, 116),
+        "crypt_brick_dark": (48, 46, 64),
+        "crypt_mortar": (27, 25, 38),
+        "iron": (64, 68, 82),
+        "iron_light": (128, 136, 156),
+        "iron_dark": (30, 32, 42),
+        "carpet": (118, 28, 40),
+        "carpet_dark": (82, 18, 30),
+        "gold": (212, 168, 76),
+    }
+)
+
+
+def draw_crypt_wall(fill):
+    """Dark crypt bricks, 32x32: four rows of staggered 16x8 bricks with a lit top edge, some a shade darker."""
+    fill(0, 0, 32, 32, "crypt_brick")
+    darker = {(0, 1), (1, 0), (2, 1), (3, 0)}
+    for r in range(4):
+        y = r * 8
+        offset = 8 if r % 2 else 0
+        for i, x in enumerate(range(offset - 16, 32 + offset, 16)):
+            if (r, i % 2) in darker:
+                fill(x + 1, y + 1, x + 15, y + 7, "crypt_brick_dark")
+            fill(x + 1, y, x + 15, y + 1, "crypt_brick_light")
+            fill(x, y, x + 1, y + 8, "crypt_mortar")
+        fill(0, y + 7, 32, y + 8, "crypt_mortar")
+
+
+def draw_iron(fill):
+    """Dark iron with a lit edge and two rivets, 16x16."""
+    fill(0, 0, 16, 16, "iron")
+    fill(0, 0, 16, 1, "iron_light")
+    fill(0, 15, 16, 16, "iron_dark")
+    for x, y in ((3, 4), (11, 10)):
+        fill(x, y, x + 2, y + 2, "iron_dark")
+        fill(x, y, x + 1, y + 1, "iron_light")
+
+
+def draw_carpet(fill):
+    """A red runner with a gold border along both sides, 32x32 (the length runs along y)."""
+    fill(0, 0, 32, 32, "carpet")
+    for x in (2, 29):
+        fill(x, 0, x + 1, 32, "gold")
+    fill(0, 0, 2, 32, "carpet_dark")
+    fill(30, 0, 32, 32, "carpet_dark")
+    for y in range(0, 32, 8):
+        fill(14, y + 2, 18, y + 6, "carpet_dark")
+        fill(15, y + 3, 17, y + 5, "gold")
+
+
+def build_crypt(packs_dir, out_dir):
+    """The crypt's monsters, props and textures; returns the names of the sprite files written."""
+    written = []
+    for name, (folder, prefix, anims, has_magic) in CRYPT_MONSTERS.items():
+        sheets = []
+        for anim in anims:
+            sheet = open_rgba(packs_dir / folder / f"{prefix}_{anim}_without_shadow.png")
+            magic = packs_dir / folder / f"{prefix}_{anim}_magic.png"
+            if has_magic and magic.exists():
+                sheet.alpha_composite(open_rgba(magic))
+            sheets.append(sheet)
+        cols = max(frames_in_row(sheet, 64, 64, 0) for sheet in sheets)
+        stack_animations(sheets, 64, 64, cols).save(out_dir / f"{name}.png")
+        written.append(name)
+        print(name, [frames_in_row(sheet, 64, 64, 0) for sheet in sheets])
+    for name, (folder, sheet, box) in CRYPT_PROPS.items():
+        prop = open_rgba(packs_dir / folder / sheet).crop(box)
+        prop.crop(prop.getbbox()).save(out_dir / f"{name}.png")
+        written.append(name)
+    # the Crimson Count's mantle: blood red with a silver hem, made like the other cloaks from the hero layers
+    front, back = cloak(open_rgba(out_dir / "hero_body.png"), open_rgba(out_dir / "hero_head.png"), *CRIMSON_CLOAK)
+    front.save(out_dir / "cloak5.png")
+    back.save(out_dir / "cloak5_back.png")
+    written += ["cloak5", "cloak5_back"]
+    tex_dir = out_dir / "tex"
+    tex_dir.mkdir(exist_ok=True)
+    texture(tex_dir, "crypt_wall", 32, 32, draw_crypt_wall)
+    texture(tex_dir, "iron", 16, 16, draw_iron)
+    texture(tex_dir, "carpet", 32, 32, draw_carpet)
+    # the floor: the cracked slabs from the dungeon pack, a little darker
+    floor = open_rgba(packs_dir / DUNGEON_DIR / "walls_floor.png").crop((0, 336, 32, 368))
+    floor = Image.eval(floor.convert("RGB"), lambda v: int(v * 0.82)).convert("RGBA")
+    floor.save(tex_dir / "crypt_floor.png")
+    print("crypt:", written)
+    return written
+
+
 def main():
     packs_dir = pathlib.Path(sys.argv[1])
     out_dir = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "runeveld/sprites")
     out_dir.mkdir(parents=True, exist_ok=True)
     # `python3 -I` leaves the script directory off sys.path; build_effects.py lives next to this file
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+    # `--only crypt`: just the crypt's sprites and textures (and their smooth versions), from its four packs
+    if "--only" in sys.argv and sys.argv[sys.argv.index("--only") + 1] == "crypt":
+        smooth_dir = out_dir / "smooth"
+        smooth_dir.mkdir(exist_ok=True)
+        for name in build_crypt(packs_dir, out_dir):
+            smooth(Image.open(out_dir / f"{name}.png")).save(smooth_dir / f"{name}.png")
+        return
 
     swordsman_dir = packs_dir / "free-swordsman-1-3-level-pixel-top-down-sprite-character/PNG"
     animals_dir = packs_dir / "free-top-down-hunt-animals-pixel-sprite-pack/PNG/Without_shadow"
@@ -1851,6 +1985,7 @@ def main():
     build_work_animations(out_dir)
     build_textures(fields, out_dir)
     build_effect_sheets(packs_dir, out_dir)
+    build_crypt(packs_dir, out_dir)
     build_smooth(out_dir)
     print("done:", sorted(p.name for p in out_dir.glob("*.png")))
 

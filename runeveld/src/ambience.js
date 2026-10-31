@@ -58,7 +58,8 @@ function puffTexture() {
 
 /**
  * Sets up the ambience in `scene`. `smokeSources` (chimney tops, Vector3), `waterSpots` ({x, y, z, r}) and
- * `spinners` ({object, speed}) come from world.js. Returns {update(dt, time, cameraState, renderer, movers, night)}.
+ * `spinners` ({object, speed}) come from world.js. Returns {update(dt, time, cameraState, renderer, movers, night,
+ * isUnderground)}; underground (the crypt) there are no fireflies, leaves, glints or butterflies.
  */
 export function createAmbience(scene, { smokeSources = [], waterSpots = [], spinners = [] } = {}) {
   const puffMap = puffTexture();
@@ -419,8 +420,11 @@ export function createAmbience(scene, { smokeSources = [], waterSpots = [], spin
    * movers: figures ({x, z, sprite}) that leave dust; night: 0 (day) .. 1 (night).
    * Points are sized in sprite pixels: cameraState.px rendered pixels per unit, 16 sprite pixels per unit.
    */
-  function update(dt, time, cameraState, renderer, movers, night) {
+  function update(dt, time, cameraState, renderer, movers, night, isUnderground = false) {
     const spritePixel = cameraState.px / 16 / renderer.getPixelRatio();
+    for (const cloud of [fireflies, leaves, glints, butterflies]) {
+      cloud.visible = !isUnderground;
+    }
     fireflies.material.size = spritePixel * 2;
     leaves.material.size = spritePixel * 2.5;
     glints.material.size = spritePixel * 1.5;
@@ -429,10 +433,12 @@ export function createAmbience(scene, { smokeSources = [], waterSpots = [], spin
     updateSmoke(dt, cameraState);
     dust.flush(cameraState.px);
     smoke.flush(cameraState.px);
-    updateFireflies(dt, time, cameraState, night);
-    updateLeaves(dt, time, cameraState);
-    updateGlints(dt, cameraState, night);
-    updateButterflies(dt, time, cameraState, night);
+    if (!isUnderground) {
+      updateFireflies(dt, time, cameraState, night);
+      updateLeaves(dt, time, cameraState);
+      updateGlints(dt, cameraState, night);
+      updateButterflies(dt, time, cameraState, night);
+    }
     for (const spinner of spinners) {
       spinner.object.rotation.z += spinner.speed * dt;
     }

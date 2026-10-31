@@ -4,6 +4,7 @@
    pond, two new ponds (fields and Whisperwood, see FISHING_PONDS) and the lake south of Aurelia. The forest keeps
    its trees away from the nodes and ponds (forest.js). */
 import { RESOURCES } from "./professions.js";
+import { cryptPoint } from "./crypt.js";
 
 /* New ponds for fishing: [x, z, radius]. The world builds them (world.js, forest.js). */
 export const FISHING_PONDS = [
@@ -70,6 +71,9 @@ const NODE_TABLE = [
   ["lake_b", "pike", -118, 49.2],
   ["lake_c", "golden_carp", -113.5, 52],
   ["lake_d", "golden_carp", -118, 58.8],
+  /* the forgotten vault in the crypt, behind the cracked wall */
+  ["crypt_1", "silver_ore", ...cryptPoint(-25.6, 26.4)],
+  ["crypt_2", "gold_ore", ...cryptPoint(-20.4, 26.4)],
 ];
 
 /* {id, resource, x, z, profession} by id */
