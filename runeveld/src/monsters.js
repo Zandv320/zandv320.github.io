@@ -15,7 +15,9 @@ import {
   BANDIT_CAMP,
 } from "./regions.js";
 import { isNight } from "./daylight.js";
+import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
 import { sfx } from "./audio.js";
+import { chargeDust } from "./boss-effects.js";
 import { SHEETS } from "./sheets.js";
 import { recolor, HAIR_SOURCE, HAIR_PALETTES } from "./appearance.js";
 import { Sprite2D } from "./sprites.js";
@@ -263,6 +265,9 @@ export function monsterDied(monster) {
 }
 
 function reviveMonster(monster, [x, z]) {
+  resetBoss(monster);
+  monster.isEnraged = false;
+  monster.charge = null;
   monster.isDead = false;
   monster.hp = monster.hpMax;
   monster.x = monster.targetX = x;
@@ -395,11 +400,13 @@ function chase(monster, target, nightFactors, dt) {
   }
   monster.state = MONSTER_STATE.idle;
   if (monster.attackCooldown <= 0) {
-    monster.attackCooldown = MONSTER_ATTACK_INTERVAL;
+    /* an enraged boss attacks sooner and harder (rules/bosses.js) */
+    const rage = rageFactors(monster);
+    monster.attackCooldown = MONSTER_ATTACK_INTERVAL * rage.cooldown;
     game.network.send("monster_attack", {
       id: monster.id,
       target: target.id,
-      damage: Math.round(spec.atk * randomBetween(0.85, 1.15)),
+      damage: Math.round(spec.atk * rage.damage * randomBetween(0.85, 1.15)),
     });
   }
 }
@@ -450,6 +457,21 @@ function wander(monster, dt) {
   monster.state = MONSTER_STATE.walking;
 }
 
+/* Host: a helper a boss calls in; it fights for the boss and does not come back once defeated */
+let helperCount = 0;
+function spawnHelper(key, x, z, targetId) {
+  const helper = ensureMonster(`${key}#helper${helperCount++}`);
+  if (!helper) {
+    return;
+  }
+  [helper.x, helper.z] = resolveCollision(x, z, 0.3);
+  helper.targetX = helper.x;
+  helper.targetZ = helper.z;
+  helper.isNew = false;
+  helper.isHelper = true;
+  helper.aggroTarget = targetId;
+}
+
 /** Host: simulate all monsters for one frame and send a snapshot five times per second. */
 export function hostTick(dt) {
   const players = [{ id: game.network.me, x: player.x, z: player.z, isDead: player.isDead }];
@@ -460,6 +482,10 @@ export function hostTick(dt) {
   for (const monster of monsters.values()) {
     const spec = monster.spec;
     if (monster.isDead) {
+      /* a boss's helpers do not come back */
+      if (monster.isHelper) {
+        continue;
+      }
       monster.respawnTimer -= dt;
       if (monster.respawnTimer <= 0) {
         reviveMonster(monster, spawnPoint(monster.spec));
@@ -475,6 +501,23 @@ export function hostTick(dt) {
     const nightFactors = isNight() && spec.night ? spec.night : null;
     const target = findTarget(monster, players, nightFactors);
     monster.attackCooldown = Math.max(0, monster.attackCooldown - dt);
+    /* bosses have moves of their own (rules/bosses.js); the same rules as on the server */
+    if (
+      bossOf(spec.key) &&
+      bossTick(monster, target, dt, {
+        now: now(),
+        emit: (type, data) => game.network.send(type, data),
+        players,
+        resolveCollision: (x, z, r) => resolveCollision(x, z, r),
+        isFree,
+        spawnAdd: (key, x, z) => spawnHelper(key, x, z, monster.aggroTarget),
+      })
+    ) {
+      monster.state = MONSTER_STATE.idle;
+      monster.targetX = monster.x;
+      monster.targetZ = monster.z;
+      continue;
+    }
     if (target) {
       chase(monster, target, nightFactors, dt);
     } else {
@@ -568,23 +611,42 @@ export function updateMonsters(dt) {
       }
       continue;
     }
-    if (!game.host) {
+    /* a charging boss runs its lane (boss-effects.js); the host moves it itself, the others follow the lane
+       instead of the snapshots, which are too slow for a rush like that */
+    const charge = monster.charge;
+    const isCharging = charge && time < charge.t0 + charge.duration;
+    if (charge && !game.host) {
+      const progress = Math.min(1, (time - charge.t0) / charge.duration);
+      monster.x = charge.x0 + (charge.x1 - charge.x0) * progress;
+      monster.z = charge.z0 + (charge.z1 - charge.z0) * progress;
+      monster.faceX = charge.x1 - charge.x0;
+      monster.faceZ = charge.z1 - charge.z0;
+    } else if (!game.host) {
       const follow = 1 - Math.exp(-10 * dt);
       monster.x += (monster.targetX - monster.x) * follow;
       monster.z += (monster.targetZ - monster.z) * follow;
     }
+    if (isCharging) {
+      chargeDust(monster, dt);
+    } else if (charge) {
+      monster.charge = null;
+      monster.targetX = charge.x1;
+      monster.targetZ = charge.z1;
+    }
     monster.sprite.group.position.set(monster.x, 0, monster.z);
     monster.sprite.face(monster.faceX, monster.faceZ);
     if (time >= monster.attackAnimUntil) {
-      monster.sprite.play(monster.state === MONSTER_STATE.walking ? "walk" : "idle");
+      monster.sprite.play(isCharging || monster.state === MONSTER_STATE.walking ? "walk" : "idle");
     }
-    /* frozen monsters turn icy blue */
-    const isFrozen = time < (monster.frozenUntil || 0);
-    if (isFrozen !== !!monster.hasFrozenTint) {
-      monster.hasFrozenTint = isFrozen;
-      for (const layer of monster.sprite.layers) {
-        layer.mesh.material.color.set(isFrozen ? 0x9ad8ff : 0xffffff);
-      }
+    /* frozen monsters turn icy blue, an enraged boss red */
+    const tint =
+      time < (monster.frozenUntil || 0)
+        ? 0x9ad8ff
+        : monster.isEnraged
+          ? 0xff8070
+          : monster.spec.tint || 0xffffff;
+    if (tint !== monster.sprite.tintColor) {
+      monster.sprite.tint(tint);
     }
     monster.sprite.update(dt, cameraState);
     UI.positionLabel(monster.label, monster.x, labelHeight, monster.z, camera);

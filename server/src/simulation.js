@@ -18,6 +18,7 @@ import {
   insideWorld,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
+import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
 const VILLAGE_HALF_SIZE = 22;
@@ -279,6 +280,33 @@ export function createSimulation(emit) {
     monster.z = z;
     monster.targetId = null;
     monster.state = STATE_IDLE;
+    resetBoss(monster);
+  }
+
+  /* a helper a boss calls in (rules/bosses.js): fights for it, and does not come back once defeated */
+  let helperCount = 0;
+  function spawnAdd(key, x, z, bossTargetId) {
+    const spec = MONSTERS[key];
+    const position = resolveCollision(x, z) || [x, z];
+    const id = `${key}#helper${helperCount++}`;
+    monsters.set(id, {
+      id,
+      spec,
+      x: position[0],
+      z: position[1],
+      faceX: 0,
+      faceZ: 1,
+      state: STATE_IDLE,
+      hp: spec.hp,
+      isDead: false,
+      isHelper: true,
+      respawnTimer: 0,
+      targetId: bossTargetId,
+      cooldown: 0,
+      wanderTarget: null,
+      wanderTimer: 1,
+      frozenUntil: 0,
+    });
   }
 
   function findTarget(monster, players, nightFactors) {
@@ -338,11 +366,13 @@ export function createSimulation(emit) {
 
     monster.state = STATE_IDLE;
     if (monster.cooldown <= 0) {
-      monster.cooldown = ATTACK_COOLDOWN;
+      /* an enraged boss attacks sooner and harder (rules/bosses.js) */
+      const rage = rageFactors(monster);
+      monster.cooldown = ATTACK_COOLDOWN * rage.cooldown;
       emit("monster_attack", {
         id: monster.id,
         target: target.id,
-        damage: Math.round(spec.atk * randomBetween(0.85, 1.15)),
+        damage: Math.round(spec.atk * rage.damage * randomBetween(0.85, 1.15)),
       });
     }
   }
@@ -401,8 +431,13 @@ export function createSimulation(emit) {
    * @param {{id: string, x: number, z: number, isDead: boolean}[]} players
    */
   function tick(dt, players) {
-    for (const monster of monsters.values()) {
+    for (const monster of [...monsters.values()]) {
       if (monster.isDead) {
+        /* a boss's helpers do not come back */
+        if (monster.isHelper) {
+          monsters.delete(monster.id);
+          continue;
+        }
         respawnIfReady(monster, dt, players);
         continue;
       }
@@ -413,6 +448,21 @@ export function createSimulation(emit) {
       const nightFactors = isNight() && monster.spec.night ? monster.spec.night : null;
       const target = findTarget(monster, players, nightFactors);
       monster.cooldown = Math.max(0, monster.cooldown - dt);
+      /* bosses have moves of their own (rules/bosses.js) */
+      if (
+        bossOf(monster.spec.key) &&
+        bossTick(monster, target, dt, {
+          now: nowSeconds(),
+          emit,
+          players,
+          resolveCollision,
+          isFree,
+          spawnAdd: (key, x, z) => spawnAdd(key, x, z, monster.targetId),
+        })
+      ) {
+        monster.state = STATE_IDLE;
+        continue;
+      }
       if (target) {
         chase(monster, target, dt, nightFactors);
       } else {

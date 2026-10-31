@@ -164,6 +164,25 @@ export const sfx = {
     tone("sawtooth", 220, 40, 0.6, 0.25);
     noise(0.4, 0.2, { f0: 800, f1: 100, type: "lowpass" });
   },
+  /* a boss winds up: a low growl and a rising whistle, so you know to step aside */
+  bossWarn() {
+    if (!canPlay()) return;
+    tone("sawtooth", 90, 70, 0.5, 0.22);
+    tone("square", 300, 700, 0.45, 0.06, 0.1);
+  },
+  /* a boss rushes or slams: a heavy thud */
+  bossSlam() {
+    if (!canPlay()) return;
+    tone("triangle", 120, 35, 0.35, 0.4);
+    noise(0.3, 0.3, { f0: 900, f1: 120, type: "lowpass" });
+  },
+  /* a boss roars: enraged or calling for help */
+  bossRoar() {
+    if (!canPlay()) return;
+    tone("sawtooth", 160, 60, 0.8, 0.25);
+    tone("sawtooth", 240, 90, 0.7, 0.12, 0.05);
+    noise(0.6, 0.15, { f0: 700, f1: 200, type: "lowpass" });
+  },
   monsterDeath() {
     if (!canPlay()) return;
     tone("square", 300, 90, 0.22, 0.14);

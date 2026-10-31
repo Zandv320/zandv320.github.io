@@ -46,6 +46,15 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { initParticles, updateParticles } from "./particles.js";
+import {
+  bossTelegraph,
+  bossCharge,
+  bossStunned,
+  bossSummon,
+  bossSmoke,
+  bossEnrage,
+  updateBossEffects,
+} from "./boss-effects.js";
 import { packObstacle } from "./rules/collision.js";
 import { createSettings } from "./settings.js";
 import { setupCursors, setWorldCursor } from "./cursors.js";
@@ -984,6 +993,22 @@ function startNetwork() {
   network.on("kill", onKillEvent);
   network.on("monster_attack", onMonsterAttackEvent);
   network.on("provoke", onProvokeEvent);
+  /* a boss's moves (rules/bosses.js), shown by boss-effects.js */
+  const bossEvents = {
+    boss_telegraph: bossTelegraph,
+    boss_charge: bossCharge,
+    boss_stunned: bossStunned,
+    boss_summon: bossSummon,
+    boss_smoke: bossSmoke,
+    boss_enrage: bossEnrage,
+  };
+  for (const [type, show] of Object.entries(bossEvents)) {
+    network.on(type, (data, from) => {
+      if (from === network.hostId()) {
+        show(data);
+      }
+    });
+  }
   network.on("monsters", (data, from) => {
     if (from !== network.hostId() || game.host) {
       return;
@@ -1815,6 +1840,7 @@ function step(dt) {
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
   updateParticles(dt, cameraState.px);
+  updateBossEffects(dt);
   updateBillboards();
   if (game.ambience) {
     /* dust behind everyone walking near the camera; villagers too, they make the streets feel alive */

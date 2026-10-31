@@ -1406,6 +1406,11 @@ export const VALE_MONSTERS = {
 };
 Object.assign(MONSTERS, VALE_MONSTERS);
 
+/* every monster knows its own key (rules/bosses.js looks bosses up by it) */
+for (const [key, spec] of Object.entries(MONSTERS)) {
+  spec.key = key;
+}
+
 /* How many of each monster roam the world. */
 export const SPAWNS = [
   { monster: "rabbit", count: 14 },
