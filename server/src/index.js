@@ -11,7 +11,8 @@
    The monsters live here (simulation.js): while players are connected the simulation ticks five times per second and
    everyone receives snapshots ('monsters'), attacks ('monster_attack') and kills ('kill') as events from 'server'.
    Players report their hits ('hit'), freezes ('freeze') and provocations ('provoke'). The client sends the world's
-   collision circles ({kind:'world_obstacles', obstacles:[[x, z, r], ...]}) because the world is built in the browser.
+   collision shapes ({kind:'world_obstacles', obstacles:[[x, z, r] or [x, z, r, hw, hd, cos, sin], ...]}: circles
+   and turned boxes, rules/collision.js) because the world is built in the browser.
    Heroes live in HeroStore (hero-store.js); this object forwards hero requests to it over RPC. Profession actions
    (gather, craft, refine, enchant, disenchant, use) are checked here first (is the hero at the node or station?);
    gathered nodes stay depleted for everyone ('node_state' events, 'node_states' on joining). */

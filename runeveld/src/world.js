@@ -14,6 +14,7 @@ import {
   IS_PHONE,
   BLOB_SHADOW,
 } from "./sprites.js";
+import { createCollision } from "./rules/collision.js";
 import {
   createBillboardBatch,
   createShadowBatch,
@@ -275,95 +276,10 @@ export const inVillage = (x, z) =>
 export const onRoad = (x) => Math.abs(x) < 1.6;
 
 /* ---------- collisions ---------- */
-/* {x, z, r}: a circle; with `box` ({hw, hd, cos, sin}: half width and depth, turned like the object) it is a
-   rectangle and r only the radius of the circle around it, for a quick check */
+/* {x, z, r}: a circle; with `box` ({hw, hd, cos, sin}) a turned rectangle (rules/collision.js). Everything that
+   stands in the world adds itself here while the world is built. */
 export const obstacles = [];
-
-/* A grid over the obstacles, so a collision check only looks at the ones nearby instead of all ~2000. Obstacles are
-   only ever added, so new ones are filed into the grid as they appear. Each is filed in every cell its circle
-   (plus the widest figure, GRID_REACH) touches. */
-const GRID_CELL = 8;
-const GRID_REACH = 1.5;
-const grid = new Map();
-let filed = 0;
-const NO_OBSTACLES = [];
-
-function fileObstacles() {
-  for (; filed < obstacles.length; filed++) {
-    const obstacle = obstacles[filed];
-    const reach = obstacle.r + GRID_REACH;
-    for (
-      let cx = Math.floor((obstacle.x - reach) / GRID_CELL);
-      cx <= Math.floor((obstacle.x + reach) / GRID_CELL);
-      cx++
-    ) {
-      for (
-        let cz = Math.floor((obstacle.z - reach) / GRID_CELL);
-        cz <= Math.floor((obstacle.z + reach) / GRID_CELL);
-        cz++
-      ) {
-        const key = cx * 4096 + cz;
-        let cell = grid.get(key);
-        if (!cell) {
-          cell = [];
-          grid.set(key, cell);
-        }
-        cell.push(obstacle);
-      }
-    }
-  }
-}
-
-/* the obstacles that a figure of radius r at (x, z) could touch */
-function obstaclesNear(x, z, r) {
-  if (r > GRID_REACH) {
-    return obstacles;
-  }
-  fileObstacles();
-  return grid.get(Math.floor(x / GRID_CELL) * 4096 + Math.floor(z / GRID_CELL)) || NO_OBSTACLES;
-}
-
-/* The point (x, z) relative to a box obstacle: in the box's own axes. */
-function intoBox(obstacle, x, z) {
-  const { cos, sin } = obstacle.box;
-  const dx = x - obstacle.x;
-  const dz = z - obstacle.z;
-  return [dx * cos - dz * sin, dx * sin + dz * cos];
-}
-
-/* back from the box's axes to the world */
-function fromBox(obstacle, lx, lz) {
-  const { cos, sin } = obstacle.box;
-  return [obstacle.x + lx * cos + lz * sin, obstacle.z - lx * sin + lz * cos];
-}
-
-/* how far a circle of radius r at (x, z) overlaps a box: a push [px, pz] in world axes that moves it clear, or null */
-function boxPush(obstacle, x, z, r) {
-  const { hw, hd } = obstacle.box;
-  const [lx, lz] = intoBox(obstacle, x, z);
-  const nearestX = Math.max(-hw, Math.min(hw, lx));
-  const nearestZ = Math.max(-hd, Math.min(hd, lz));
-  const ox = lx - nearestX;
-  const oz = lz - nearestZ;
-  const distance = Math.hypot(ox, oz);
-  if (distance >= r) {
-    return null;
-  }
-  let targetX;
-  let targetZ;
-  if (distance > 1e-4) {
-    /* outside the box, closer than r: out along the line from the nearest point */
-    targetX = nearestX + (ox / distance) * r;
-    targetZ = nearestZ + (oz / distance) * r;
-  } else {
-    /* inside the box: out through the nearest side */
-    const toSide = [hw - lx, hw + lx, hd - lz, hd + lz];
-    const side = toSide.indexOf(Math.min(...toSide));
-    targetX = side === 0 ? hw + r : side === 1 ? -hw - r : lx;
-    targetZ = side === 2 ? hd + r : side === 3 ? -hd - r : lz;
-  }
-  return fromBox(obstacle, targetX, targetZ);
-}
+const collision = createCollision(obstacles, (x, z) => insideWorld(x, z));
 
 /* Outside the world? Then back inside: in small steps towards the village, the forest centre or the vale centre,
    whichever is closest. */
@@ -400,43 +316,17 @@ function clampToWorld(x, z, margin = 1.2) {
 /** Moves a circle of radius r at (x, z) inside the world and out of every obstacle; returns the new [x, z]. */
 export function resolveCollision(x, z, r = 0.35) {
   [x, z] = clampToWorld(x, z);
-  for (const obstacle of obstaclesNear(x, z, r)) {
-    const dx = x - obstacle.x;
-    const dz = z - obstacle.z;
-    const distance = Math.hypot(dx, dz);
-    const minDistance = obstacle.r + r;
-    if (distance < minDistance && obstacle.box) {
-      const pushed = boxPush(obstacle, x, z, r);
-      if (pushed) {
-        [x, z] = pushed;
-      }
-      continue;
-    }
-    if (distance < minDistance) {
-      if (distance < 1e-4) {
-        x += minDistance;
-      } else {
-        x = obstacle.x + (dx / distance) * minDistance;
-        z = obstacle.z + (dz / distance) * minDistance;
-      }
-    }
-  }
-  return [x, z];
+  return collision.pushOut(x, z, r);
 }
 
 /** True when a circle of radius r at (x, z) lies inside the world and touches no obstacle. */
 export function isFree(x, z, r = 0.5) {
-  if (!insideWorld(x, z)) {
-    return false;
-  }
-  for (const obstacle of obstaclesNear(x, z, r)) {
-    if (Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.r + r) {
-      if (!obstacle.box || boxPush(obstacle, x, z, r)) {
-        return false;
-      }
-    }
-  }
-  return true;
+  return collision.isFree(x, z, r);
+}
+
+/** Waypoints from (x0, z0) to (x1, z1) around buildings and objects, or null (rules/collision.js). */
+export function findPath(x0, z0, x1, z1) {
+  return collision.findPath(x0, z0, x1, z1, 0.4);
 }
 
 /* ---------- mouse → ground point ---------- */

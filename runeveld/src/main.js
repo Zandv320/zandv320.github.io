@@ -46,6 +46,7 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { initParticles, updateParticles } from "./particles.js";
+import { packObstacle } from "./rules/collision.js";
 import { createSettings } from "./settings.js";
 import { setupCursors, setWorldCursor } from "./cursors.js";
 import { createEffects } from "./effects.js";
@@ -997,13 +998,8 @@ function startNetwork() {
   });
   network.onMessage("node_states", (message) => game.gathering.onNodeStates(message.nodes));
   UI.setOnlineStatus(false, 1);
-  /* the server simulates the monsters and only knows the world as circles */
-  /* only the circles: the server's monsters keep to the simple shapes (the boxes are for the players) */
-  network.setWorldObstacles(() =>
-    obstacles
-      .filter((obstacle) => !obstacle.box)
-      .map((obstacle) => [+obstacle.x.toFixed(2), +obstacle.z.toFixed(2), +obstacle.r.toFixed(2)]),
-  );
+  /* the server simulates the monsters and only knows the world as these shapes: circles and building boxes */
+  network.setWorldObstacles(() => obstacles.map(packObstacle));
   /* without a server the first player is the host */
   if (network.isHost()) {
     becomeHost();

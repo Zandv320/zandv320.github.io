@@ -17,6 +17,7 @@ import {
   distanceToPath,
   insideWorld,
 } from "../../runeveld/src/regions.js";
+import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
 const VILLAGE_HALF_SIZE = 22;
@@ -63,19 +64,12 @@ function isNight() {
  */
 export function createSimulation(emit) {
   const monsters = new Map();
-  /* collision circles [{x, z, r}] */
+  /* collision circles and building boxes (rules/collision.js), the same rules as in the browser */
   let obstacles = [];
+  let collision = createCollision(obstacles, (x, z) => insideWorld(x, z));
 
   function isFree(x, z, radius = 0.5) {
-    if (!insideWorld(x, z)) {
-      return false;
-    }
-    for (const obstacle of obstacles) {
-      if (Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.r + radius) {
-        return false;
-      }
-    }
-    return true;
+    return collision.isFree(x, z, radius);
   }
 
   /* pushes a point out of every obstacle; null when it lies outside the world */
@@ -83,22 +77,7 @@ export function createSimulation(emit) {
     if (!insideWorld(x, z, 1.2)) {
       return null;
     }
-    for (const obstacle of obstacles) {
-      const dx = x - obstacle.x;
-      const dz = z - obstacle.z;
-      const distance = Math.hypot(dx, dz);
-      const minDistance = obstacle.r + radius;
-      if (distance >= minDistance) {
-        continue;
-      }
-      if (distance < 1e-4) {
-        x += minDistance;
-      } else {
-        x = obstacle.x + (dx / distance) * minDistance;
-        z = obstacle.z + (dz / distance) * minDistance;
-      }
-    }
-    return [x, z];
+    return collision.pushOut(x, z, radius);
   }
 
   /* a random free point around a centre, between two distances */
@@ -442,13 +421,10 @@ export function createSimulation(emit) {
     }
   }
 
+  /* from the browser: [x, z, r] circles and [x, z, r, hw, hd, cos, sin] boxes; older clients send circles only */
   function setObstacles(list) {
-    obstacles = list
-      .filter(
-        (obstacle) =>
-          Array.isArray(obstacle) && obstacle.length === 3 && obstacle.every(Number.isFinite),
-      )
-      .map(([x, z, r]) => ({ x, z, r }));
+    obstacles = list.map(unpackObstacle).filter(Boolean);
+    collision = createCollision(obstacles, (x, z) => insideWorld(x, z));
   }
 
   function hasObstacles() {

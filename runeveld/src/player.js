@@ -6,7 +6,14 @@ import { SKILLS, jobExpForLevel, JOB_EXP_SHARE, canLearn } from "./rules/skills.
 import { meleeHit, spellHit, applyDefense, hitChance, monsterCombatStats } from "./rules/combat.js";
 import { sfx } from "./audio.js";
 import { icon } from "./icons.js";
-import { camera, cameraState, resolveCollision, FIELD_SIZE, shakeCamera } from "./world.js";
+import {
+  camera,
+  cameraState,
+  resolveCollision,
+  findPath,
+  FIELD_SIZE,
+  shakeCamera,
+} from "./world.js";
 import * as UI from "./ui.js";
 import {
   player,
@@ -98,6 +105,31 @@ export function attackTarget(monster) {
   if (player.isSitting) {
     setSitting(false);
   }
+}
+
+/* The route to the current destination: waypoints around buildings and objects (world.js findPath), planned when
+   the destination changes. While a drag keeps nudging the destination, the route is kept and only its end moves,
+   instead of planning anew on every move of the mouse. */
+let route = { for: null, points: [], at: 0 };
+
+function nextWaypoint() {
+  const destination = player.destination;
+  if (route.for !== destination) {
+    const last = route.points[route.points.length - 1];
+    const isNudge =
+      route.for &&
+      last &&
+      now() - route.at < 0.3 &&
+      Math.hypot(destination[0] - route.for[0], destination[1] - route.for[1]) < 1;
+    if (isNudge) {
+      route.points[route.points.length - 1] = [destination[0], destination[1]];
+      route.for = destination;
+    } else {
+      const points = findPath(player.x, player.z, destination[0], destination[1]);
+      route = { for: destination, points: points || [[destination[0], destination[1]]], at: now() };
+    }
+  }
+  return route.points;
 }
 
 /* The arrival callback for the current destination runs once. */
@@ -196,11 +228,18 @@ export function updatePlayer(dt) {
   } else if (player.target && (player.isAttacking || player.queuedSkill)) {
     [dx, dz] = followTarget(time, isBusy);
   } else if (player.destination) {
-    const toX = player.destination[0] - player.x;
-    const toZ = player.destination[1] - player.z;
+    /* along the route: on to the next waypoint, the last one is the arrival */
+    const points = nextWaypoint();
+    const [wayX, wayZ] = points[0];
+    const toX = wayX - player.x;
+    const toZ = wayZ - player.z;
     const distance = Math.hypot(toX, toZ);
     if (distance < 0.15) {
-      arrive();
+      if (points.length > 1) {
+        points.shift();
+      } else {
+        arrive();
+      }
     } else {
       dx = toX / distance;
       dz = toZ / distance;
