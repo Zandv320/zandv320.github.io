@@ -1,6 +1,7 @@
 /* Eldoria – what the players see of a boss's moves (rules/bosses.js): the red warning on the ground before a blow,
-   the charge, the daze after running into something, the call for help, the smoke bomb and the rage. The host
-   (the server or the hosting client) sends the events; every client shows them the same way. */
+   the charge, the daze after running into something, the call for help, the smoke bomb, the rage, and the bridge
+   troll's broken planks and boulders. The host (the server or the hosting client) sends the events; every client
+   shows them the same way. */
 import * as THREE from "three";
 import { scene, camera, shakeCamera } from "./world.js";
 import { player, monsters, now, playEffect } from "./game-state.js";
@@ -10,7 +11,9 @@ import { screenFlash } from "./feel.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
 import { bossOf } from "./rules/bosses.js";
+import { breakPlanks, mendBridge, isBrokenAt, BRIDGE } from "./rules/gorge.js";
 import { setSanctumDark } from "./crypt.js";
+import { throwBoulder } from "./missiles.js";
 
 /* a warning on the ground draws over the night haze (renderOrder 10000), so it is never missed */
 const WARNING_ORDER = 10001;
@@ -52,13 +55,15 @@ function bossById(id) {
 
 /** boss_telegraph: a red lane (charge) or circle (cleave) on the ground that fills up until the blow lands. */
 export function bossTelegraph(data) {
+  /* the troll's planks show as a lane too, on the stretch of the bridge that is going to break */
+  const isLane = data.kind === "charge" || data.kind === "planks";
   const group = new THREE.Group();
-  const area = warningMesh(data.kind === "charge" ? laneGeometry : discGeometry, 0.16);
-  const fill = warningMesh(data.kind === "charge" ? laneGeometry : discGeometry, 0.32);
+  const area = warningMesh(isLane ? laneGeometry : discGeometry, 0.16);
+  const fill = warningMesh(isLane ? laneGeometry : discGeometry, 0.32);
   group.add(area, fill);
   /* a bright border that pulses */
   const edges = [];
-  if (data.kind === "charge") {
+  if (isLane) {
     const dx = data.x1 - data.x0;
     const dz = data.z1 - data.z0;
     const length = Math.hypot(dx, dz);
@@ -92,8 +97,8 @@ export function bossTelegraph(data) {
       boss.attackAnimUntil = now() + data.duration + 0.3;
     }
   }
-  const x = data.kind === "charge" ? data.x0 : data.x;
-  const z = data.kind === "charge" ? data.z0 : data.z;
+  const x = isLane ? data.x0 : data.x;
+  const z = isLane ? data.z0 : data.z;
   if (distanceToPlayer(x, z) < HEARING_DISTANCE) {
     sfx.bossWarn();
   }
@@ -217,11 +222,41 @@ export function bossDive(data) {
   }
 }
 
-/** boss_reset: nobody left to fight it, so it healed and starts over. */
+/** boss_planks: a stretch of the Old King's Bridge falls into the gorge (rules/gorge.js; northroad.js shows the
+    planks tumbling). Whoever stood there scrambles onto the half that holds. */
+export function bossPlanks(data) {
+  breakPlanks(data);
+  if (isBrokenAt(player.x, player.z, 0.4)) {
+    const isWest = player.x < BRIDGE.x;
+    player.x = BRIDGE.x + (isWest ? 1 : -1) * BRIDGE.halfWidth * 0.5;
+    player.destination = null;
+    UI.systemMessage(
+      "The planks give way under you! You throw yourself onto the other half of the bridge.",
+    );
+  }
+  if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
+    sfx.bossSlam();
+  }
+}
+
+/** boss_boulder: a rock flies from the boss's hands to the circle shown on the ground (missiles.js). */
+export function bossBoulder(data) {
+  const boss = bossById(data.id);
+  if (boss) {
+    boss.sprite.play("attack", true);
+    boss.attackAnimUntil = now() + 0.5;
+  }
+  throwBoulder(data.x0, data.z0, data.x1, data.z1, data.duration);
+}
+
+/** boss_reset: nobody left to fight it, so it healed and starts over (the troll mends his bridge). */
 export function bossReset(data) {
   const boss = bossById(data.id);
   if (!boss) {
     return;
+  }
+  if (bossOf(boss.spec.key)?.planks) {
+    mendBridge();
   }
   boss.isEnraged = false;
   if (bossOf(boss.spec.key)?.enrage?.darkness) {
@@ -267,7 +302,7 @@ export function updateBossEffects(dt) {
     const { data, area, fill, edges } = warning;
     warning.time += dt;
     const progress = Math.min(1, warning.time / data.duration);
-    if (data.kind === "charge") {
+    if (data.kind === "charge" || data.kind === "planks") {
       fill.scale.set(data.width, 1, area.scale.z * progress);
     } else {
       fill.scale.setScalar(data.radius * progress);
@@ -287,6 +322,18 @@ export function updateBossEffects(dt) {
         if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
           sfx.bossSlam();
           shakeCamera(0.2, 0.2);
+        }
+      } else if (data.kind === "planks") {
+        /* the club comes down: splinters fly, whether the planks hold or not */
+        burst(data.x0, 0.3, (data.z0 + data.z1) / 2, {
+          color: 0x9a7448,
+          count: 22,
+          speed: 4,
+          size: 3,
+        });
+        if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
+          sfx.bossSlam();
+          shakeCamera(0.28, 0.25);
         }
       }
     }

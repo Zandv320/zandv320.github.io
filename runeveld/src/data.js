@@ -415,6 +415,66 @@ export const ITEMS = {
     description:
       "Blue-white fur that crackles when you stroke it. The tanners in Saltmere pay well.",
   },
+  /* Saga II: Northwatch's goblins and Grumm the bridge troll */
+  goblin_trinket: {
+    name: "Goblin trinkets",
+    price: 55,
+    icon: "🪙",
+    stack: 99,
+    description:
+      "Bent spoons, buttons and a tooth. Goblins treasure anything that shines; a merchant pays a little for the lot.",
+  },
+  skrags_cleaver: {
+    name: "Skrag's cleaver",
+    slot: "weapon",
+    layer: "sword2",
+    atk: 34,
+    bonus: { agi: 2 },
+    price: 3600,
+    icon: "🗡️",
+    forClass: "swordsman",
+    description: "The goblin chief carried two of them. One will do for you.",
+  },
+  humming_staff: {
+    name: "Humming staff",
+    slot: "weapon",
+    layer: "staff2",
+    atk: 9,
+    matk: 46,
+    bonus: { int: 2 },
+    price: 3600,
+    icon: "🪄",
+    forClass: "mage",
+    description: "A splinter of the Northwatch runestone, tied to a goblin's stick. It still hums.",
+  },
+  trollhide_cloak: {
+    name: "Trollhide cloak",
+    slot: "cloak",
+    layer: "cloak1",
+    def: 9,
+    hp: 90,
+    price: 3400,
+    icon: "🧥",
+    description: "Grey, cold and as stiff as a door. Nothing gets through it, the rain included.",
+  },
+  grumms_toll: {
+    name: "Grumm's toll",
+    slot: "ring",
+    bonus: { str: 2, vit: 3 },
+    price: 3300,
+    icon: "💍",
+    description:
+      "Somebody's silver ring, paid at the bridge long ago. The troll wore it on his little toe.",
+  },
+  bridgestone_pendant: {
+    name: "Bridgestone pendant",
+    slot: "necklace",
+    hp: 90,
+    def: 4,
+    price: 3300,
+    icon: "📿",
+    description: "A chip of the Old King's Bridge, worn smooth by a troll's thumb.",
+  },
   grave_dust: {
     name: "Grave dust",
     price: 20,
@@ -1524,8 +1584,9 @@ export const VALE_MONSTERS = {
 Object.assign(MONSTERS, VALE_MONSTERS);
 
 /* The Northroad (Saga II, regions.js), level 22 to 26: from Aurelia's north gate past Fort Harrow to the Halfway
-   Inn. They keep to their own stretch of the road (`stretch`: [north, south] in depth). The storm wolves hunt
-   harder in a storm (`storm`, like `night`; rules/weather.js). */
+   Inn, Northwatch and Greyfall Gorge. The beasts and the highwaymen keep to their own stretch of the road
+   (`stretch`: [north, south] in depth). The storm wolves hunt harder in a storm (`storm`, like `night`;
+   rules/weather.js). */
 export const NORTH_MONSTERS = {
   highwayman: {
     name: "Highwayman",
@@ -1593,6 +1654,96 @@ export const NORTH_MONSTERS = {
     storm: { aggroFactor: 1.8, speedFactor: 1.2 },
     materials: { storm_pelt: 0.6 },
     loot: { orange_potion: 0.1, wool_cloak: 0.04 },
+  },
+  /* the ruins of Northwatch: the goblins keep to their spots around the humming runestone (rules/gorge.js); the
+     scavengers throw spears from a distance */
+  goblin_scavenger: {
+    name: "Goblin Scavenger",
+    level: 24,
+    hp: 1450,
+    atk: 96,
+    exp: 470,
+    zeny: [60, 130],
+    speed: 3.2,
+    aggressive: true,
+    range: 5,
+    aggroRange: 7,
+    projectile: "spear",
+    area: "northwatch",
+    respawn: [30, 50],
+    materials: { goblin_trinket: 0.45, arcane_dust: 0.12 },
+    loot: {
+      red_potion: 0.3,
+      orange_potion: 0.12,
+      steel_sword: 0.03,
+      crystal_staff: 0.03,
+    },
+  },
+  goblin_raider: {
+    name: "Goblin Raider",
+    level: 25,
+    hp: 2100,
+    atk: 108,
+    exp: 560,
+    zeny: [80, 160],
+    speed: 3,
+    aggressive: true,
+    range: 1.6,
+    aggroRange: 6.5,
+    scale: 1.1,
+    area: "northwatch",
+    respawn: [30, 50],
+    materials: { goblin_trinket: 0.5, arcane_dust: 0.15 },
+    loot: {
+      orange_potion: 0.15,
+      steel_armor: 0.04,
+      archmage_robe: 0.03,
+      buckled_belt: 0.04,
+    },
+  },
+  goblin_chief: {
+    name: "Skrag",
+    title: "Chief of Northwatch",
+    level: 25,
+    hp: 7000,
+    atk: 120,
+    exp: 1700,
+    zeny: [350, 700],
+    speed: 3.1,
+    aggressive: true,
+    range: 1.6,
+    aggroRange: 8,
+    scale: 1.35,
+    lines: { summon: "Boys! Get 'em!", enrage: "The shiny stone is MINE!" },
+    area: "northwatch",
+    respawn: [90, 150],
+    materials: { goblin_trinket: 1 },
+    loot: { skrags_cleaver: 0.22, humming_staff: 0.22, orange_potion: 0.6 },
+  },
+  /* Greyfall Gorge: the troll keeps to the Old King's Bridge and smashes its planks (rules/bosses.js) */
+  grumm: {
+    name: "Grumm",
+    title: "The Bridge Troll",
+    level: 26,
+    hp: 9500,
+    atk: 135,
+    exp: 2600,
+    zeny: [500, 900],
+    speed: 2.6,
+    aggressive: true,
+    range: 2.2,
+    aggroRange: 7,
+    scale: 2.1,
+    lines: { enrage: "GRUMM'S BRIDGE! GRUMM'S!" },
+    area: "bridge",
+    respawn: [120, 180],
+    materials: { arcane_dust: 1 },
+    loot: {
+      trollhide_cloak: 0.3,
+      grumms_toll: 0.25,
+      bridgestone_pendant: 0.25,
+      orange_potion: 0.6,
+    },
   },
 };
 Object.assign(MONSTERS, NORTH_MONSTERS);
@@ -1704,6 +1855,11 @@ export const SPAWNS = [
   { monster: "highwayman", count: 10 },
   { monster: "ridge_boar", count: 6 },
   { monster: "storm_wolf", count: 8 },
+  /* Northwatch and the bridge: one of each per spot in rules/gorge.js */
+  { monster: "goblin_scavenger", count: 8 },
+  { monster: "goblin_raider", count: 5 },
+  { monster: "goblin_chief", count: 1 },
+  { monster: "grumm", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

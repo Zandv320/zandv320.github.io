@@ -17,11 +17,12 @@ import {
   inNorthroad,
   northroadSpot,
   isNorthroadHome,
+  fixedSpot,
+  keepsHome,
 } from "./regions.js";
 import { isStorm } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
-import { spotFor } from "./rules/crypt.js";
 import { sfx } from "./audio.js";
 import { chargeDust } from "./boss-effects.js";
 import { setSanctumDark } from "./crypt.js";
@@ -47,7 +48,7 @@ export const MONSTER_STATE = { idle: 0, walking: 1, dead: 3 };
 
 /* how far a hunting monster follows a player before giving up */
 const CHASE_DISTANCE = 13;
-/* how far a crypt monster follows anyone away from its own spot */
+/* how far a monster with a spot of its own (the crypt, Northwatch) follows anyone away from it */
 const LEASH_DISTANCE = 16;
 /* seconds between two attacks of a monster */
 const MONSTER_ATTACK_INTERVAL = 1.6;
@@ -136,9 +137,9 @@ export function ensureMonster(id) {
 const NORTH_ROAD_FALLBACK = [-170, -130];
 
 /* A spot in this monster's area: outside the palisade, free of obstacles, not on the path at the gates. The crypt's
-   monsters have spots of their own. */
+   monsters, Northwatch's goblins and the bridge troll have spots of their own. */
 function spawnPoint(spec, id) {
-  const spot = spotFor(spec.key, id);
+  const spot = fixedSpot(spec.key, id);
   if (spot) {
     return spot;
   }
@@ -268,7 +269,7 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "crypt") {
     return inCrypt(x, z);
   }
-  if (spec.area === "northroad") {
+  if (spec.area === "northroad" || spec.area === "northwatch" || spec.area === "bridge") {
     return inNorthroad(x, z);
   }
   return true;
@@ -318,7 +319,7 @@ function reviveMonster(monster, [x, z]) {
   monster.hp = monster.hpMax;
   monster.x = monster.targetX = x;
   monster.z = monster.targetZ = z;
-  monster.home = monster.spec.area === "crypt" ? [x, z] : null;
+  monster.home = keepsHome(monster.spec) ? [x, z] : null;
   monster.aggroTarget = null;
   monster.state = MONSTER_STATE.idle;
   monster.hideAt = 0;
@@ -337,7 +338,7 @@ export function becomeHost() {
         const [x, z] = spawnPoint(monster.spec, monster.id);
         monster.x = monster.targetX = x;
         monster.z = monster.targetZ = z;
-        monster.home = monster.spec.area === "crypt" ? [x, z] : null;
+        monster.home = keepsHome(monster.spec) ? [x, z] : null;
         monster.isNew = false;
       }
     }
@@ -429,7 +430,7 @@ function findTarget(monster, players, nightFactors) {
   return target;
 }
 
-/* a crypt monster that has followed someone too far from its spot turns back */
+/* a monster that has followed someone too far from its spot turns back */
 const isFarFromHome = (monster) =>
   !!monster.home &&
   Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > LEASH_DISTANCE;
@@ -477,7 +478,7 @@ function wander(monster, dt) {
       const wanderX = monster.x + randomBetween(-4, 4);
       const wanderZ = monster.z + randomBetween(-4, 4);
       if (monster.home) {
-        /* the crypt's monsters keep watch on their spot, and walk back to it after a fight */
+        /* a monster with a spot of its own keeps watch there, and walks back to it after a fight */
         const isAway = Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > 0.6;
         monster.wanderTarget = isAway ? monster.home : null;
       } else {

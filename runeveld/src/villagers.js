@@ -498,6 +498,56 @@ const VILLAGERS = [
       "They say a troll sits on the Old King's Bridge and asks for silver. I paid in running.",
       "Ships leave Saltmere for places that are not on any map. I want to see one.",
     ],
+
+    after: {
+      wil_bridge: [
+        "The troll is gone? Then I leave for Saltmere at first light. Tomorrow. Probably.",
+      ],
+    },
+  },
+  /* ---- Northwatch and Greyfall Gorge ---- */
+  {
+    name: "Hedge-wizard Pell",
+    hair: "red",
+    outfit: "armor1",
+    tunicColor: "green",
+    route: [
+      [-147.6, -200.4],
+      [-146.4, -203.2],
+    ],
+    speed: 0.7,
+    pause: [6, 12],
+    lines: [
+      "Hear that hum? No? Lucky you. It goes right through my teeth.",
+      "Warts, coughs, a broken heart: I have a remedy for all of them. They mostly work.",
+      "Goblins do not steal things. They borrow them forever.",
+    ],
+    night: ["At night the stone glows. Purple, like a bruise on the sky."],
+    after: {
+      pell_tower: ["The shard has not stopped humming. I sleep with it under a pot."],
+      pell_scavengers: ["Not one spear today. I almost miss them. Almost."],
+    },
+  },
+  {
+    name: "Carter Wil",
+    hair: "brown",
+    outfit: "armor1",
+    tunicColor: "blue",
+    headgear: "cap",
+    route: [
+      [-132.2, -256.6],
+      [-128.2, -256.2],
+    ],
+    speed: 0.9,
+    pause: [5, 11],
+    lines: [
+      "A week of barley and a troll in the way. My horse has eaten half the load.",
+      "Hear him? That is Grumm, counting his toll. He counts badly.",
+      "My grandfather drove this road when the bridge was new. The troll was not in the songs.",
+    ],
+    after: {
+      wil_bridge: ["The road is open! Saltmere, here I come. Any day now. When the horse agrees."],
+    },
   },
   /* Saga II: the court archmage, who knows what the old altar really is */
   {

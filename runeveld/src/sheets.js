@@ -108,6 +108,17 @@ function cryptSheet(
   };
 }
 
+/* the orc pack's frames per animation; its figures stand a little lower in the frame */
+const GOBLIN_FRAMES = {
+  idle: 4,
+  walk: 6,
+  attack: 8,
+  hurt: 6,
+  death: 8,
+  feet: 22,
+  height: 28,
+};
+
 export const SHEETS = {
   hero: {
     frameWidth: 64,
@@ -158,6 +169,11 @@ export const SHEETS = {
     feet: 24,
     height: 20,
   }),
+  /* Northwatch's goblins and Grumm the bridge troll: the orc pack, laid out like the vampires */
+  goblin_scavenger: cryptSheet("goblin_scavenger", GOBLIN_FRAMES),
+  goblin_raider: cryptSheet("goblin_raider", GOBLIN_FRAMES),
+  goblin_chief: cryptSheet("goblin_chief", { ...GOBLIN_FRAMES, height: 32 }),
+  grumm: cryptSheet("grumm", GOBLIN_FRAMES),
 };
 
 /**

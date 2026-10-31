@@ -1,12 +1,21 @@
-/* Eldoria – regions of the world. Its only import is the crypt's layout (pure rules), so every file (client and
-   server) can use this.
+/* Eldoria – regions of the world. Its only imports are the layouts of the crypt and of Greyfall Gorge (pure rules),
+   so every file (client and server) can use this.
    The fields around the village and the forest "Whisperwood" north of it have organic edges: a radius that
    undulates with the angle (fixed phases, so the shape is the same every time). The forest overlaps the fields
    by a few units at the north gate; that is the only way in. The rectangles (FOREST, FIELD_SIZE) are the bounding
    boxes for the ground map and the world map; the real shape comes from inFields() and inForest(). */
-import { inCrypt } from "./rules/crypt.js";
+import { inCrypt, spotFor } from "./rules/crypt.js";
+import {
+  GORGE,
+  BRIDGE,
+  NORTHWATCH,
+  gorgeSouthRim,
+  gorgeNorthRim,
+  gorgeFloorAt,
+  northSpotFor,
+} from "./rules/gorge.js";
 
-export { inCrypt };
+export { inCrypt, GORGE, BRIDGE, NORTHWATCH };
 
 /* Half width of the ground map around the village. */
 export const FIELD_SIZE = 60;
@@ -135,7 +144,8 @@ export const KINGS_ROAD = [
 export const BANDIT_CAMP = [-82, -44];
 
 /* The Northroad (Saga II): from Aurelia's north gate up through farmland and hills, past Fort Harrow to the
-   Halfway Inn, and on towards Greyfall Gorge and Saltmere (built later). The land is a wavy band along the road. */
+   Halfway Inn, past the ruins of Northwatch and over the Old King's Bridge across Greyfall Gorge (rules/gorge.js),
+   towards Saltmere (built later). The land is a wavy band along the road. */
 export const NORTH_ROAD = [
   [-137, -40],
   [-137, -64],
@@ -146,6 +156,12 @@ export const NORTH_ROAD = [
   [-153, -158],
   [-149, -178],
   [-141, -198],
+  [-137, -216],
+  [-133, -240],
+  [BRIDGE.x, BRIDGE.south + 2],
+  [BRIDGE.x, BRIDGE.north - 2],
+  [-141, -300],
+  [-146, -318],
 ];
 
 export const NORTHROAD = {
@@ -153,7 +169,7 @@ export const NORTHROAD = {
   /* the bounding box, for the ground map and the world map */
   x0: -196,
   x1: -86,
-  z0: -212,
+  z0: -330,
   z1: -38,
   /* the toll fort across the road, and the hamlet halfway */
   fort: [-127, -100],
@@ -171,10 +187,14 @@ export function northroadWidth(z) {
   return 30 + 6 * waviness(z * 0.06, 0.8, 2.6, 1.9);
 }
 
-/** Is (x, z) on the Northroad's land, at least `margin` away from its edge? North of the city wall only. */
+/** Is (x, z) on the Northroad's land, at least `margin` away from its edge? North of the city wall only. Over
+    Greyfall Gorge only the bridge's deck counts, without the planks that have fallen. */
 export function inNorthroad(x, z, margin = 0) {
   if (z > NORTHROAD.z1 - 2 || z < NORTHROAD.z0) {
     return false;
+  }
+  if (z < gorgeSouthRim(x) + margin * 0.5 && z > gorgeNorthRim(x) - margin * 0.5) {
+    return gorgeFloorAt(x, z, margin);
   }
   return distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z) - margin;
 }
@@ -191,7 +211,8 @@ export function northroadSpot(random, [north, south], isOk, tries = 120) {
     const isAway =
       distanceToPath(x, z, NORTH_ROAD) > 6 &&
       Math.hypot(x - NORTHROAD.fort[0], z - NORTHROAD.fort[1]) > 16 &&
-      Math.hypot(x - NORTHROAD.inn[0], z - NORTHROAD.inn[1]) > 20;
+      Math.hypot(x - NORTHROAD.inn[0], z - NORTHROAD.inn[1]) > 20 &&
+      Math.hypot(x - NORTHWATCH.x, z - NORTHWATCH.z) > NORTHWATCH.radius + 4;
     if (inNorthroad(x, z, 4) && isAway && isOk(x, z)) {
       return [x, z];
     }
@@ -202,6 +223,14 @@ export function northroadSpot(random, [north, south], isOk, tries = 120) {
 /** May a Northroad monster with this `stretch` [north, south] roam at (x, z)? A little beyond its stretch is fine. */
 export const isNorthroadHome = ([north, south], x, z) =>
   inNorthroad(x, z, 2) && z > north - 12 && z < south + 12;
+
+/** The fixed spot of a monster that keeps watch in one place (the crypt's, Northwatch's goblins, the bridge troll),
+    or null for one that roams. */
+export const fixedSpot = (key, id) => spotFor(key, id) || northSpotFor(key, id);
+
+/** Does this monster go back to its own spot after a fight (and give up on anyone who leads it too far)? */
+export const keepsHome = (spec) =>
+  spec.area === "crypt" || spec.area === "northwatch" || spec.area === "bridge";
 
 /** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad or the crypt), with a margin to the
     edge? The crypt needs none: its walls are obstacles. */

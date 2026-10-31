@@ -800,6 +800,88 @@ export const QUESTS = {
     goal: { type: "item", item: "storm_pelt", count: 6 },
     reward: { exp: 2600, zeny: 1400, items: [{ id: "orange_potion", count: 5 }] },
   },
+  hobb_pell: {
+    giver: "Innkeeper Hobb",
+    turnIn: "Hedge-wizard Pell",
+    hint: "Follow the Northroad north from the inn. Pell's patched green tent stands on the west side of the road, with a view of the ruined tower across it.",
+    chapter: 7,
+    main: true,
+    title: "The tower that hums",
+    level: 24,
+    after: "hobb_storm_wolves",
+    intro:
+      "There is a hedge-wizard camped up the road, Pell. Pays for his stew in remedies, mostly for warts. He came down last week white as milk, going on about the old tower at Northwatch humming like a hive. Goblins in it, too. Go and hear him out: you have the look of someone who deals with humming things.",
+    progressText:
+      "North from the inn along the road. Pell's green tent stands on the west side, across from the ruined tower.",
+    completeText:
+      "Hobb sent you? Good man, Hobb. Bad stew. Listen. Can you hear it? No? Then come closer to the ruin, and you will.",
+    goal: { type: "visit", npc: "Hedge-wizard Pell" },
+    reward: { exp: 900, zeny: 400 },
+  },
+  pell_tower: {
+    giver: "Hedge-wizard Pell",
+    where: { monster: "goblin_chief" },
+    hint: "Northwatch is the ruined tower east of the road, across from Pell's camp. Skrag, the goblin chief, sits by the split runestone in the middle of the ruin.",
+    chapter: 7,
+    main: true,
+    title: "The shiny stone",
+    level: 24,
+    after: "hobb_pell",
+    intro:
+      "That ruin was a watchtower of the old kings, and under it they set a runestone. Like your altar, I think: a seal, or a piece of one. It cracked when the storms began, and now it hums. The goblins found it. Their chief, Skrag, sits on it like a hen on an egg and chips bits off to wear. If he breaks it, I do not want to know what comes out. Take the shard from him.",
+    progressText:
+      "Skrag, the goblin chief, sits by the split runestone in the middle of Northwatch. He calls his goblins when he is hurt.",
+    completeText:
+      "The shard! It is warm, and it hums in my hand. A seal stone, cracking like the one in Whisperwood you told me of. Selwyn will want to hear about this; I will send a bird. Now, if you are going north: Carter Wil has been stuck at the gorge for a week. Something about a troll.",
+    goal: { type: "kill", monster: "goblin_chief", count: 1 },
+    reward: {
+      exp: 2200,
+      zeny: 1800,
+      items: [{ id: "orange_potion", count: 5 }],
+    },
+  },
+  pell_scavengers: {
+    giver: "Hedge-wizard Pell",
+    where: { monster: "goblin_scavenger" },
+    hint: "The goblin scavengers keep watch around the ruin of Northwatch, east of the road. They throw spears: close in fast.",
+    title: "Spears in the ruins",
+    level: 24,
+    after: "hobb_pell",
+    intro:
+      "Every time I go near the ruin, a spear comes flying. Little green ones with big arms. Ten of them fewer, and I might get close enough to take a proper look at that stone.",
+    progressText:
+      "Ten goblin scavengers around the ruin of Northwatch. They throw spears from a distance.",
+    completeText:
+      "Ten! Not a spear all afternoon. Here: a remedy for warts, and some coin. Mostly coin.",
+    goal: { type: "kill", monster: "goblin_scavenger", count: 10 },
+    reward: {
+      exp: 1600,
+      zeny: 1300,
+      items: [{ id: "orange_potion", count: 3 }],
+    },
+  },
+  wil_bridge: {
+    giver: "Carter Wil",
+    where: { monster: "grumm" },
+    hint: "Carter Wil waits with his cart just south of Greyfall Gorge. Grumm the troll sits on the Old King's Bridge: when he smashes the planks, step off the red stretch.",
+    chapter: 7,
+    main: true,
+    title: "The Old King's Bridge",
+    level: 25,
+    after: "pell_tower",
+    intro:
+      "A week. A week I have sat here with a cart full of barley for Saltmere. There is a troll on the bridge. Grumm, he calls himself, and he wants a toll: everything. He smashes the planks under anyone who argues. Get him off that bridge, and I will tell every tavern from here to the sea who did it.",
+    progressText:
+      "Grumm sits on the Old King's Bridge over Greyfall Gorge. When he raises his club, a stretch of the bridge turns red: step off it before the planks break. Low on health, he throws boulders.",
+    completeText:
+      "He is down? Gone into the gorge? Ha! Listen to that: no more roaring. The road to Saltmere is open again. I owe you a ride, a meal and a song, in that order.",
+    goal: { type: "kill", monster: "grumm", count: 1 },
+    reward: {
+      exp: 3400,
+      zeny: 2600,
+      items: [{ id: "orange_potion", count: 8 }],
+    },
+  },
   tilda_boars: {
     giver: "Farmer Tilda",
     where: { monster: "ridge_boar" },

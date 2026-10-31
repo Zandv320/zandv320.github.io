@@ -35,7 +35,9 @@ import {
   NORTHROAD,
   NORTH_FARMS,
   inNorthroad,
+  GORGE,
 } from "./regions.js";
+import { inGorge, gorgeNorthRim, gorgeSouthRim } from "./rules/gorge.js";
 import { buildForest } from "./forest.js";
 import { buildCapital } from "./capital.js";
 import { buildProfessionSites } from "./profession-sites.js";
@@ -284,11 +286,22 @@ export const onRoad = (x) => Math.abs(x) < 1.6;
 export const obstacles = [];
 const collision = createCollision(obstacles, (x, z) => insideWorld(x, z));
 
-/* Outside the world? Then back inside: in small steps towards the village, the forest centre or the vale centre,
-   whichever is closest. */
+/* Outside the world? Then back inside: to the nearest point close by (a step over the edge, or over the rim of
+   Greyfall Gorge), or else in small steps towards the village, the forest centre or the vale centre, whichever is
+   closest. */
 function clampToWorld(x, z, margin = 1.2) {
   if (insideWorld(x, z, margin)) {
     return [x, z];
+  }
+  for (let distance = 0.15; distance <= 3; distance += 0.15) {
+    for (let k = 0; k < 16; k++) {
+      const angle = (k / 16) * Math.PI * 2;
+      const px = x + Math.cos(angle) * distance;
+      const pz = z + Math.sin(angle) * distance;
+      if (insideWorld(px, pz, margin)) {
+        return [px, pz];
+      }
+    }
   }
   let best = null;
   let bestDistance = 1e9;
@@ -630,7 +643,7 @@ function buildNorthroadGround(atlas, decor) {
     for (let i = 0; i < tilesX * 4; i++) {
       const x = (i + 0.5) * cellUnits + x0;
       const z = (j + 0.5) * cellUnits + z0;
-      if (inNorthroad(x, z)) {
+      if (inNorthroad(x, z) || inGorge(x, z)) {
         continue;
       }
       ctx.fillStyle = inNorthroad(x, z, -2.5) ? "rgba(10,28,20,.25)" : "rgba(10,28,20,.5)";
@@ -653,6 +666,7 @@ function buildNorthroadGround(atlas, decor) {
       Math.round(toCanvasZ(z) - img.height / 2),
     );
   }
+  paintGorge(ctx, x0, z0, random);
   const texture = makeTexture(canvas, false);
   applyGroundFilter(texture);
   const width = x1 - x0;
@@ -667,6 +681,61 @@ function buildNorthroadGround(atlas, decor) {
   mesh.position.set(centerX, 0.004, centerZ);
   scene.add(mesh);
   addShadowCatcher(width, depth, centerX, 0.029, centerZ);
+}
+
+/* Greyfall Gorge in the Northroad's ground map (rules/gorge.js): the camera looks north, so behind the south rim
+   it sees the far wall going down in layers of grey rock, a river far below at its foot, and the dark under the
+   near rim. Pixel by pixel, in the band around the gorge only. */
+function paintGorge(ctx, x0, z0, random) {
+  const unitsPerPixel = UNITS_PER_TILE / TILE;
+  const top = Math.floor((GORGE.north - 3 - z0) / unitsPerPixel);
+  const bottom = Math.ceil((GORGE.south + 3 - z0) / unitsPerPixel);
+  const image = ctx.getImageData(0, top, ctx.canvas.width, bottom - top);
+  const pixels = image.data;
+  /* the rock's layers: a lighter band now and then, the same along the whole wall */
+  const strata = Array.from({ length: 64 }, () => 0.88 + random() * 0.24);
+  for (let py = 0; py < image.height; py++) {
+    const z = z0 + (py + top + 0.5) * unitsPerPixel;
+    for (let px = 0; px < image.width; px++) {
+      const x = x0 + (px + 0.5) * unitsPerPixel;
+      const north = gorgeNorthRim(x);
+      const south = gorgeSouthRim(x);
+      const index = (py * image.width + px) * 4;
+      let color = null;
+      if (z > south - 0.05 && z < south + 0.45) {
+        /* the lip of the near rim: grass in shadow */
+        const shade = 0.55;
+        color = [pixels[index] * shade, pixels[index + 1] * shade, pixels[index + 2] * shade];
+      } else if (z > north && z < south) {
+        const depth = z - north;
+        const width = south - north;
+        const noise = 0.9 + random() * 0.2;
+        /* the far wall takes the upper half, then the river, then the shadow under the near rim */
+        const wallEnd = width * 0.5;
+        const riverEnd = wallEnd + 1.4;
+        if (depth < wallEnd) {
+          /* the far wall, lit at the top and darker as it goes down, in layers */
+          const fade = 1 - (depth / wallEnd) * 0.62;
+          const light = fade * strata[Math.floor(depth * 5) % strata.length] * noise;
+          color = [138 * light, 132 * light, 122 * light];
+        } else if (depth < riverEnd) {
+          /* the river at its foot, with flecks of foam */
+          const foam = random() < 0.07 ? 1.7 : 1;
+          color = [58 * foam * noise, 86 * foam * noise, 100 * foam * noise];
+        } else {
+          /* under the near rim: the gorge's floor fades into shadow */
+          const light = Math.max(0.28, 1 - (depth - riverEnd) / (width - riverEnd)) * noise;
+          color = [44 * light, 46 * light, 56 * light];
+        }
+      }
+      if (color) {
+        pixels[index] = color[0];
+        pixels[index + 1] = color[1];
+        pixels[index + 2] = color[2];
+      }
+    }
+  }
+  ctx.putImageData(image, 0, top);
 }
 
 /* ---------- scenery ---------- */

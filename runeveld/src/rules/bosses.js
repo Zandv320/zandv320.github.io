@@ -8,15 +8,20 @@
 
    Events (all with the boss id):
      boss_telegraph {kind: 'charge', x0, z0, x1, z1, width, duration} or {kind: 'circle', x, z, radius, duration}
-       a warning on the ground: where the blow will land
+       a warning on the ground: where the blow will land; kind 'planks' is a lane like 'charge', but the boss
+       stays where it is and strikes
      boss_charge   {x1, z1, duration}  the boss rushes to (x1, z1)
      boss_stunned  {duration}          it hit something and is dazed
      boss_summon   {}                  it calls for help (the helpers appear like any other monster)
      boss_smoke    {x0, z0, x1, z1}    a smoke bomb: it vanishes at (x0, z0) and appears at (x1, z1)
      boss_enrage   {}                  low on health: faster and harder (and with `darkness`, the room goes dark)
      boss_dive     {x0, z0, x1, z1, duration}  it flies up and comes down on (x1, z1)
-     boss_reset    {}                  nobody left to fight: it heals and starts over
+     boss_planks   {x0, z0, x1, z1}    a stretch of the bridge's deck falls into the gorge (rules/gorge.js)
+     boss_boulder  {x0, z0, x1, z1, duration}  a rock thrown from (x0, z0) lands on (x1, z1)
+     boss_reset    {}                  nobody left to fight: it heals and starts over (a broken bridge is mended)
    Damage goes out as the usual monster_attack {id, target, damage}, per player that is hit. */
+
+import { GORGE, onBridge, plankStretch, breakPlanks, mendBridge, BRIDGE } from "./gorge.js";
 
 /* the bosses and their moves; numbers in seconds, units and multiples of the boss's ATK */
 export const BOSSES = {
@@ -44,6 +49,26 @@ export const BOSSES = {
     summon: { below: 0.6, helper: "crypt_thrall", count: 2 },
     enrage: { below: 0.3, cooldownFactor: 0.7, damageFactor: 1.25, darkness: true },
   },
+  /* Northwatch and Greyfall Gorge on the Northroad (rules/gorge.js) */
+  goblin_chief: {
+    cleave: { every: [6, 8], windup: 0.9, radius: 3, damage: 1.7 },
+    summon: { below: 0.6, helper: "goblin_scavenger", count: 2 },
+    enrage: { below: 0.3, cooldownFactor: 0.7, damageFactor: 1.25 },
+  },
+  grumm: {
+    /* on the bridge he smashes the planks under you; off it, the ground around him */
+    planks: { every: [6.5, 8.5], windup: 1.2, damage: 2.2, range: 9 },
+    cleave: { every: [7, 9], windup: 1, radius: 3, damage: 1.8 },
+    boulders: {
+      below: 0.4,
+      every: [6, 8],
+      windup: 1.4,
+      radius: 1.8,
+      damage: 1.6,
+      range: 14,
+    },
+    enrage: { below: 0.25, cooldownFactor: 0.75, damageFactor: 1.2 },
+  },
 };
 /* a boss with nobody to fight for this long heals and starts over */
 const RESET_SECONDS = 8;
@@ -56,9 +81,12 @@ const randomBetween = ([min, max]) => min + Math.random() * (max - min);
 /** The boss rules for a monster key ('dire_boar'), or null for an ordinary monster. */
 export const bossOf = (key) => BOSSES[key] || null;
 
-/** Clears a boss's state, for a fresh start after it respawns. */
+/** Clears a boss's state, for a fresh start after it respawns (the troll's bridge is whole again). */
 export function resetBoss(monster) {
   monster.boss = null;
+  if (bossOf(monster.spec.key)?.planks) {
+    mendBridge();
+  }
 }
 
 /** How much harder an enraged boss hits and how much sooner it attacks again: {damage, cooldown} factors. */
@@ -78,6 +106,7 @@ function brain(monster, now) {
       nextCleave: now + 3,
       nextSmoke: now + 6,
       nextRunes: now + 4,
+      nextPlanks: now + 2.5,
       nextDive: now + 7,
       idleFor: 0,
       hasSummoned: false,
@@ -144,7 +173,7 @@ export function bossTick(monster, target, dt, ctx) {
   state.idleFor = target ? 0 : state.idleFor + dt;
   if (!state.move && state.idleFor > RESET_SECONDS && (health < 1 || state.isEnraged)) {
     monster.hp = monster.spec.hp;
-    monster.boss = null;
+    resetBoss(monster);
     ctx.emit("boss_reset", { id: monster.id });
     return false;
   }
@@ -214,15 +243,36 @@ export function bossTick(monster, target, dt, ctx) {
       }
       return true;
     }
-    if (move.kind === "runes-windup") {
+    if (move.kind === "volley-windup") {
       if (now >= move.until) {
-        const runes = rules.bloodRunes;
+        const volley = rules[move.volley];
         const hit = ctx.players.filter(
           (player) =>
             !player.isDead &&
-            move.spots.some(([x, z]) => Math.hypot(player.x - x, player.z - z) <= runes.radius),
+            move.spots.some(([x, z]) => Math.hypot(player.x - x, player.z - z) <= volley.radius),
         );
-        strike(monster, hit, runes.damage, ctx);
+        strike(monster, hit, volley.damage, ctx);
+        state.move = null;
+      }
+      return true;
+    }
+    if (move.kind === "planks-windup") {
+      if (now >= move.until) {
+        const { area } = move;
+        const hit = ctx.players.filter(
+          (player) =>
+            !player.isDead &&
+            player.x > area.x0 - 0.3 &&
+            player.x < area.x1 + 0.3 &&
+            player.z > area.z0 - 0.3 &&
+            player.z < area.z1 + 0.3,
+        );
+        strike(monster, hit, rules.planks.damage, ctx);
+        /* the planks give way, unless the bridge would be cut in two */
+        if (move.breaks) {
+          breakPlanks(area);
+          ctx.emit("boss_planks", { id: monster.id, ...area });
+        }
         state.move = null;
       }
       return true;
@@ -300,28 +350,85 @@ export function bossTick(monster, target, dt, ctx) {
     }
   }
 
-  /* blood runes: a circle under every player nearby, that bursts a moment later */
-  if (rules.bloodRunes && now >= state.nextRunes) {
-    const runes = rules.bloodRunes;
+  /* the planks: with the target on the bridge, a stretch of the deck under it shows red, then breaks */
+  const isOverGorge =
+    onBridge(target.x, target.z) && target.z < GORGE.south && target.z > GORGE.north;
+  if (rules.planks && now >= state.nextPlanks && isOverGorge && distance <= rules.planks.range) {
+    const planks = rules.planks;
+    state.nextPlanks =
+      now + planks.windup + randomBetween(planks.every) * rageFactors(monster).cooldown;
+    const stretch = plankStretch(target.x, target.z);
+    /* where the bridge must hold, he still smashes the planks there: they hurt, but do not fall */
+    const isWest = target.x < BRIDGE.x;
+    const area = stretch || {
+      x0: isWest ? BRIDGE.x - BRIDGE.halfWidth : BRIDGE.x,
+      x1: isWest ? BRIDGE.x : BRIDGE.x + BRIDGE.halfWidth,
+      z0: +(target.z - 1.5).toFixed(2),
+      z1: +(target.z + 1.5).toFixed(2),
+    };
+    state.move = {
+      kind: "planks-windup",
+      until: now + planks.windup,
+      area,
+      breaks: !!stretch,
+    };
+    monster.faceX = dx / distance;
+    monster.faceZ = dz / distance;
+    const middle = +((area.x0 + area.x1) / 2).toFixed(2);
+    ctx.emit("boss_telegraph", {
+      id: monster.id,
+      kind: "planks",
+      x0: middle,
+      z0: area.z1,
+      x1: middle,
+      z1: area.z0,
+      width: +(area.x1 - area.x0).toFixed(2),
+      duration: planks.windup,
+    });
+    return true;
+  }
+
+  /* a volley: blood runes (from the start) or boulders (when low on health), a circle under every player nearby
+     that bursts a moment later; boulders fly there from the boss's hands */
+  const volleyName =
+    (rules.bloodRunes && "bloodRunes") ||
+    (rules.boulders && health <= rules.boulders.below && "boulders");
+  if (volleyName && now >= state.nextRunes) {
+    const volley = rules[volleyName];
     const spots = ctx.players
       .filter(
         (player) =>
-          !player.isDead && Math.hypot(player.x - monster.x, player.z - monster.z) <= runes.range,
+          !player.isDead && Math.hypot(player.x - monster.x, player.z - monster.z) <= volley.range,
       )
       .map((player) => [+player.x.toFixed(2), +player.z.toFixed(2)]);
     state.nextRunes =
-      now + runes.windup + randomBetween(runes.every) * rageFactors(monster).cooldown;
+      now + volley.windup + randomBetween(volley.every) * rageFactors(monster).cooldown;
     if (spots.length) {
-      state.move = { kind: "runes-windup", until: now + runes.windup, spots };
+      state.move = {
+        kind: "volley-windup",
+        volley: volleyName,
+        until: now + volley.windup,
+        spots,
+      };
       for (const [x, z] of spots) {
         ctx.emit("boss_telegraph", {
           id: monster.id,
           kind: "circle",
           x,
           z,
-          radius: runes.radius,
-          duration: runes.windup,
+          radius: volley.radius,
+          duration: volley.windup,
         });
+        if (volleyName === "boulders") {
+          ctx.emit("boss_boulder", {
+            id: monster.id,
+            x0: +monster.x.toFixed(2),
+            z0: +monster.z.toFixed(2),
+            x1: x,
+            z1: z,
+            duration: volley.windup,
+          });
+        }
       }
       return true;
     }

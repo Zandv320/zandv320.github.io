@@ -17,14 +17,22 @@ import {
   ALTAR_CLEARING,
   NORTHROAD,
   NORTH_FARMS,
+  NORTH_ROAD,
   inNorthroad,
+  northroadWidth,
+  distanceToPath,
+  NORTHWATCH,
+  GORGE,
 } from "./regions.js";
+import { inGorge, onBridge } from "./rules/gorge.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
 const COLORS = {
   outside: "#2f4a22",
   cryptOutside: "#08070c",
   barley: "#c9a44c",
+  gorge: "#1d1f27",
+  bridge: "#8a6a42",
   cryptWall: "#2a2738",
   cryptFloor: "#5a5674",
   grass: "#86b54c",
@@ -192,6 +200,10 @@ export function createWorldMap(deps) {
           return inCastle(x, z) ? "castleGround" : "capital";
         }
         return "meadow";
+      }
+      /* Greyfall Gorge cuts across the Northroad's land; the bridge is the only way over */
+      if (inGorge(x, z) && distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z)) {
+        return onBridge(x, z) ? "bridge" : "gorge";
       }
       if (inNorthroad(x, z)) {
         const isFarm = NORTH_FARMS.some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
@@ -445,6 +457,8 @@ export function createWorldMap(deps) {
     drawName(NORTHROAD.name, NORTHROAD.inn[0] + 30, -128, scale * 2.6);
     drawName("Fort Harrow", NORTHROAD.fort[0], NORTHROAD.fort[1] + 6, placeSize, true);
     drawName("Halfway Inn", NORTHROAD.inn[0], NORTHROAD.inn[1] - 8, placeSize, true);
+    drawName(NORTHWATCH.name, NORTHWATCH.x, NORTHWATCH.z - NORTHWATCH.radius - 1, placeSize, true);
+    drawName(GORGE.name, NORTHROAD.x0 + 26, GORGE.north - 3, placeSize, true);
 
     /* ---- a compass rose in the bottom left corner ---- */
     const rx = layer.width * 0.06;

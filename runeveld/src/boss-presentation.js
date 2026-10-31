@@ -20,7 +20,11 @@ const INTRO_SECONDS = 2.8;
 /* how long the lost health stays visible on the bar before it drains away */
 const CHIP_HOLD = 0.5;
 /* the phase marks on the bar: what the boss does at that much health */
-const PHASES = { summon: "Calls for help", enrage: "Enrages" };
+const PHASES = {
+  summon: "Calls for help",
+  boulders: "Throws boulders",
+  enrage: "Enrages",
+};
 
 /* the boss in the bar */
 let shown = null;

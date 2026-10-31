@@ -2088,6 +2088,48 @@ def build_crypt(packs_dir, out_dir):
     return written
 
 
+# ---------- Northwatch and Greyfall Gorge: goblins and the bridge troll ----------
+# The free orc pack (64x64 frames, rows down/up/left/right like the vampires): the small light green one with the knife
+# is a goblin scavenger as it is, the armoured one with the spear a raider, the one with the red cape and two blades
+# the chief. Grumm the bridge troll is the scavenger again, in stone grey (and much larger in the game).
+ORC_DIR = "free-top-down-orc-game-character-pixel-art/PNG"
+# monster name -> (orc number, recolour or None)
+GOBLINS = {
+    "goblin_scavenger": (1, None),
+    "goblin_raider": (2, None),
+    "goblin_chief": (3, None),
+    "grumm": (1, "troll"),
+}
+ORC_ANIMATIONS = ("idle", "walk", "attack", "hurt", "death")
+
+
+def troll_stone(h, s, v):
+    """Green skin -> mossy stone grey; the knife and the loincloth (not green) stay as they are."""
+    if 0.14 < h < 0.42 and s > 0.25:
+        return 0.38, s * 0.22, v * 0.82
+    return h, s, v
+
+
+def build_goblins(packs_dir, out_dir):
+    """The goblins of Northwatch and Grumm the bridge troll; returns the names of the sprite files written."""
+    written = []
+    for name, (number, colour) in GOBLINS.items():
+        folder = packs_dir / ORC_DIR / f"Orc{number}" / "Without_shadow"
+        sheets = []
+        for anim in ORC_ANIMATIONS:
+            # one file has an extra space in its name in the pack
+            path = next(folder.glob(f"orc{number}_{anim}*without_shadow.png"))
+            sheets.append(open_rgba(path))
+        cols = max(frames_in_row(sheet, 64, 64, 0) for sheet in sheets)
+        stacked = stack_animations(sheets, 64, 64, cols)
+        if colour == "troll":
+            stacked = hsv_layer(stacked, troll_stone)
+        stacked.save(out_dir / f"{name}.png")
+        written.append(name)
+        print(name, [frames_in_row(sheet, 64, 64, 0) for sheet in sheets])
+    return written
+
+
 def main():
     packs_dir = pathlib.Path(sys.argv[1])
     out_dir = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "runeveld/sprites")
@@ -2095,12 +2137,17 @@ def main():
     # `python3 -I` leaves the script directory off sys.path; build_effects.py lives next to this file
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-    # `--only crypt` or `--only shields`: just those sprites (and their smooth versions), next to the others
+    # `--only crypt`, `--only shields` or `--only goblins`: just those sprites (and their smooth versions)
     if "--only" in sys.argv:
         part = sys.argv[sys.argv.index("--only") + 1]
         smooth_dir = out_dir / "smooth"
         smooth_dir.mkdir(exist_ok=True)
-        names = build_crypt(packs_dir, out_dir) if part == "crypt" else build_shields(out_dir)
+        builders = {
+            "crypt": lambda: build_crypt(packs_dir, out_dir),
+            "shields": lambda: build_shields(out_dir),
+            "goblins": lambda: build_goblins(packs_dir, out_dir),
+        }
+        names = builders[part]()
         for name in names:
             smooth(Image.open(out_dir / f"{name}.png")).save(smooth_dir / f"{name}.png")
         return
@@ -2120,6 +2167,7 @@ def main():
     build_effect_sheets(packs_dir, out_dir)
     build_crypt(packs_dir, out_dir)
     build_shields(out_dir)
+    build_goblins(packs_dir, out_dir)
     build_smooth(out_dir)
     print("done:", sorted(p.name for p in out_dir.glob("*.png")))
 

@@ -43,10 +43,13 @@ import {
   inCrypt,
   inNorthroad,
   NORTHROAD,
+  NORTHWATCH,
+  GORGE,
+  BRIDGE,
 } from "./regions.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
-import { buildNorthroad } from "./northroad.js";
+import { buildNorthroad, updateNorthroad } from "./northroad.js";
 import { createStorm, updateStorm } from "./storm.js";
 import {
   refreshRuneSlot,
@@ -82,8 +85,11 @@ import {
   bossEnrage,
   bossDive,
   bossReset,
+  bossPlanks,
+  bossBoulder,
   updateBossEffects,
 } from "./boss-effects.js";
+import { throwSpear, updateMissiles } from "./missiles.js";
 import { bossCameraFocus, updateBossPresentation } from "./boss-presentation.js";
 import { packObstacle } from "./rules/collision.js";
 import { createSettings } from "./settings.js";
@@ -1082,6 +1088,8 @@ function startNetwork() {
     boss_enrage: bossEnrage,
     boss_dive: bossDive,
     boss_reset: bossReset,
+    boss_planks: bossPlanks,
+    boss_boulder: bossBoulder,
   };
   for (const [type, show] of Object.entries(bossEvents)) {
     network.on(type, (data, from) => {
@@ -1193,7 +1201,15 @@ function onMonsterAttackEvent(data, from) {
       monster.sprite.nudge(victim.x - monster.x, victim.z - monster.z, 0.22);
     }
   }
-  /* a caster's bolt flies first; the blow lands when it arrives */
+  /* a goblin's spear, or a caster's bolt, flies first; the blow lands when it arrives */
+  if (monster && monster.spec.projectile === "spear" && victim) {
+    throwSpear(monster.x, monster.z, victim, () => {
+      if (data.target === network.me) {
+        takeDamage(data.damage, monster.spec, monster);
+      }
+    });
+    return;
+  }
   if (monster && monster.spec.projectile && victim) {
     launchProjectile(
       monster.x,
@@ -1853,6 +1869,12 @@ function zoneLabel(zone, x, z) {
     if (near(NORTHROAD.fort, 14)) {
       return "Fort Harrow";
     }
+    if (near([NORTHWATCH.x, NORTHWATCH.z], NORTHWATCH.radius + 4)) {
+      return NORTHWATCH.name;
+    }
+    if (z < GORGE.south + 8 && z > GORGE.north - 8) {
+      return Math.abs(x - BRIDGE.x) < 8 ? BRIDGE.name : GORGE.name;
+    }
     return near(NORTHROAD.inn, 22) ? "The Halfway Inn" : NORTHROAD.name;
   }
   if (zone === "crypt") {
@@ -1897,6 +1919,7 @@ function stepWorld(dt, time) {
   updateCrypt(dt);
   updateRunePowers();
   updateStorm(dt, time);
+  updateNorthroad(dt, time);
   if (game.host) {
     hostTick(dt);
   }
@@ -1989,6 +2012,7 @@ function step(dt) {
   updateSkillEffects(dt);
   updateParticles(dt, cameraState.px);
   updateBossEffects(dt);
+  updateMissiles(dt);
   updateBillboards();
   if (game.ambience) {
     /* dust behind everyone walking near the camera; villagers too, they make the streets feel alive */

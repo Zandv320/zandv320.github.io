@@ -20,10 +20,11 @@ import {
   inNorthroad,
   northroadSpot,
   isNorthroadHome,
+  fixedSpot,
+  keepsHome,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
-import { spotFor } from "../../runeveld/src/rules/crypt.js";
 import { isStorm } from "../../runeveld/src/rules/weather.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
@@ -38,7 +39,7 @@ const STATE_DEAD = 3;
 
 const ATTACK_COOLDOWN = 1.6;
 const MAX_CHASE_DISTANCE = 13;
-/* how far a crypt monster follows anyone away from its own spot */
+/* how far a monster with a spot of its own (the crypt, Northwatch) follows anyone away from it */
 const LEASH_DISTANCE = 16;
 const MIN_SPAWN_DISTANCE_TO_PLAYER = 6;
 const WANDER_SPEED_FACTOR = 0.55;
@@ -103,9 +104,10 @@ export function createSimulation(emit) {
     return null;
   }
 
-  /* the crypt's monsters have spots of their own (rules/crypt.js) */
+  /* the crypt's monsters, Northwatch's goblins and the bridge troll have spots of their own (rules/crypt.js,
+     rules/gorge.js) */
   function spawnPoint(spec, players, id) {
-    const spot = spotFor(spec.key, id);
+    const spot = fixedSpot(spec.key, id);
     if (spot) {
       return spot;
     }
@@ -225,7 +227,7 @@ export function createSimulation(emit) {
     if (spec.area === "crypt") {
       return inCrypt(x, z);
     }
-    if (spec.area === "northroad") {
+    if (spec.area === "northroad" || spec.area === "northwatch" || spec.area === "bridge") {
       return inNorthroad(x, z);
     }
     return true;
@@ -245,7 +247,7 @@ export function createSimulation(emit) {
           spec,
           x,
           z,
-          home: spec.area === "crypt" ? [x, z] : null,
+          home: keepsHome(spec) ? [x, z] : null,
           faceX: 0,
           faceZ: 1,
           state: STATE_IDLE,
@@ -310,7 +312,7 @@ export function createSimulation(emit) {
     monster.hp = monster.spec.hp;
     monster.x = x;
     monster.z = z;
-    monster.home = monster.spec.area === "crypt" ? [x, z] : null;
+    monster.home = keepsHome(monster.spec) ? [x, z] : null;
     monster.targetId = null;
     monster.state = STATE_IDLE;
     resetBoss(monster);
@@ -423,7 +425,7 @@ export function createSimulation(emit) {
         const wanderX = monster.x + randomBetween(-4, 4);
         const wanderZ = monster.z + randomBetween(-4, 4);
         if (monster.home) {
-          /* the crypt's monsters keep watch on their spot, and walk back to it after a fight */
+          /* a monster with a spot of its own keeps watch there, and walks back to it after a fight */
           const isAway = Math.hypot(monster.x - monster.home[0], monster.z - monster.home[1]) > 0.6;
           monster.wanderTarget = isAway ? monster.home : null;
         } else {
