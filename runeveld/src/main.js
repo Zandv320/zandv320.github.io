@@ -45,7 +45,7 @@ import {
   NORTHROAD,
 } from "./regions.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
-import { buildSeals, sealClickables, clickSeal } from "./seals.js";
+import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
 import { buildNorthroad } from "./northroad.js";
 import { createStorm, updateStorm } from "./storm.js";
 import {
@@ -1414,6 +1414,16 @@ function handleClick(clientX, clientY, mode = "select") {
     .intersectObjects(clickables, false)
     .filter((hit) => hit.object.visible && hit.object.parent.visible);
   if (hits.length) {
+    /* the old altar is also an enchanting station: while its runes wait to be woken, the ritual comes first */
+    const sealHit = hits.find(
+      (hit) =>
+        hit.object.userData.sealObject && isRitualWaiting(hit.object.userData.sealObject.seal),
+    );
+    if (sealHit) {
+      clearTarget();
+      clickSeal(sealHit.object.userData.sealObject);
+      return;
+    }
     const data = hits[0].object.userData;
     if (data.monster && !data.monster.isDead) {
       const isSecondTap = mode === "tap" && player.target === data.monster;

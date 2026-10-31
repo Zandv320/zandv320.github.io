@@ -58,8 +58,8 @@ export function clickSeal(object) {
   player.target = null;
 }
 
-/* is a ritual quest for this seal waiting to be done? */
-const isRitualWaiting = (seal) =>
+/** Is a ritual quest for this seal waiting to be done? */
+export const isRitualWaiting = (seal) =>
   Object.entries(player.quests || {}).some(([id, record]) => {
     const goal = QUESTS[id]?.goal;
     return (
