@@ -836,6 +836,13 @@ export function gatehouse({ w = 9, h = 5.5, d = 3.2, opening = 3.6 } = {}) {
     group.add(banner);
   }
   group.userData.mapKind = "gatehouse";
+  /* only the two side blocks are solid: the passage between them stays open (world.js place) */
+  group.userData.solids = [-1, 1].map((side) => ({
+    x: side * (opening / 2 + sideWidth / 2),
+    z: 0,
+    w: sideWidth,
+    d: d + 0.3,
+  }));
   return group;
 }
 
@@ -890,6 +897,11 @@ export function keep({ w = 16, d = 12, h = 8 } = {}) {
     group.add(step);
   }
   group.userData.mapKind = "keep";
+  /* solid: the body and the corner towers; the stairs up to the gate can be climbed */
+  group.userData.solids = [
+    { x: 0, z: 0, w, d },
+    ...CORNERS.map(([x, z]) => ({ x: x * (w / 2), z: z * (d / 2), w: 4.4, d: 4.4 })),
+  ];
   return group;
 }
 

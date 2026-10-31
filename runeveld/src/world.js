@@ -82,36 +82,59 @@ sun.castShadow = true;
 const shadowMapSize = IS_PHONE ? 2048 : 4096;
 sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
 sun.shadow.bias = -0.0005;
-/* the range covers the field and the forest; the sun is placed so the projection also reaches the forest
-   (z down to -112) */
-sun.position.set(20, 40, -10);
-sun.target.position.set(0, 0, -26);
-Object.assign(sun.shadow.camera, { left: -56, right: 56, top: 66, bottom: -66, near: 1, far: 160 });
+/* followSun() places the sun and sizes the shadow camera to the view */
+Object.assign(sun.shadow.camera, { near: 1, far: 160 });
 
-/* The shadow camera travels with the player (the world is too large for one shadow map), on whole units, otherwise
-   the edges flicker. The shadow map is only redrawn when the view shifts or the zoom changes: everything that casts
-   a shadow stands still (sprites have their own blob shadow). The map covers exactly the view plus a margin. */
+/* The shadow camera travels with the view (the world is too large for one shadow map), on whole units, otherwise
+   the edges flicker. The shadow map is only redrawn when the view shifts, turns or zooms: everything that casts a
+   shadow stands still (sprites have their own blob shadow).
+   Coverage: a shadow lands on the ground at the same spot in the light's view as the thing that casts it, so the
+   shadow camera has to cover exactly the ground in view, seen from the sun, plus a small margin. */
 renderer.shadowMap.autoUpdate = false;
-let sunX = 1e9;
-let sunZ = 1e9;
-let sunHalfWidth = 0;
-let sunHalfHeight = 0;
+/* the direction of the sunlight (from the sun towards the ground) */
+const SUN_OFFSET = new THREE.Vector3(20, 40, 16);
+const SHADOW_MARGIN = 3;
+const lightView = new THREE.Object3D();
+const corner = new THREE.Vector3();
+const cornerRay = new THREE.Raycaster();
+const groundLevel = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let shadowKey = "";
 
-/** Moves the shadow-casting sun along with (x, z) and redraws the shadow map when the covered area changed. */
+/** Moves the shadow-casting sun along with the view centre (x, z); redraws the shadow map when the area changed. */
 export function followSun(x, z) {
   x = Math.round(x);
   z = Math.round(z);
-  const halfWidth = Math.ceil((camera.right - camera.left) / 2 + 14);
-  const halfHeight = Math.ceil((camera.top - camera.bottom) / 2 / Math.sin(cameraState.tilt) + 18);
-  if (x === sunX && z === sunZ && halfWidth === sunHalfWidth && halfHeight === sunHalfHeight) {
+  sun.target.position.set(x, 0, z);
+  sun.position.set(x + SUN_OFFSET.x, SUN_OFFSET.y, z + SUN_OFFSET.z);
+  /* the light's view, as the shadow camera will see it */
+  lightView.position.copy(sun.position);
+  lightView.lookAt(sun.target.position);
+  lightView.updateMatrixWorld();
+  const toLight = lightView.matrixWorld.clone().invert();
+  /* the four corners of the screen on the ground, in the light's view */
+  let halfWidth = 0;
+  let halfHeight = 0;
+  for (const [cx, cy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ]) {
+    cornerRay.setFromCamera({ x: cx, y: cy }, camera);
+    if (!cornerRay.ray.intersectPlane(groundLevel, corner)) {
+      continue;
+    }
+    corner.applyMatrix4(toLight);
+    halfWidth = Math.max(halfWidth, Math.abs(corner.x));
+    halfHeight = Math.max(halfHeight, Math.abs(corner.y));
+  }
+  halfWidth = Math.ceil(halfWidth + SHADOW_MARGIN);
+  halfHeight = Math.ceil(halfHeight + SHADOW_MARGIN);
+  const key = `${x}|${z}|${halfWidth}|${halfHeight}`;
+  if (key === shadowKey) {
     return;
   }
-  sunX = x;
-  sunZ = z;
-  sunHalfWidth = halfWidth;
-  sunHalfHeight = halfHeight;
-  sun.position.set(x + 20, 40, z - 10);
-  sun.target.position.set(x, 0, z - 26);
+  shadowKey = key;
   const shadowCamera = sun.shadow.camera;
   shadowCamera.left = -halfWidth;
   shadowCamera.right = halfWidth;
@@ -252,7 +275,95 @@ export const inVillage = (x, z) =>
 export const onRoad = (x) => Math.abs(x) < 1.6;
 
 /* ---------- collisions ---------- */
-export const obstacles = []; /* {x, z, r} */
+/* {x, z, r}: a circle; with `box` ({hw, hd, cos, sin}: half width and depth, turned like the object) it is a
+   rectangle and r only the radius of the circle around it, for a quick check */
+export const obstacles = [];
+
+/* A grid over the obstacles, so a collision check only looks at the ones nearby instead of all ~2000. Obstacles are
+   only ever added, so new ones are filed into the grid as they appear. Each is filed in every cell its circle
+   (plus the widest figure, GRID_REACH) touches. */
+const GRID_CELL = 8;
+const GRID_REACH = 1.5;
+const grid = new Map();
+let filed = 0;
+const NO_OBSTACLES = [];
+
+function fileObstacles() {
+  for (; filed < obstacles.length; filed++) {
+    const obstacle = obstacles[filed];
+    const reach = obstacle.r + GRID_REACH;
+    for (
+      let cx = Math.floor((obstacle.x - reach) / GRID_CELL);
+      cx <= Math.floor((obstacle.x + reach) / GRID_CELL);
+      cx++
+    ) {
+      for (
+        let cz = Math.floor((obstacle.z - reach) / GRID_CELL);
+        cz <= Math.floor((obstacle.z + reach) / GRID_CELL);
+        cz++
+      ) {
+        const key = cx * 4096 + cz;
+        let cell = grid.get(key);
+        if (!cell) {
+          cell = [];
+          grid.set(key, cell);
+        }
+        cell.push(obstacle);
+      }
+    }
+  }
+}
+
+/* the obstacles that a figure of radius r at (x, z) could touch */
+function obstaclesNear(x, z, r) {
+  if (r > GRID_REACH) {
+    return obstacles;
+  }
+  fileObstacles();
+  return grid.get(Math.floor(x / GRID_CELL) * 4096 + Math.floor(z / GRID_CELL)) || NO_OBSTACLES;
+}
+
+/* The point (x, z) relative to a box obstacle: in the box's own axes. */
+function intoBox(obstacle, x, z) {
+  const { cos, sin } = obstacle.box;
+  const dx = x - obstacle.x;
+  const dz = z - obstacle.z;
+  return [dx * cos - dz * sin, dx * sin + dz * cos];
+}
+
+/* back from the box's axes to the world */
+function fromBox(obstacle, lx, lz) {
+  const { cos, sin } = obstacle.box;
+  return [obstacle.x + lx * cos + lz * sin, obstacle.z - lx * sin + lz * cos];
+}
+
+/* how far a circle of radius r at (x, z) overlaps a box: a push [px, pz] in world axes that moves it clear, or null */
+function boxPush(obstacle, x, z, r) {
+  const { hw, hd } = obstacle.box;
+  const [lx, lz] = intoBox(obstacle, x, z);
+  const nearestX = Math.max(-hw, Math.min(hw, lx));
+  const nearestZ = Math.max(-hd, Math.min(hd, lz));
+  const ox = lx - nearestX;
+  const oz = lz - nearestZ;
+  const distance = Math.hypot(ox, oz);
+  if (distance >= r) {
+    return null;
+  }
+  let targetX;
+  let targetZ;
+  if (distance > 1e-4) {
+    /* outside the box, closer than r: out along the line from the nearest point */
+    targetX = nearestX + (ox / distance) * r;
+    targetZ = nearestZ + (oz / distance) * r;
+  } else {
+    /* inside the box: out through the nearest side */
+    const toSide = [hw - lx, hw + lx, hd - lz, hd + lz];
+    const side = toSide.indexOf(Math.min(...toSide));
+    targetX = side === 0 ? hw + r : side === 1 ? -hw - r : lx;
+    targetZ = side === 2 ? hd + r : side === 3 ? -hd - r : lz;
+  }
+  return fromBox(obstacle, targetX, targetZ);
+}
 
 /* Outside the world? Then back inside: in small steps towards the village, the forest centre or the vale centre,
    whichever is closest. */
@@ -289,11 +400,18 @@ function clampToWorld(x, z, margin = 1.2) {
 /** Moves a circle of radius r at (x, z) inside the world and out of every obstacle; returns the new [x, z]. */
 export function resolveCollision(x, z, r = 0.35) {
   [x, z] = clampToWorld(x, z);
-  for (const obstacle of obstacles) {
+  for (const obstacle of obstaclesNear(x, z, r)) {
     const dx = x - obstacle.x;
     const dz = z - obstacle.z;
     const distance = Math.hypot(dx, dz);
     const minDistance = obstacle.r + r;
+    if (distance < minDistance && obstacle.box) {
+      const pushed = boxPush(obstacle, x, z, r);
+      if (pushed) {
+        [x, z] = pushed;
+      }
+      continue;
+    }
     if (distance < minDistance) {
       if (distance < 1e-4) {
         x += minDistance;
@@ -311,9 +429,11 @@ export function isFree(x, z, r = 0.5) {
   if (!insideWorld(x, z)) {
     return false;
   }
-  for (const obstacle of obstacles) {
+  for (const obstacle of obstaclesNear(x, z, r)) {
     if (Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.r + r) {
-      return false;
+      if (!obstacle.box || boxPush(obstacle, x, z, r)) {
+        return false;
+      }
     }
   }
   return true;
@@ -625,6 +745,7 @@ function place(group, x, z, { rotation = 0, radius = 0 } = {}) {
   });
   scene.add(group);
   placedGroups.push(group);
+  addSolids(group, x, z, rotation);
   if (group.userData.smoke || group.userData.water) {
     group.updateMatrixWorld(true);
     for (const point of group.userData.smoke || []) {
@@ -639,6 +760,47 @@ function place(group, x, z, { rotation = 0, radius = 0 } = {}) {
     obstacles.push({ x, z, r: radius });
   }
   return group;
+}
+
+/* Buildings and objects are solid: a box obstacle for the footprint of each build (or for each part it lists in
+   userData.solids, such as the two sides of a gatehouse). Flat things (lower than SOLID_HEIGHT) stay walkable. */
+const SOLID_HEIGHT = 0.3;
+const localBox = new THREE.Box3();
+function addSolids(group, x, z, rotation) {
+  let solids = group.userData.solids;
+  if (!solids) {
+    /* the footprint of the build in its own axes: measured unturned at the origin */
+    group.position.set(0, 0, 0);
+    group.rotation.y = 0;
+    group.updateMatrixWorld(true);
+    localBox.setFromObject(group);
+    group.position.set(x, 0, z);
+    group.rotation.y = rotation;
+    group.updateMatrixWorld(true);
+    if (localBox.isEmpty() || localBox.max.y < SOLID_HEIGHT) {
+      return;
+    }
+    solids = [
+      {
+        x: (localBox.min.x + localBox.max.x) / 2,
+        z: (localBox.min.z + localBox.max.z) / 2,
+        w: localBox.max.x - localBox.min.x,
+        d: localBox.max.z - localBox.min.z,
+      },
+    ];
+  }
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  for (const solid of solids) {
+    const hw = solid.w / 2;
+    const hd = solid.d / 2;
+    obstacles.push({
+      x: x + solid.x * cos + solid.z * sin,
+      z: z - solid.x * sin + solid.z * cos,
+      r: Math.hypot(hw, hd),
+      box: { hw, hd, cos, sin },
+    });
+  }
 }
 
 /* The static billboards in batches: one InstancedMesh per picture and size, one for all their blob shadows. */
@@ -699,16 +861,17 @@ export async function buildWorld() {
   place(builders.well(), 0, 0, { radius: 1.1 });
 
   /* the square: stalls, benches, lanterns, wares */
-  place(builders.stall({ cloth: "cloth_red" }), -8.2, -6.2, { radius: 1.7, rotation: 0.25 });
-  place(builders.stall({ cloth: "cloth_green", w: 2.8 }), 8.4, -6.4, {
+  /* the stalls stand on the edge of the square, clear of the house fronts behind them */
+  place(builders.stall({ cloth: "cloth_red" }), -7.6, -5, { radius: 1.7, rotation: 0.25 });
+  place(builders.stall({ cloth: "cloth_green", w: 2.8 }), 7.8, -5, {
     radius: 1.6,
     rotation: -0.25,
   });
   place(builders.barrel(), -5.6, -8.6, { radius: 0.45 });
   place(builders.barrel(), -4.6, -8.9, { radius: 0.45 });
-  place(builders.chest(), -11, -8.4, { radius: 0.5, rotation: 0.3 });
-  place(builders.chest(0.7), 11.4, -8.2, { radius: 0.45, rotation: 0.5 });
-  place(builders.barrel(), 12.2, -7.4, { radius: 0.45 });
+  place(builders.chest(), -11.4, -5.9, { radius: 0.5, rotation: 0.3 });
+  place(builders.chest(0.7), 11.2, -5.9, { radius: 0.45, rotation: 0.5 });
+  place(builders.barrel(), 12.4, -5.8, { radius: 0.45 });
   /* four benches on the diagonals around the well, all facing the well */
   for (const angle of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
     place(builders.bench(), Math.sin(angle) * 4.6, Math.cos(angle) * 4.6, {
@@ -756,11 +919,11 @@ export async function buildWorld() {
     prop("anvil", -9.2, 8.2, { radius: 0.5, shadow: 1 }),
     prop("woodpile", -16.5, 6.4, { radius: 0.6, shadow: 1.2 }),
   );
-  place(builders.chest(), -9.8, 10.6, { radius: 0.5, rotation: 0.4 });
+  place(builders.chest(), -9.1, 10.6, { radius: 0.5, rotation: 0.4 });
   /* behind the tavern: barrels and hay */
   place(builders.barrel(), 17.6, -12.4, { radius: 0.45 });
   place(builders.barrel(), 18.4, -11.6, { radius: 0.45 });
-  place(builders.hayBale(), 17.2, -7.6, { radius: 0.7, rotation: 0.4 });
+  place(builders.hayBale(), 18.1, -6.1, { radius: 0.7, rotation: 0.4 });
   place(builders.hayBale(), 18.6, -8.4, { radius: 0.7, rotation: -0.2 });
   /* vegetable gardens and a pond */
   place(builders.garden(4.5, 3), -14, -17.5, { radius: 2.4 });

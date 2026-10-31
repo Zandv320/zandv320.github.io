@@ -730,7 +730,7 @@ function createMerchant() {
   sprite.group.position.set(-7.4, 0, -3.4);
   sprite.face(0.3, 1);
   scene.add(sprite.group);
-  const merchant = { sprite, label: UI.createLabel("npc", MERCHANT_NAME), x: -7.4, z: -3.4 };
+  const merchant = { sprite, label: UI.createLabel("npc", MERCHANT_NAME), x: -7.2, z: -3.1 };
   game.merchant = merchant;
   sprite.mesh.userData.npc = merchant;
   clickables.push(sprite.mesh);
@@ -998,12 +998,11 @@ function startNetwork() {
   network.onMessage("node_states", (message) => game.gathering.onNodeStates(message.nodes));
   UI.setOnlineStatus(false, 1);
   /* the server simulates the monsters and only knows the world as circles */
+  /* only the circles: the server's monsters keep to the simple shapes (the boxes are for the players) */
   network.setWorldObstacles(() =>
-    obstacles.map((obstacle) => [
-      +obstacle.x.toFixed(2),
-      +obstacle.z.toFixed(2),
-      +obstacle.r.toFixed(2),
-    ]),
+    obstacles
+      .filter((obstacle) => !obstacle.box)
+      .map((obstacle) => [+obstacle.x.toFixed(2), +obstacle.z.toFixed(2), +obstacle.r.toFixed(2)]),
   );
   /* without a server the first player is the host */
   if (network.isHost()) {

@@ -224,8 +224,13 @@ export function updatePlayer(dt) {
     } else {
       [newX, newZ] = resolveCollision(player.x + dx * step, player.z + dz * step);
     }
-    /* walking into something on the way to a destination: stop there */
+    /* walking into something on the way to a destination: stop there; what was to happen on arrival (talk,
+       work, gather) only happens when the hero got close enough */
     if (player.destination && Math.hypot(newX - player.x, newZ - player.z) < step * 0.2) {
+      const [toX, toZ] = player.destination;
+      if (Math.hypot(toX - newX, toZ - newZ) > 2.6) {
+        player.onArrive = null;
+      }
       arrive();
     }
     player.x = newX;
