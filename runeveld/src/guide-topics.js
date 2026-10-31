@@ -95,6 +95,15 @@ export const GUIDE_TOPICS = {
       "Aurelia has shops for better gear, an inn, a temple with an enchanting altar, and many people with work for you.",
     ],
   },
+  northroad: {
+    title: "The Northroad",
+    icons: ["ui_map", "storm_pelt"],
+    body: [
+      "The <b>Northroad</b> runs from Aurelia's north gate past Fort Harrow to the Halfway Inn and on towards the sea. It suits levels 22 to 26.",
+      "Watch the sky: now and then a <b>storm</b> rolls over the hills. Then it rains, the light goes grey, and the storm wolves hunt harder and faster.",
+      "Once you have slept at the <b>Halfway Inn</b>, you wake up there when the road knocks you down.",
+    ],
+  },
   saga_end: {
     title: "Saga I complete",
     icons: ["amulet_of_aurelia", "ui_quests"],
@@ -117,4 +126,5 @@ export const GUIDE_ORDER = [
   "crafting",
   "enchanting",
   "travel",
+  "northroad",
 ];

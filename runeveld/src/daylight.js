@@ -51,6 +51,8 @@ export const isNight = () => daylight() < 0.5;
 const NIGHT_COLOR = [122, 138, 196];
 const DAY_COLOR = [255, 255, 255];
 const DUSK_COLOR = [255, 206, 150];
+/* the grey of a storm sky */
+const STORM_COLOR = [128, 138, 160];
 
 /** The colour of the haze: night → (through a warm dusk) → day. */
 export function hazeColor(light = daylight()) {
@@ -117,6 +119,8 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
   let lastNight = -1;
   /* underground (the crypt): {haze: [r, g, b], lights}, its own dark and its own light sources, whatever the hour */
   let indoor = null;
+  /* a storm (storm.js): 0..1, a grey sky that dims the day */
+  let weather = 0;
 
   function update(cameraState, extraLights = []) {
     const light = indoor ? 0 : daylight();
@@ -124,7 +128,7 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
     /* sun, sky light and sky. Underground the scene is lit as by day and the haze makes it dark: then the light
        holes show the true colours, and around them is black */
     const lit = indoor ? 1 : light;
-    sun.intensity = 1.1 + 1.5 * lit;
+    sun.intensity = (1.1 + 1.5 * lit) * (1 - 0.35 * weather);
     sun.color.copy(sunNightColor).lerp(sunDayColor, lit);
     hemiLight.intensity = 1.4 + 0.8 * lit;
     hemiLight.color.copy(hemiNightColor).lerp(hemiDayColor, lit);
@@ -140,8 +144,9 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
       glow.mesh.visible = night > 0.02 && !indoor;
     }
 
-    /* the haze */
-    if (night < 0.01) {
+    /* the haze; a storm greys the day as well */
+    const gloom = indoor ? night : Math.max(night, weather * 0.65);
+    if (gloom < 0.01) {
       if (lastNight !== 0) {
         overlay.style.display = "none";
         if (hazeMesh) {
@@ -151,14 +156,19 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
       }
       return;
     }
-    lastNight = night;
+    lastNight = gloom;
     const width = innerWidth;
     const height = innerHeight;
-    const [r, g, b] = indoor ? indoor.haze : hazeColor(light);
+    let [r, g, b] = indoor ? indoor.haze : hazeColor(light);
+    if (weather > 0 && !indoor) {
+      [r, g, b] = [r, g, b].map((value, i) =>
+        Math.round(value + (STORM_COLOR[i] - value) * weather * 0.7),
+      );
+    }
     const sources = (indoor ? indoor.lights : lights).concat(extraLights);
     const pxPerUnit = cameraState.px / renderer.getPixelRatio(); /* CSS pixels per unit */
     if (hazeMesh) {
-      updateHazeMesh(hazeMesh, [r, g, b], sources, pxPerUnit, night);
+      updateHazeMesh(hazeMesh, [r, g, b], sources, pxPerUnit, gloom);
       return;
     }
     overlay.style.display = "block";
@@ -181,7 +191,7 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
       const screenY = ((1 - projected.y) / 2) * height;
       const radius = source.radius * pxPerUnit * 1.15;
       const color = source.color;
-      const strength = (source.strength ?? 0.8) * night;
+      const strength = (source.strength ?? 0.8) * gloom;
       const rgb = `${color[0]},${color[1]},${color[2]}`;
       const holeGradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radius);
       holeGradient.addColorStop(0, `rgba(${rgb},${(0.85 * strength).toFixed(3)})`);
@@ -229,7 +239,12 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
     indoor = value;
   }
 
-  return { update, setIndoor };
+  /** How hard it storms where the hero is: 0..1 (storm.js). */
+  function setWeather(value) {
+    weather = value;
+  }
+
+  return { update, setIndoor, setWeather };
 }
 
 /* the most light holes the haze pass draws at once (more than ever fit on a screen) */

@@ -32,6 +32,9 @@ import {
   inVale,
   inCapital,
   inCastle,
+  NORTHROAD,
+  NORTH_FARMS,
+  inNorthroad,
 } from "./regions.js";
 import { buildForest } from "./forest.js";
 import { buildCapital } from "./capital.js";
@@ -484,6 +487,7 @@ function buildGround(atlas, decor) {
   addShadowCatcher(width, depth, centerX, 0.03, centerZ);
   /* the wide surroundings outside the world */
   buildValeGround(atlas, decor);
+  buildNorthroadGround(atlas, decor);
   const outside = new THREE.Mesh(
     new THREE.PlaneGeometry(700, 700),
     new THREE.MeshBasicMaterial({ color: 0x4f7f2a }),
@@ -537,7 +541,7 @@ function buildValeGround(atlas, decor) {
         ctx.fillStyle = inCastle(x, z) ? "rgba(120,110,100,.5)" : "rgba(150,122,80,.42)";
       } else if (inVale(x, z)) {
         ctx.fillStyle = "rgba(140,120,30,.1)";
-      } else if (!inVale(x, z, -2.5) && !inFields(x, z, -2.5)) {
+      } else if (!inVale(x, z, -2.5) && !inFields(x, z, -2.5) && !inNorthroad(x, z, -2.5)) {
         ctx.fillStyle = "rgba(10,28,20,.5)";
       } else {
         continue;
@@ -574,6 +578,95 @@ function buildValeGround(atlas, decor) {
   mesh.position.set(centerX, 0.006, centerZ);
   scene.add(mesh);
   addShadowCatcher(width, depth, centerX, 0.031, centerZ);
+}
+
+/* The ground of the Northroad: grass in a band along the road, barley fields north of Fort Harrow, and the dark
+   rim outside. Where Kingsvale's map already lies (south of z −72) it stays transparent. */
+function buildNorthroadGround(atlas, decor) {
+  const random = seededRandom(4711);
+  const x0 = NORTHROAD.x0;
+  const x1 = NORTHROAD.x1;
+  const z0 = NORTHROAD.z0;
+  const z1 = VALE.z0 - 6;
+  const tilesX = Math.round((x1 - x0) / UNITS_PER_TILE);
+  const tilesZ = Math.round((z1 - z0) / UNITS_PER_TILE);
+  const canvas = document.createElement("canvas");
+  canvas.width = tilesX * TILE;
+  canvas.height = tilesZ * TILE;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const toCanvasX = (worldX) => ((worldX - x0) / UNITS_PER_TILE) * TILE;
+  const toCanvasZ = (worldZ) => ((worldZ - z0) / UNITS_PER_TILE) * TILE;
+  for (let j = 0; j < tilesZ; j++) {
+    for (let i = 0; i < tilesX; i++) {
+      const tileIndex = grassTileIndex(random);
+      ctx.drawImage(atlas, tileIndex * TILE, 0, TILE, TILE, i * TILE, j * TILE, TILE, TILE);
+    }
+  }
+  /* the barley: golden rows with darker furrows between them */
+  for (const [fx0, fz0, fx1, fz1] of NORTH_FARMS) {
+    const left = toCanvasX(fx0);
+    const top = toCanvasZ(fz0);
+    const width = toCanvasX(fx1) - left;
+    const height = toCanvasZ(fz1) - top;
+    ctx.fillStyle = "#b8963e";
+    ctx.fillRect(left, top, width, height);
+    for (let y = top; y < top + height; y += 6) {
+      ctx.fillStyle = "#8a6a2a";
+      ctx.fillRect(left, y + 4, width, 2);
+      ctx.fillStyle = "#d8b860";
+      ctx.fillRect(left, y, width, 1);
+    }
+    for (let k = 0; k < (width * height) / 90; k++) {
+      ctx.fillStyle = random() < 0.5 ? "#e6c870" : "#9a7a30";
+      ctx.fillRect(left + random() * width, top + random() * height, 1, 2);
+    }
+    ctx.strokeStyle = "rgba(60, 40, 10, 0.6)";
+    ctx.strokeRect(left + 0.5, top + 0.5, width - 1, height - 1);
+  }
+  const cellPixels = TILE / 4;
+  const cellUnits = UNITS_PER_TILE / 4;
+  for (let j = 0; j < tilesZ * 4; j++) {
+    for (let i = 0; i < tilesX * 4; i++) {
+      const x = (i + 0.5) * cellUnits + x0;
+      const z = (j + 0.5) * cellUnits + z0;
+      if (inNorthroad(x, z)) {
+        continue;
+      }
+      ctx.fillStyle = inNorthroad(x, z, -2.5) ? "rgba(10,28,20,.25)" : "rgba(10,28,20,.5)";
+      ctx.fillRect(i * cellPixels, j * cellPixels, cellPixels, cellPixels);
+    }
+  }
+  for (let k = 0; k < 260; k++) {
+    const x = x0 + random() * (x1 - x0);
+    const z = z0 + random() * (z1 - z0);
+    const isFarm = NORTH_FARMS.some(
+      ([fx0, fz0, fx1, fz1]) => x > fx0 && x < fx1 && z > fz0 && z < fz1,
+    );
+    if (!inNorthroad(x, z, 2) || isFarm) {
+      continue;
+    }
+    const img = [decor.flowers, decor.flowers2, decor.rock2, decor.rock2][Math.floor(random() * 4)];
+    ctx.drawImage(
+      img,
+      Math.round(toCanvasX(x) - img.width / 2),
+      Math.round(toCanvasZ(z) - img.height / 2),
+    );
+  }
+  const texture = makeTexture(canvas, false);
+  applyGroundFilter(texture);
+  const width = x1 - x0;
+  const depth = z1 - z0;
+  const centerX = (x0 + x1) / 2;
+  const centerZ = (z0 + z1) / 2;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, depth),
+    new THREE.MeshBasicMaterial({ map: texture }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(centerX, 0.004, centerZ);
+  scene.add(mesh);
+  addShadowCatcher(width, depth, centerX, 0.029, centerZ);
 }
 
 /* ---------- scenery ---------- */

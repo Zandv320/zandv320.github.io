@@ -14,6 +14,7 @@ import {
   inCapital,
   valeEdge,
   distanceToPath,
+  inNorthroad,
 } from "./regions.js";
 
 /**
@@ -621,7 +622,8 @@ export function buildCapital({
       const x =
         VALE.cx + Math.sin(theta) * VALE.rx * factor + (isClosed ? 0 : (random() - 0.5) * 1.2);
       const z = VALE.cz + Math.cos(theta) * VALE.rz * factor;
-      if (inFields(x, z) || random() > chance) {
+      /* no wall of trees where the Northroad leaves the vale */
+      if (inFields(x, z) || inNorthroad(x, z, -3) || random() > chance) {
         continue;
       }
       let name;

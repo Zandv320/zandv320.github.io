@@ -15,12 +15,16 @@ import {
   inCastle,
   BANDIT_CAMP,
   ALTAR_CLEARING,
+  NORTHROAD,
+  NORTH_FARMS,
+  inNorthroad,
 } from "./regions.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
 const COLORS = {
   outside: "#2f4a22",
   cryptOutside: "#08070c",
+  barley: "#c9a44c",
   cryptWall: "#2a2738",
   cryptFloor: "#5a5674",
   grass: "#86b54c",
@@ -74,14 +78,15 @@ const COLORS = {
 /* Map kinds drawn as ellipses instead of boxes. */
 const ROUND_KINDS = new Set(["pond", "well", "altar", "menhir", "tower", "fountain", "statue"]);
 
-/* The world: Kingsvale in the west, the fields, the forest above them. */
+/* The world: Kingsvale in the west, the fields, the forest above them, the Northroad up north of Aurelia. */
 const X0 = VALE.x0 - 4;
 const X1 = 70;
-const Z0 = FOREST.z0;
+const Z0 = NORTHROAD.z0 - 4;
 const Z1 = 70;
 
-/* The static layer is rendered at 10 px per unit (× device pixel ratio). */
-const STATIC_SCALE = 10;
+/* The static layer is rendered at 8 px per unit (× device pixel ratio): the whole world in one canvas that phones
+   can still hold. */
+const STATIC_SCALE = 8;
 /* The minimap shows 2.4 px per unit. */
 const MINIMAP_SCALE = 2.4;
 const MINIMAP_SIZE = 156;
@@ -187,6 +192,10 @@ export function createWorldMap(deps) {
           return inCastle(x, z) ? "castleGround" : "capital";
         }
         return "meadow";
+      }
+      if (inNorthroad(x, z)) {
+        const isFarm = NORTH_FARMS.some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
+        return isFarm ? "barley" : "meadow";
       }
       return null;
     };
@@ -433,6 +442,9 @@ export function createWorldMap(deps) {
     drawName("Castle", CASTLE.cx, CASTLE.z0 - 1.5, placeSize, true);
     drawName("Lake", -118, 64, placeSize, true);
     drawName("Farmland", 32.5, -8.5, placeSize, true);
+    drawName(NORTHROAD.name, NORTHROAD.inn[0] + 30, -128, scale * 2.6);
+    drawName("Fort Harrow", NORTHROAD.fort[0], NORTHROAD.fort[1] + 6, placeSize, true);
+    drawName("Halfway Inn", NORTHROAD.inn[0], NORTHROAD.inn[1] - 8, placeSize, true);
 
     /* ---- a compass rose in the bottom left corner ---- */
     const rx = layer.width * 0.06;

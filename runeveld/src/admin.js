@@ -8,6 +8,8 @@ import * as UI from "./ui.js";
 import { SMOOTH } from "./sprites.js";
 import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
 import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests.js";
+import { stormStrength, setStormOverride } from "./rules/weather.js";
+import { NORTHROAD } from "./regions.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -306,6 +308,8 @@ export function createAdminPanel(ctx) {
       ["Crypt stairs", () => ctx.teleport(CRYPT_STAIRS[0], CRYPT_STAIRS[1] + 2.4)],
       ["Crypt", () => ctx.teleport(...CRYPT_ENTRY)],
       ["Sanctum", () => ctx.teleport(...cryptPoint(-9, -12))],
+      ["Fort Harrow", () => ctx.teleport(NORTHROAD.fort[0], NORTHROAD.fort[1] + 6)],
+      ["Halfway Inn", () => ctx.teleport(NORTHROAD.inn[0] + 6, NORTHROAD.inn[1])],
     ]);
 
     /* ---------- monsters ---------- */
@@ -339,6 +343,12 @@ export function createAdminPanel(ctx) {
 
     /* ---------- world & camera ---------- */
     group = section("World & camera");
+    toggleSwitch(
+      group,
+      "Storm on the Northroad",
+      () => stormStrength() > 0.5,
+      (isOn) => setStormOverride(isOn ? 1 : null),
+    );
     slider(
       group,
       "Camera tilt",

@@ -407,6 +407,14 @@ export const ITEMS = {
     description:
       "Sealed by Captain Aldric: passage on the Northroad, and a letter for the harbormaster of Saltmere.",
   },
+  storm_pelt: {
+    name: "Storm pelt",
+    price: 70,
+    icon: "🐺",
+    stack: 99,
+    description:
+      "Blue-white fur that crackles when you stroke it. The tanners in Saltmere pay well.",
+  },
   grave_dust: {
     name: "Grave dust",
     price: 20,
@@ -1207,6 +1215,18 @@ export const SHOPS = {
       "steel_hatchet",
     ],
   },
+  halfway: {
+    name: "Innkeeper Hobb",
+    greeting: '"A bed, a bowl or a bottle? Coin first. The storms make me careful."',
+    items: [
+      "red_potion",
+      "orange_potion",
+      "mana_potion",
+      "cooked_minnow",
+      "travelers_cloak",
+      "leather_boots",
+    ],
+  },
   tailor: {
     name: "Tailor Maud",
     greeting: '"Wool, silk, and no patience for haggling. The cloaks are on the left."',
@@ -1503,6 +1523,80 @@ export const VALE_MONSTERS = {
 };
 Object.assign(MONSTERS, VALE_MONSTERS);
 
+/* The Northroad (Saga II, regions.js), level 22 to 26: from Aurelia's north gate past Fort Harrow to the Halfway
+   Inn. They keep to their own stretch of the road (`stretch`: [north, south] in depth). The storm wolves hunt
+   harder in a storm (`storm`, like `night`; rules/weather.js). */
+export const NORTH_MONSTERS = {
+  highwayman: {
+    name: "Highwayman",
+    level: 22,
+    hp: 1700,
+    atk: 92,
+    exp: 450,
+    zeny: [70, 150],
+    speed: 3,
+    aggressive: true,
+    range: 1.4,
+    aggroRange: 6.5,
+    area: "northroad",
+    stretch: [-150, -74],
+    humanoid: {
+      outfit: "armor1",
+      tunicColor: "grey",
+      headgear: "cap",
+      weapon: "sword1",
+      hair: "brown",
+    },
+    materials: { arcane_dust: 0.15 },
+    loot: {
+      red_potion: 0.3,
+      orange_potion: 0.12,
+      iron_sword: 0.05,
+      steel_armor: 0.03,
+      travelers_cloak: 0.05,
+      copper_ring: 0.05,
+    },
+  },
+  ridge_boar: {
+    name: "Ridge Boar",
+    level: 22,
+    hp: 1800,
+    atk: 88,
+    exp: 430,
+    zeny: [40, 90],
+    speed: 2.8,
+    range: 1.4,
+    sheet: "boar",
+    scale: 1.15,
+    tint: 0xa4a2ae,
+    area: "northroad",
+    stretch: [-200, -105],
+    materials: { raw_meat: 0.8, boar_hide: 0.4 },
+    loot: { red_potion: 0.2 },
+  },
+  storm_wolf: {
+    name: "Storm Wolf",
+    level: 24,
+    hp: 1650,
+    atk: 98,
+    exp: 480,
+    zeny: [50, 110],
+    speed: 3.6,
+    aggressive: true,
+    range: 1.4,
+    aggroRange: 5.5,
+    sheet: "wolf",
+    scale: 1.2,
+    tint: 0xb8d4ff,
+    area: "northroad",
+    stretch: [-205, -140],
+    storm: { aggroFactor: 1.8, speedFactor: 1.2 },
+    materials: { storm_pelt: 0.6 },
+    loot: { orange_potion: 0.1, wool_cloak: 0.04 },
+  },
+};
+Object.assign(MONSTERS, NORTH_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -1606,6 +1700,10 @@ export const SPAWNS = [
   { monster: "crypt_thrall", count: 9 },
   { monster: "grave_witch", count: 4 },
   { monster: "crimson_count", count: 1 },
+  /* the Northroad */
+  { monster: "highwayman", count: 10 },
+  { monster: "ridge_boar", count: 6 },
+  { monster: "storm_wolf", count: 8 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

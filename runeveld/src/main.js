@@ -41,9 +41,13 @@ import {
   CASTLE,
   BANDIT_CAMP,
   inCrypt,
+  inNorthroad,
+  NORTHROAD,
 } from "./regions.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { buildSeals, sealClickables, clickSeal } from "./seals.js";
+import { buildNorthroad } from "./northroad.js";
+import { createStorm, updateStorm } from "./storm.js";
 import {
   refreshRuneSlot,
   bindRune,
@@ -209,6 +213,7 @@ const ZONES = {
   fields: ["Runeveld", "Fields and village."],
   vale: [VALE.name, "Meadows along the Kingsroad. Bandits roam here."],
   capital: [CAPITAL.name, "The capital of Eldoria. Safe within the walls."],
+  northroad: [NORTHROAD.name, "The long road north to the sea. Watch the sky."],
   /* the stairs announce the crypt themselves (crypt.js) */
   crypt: null,
 };
@@ -225,11 +230,12 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
   await loadSheets();
-  await buildWorld([buildCrypt, buildSeals]);
+  await buildWorld([buildCrypt, buildSeals, buildNorthroad]);
   clickables.push(...cryptClickables(), ...sealClickables());
   createMerchant();
   createVillagers(scene, clickables);
   showNpcs(false);
+  createStorm();
   game.effects = await createEffects({ scene });
   game.gathering = createGathering({
     applyHero: applyHeroRecord,
@@ -1816,6 +1822,9 @@ function zoneAt(x, z) {
   if (inCrypt(x, z)) {
     return "crypt";
   }
+  if (inNorthroad(x, z) && !inVale(x, z)) {
+    return "northroad";
+  }
   if (inCapital(x, z)) {
     return "capital";
   }
@@ -1829,6 +1838,13 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "northroad") {
+    const near = ([px, pz], r) => Math.hypot(x - px, z - pz) < r;
+    if (near(NORTHROAD.fort, 14)) {
+      return "Fort Harrow";
+    }
+    return near(NORTHROAD.inn, 22) ? "The Halfway Inn" : NORTHROAD.name;
+  }
   if (zone === "crypt") {
     const room = CRYPT_ROOMS[cryptRoomAt(x, z)];
     return (room && room.name) || "The Sunken Crypt";
@@ -1870,6 +1886,7 @@ function stepWorld(dt, time) {
   updatePlayer(dt);
   updateCrypt(dt);
   updateRunePowers();
+  updateStorm(dt, time);
   if (game.host) {
     hostTick(dt);
   }

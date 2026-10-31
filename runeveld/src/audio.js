@@ -183,6 +183,13 @@ export const sfx = {
     tone("sawtooth", 240, 90, 0.7, 0.12, 0.05);
     noise(0.6, 0.15, { f0: 700, f1: 200, type: "lowpass" });
   },
+  /* thunder: a crack, then a long low rumble */
+  thunder() {
+    if (!canPlay()) return;
+    noise(0.25, 0.3, { f0: 2400, f1: 400, type: "lowpass" });
+    noise(2.2, 0.32, { f0: 420, f1: 50, type: "lowpass" });
+    tone("sine", 55, 32, 1.8, 0.22, 0.1);
+  },
   /* a boss shows itself: two deep drum beats under a swelling chord */
   bossIntro() {
     if (!canPlay()) return;

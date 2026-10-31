@@ -14,7 +14,11 @@ import {
   inCapital,
   BANDIT_CAMP,
   inCrypt,
+  inNorthroad,
+  northroadSpot,
+  isNorthroadHome,
 } from "./regions.js";
+import { isStorm } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
 import { spotFor } from "./rules/crypt.js";
@@ -22,7 +26,7 @@ import { sfx } from "./audio.js";
 import { chargeDust } from "./boss-effects.js";
 import { setSanctumDark } from "./crypt.js";
 import { SHEETS } from "./sheets.js";
-import { recolor, HAIR_SOURCE, HAIR_PALETTES } from "./appearance.js";
+import { recolor, HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES } from "./appearance.js";
 import { Sprite2D } from "./sprites.js";
 import { scene, camera, cameraState, resolveCollision, isFree, inVillage } from "./world.js";
 import * as UI from "./ui.js";
@@ -60,10 +64,14 @@ function humanoidLayers(look) {
     "hair-" + look.hair,
     !!look.headgear,
   );
+  /* a tunic can take a colour of its own (the highwaymen's grey) */
+  const outfit = look.tunicColor
+    ? recolor("armor1", TUNIC_SOURCE, TUNIC_PALETTES[look.tunicColor], "tunic-" + look.tunicColor)
+    : layers[look.outfit];
   return [
     look.weapon && layers[`${look.weapon}_back`],
     layers.hero_body,
-    layers[look.outfit],
+    outfit,
     head,
     look.weapon && layers[look.weapon],
   ].filter(Boolean);
@@ -124,6 +132,9 @@ export function ensureMonster(id) {
   return monster;
 }
 
+/* where a Northroad monster goes when no free spot turns up: beside the road, halfway */
+const NORTH_ROAD_FALLBACK = [-170, -130];
+
 /* A spot in this monster's area: outside the palisade, free of obstacles, not on the path at the gates. The crypt's
    monsters have spots of their own. */
 function spawnPoint(spec, id) {
@@ -179,6 +190,15 @@ function spawnPoint(spec, id) {
     return [clearingX, clearingZ - 4];
   }
 
+  if (spec.area === "northroad") {
+    const point = northroadSpot(
+      Math.random,
+      spec.stretch,
+      (x, z) => isFree(x, z, 0.8) && Math.hypot(x - player.x, z - player.z) > 6,
+    );
+    return point || [NORTH_ROAD_FALLBACK[0], spec.stretch[0] + 10];
+  }
+
   if (spec.area === "forest") {
     for (let i = 0; i < 120; i++) {
       const x = randomBetween(FOREST.x0 + 4, FOREST.x1 - 4);
@@ -219,6 +239,9 @@ function spawnPoint(spec, id) {
 
 /* May this monster roam here? Forest animals stay in the forest, the dire boar at the altar. */
 function isHome(spec, x, z) {
+  if (spec.area === "northroad") {
+    return isNorthroadHome(spec.stretch, x, z);
+  }
   if (spec.area === "altar") {
     return Math.hypot(x - ALTAR_CLEARING[0], z - ALTAR_CLEARING[1]) < 8;
   }
@@ -244,6 +267,9 @@ function isHuntingGround(spec, x, z) {
   }
   if (spec.area === "crypt") {
     return inCrypt(x, z);
+  }
+  if (spec.area === "northroad") {
+    return inNorthroad(x, z);
   }
   return true;
 }
@@ -532,7 +558,8 @@ export function hostTick(dt) {
       monster.targetZ = monster.z;
       continue;
     }
-    const nightFactors = isNight() && spec.night ? spec.night : null;
+    /* at night some hunt harder, in a storm the storm wolves */
+    const nightFactors = (isNight() && spec.night) || (isStorm() && spec.storm) || null;
     const target = findTarget(monster, players, nightFactors);
     monster.attackCooldown = Math.max(0, monster.attackCooldown - dt);
     /* bosses have moves of their own (rules/bosses.js); the same rules as on the server */

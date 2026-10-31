@@ -17,10 +17,14 @@ import {
   distanceToPath,
   insideWorld,
   inCrypt,
+  inNorthroad,
+  northroadSpot,
+  isNorthroadHome,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
 import { spotFor } from "../../runeveld/src/rules/crypt.js";
+import { isStorm } from "../../runeveld/src/rules/weather.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
 const VILLAGE_HALF_SIZE = 22;
@@ -142,6 +146,15 @@ export function createSimulation(emit) {
       return point || [ALTAR_CLEARING[0], ALTAR_CLEARING[1] - 4];
     }
 
+    if (spec.area === "northroad") {
+      const point = northroadSpot(
+        Math.random,
+        spec.stretch,
+        (x, z) => isFree(x, z, 0.8) && isAwayFromPlayers(x, z),
+      );
+      return point || [-170, spec.stretch[0] + 10];
+    }
+
     if (spec.area === "forest") {
       for (let i = 0; i < 120; i++) {
         const x = randomBetween(FOREST.x0 + 4, FOREST.x1 - 4);
@@ -183,6 +196,9 @@ export function createSimulation(emit) {
 
   /* where a monster may wander on its own */
   function isHome(spec, x, z) {
+    if (spec.area === "northroad") {
+      return isNorthroadHome(spec.stretch, x, z);
+    }
     if (spec.area === "altar") {
       return Math.hypot(x - ALTAR_CLEARING[0], z - ALTAR_CLEARING[1]) < 8;
     }
@@ -208,6 +224,9 @@ export function createSimulation(emit) {
     }
     if (spec.area === "crypt") {
       return inCrypt(x, z);
+    }
+    if (spec.area === "northroad") {
+      return inNorthroad(x, z);
     }
     return true;
   }
@@ -467,7 +486,9 @@ export function createSimulation(emit) {
         monster.state = STATE_IDLE;
         continue;
       }
-      const nightFactors = isNight() && monster.spec.night ? monster.spec.night : null;
+      /* at night some hunt harder, in a storm the storm wolves */
+      const nightFactors =
+        (isNight() && monster.spec.night) || (isStorm() && monster.spec.storm) || null;
       const target = findTarget(monster, players, nightFactors);
       monster.cooldown = Math.max(0, monster.cooldown - dt);
       /* bosses have moves of their own (rules/bosses.js) */

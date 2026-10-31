@@ -54,6 +54,7 @@ export const CHAPTERS = {
   4: "Whisperwood",
   5: "The Kingsroad",
   6: "The Seventh Seal",
+  7: "The Northroad",
 };
 
 export const QUESTS = {
@@ -724,6 +725,95 @@ export const QUESTS = {
       "North, then. Papers for Fort Harrow, and a letter for Harbormaster Quill in Saltmere. The road is long and not kind. Watch the sky: travelers say the storms up there have teeth.",
     goal: { type: "visit", npc: "Captain Aldric" },
     reward: { exp: 1200, zeny: 800, items: [{ id: "travel_papers", count: 1 }] },
+  },
+  /* ---- chapter 7: the Northroad, from the north gate to the Halfway Inn, level 22 to 24 ---- */
+  aldric_north_gate: {
+    giver: "Captain Aldric",
+    turnIn: "Sergeant Bren",
+    hint: "Leave Aurelia by the north gate and follow the Northroad. Fort Harrow stands across the road; Sergeant Bren waits just inside its gate.",
+    tutorial: "northroad",
+    chapter: 7,
+    main: true,
+    title: "Through the north gate",
+    level: 22,
+    after: "selwyn_papers",
+    intro:
+      "The Northroad starts at our north gate and does not stop until the sea. First stop, Fort Harrow: it holds the road where the hills begin. Show Sergeant Bren your papers. He is a hard man, but a fair one.",
+    progressText:
+      "Out through the north gate and up the Northroad. Fort Harrow stands across the road; Sergeant Bren is just inside the gate.",
+    completeText:
+      "Papers from Aldric, and the seal of the archmage? Hm. Then you are either very important or very unlucky. Welcome to Harrow. We have a problem you could help with.",
+    goal: { type: "visit", npc: "Sergeant Bren" },
+    reward: { exp: 1800, zeny: 600 },
+  },
+  bren_highwaymen: {
+    giver: "Sergeant Bren",
+    where: { monster: "highwayman" },
+    hint: "Highwaymen lie in wait along the road on both sides of Fort Harrow, mostly in the grey tunics. They come in twos and threes.",
+    chapter: 7,
+    main: true,
+    title: "Toll of the Northroad",
+    level: 22,
+    after: "aldric_north_gate",
+    intro:
+      "Highwaymen. Since the storms began, every cart on the road loses half its load before it reaches me. My men cannot leave the gate. You can. Eight of them, and the rest will learn to farm.",
+    progressText:
+      "Eight highwaymen, in their grey tunics along the road on both sides of the fort. They hunt in small packs.",
+    completeText:
+      "Eight. The carters will kiss your boots, and so would I if I were not on duty. Here: the fort's own coin. The road north is yours.",
+    goal: { type: "kill", monster: "highwayman", count: 8 },
+    reward: { exp: 2400, zeny: 1200, items: [{ id: "orange_potion", count: 5 }] },
+  },
+  bren_inn: {
+    giver: "Sergeant Bren",
+    turnIn: "Innkeeper Hobb",
+    hint: "Follow the Northroad north past the barley fields. The Halfway Inn stands on the west side of the road; Hobb keeps the door.",
+    chapter: 7,
+    main: true,
+    title: "A bed for the night",
+    level: 23,
+    after: "bren_highwaymen",
+    intro:
+      "Halfway to Saltmere stands an inn, and Hobb keeps it. A roof, a fire, and the only stew between here and the sea. Sleep there: if the road knocks you down, you will wake up in one of Hobb's beds instead of a ditch.",
+    progressText:
+      "North past the barley fields. The Halfway Inn stands on the west side of the road; Hobb keeps the door.",
+    completeText:
+      "Bren sent you? Then you get the good bed. The one without the draught. If the road knocks you down from now on, you wake up here, with soup.",
+    goal: { type: "visit", npc: "Innkeeper Hobb" },
+    reward: { exp: 1600, zeny: 400, items: [{ id: "cooked_minnow", count: 5 }] },
+  },
+  hobb_storm_wolves: {
+    giver: "Innkeeper Hobb",
+    where: { monster: "storm_wolf" },
+    hint: "Storm wolves roam the hills north of the inn. They hunt harder in a storm: fight them when the sky is clear.",
+    chapter: 7,
+    main: true,
+    title: "Wolves in the storm",
+    level: 24,
+    after: "bren_inn",
+    intro:
+      "You hear them at night, when the thunder comes. Storm wolves: the fur crackles like the sky. They took two of my goats and the stablehand's nerve. Bring me six pelts and the road north is safe for travelers again.",
+    progressText:
+      "Six storm pelts. The wolves roam the hills north of the inn, and they hunt harder in a storm.",
+    completeText:
+      "Six. They really do crackle. The tanners in Saltmere will pay well for the rest of what you skin up there. Rest, eat, and when you are ready, the road goes on.",
+    goal: { type: "item", item: "storm_pelt", count: 6 },
+    reward: { exp: 2600, zeny: 1400, items: [{ id: "orange_potion", count: 5 }] },
+  },
+  tilda_boars: {
+    giver: "Farmer Tilda",
+    where: { monster: "ridge_boar" },
+    hint: "Ridge boars root in the hills on both sides of the road north of the barley. They only fight back.",
+    title: "Boars in the barley",
+    level: 22,
+    after: "aldric_north_gate",
+    intro:
+      "Grey boars, down from the ridge, every night in my barley. They do not even eat it: they just roll in it. Six of them, and I bake you a loaf you will remember.",
+    progressText: "Six ridge boars. They root in the hills north of the barley fields.",
+    completeText:
+      "Six! My barley thanks you, and so do I. Here, still warm. And something for the road.",
+    goal: { type: "kill", monster: "ridge_boar", count: 6 },
+    reward: { exp: 2000, zeny: 900, items: [{ id: "cooked_minnow", count: 3 }] },
   },
 };
 

@@ -35,6 +35,8 @@ import { groundRing, launchProjectile } from "./skill-effects.js";
 import { hitStop, buzz, flyToHud, screenFlash } from "./feel.js";
 import { burst } from "./particles.js";
 import { inCrypt, CRYPT_ENTRY } from "./rules/crypt.js";
+import { inNorthroad } from "./regions.js";
+import { INN_DOOR } from "./northroad.js";
 import { absorbWithRunes } from "./rune-powers.js";
 import { useSkill } from "./abilities.js";
 
@@ -577,8 +579,15 @@ function respawn() {
   player.isDead = false;
   player.hp = hpMax();
   player.sp = spMax();
-  /* in the village; whoever fell in the crypt wakes up by the braziers at its stairs */
-  [player.x, player.z] = inCrypt(player.x, player.z) ? CRYPT_ENTRY : [0, 4];
+  /* in the village; whoever fell in the crypt wakes up by the braziers at its stairs, and on the Northroad at the
+     Halfway Inn once they have slept there */
+  if (inCrypt(player.x, player.z)) {
+    [player.x, player.z] = CRYPT_ENTRY;
+  } else if (inNorthroad(player.x, player.z) && player.quests.bren_inn?.state === "done") {
+    [player.x, player.z] = INN_DOOR;
+  } else {
+    [player.x, player.z] = [0, 4];
+  }
   player.busyUntil = 0;
   player.anim = "";
   setAnim("idle");

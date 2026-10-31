@@ -134,10 +134,85 @@ export const KINGS_ROAD = [
 /* The bandit camp: in the meadows north-east of the city, between the north gate and the farm. */
 export const BANDIT_CAMP = [-82, -44];
 
-/** Is (x, z) inside the world (the fields, the forest, the vale or the crypt), with a margin to the edge? The
-    crypt needs none: its walls are obstacles. */
+/* The Northroad (Saga II): from Aurelia's north gate up through farmland and hills, past Fort Harrow to the
+   Halfway Inn, and on towards Greyfall Gorge and Saltmere (built later). The land is a wavy band along the road. */
+export const NORTH_ROAD = [
+  [-137, -40],
+  [-137, -64],
+  [-131, -84],
+  [-127, -100],
+  [-133, -120],
+  [-146, -140],
+  [-153, -158],
+  [-149, -178],
+  [-141, -198],
+];
+
+export const NORTHROAD = {
+  name: "The Northroad",
+  /* the bounding box, for the ground map and the world map */
+  x0: -196,
+  x1: -86,
+  z0: -212,
+  z1: -38,
+  /* the toll fort across the road, and the hamlet halfway */
+  fort: [-127, -100],
+  inn: [-165, -158],
+};
+
+/* The barley fields of Fort Harrow, north of the fort on both sides of the road: [x0, z0, x1, z1]. */
+export const NORTH_FARMS = [
+  [-163, -132, -143, -112],
+  [-122, -136, -108, -114],
+];
+
+/** Half the width of the Northroad's land at depth z: about thirty units, wavy. */
+export function northroadWidth(z) {
+  return 30 + 6 * waviness(z * 0.06, 0.8, 2.6, 1.9);
+}
+
+/** Is (x, z) on the Northroad's land, at least `margin` away from its edge? North of the city wall only. */
+export function inNorthroad(x, z, margin = 0) {
+  if (z > NORTHROAD.z1 - 2 || z < NORTHROAD.z0) {
+    return false;
+  }
+  return distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z) - margin;
+}
+
+/**
+ * A random spot on the Northroad's land for a monster, between depths `stretch` [north, south]: away from the
+ * road, Fort Harrow and the Halfway Inn. `isOk(x, z)` adds the caller's own checks (free of obstacles, away from
+ * players). Returns null when no spot was found.
+ */
+export function northroadSpot(random, [north, south], isOk, tries = 120) {
+  for (let i = 0; i < tries; i++) {
+    const z = north + random() * (south - north);
+    const x = NORTHROAD.x0 + random() * (NORTHROAD.x1 - NORTHROAD.x0);
+    const isAway =
+      distanceToPath(x, z, NORTH_ROAD) > 6 &&
+      Math.hypot(x - NORTHROAD.fort[0], z - NORTHROAD.fort[1]) > 16 &&
+      Math.hypot(x - NORTHROAD.inn[0], z - NORTHROAD.inn[1]) > 20;
+    if (inNorthroad(x, z, 4) && isAway && isOk(x, z)) {
+      return [x, z];
+    }
+  }
+  return null;
+}
+
+/** May a Northroad monster with this `stretch` [north, south] roam at (x, z)? A little beyond its stretch is fine. */
+export const isNorthroadHome = ([north, south], x, z) =>
+  inNorthroad(x, z, 2) && z > north - 12 && z < south + 12;
+
+/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad or the crypt), with a margin to the
+    edge? The crypt needs none: its walls are obstacles. */
 export function insideWorld(x, z, margin = 1.5) {
-  return inFields(x, z, margin) || inForest(x, z, margin) || inVale(x, z, margin) || inCrypt(x, z);
+  return (
+    inFields(x, z, margin) ||
+    inForest(x, z, margin) ||
+    inVale(x, z, margin) ||
+    inNorthroad(x, z, margin) ||
+    inCrypt(x, z)
+  );
 }
 
 /* The winding path through the forest, from the entrance to the clearing. */
