@@ -183,6 +183,24 @@ export const sfx = {
     tone("sawtooth", 240, 90, 0.7, 0.12, 0.05);
     noise(0.6, 0.15, { f0: 700, f1: 200, type: "lowpass" });
   },
+  /* a boss shows itself: two deep drum beats under a swelling chord */
+  bossIntro() {
+    if (!canPlay()) return;
+    tone("triangle", 90, 40, 0.45, 0.45);
+    tone("triangle", 90, 40, 0.45, 0.45, 0.32);
+    [110, 165, 220].forEach((frequency) =>
+      tone("sawtooth", frequency, frequency * 1.01, 1.4, 0.05, 0.3),
+    );
+  },
+  /* a boss falls: a fanfare */
+  bossDefeat() {
+    if (!canPlay()) return;
+    [392, 523, 659, 784].forEach((frequency, i) =>
+      tone("square", frequency, frequency, 0.2, 0.11, i * 0.11),
+    );
+    tone("triangle", 784, 784, 0.9, 0.14, 0.44);
+    tone("triangle", 1047, 1047, 0.9, 0.1, 0.44);
+  },
   monsterDeath() {
     if (!canPlay()) return;
     tone("square", 300, 90, 0.22, 0.14);

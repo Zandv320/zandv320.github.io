@@ -244,6 +244,11 @@ function placeAnnouncement(el) {
 
 /** Large centred announcement (level up, quest done), cleared after a few seconds. */
 export function announce(title, subtitle = "") {
+  /* a boss's name card (boss-presentation.js) has the middle of the screen: after it */
+  if (!$("#boss-card").hidden) {
+    setTimeout(() => announce(title, subtitle), 400);
+    return;
+  }
   const el = $("#announcement");
   let html = '<div class="large">' + escapeHtml(title) + "</div>";
   if (subtitle) {

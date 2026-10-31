@@ -31,6 +31,7 @@
     <div id="labels"></div>
     <div id="hurt-overlay"></div>
     <div id="fx-layer"></div>
+    <div id="letterbox"><i></i><i></i></div>
 
     <!-- In-game HUD: player frame, party, target, status, minimap, chat, hotbar and menu. -->
     <div id="hud" hidden>
@@ -86,6 +87,15 @@
         <div id="quest-tracker" class="frame flat" hidden></div>
       </div>
       <div id="announcement"></div>
+      <!-- the boss you are fighting: name, title and health (boss-presentation.js) -->
+      <div id="boss-bar" hidden>
+        <div class="boss-heading"><b id="boss-name"></b><small id="boss-title"></small></div>
+        <div class="boss-hp">
+          <i class="chip" id="boss-chip"></i><i class="fill" id="boss-fill"></i>
+          <span id="boss-notches"></span><span class="text" id="boss-hp-text"></span>
+        </div>
+      </div>
+      <div id="boss-card" hidden></div>
       <div id="waypoint" hidden><i>▼</i><small></small></div>
       <div id="gather-bar" class="frame flat" hidden>
         <span id="gather-icon"></span>

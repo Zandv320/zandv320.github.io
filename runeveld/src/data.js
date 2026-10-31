@@ -1270,6 +1270,8 @@ export const FOREST_MONSTERS = {
   },
   dire_boar: {
     name: "Dire Boar",
+    /* bosses: shown under the name in the boss bar and the intro (boss-presentation.js) */
+    title: "Terror of the Old Altar",
     level: 14,
     hp: 3000,
     atk: 64,
@@ -1376,6 +1378,7 @@ export const VALE_MONSTERS = {
   },
   bandit_chief: {
     name: "Bandit Chief Varek",
+    title: "Scourge of the Kingsroad",
     level: 22,
     hp: 8000,
     atk: 125,

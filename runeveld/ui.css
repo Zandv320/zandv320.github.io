@@ -3947,3 +3947,261 @@ body.rpg-cursor #game[data-cursor="gather"] {
   opacity: 0;
   mix-blend-mode: screen;
 }
+
+/* ---------- boss fights (boss-presentation.js): the bar at the top, black bars and the name card ---------- */
+#hud > #boss-bar {
+  position: absolute;
+  top: var(--safe-top);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: clamp(300px, 38vw, 560px);
+  pointer-events: none;
+  transition:
+    opacity 0.4s,
+    transform 0.4s;
+  animation: boss-bar-in 0.5s ease-out;
+}
+#boss-bar.leaving {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+@keyframes boss-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+/* phones: no room beside the player frame, so the bar goes under it and the rest of that column moves down */
+@media (max-width: 700px) {
+  #hud > #boss-bar {
+    top: var(--boss-bar-top, 96px);
+    left: var(--safe-left);
+    right: var(--safe-right);
+    width: auto;
+  }
+  body.boss-fight #player-frame {
+    margin-bottom: 70px;
+  }
+}
+#boss-bar .boss-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 10px;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 6px rgba(0, 0, 0, 0.9);
+}
+#boss-bar b {
+  font-family: var(--heading-font);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffdcc6;
+  transition: color 0.3s;
+}
+#boss-bar small {
+  font-family: var(--heading-font);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #d8b886;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#boss-bar .boss-hp {
+  position: relative;
+  height: 16px;
+  background: #0a0b12;
+  border: 1px solid #000;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(230, 187, 99, 0.6),
+    0 0 0 3px rgba(0, 0, 0, 0.65),
+    inset 0 1px 3px rgba(0, 0, 0, 0.9),
+    0 8px 20px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.3s;
+}
+#boss-bar .boss-hp i {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform-origin: left;
+}
+#boss-bar .chip {
+  background: linear-gradient(180deg, #fffaf0, #f3d9a8);
+  opacity: 0.85;
+}
+#boss-bar .fill {
+  background: linear-gradient(180deg, #ff9c8a 0%, #d93a34 55%, #6e1414 100%);
+  transition: transform 0.12s;
+}
+#boss-bar .fill::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 40%;
+  background: rgba(255, 255, 255, 0.2);
+}
+/* the phases: a mark where the boss changes its game */
+#boss-notches i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  /* dark with a light edge: it shows on the red, the white chip and the empty bar alike */
+  background: #1a0a08;
+  box-shadow: 0 0 0 1px rgba(255, 235, 190, 0.55);
+}
+#boss-bar .text {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  /* at the right end, clear of the phase marks */
+  justify-content: flex-end;
+  padding-right: 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  text-shadow:
+    0 1px 1px #000,
+    0 0 3px #000;
+}
+#boss-bar.enraged b {
+  color: #ff8a78;
+}
+#boss-bar.enraged .boss-hp {
+  box-shadow:
+    0 0 0 1px rgba(255, 110, 80, 0.85),
+    0 0 0 3px rgba(0, 0, 0, 0.65),
+    0 0 18px rgba(255, 60, 30, 0.55),
+    0 8px 20px rgba(0, 0, 0, 0.5);
+}
+#boss-bar.enraged .fill {
+  animation: boss-rage 0.7s ease-in-out infinite alternate;
+}
+@keyframes boss-rage {
+  to {
+    filter: brightness(1.45) saturate(1.2);
+  }
+}
+#boss-bar.defeated b {
+  color: var(--gold);
+}
+
+#letterbox {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+#letterbox i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: min(9vh, 80px);
+  background: #000;
+  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+#letterbox i:first-child {
+  top: 0;
+  transform: translateY(-100%);
+}
+#letterbox i:last-child {
+  bottom: 0;
+  transform: translateY(100%);
+}
+#letterbox.on i {
+  transform: none;
+}
+
+#hud > #boss-card {
+  position: absolute;
+  left: 50%;
+  top: 32%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.45s;
+}
+#boss-card.leaving {
+  opacity: 0;
+}
+#boss-card .name {
+  font-family: var(--heading-font);
+  font-size: clamp(30px, 6vw, 60px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #ffe2cc;
+  text-shadow:
+    0 3px 0 #4a0d0d,
+    0 0 30px rgba(255, 70, 40, 0.6);
+  animation: boss-name-in 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+#boss-card .subtitle {
+  margin-top: 4px;
+  font-family: var(--heading-font);
+  font-size: clamp(11px, 1.6vw, 15px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #e6c897;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 8px #000;
+  animation: boss-fade-in 0.6s 0.45s ease-out both;
+}
+#boss-card .rule {
+  display: block;
+  width: clamp(160px, 36vw, 400px);
+  height: 2px;
+  margin: 10px auto;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  animation: boss-rule-in 0.8s 0.15s ease-out both;
+}
+#boss-card.defeat .name {
+  color: var(--gold);
+  text-shadow:
+    0 3px 0 #5a3d00,
+    0 0 30px rgba(255, 200, 87, 0.6);
+}
+#boss-card.defeat .subtitle {
+  color: #fff;
+}
+@keyframes boss-name-in {
+  from {
+    opacity: 0;
+    letter-spacing: 0.5em;
+    filter: blur(6px);
+  }
+}
+@keyframes boss-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes boss-rule-in {
+  from {
+    transform: scaleX(0);
+  }
+}

@@ -55,6 +55,7 @@ import {
   bossEnrage,
   updateBossEffects,
 } from "./boss-effects.js";
+import { bossCameraFocus, updateBossPresentation } from "./boss-presentation.js";
 import { packObstacle } from "./rules/collision.js";
 import { createSettings } from "./settings.js";
 import { setupCursors, setWorldCursor } from "./cursors.js";
@@ -1756,6 +1757,7 @@ function stepWorld(dt, time) {
     hostTick(dt);
   }
   updateMonsters(dt);
+  updateBossPresentation(dt);
   updatePeers(dt);
   sendPresence();
 
@@ -1821,7 +1823,9 @@ function step(dt) {
     const target = game.characterSelect.cameraTarget();
     cameraFocus.set(target[0], target[1], target[2]);
   } else {
-    cameraFocus.set(player.x, 0, player.z);
+    /* a boss's intro turns the camera halfway to it */
+    const bossFocus = bossCameraFocus();
+    cameraFocus.set(bossFocus ? bossFocus[0] : player.x, 0, bossFocus ? bossFocus[1] : player.z);
   }
   cameraState.target.lerp(cameraFocus, 1 - Math.exp(-8 * dt));
   if (cameraState.shakeTime > 0) {
