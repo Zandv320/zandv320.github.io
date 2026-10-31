@@ -1836,8 +1836,8 @@ def build_smooth(out_dir):
 #   front  the full face, beside the torso on screen right (the left hand)
 #   right  the left arm is the far one: the face, a little turned, held out at the front edge of the body
 #   left   the left arm is the near one, at the back of the torso: the full face, turned to us, over the body
-#   back   the left arm is on screen left: the back of the shield beside the arm, under the cape, so only the part
-#          beyond the cape shows (the _under layer, between the armour and the cape)
+#   back   the left arm is on screen left: the back of the shield behind the body, the arm in front of it, so only
+#          the part beside the body shows (the _back layer, under the body and over the cape's back)
 # Anchors: the neck (the top of the body under the skull) and the edges of the torso in the rows under it. Not the
 # eyes: standing still only the head breathes, and a shield that rose and fell with it would float.
 SHIELD_FRONT = """
@@ -1909,13 +1909,13 @@ def shield_spot(view, piece, xc, neck, left, right):
 
 
 def shield(head, body, colors, fw=64, fh=64):
-    """The shield layers (over, under the cape) for the whole hero sheet; none in the death frames once the hero
-    falls."""
+    """The shield layers (in front of and behind the body) for the whole hero sheet; none in the death frames once
+    the hero falls."""
     side = pixel_drawing(SHIELD_SIDE, colors)
     face = pixel_drawing(SHIELD_FRONT, colors)
     pieces = {0: face, 1: face, 2: side, 3: pixel_drawing(SHIELD_BACK, colors)}
-    over = Image.new("RGBA", head.size, TRANSPARENT)
-    under = Image.new("RGBA", head.size, TRANSPARENT)
+    front = Image.new("RGBA", head.size, TRANSPARENT)
+    back = Image.new("RGBA", head.size, TRANSPARENT)
     src = head.load()
     body_px = body.load()
     for r in range(head.height // fh):
@@ -1943,21 +1943,21 @@ def shield(head, body, colors, fw=64, fh=64):
             neck = min(necks)
             torso = [x for y in range(neck + 1, neck + 7) for x in range(c * fw, (c + 1) * fw) if body_px[x, y][3] > 0]
             left, right = min(torso), max(torso)
-            layer = under if view == 3 else over
+            layer = back if view == 3 else front
             layer.alpha_composite(piece, shield_spot(view, piece, xc, neck, left, right))
-    return over, under
+    return front, back
 
 
 def build_shields(out_dir):
-    """shield1/2 and their _under layers, from the hero's own head and body layers; returns the names written."""
+    """shield1/2 and their _back layers, from the hero's own head and body layers; returns the names written."""
     head = open_rgba(out_dir / "hero_head.png")
     body = open_rgba(out_dir / "hero_body.png")
     written = []
     for name, colors in SHIELDS.items():
-        over, under = shield(head, body, colors)
-        over.save(out_dir / f"{name}.png")
-        under.save(out_dir / f"{name}_under.png")
-        written += [name, f"{name}_under"]
+        front, back = shield(head, body, colors)
+        front.save(out_dir / f"{name}.png")
+        back.save(out_dir / f"{name}_back.png")
+        written += [name, f"{name}_back"]
     print("shields:", written)
     return written
 
