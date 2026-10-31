@@ -1,5 +1,5 @@
 /* Eldoria – the character sheet (C) with equipment, stats, skill tree and quests, and the shop window. */
-import { ITEMS, EQUIPMENT_SLOTS, SHOPS } from "./data.js";
+import { ITEMS, EQUIPMENT_SLOTS, SHOPS, CLASSES } from "./data.js";
 import { icon } from "./icons.js";
 import { heroLayers, drawHero } from "./appearance.js";
 import { STATS, MAX_STAT, statCost } from "./rules/stats.js";
@@ -42,7 +42,7 @@ export function itemStatText(item) {
   if (item.flee) parts.push("FLEE +" + item.flee);
   if (item.crit) parts.push("CRIT +" + item.crit + "%");
   if (item.sp) parts.push("SP +" + item.sp);
-  if (item.forClass) parts.push(item.forClass === "mage" ? "Mage" : "Swordsman");
+  if (item.forClass) parts.push(CLASSES[item.forClass].name);
   return parts.join(" · ");
 }
 
@@ -68,7 +68,7 @@ export function compareHtml(hero, id, source = null) {
     return "";
   }
   if (item.forClass && item.forClass !== hero.classId && item.forClass !== classOf(hero).base) {
-    return `<span class="compare locked">${item.forClass === "mage" ? "Mages" : "Swordsmen"} only</span>`;
+    return `<span class="compare locked">${CLASSES[item.forClass].name} only</span>`;
   }
   const slot = slotFor(hero, item);
   const wornId = hero.equipment[slot];
@@ -264,16 +264,22 @@ export function createCharacterSheet(player, deps) {
       ["Zeny", player.zeny],
     ]);
 
-    $("#sheet-slots").innerHTML = EQUIPMENT_SLOTS.map(([slot, label]) => {
-      const itemId = player.equipment[slot];
-      const item = itemId && ITEMS[itemId];
-      if (!item) {
-        return `<button class="equip-slot empty" data-slot="${slot}"><small>${label}</small><b>— empty —</b></button>`;
-      }
-      const mods = player.equipmentMods && player.equipmentMods[slot];
-      const name = displayName(itemId, mods);
-      return `<button class="equip-slot ${modsOf(mods) ? "modded" : ""}" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} ${escapeHtml(name)}</b><i>${itemStatText(applyMods(item, mods))}</i></button>`;
-    }).join("");
+    /* the shield slot only for those who can carry one (the crusader), or while something is in it */
+    const slots = EQUIPMENT_SLOTS.filter(
+      ([slot]) => slot !== "shield" || player.classId === "crusader" || player.equipment.shield,
+    );
+    $("#sheet-slots").innerHTML = slots
+      .map(([slot, label]) => {
+        const itemId = player.equipment[slot];
+        const item = itemId && ITEMS[itemId];
+        if (!item) {
+          return `<button class="equip-slot empty" data-slot="${slot}"><small>${label}</small><b>— empty —</b></button>`;
+        }
+        const mods = player.equipmentMods && player.equipmentMods[slot];
+        const name = displayName(itemId, mods);
+        return `<button class="equip-slot ${modsOf(mods) ? "modded" : ""}" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} ${escapeHtml(name)}</b><i>${itemStatText(applyMods(item, mods))}</i></button>`;
+      })
+      .join("");
 
     const itemCount = player.bag.reduce((total, entry) => total + entry.count, 0);
     const bagText = itemCount

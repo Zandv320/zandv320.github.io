@@ -58,6 +58,10 @@ const HERO_LAYER_FILES = [
   "cloak4_back",
   "cloak5",
   "cloak5_back",
+  "shield1",
+  "shield1_back",
+  "shield2",
+  "shield2_back",
 ];
 
 function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {
@@ -165,13 +169,17 @@ export function heroLayerNames(equipment) {
   const body = equipment.body && ITEMS[equipment.body];
   const head = equipment.head && ITEMS[equipment.head];
   const cloak = equipment.cloak && ITEMS[equipment.cloak];
-  /* the cloak hangs behind the body (the _back layer) and comes over the back and shoulders (the plain layer) */
+  const shield = equipment.shield && ITEMS[equipment.shield];
+  /* the cloak hangs behind the body (the _back layer) and comes over the back and shoulders (the plain layer);
+     the shield is on the free arm: behind the body when the hero faces left (_back), in front of it otherwise */
   return [
     weapon && weapon.layer + "_back",
+    shield && shield.layer + "_back",
     cloak && cloak.layer + "_back",
     "hero_body",
     body && body.layer,
     cloak && cloak.layer,
+    shield && shield.layer,
     head ? head.layer : "hero_head",
     weapon && weapon.layer,
   ].filter(Boolean);

@@ -1831,6 +1831,136 @@ def build_smooth(out_dir):
     print("smooth sprites:", len(list(smooth_dir.glob("*.png"))))
 
 
+# ---------- shields for the crusader: on the off arm, in front of the body or (facing left) behind it ----------
+# Drawn as pixel art in three views (front, side and the inside for the back view) and placed per frame on the
+# torso: one pixel under the eyes (two above the neck in the back view, as the headgear does), beside the centre of
+# the skull on the side of the free arm (screen right in the front view, screen left in the back view).
+SHIELD_FRONT = """
+.ooooooo.
+orrrrrrro
+ormmcmmro
+ormmcmmro
+orcccccro
+ormmcmmro
+ormmcmmro
+.ormcmro.
+.ormmmro.
+..ormro..
+...ooo...
+"""
+SHIELD_SIDE = """
+.oooo.
+orrmmo
+ormcdo
+ocmcdo
+ormcdo
+ormmdo
+ormmdo
+.ormd.
+.ormo.
+..oo..
+"""
+SHIELD_INSIDE = """
+.ooooooo.
+orrrrrrro
+orwWwWwro
+orbbbbbro
+orwwwwwro
+orwWwWwro
+orbbbbbro
+.orwwwro.
+.orwwwro.
+..orrro..
+...ooo...
+"""
+SHIELD_WOOD = {"w": (115, 76, 68), "W": (90, 58, 50), "b": (61, 51, 51)}
+SHIELDS = {
+    # the templar shield: steel with a red cross
+    "shield1": {
+        "o": (12, 15, 42),
+        "r": (196, 204, 220),
+        "m": (150, 160, 180),
+        "d": (96, 104, 124),
+        "c": (178, 45, 45),
+        **SHIELD_WOOD,
+    },
+    # the dawn aegis: white with a golden rim and cross
+    "shield2": {
+        "o": (12, 15, 42),
+        "r": (232, 190, 90),
+        "m": (236, 236, 240),
+        "d": (176, 180, 196),
+        "c": (222, 182, 70),
+        **SHIELD_WOOD,
+    },
+}
+# per view (row within an animation: 0 front, 1 left, 2 right, 3 back): drawing, offset of its centre from the
+# skull centre and the eyes, and whether it hangs behind the body
+SHIELD_VIEWS = {
+    0: (SHIELD_FRONT, 5, 11, False),
+    1: (SHIELD_SIDE, 4, 10, True),
+    2: (SHIELD_SIDE, -1, 11, False),
+    3: (SHIELD_INSIDE, -5, 11, False),
+}
+
+
+def shield(head, body, colors, fw=64, fh=64):
+    """The shield layers (front, back) for the whole hero sheet; none in the death frames once the hero falls."""
+    front = Image.new("RGBA", head.size, TRANSPARENT)
+    back = Image.new("RGBA", head.size, TRANSPARENT)
+    src = head.load()
+    body_px = body.load()
+    rows = head.height // fh
+    for r in range(rows):
+        art, dx, dy, is_behind = SHIELD_VIEWS[r % 4]
+        piece = pixel_drawing(art, colors)
+        if r % 4 == 1:
+            piece = mirror(piece)
+        is_death = r // 4 == 4
+        for c in range(head.width // fw):
+            if is_death and c >= 2:
+                continue
+            hair, eyes = [], []
+            for y in range(r * fh, (r + 1) * fh):
+                for x in range(c * fw, (c + 1) * fw):
+                    p = src[x, y]
+                    if p[3] == 0:
+                        continue
+                    if p[:3] in HAIR_COLORS:
+                        hair.append((x, y))
+                    elif p[:3] in EYE_COLORS:
+                        eyes.append((x, y))
+            if not hair:
+                continue
+            top = min(y for _, y in hair)
+            skull = [x for x, y in hair if y <= top + 3]
+            xc = (min(skull) + max(skull)) / 2
+            if eyes:
+                eye_y = min(y for _, y in eyes)
+            else:
+                columns = range(int(round(xc)) - 2, int(round(xc)) + 3)
+                neck = [y for y in range(r * fh, (r + 1) * fh) for x in columns if body_px[x, y][3] > 0]
+                eye_y = (min(neck) - 2) if neck else top + 9
+            x0 = int(round(xc + dx - piece.width / 2))
+            y0 = eye_y + dy - piece.height // 2
+            (back if is_behind else front).alpha_composite(piece, (x0, y0))
+    return front, back
+
+
+def build_shields(out_dir):
+    """shield1/2 and their _back layers, from the hero's own head and body layers; returns the names written."""
+    head = open_rgba(out_dir / "hero_head.png")
+    body = open_rgba(out_dir / "hero_body.png")
+    written = []
+    for name, colors in SHIELDS.items():
+        front, back = shield(head, body, colors)
+        front.save(out_dir / f"{name}.png")
+        back.save(out_dir / f"{name}_back.png")
+        written += [name, f"{name}_back"]
+    print("shields:", written)
+    return written
+
+
 # ---------- the Sunken Crypt: vampires, an ooze, crypt props and textures ----------
 # Four more Craftpix freebies: the vampire characters (64x64 frames like the hero, rows down/up/left/right), the slime
 # mobs, the undead tileset (bones, ruins, tombstones) and the dungeon pack (floor tiles, pots, chests).
@@ -1964,11 +2094,13 @@ def main():
     # `python3 -I` leaves the script directory off sys.path; build_effects.py lives next to this file
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-    # `--only crypt`: just the crypt's sprites and textures (and their smooth versions), from its four packs
-    if "--only" in sys.argv and sys.argv[sys.argv.index("--only") + 1] == "crypt":
+    # `--only crypt` or `--only shields`: just those sprites (and their smooth versions), next to the others
+    if "--only" in sys.argv:
+        part = sys.argv[sys.argv.index("--only") + 1]
         smooth_dir = out_dir / "smooth"
         smooth_dir.mkdir(exist_ok=True)
-        for name in build_crypt(packs_dir, out_dir):
+        names = build_crypt(packs_dir, out_dir) if part == "crypt" else build_shields(out_dir)
+        for name in names:
             smooth(Image.open(out_dir / f"{name}.png")).save(smooth_dir / f"{name}.png")
         return
 
@@ -1986,6 +2118,7 @@ def main():
     build_textures(fields, out_dir)
     build_effect_sheets(packs_dir, out_dir)
     build_crypt(packs_dir, out_dir)
+    build_shields(out_dir)
     build_smooth(out_dir)
     print("done:", sorted(p.name for p in out_dir.glob("*.png")))
 
