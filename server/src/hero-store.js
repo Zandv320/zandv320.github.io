@@ -101,6 +101,20 @@ export class HeroStore extends DurableObject {
     return roster;
   }
 
+  /**
+   * Admin: begins this hero's main story at `questId` (progression.startStoryAt). The World has checked that the
+   * account is an admin. Returns the hero, or null when the hero or the quest does not exist.
+   */
+  async startStory(token, name, questId) {
+    const roster = await this.#getRoster(token);
+    const hero = this.#findHero(roster, name);
+    if (!hero || !progression.startStoryAt(hero, String(questId))) {
+      return null;
+    }
+    await this.#persist(token, roster);
+    return hero;
+  }
+
   /** Stores the volatile fields the client does keep itself (hp, sp, position); returns the hero or null. */
   async save(token, name, volatileFields) {
     const roster = await this.#getRoster(token);

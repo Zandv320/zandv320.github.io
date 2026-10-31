@@ -7,6 +7,7 @@ import * as THREE from "three";
 import * as UI from "./ui.js";
 import { SMOOTH } from "./sprites.js";
 import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
+import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -255,6 +256,33 @@ export function createAdminPanel(ctx) {
         "danger",
       ],
     ]);
+
+    /* ---------- story: begin the main story at any quest ---------- */
+    group = section("Story");
+    const questSelect = element("select");
+    for (const saga of SAGAS) {
+      for (const chapter of chaptersOf(saga)) {
+        const chapterGroup = element("optgroup", {
+          label: `${saga.title} · ${chapter}. ${CHAPTERS[chapter]}`,
+        });
+        for (const id of MAIN_QUESTS.filter((questId) => QUESTS[questId].chapter === chapter)) {
+          chapterGroup.appendChild(
+            element("option", { value: id }, `${QUESTS[id].title} (lvl ${QUESTS[id].level})`),
+          );
+        }
+        questSelect.appendChild(chapterGroup);
+      }
+    }
+    const storyButton = element("button", { class: "admin-btn" }, "Begin here");
+    storyButton.onclick = () => ctx.startStory(questSelect.value);
+    row(group, "", questSelect, storyButton);
+    group.appendChild(
+      element(
+        "p",
+        { class: "admin-mono" },
+        "Every main quest before it counts as done (with its runes); it and the rest start fresh.",
+      ),
+    );
 
     /* ---------- teleport ---------- */
     group = section("Teleport");

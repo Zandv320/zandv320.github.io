@@ -37,6 +37,7 @@ import {
 } from "./stats.js";
 import {
   QUESTS,
+  MAIN_QUESTS,
   questState,
   isQuestComplete,
   recordQuestEvent as recordQuestEventIn,
@@ -604,6 +605,38 @@ export function turnInQuest(hero, id) {
   if (reward.rune) {
     hero.runes = sanitizeRunes([...(hero.runes || []), reward.rune], hero.quests);
   }
+  return true;
+}
+
+/**
+ * Admin: begin the main story at `questId`. Every main quest before it is done (with the runes their rewards bind),
+ * it and everything after it as if never taken; the level is raised to the quest's when lower. Side quests stay as
+ * they are. Returns false for anything that is not a main quest.
+ */
+export function startStoryAt(hero, questId) {
+  const index = MAIN_QUESTS.indexOf(questId);
+  if (index < 0) {
+    return false;
+  }
+  hero.quests = hero.quests || {};
+  MAIN_QUESTS.forEach((id, i) => {
+    if (i < index) {
+      hero.quests[id] = { state: "done", count: QUESTS[id].goal.count || 1 };
+    } else {
+      delete hero.quests[id];
+    }
+  });
+  const runes = MAIN_QUESTS.slice(0, index)
+    .map((id) => QUESTS[id].reward.rune)
+    .filter(Boolean);
+  hero.runes = sanitizeRunes(runes, hero.quests);
+  if (hero.level < QUESTS[questId].level) {
+    hero.level = QUESTS[questId].level;
+    hero.exp = 0;
+  }
+  const derived = derivedStatsOf(hero);
+  hero.hp = derived.hpMax;
+  hero.sp = derived.spMax;
   return true;
 }
 

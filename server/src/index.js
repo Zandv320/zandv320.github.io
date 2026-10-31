@@ -62,6 +62,7 @@ const HERO_MESSAGE_KINDS = new Set([
   "play_hero",
   "save_hero",
   "hero_action",
+  "admin_story",
 ]);
 /* only the server decides about monsters */
 const SERVER_ONLY_EVENTS = new Set(["monsters", "monster_attack", "kill", "node_state"]);
@@ -426,6 +427,19 @@ export class World extends DurableObject {
             reply({ kind: "error", error: "no_hero" });
           }
           break;
+        case "admin_story": {
+          /* only for the accounts named in ADMIN_ACCOUNTS (wrangler.toml) */
+          if (!attachment.heroName || !(await this.#isAdmin(token))) {
+            reply({ kind: "error", error: "not_admin" });
+            return;
+          }
+          const hero = await store.startStory(token, attachment.heroName, message.quest);
+          if (hero) {
+            this.#refreshMaxDamage(ws, hero);
+            reply({ kind: "hero", hero });
+          }
+          break;
+        }
         case "hero_action": {
           if (!attachment.heroName) {
             reply({ kind: "error", error: "no_hero" });
@@ -451,6 +465,24 @@ export class World extends DurableObject {
     } catch {
       reply({ kind: "error", error: "server_error" });
     }
+  }
+
+  /* Is the account of this hero token an admin? Its name comes from Accounts, the admins from ADMIN_ACCOUNTS. */
+  async #isAdmin(token) {
+    const admins = String(this.env.ADMIN_ACCOUNTS || "")
+      .split(",")
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean);
+    if (!admins.length) {
+      return false;
+    }
+    const accounts = this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName("main"));
+    const response = await accounts.fetch("https://accounts/account/whoami", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+    const answer = await response.json();
+    return Boolean(answer && answer.name && admins.includes(String(answer.name).toLowerCase()));
   }
 
   /* ---- professions: gathering nodes and crafting stations ---- */

@@ -53,6 +53,8 @@ import {
   runeCooldownShare,
 } from "./rune-powers.js";
 import { RUNES } from "./rules/runes.js";
+import { startStoryAt } from "./rules/progression.js";
+import { QUESTS } from "./rules/quests.js";
 import {
   buildCrypt,
   cryptClickables,
@@ -617,6 +619,7 @@ function createPanels(name) {
     setJobLevel,
     respec,
     teleport,
+    startStory,
     spawnMonster,
     killMonster,
     killAll,
@@ -932,13 +935,39 @@ function respec() {
 }
 
 function teleport(x, z) {
+  /* anywhere in the world (the vale, the crypt); outside it, to the nearest point of the fields */
   const limit = FIELD_SIZE - 1;
-  player.x = Math.max(-limit, Math.min(limit, x));
-  player.z = Math.max(-limit, Math.min(limit, z));
+  const isInside = insideWorld(x, z, 0.5);
+  player.x = isInside ? x : Math.max(-limit, Math.min(limit, x));
+  player.z = isInside ? z : Math.max(-limit, Math.min(limit, z));
   player.destination = null;
   player.target = null;
   UI.setTargetFrame(null);
   cameraState.target.set(player.x, 0, player.z);
+}
+
+/* Admin: begin the main story at this quest (rules/progression.js startStoryAt); on the server too, which only
+   allows it for admin accounts. */
+async function startStory(questId) {
+  if (!startStoryAt(player, questId)) {
+    return;
+  }
+  refreshRuneSlot();
+  game.questLog.refresh();
+  game.characterSheet.render();
+  UI.systemMessage(`The story begins anew at "${QUESTS[questId].title}".`);
+  const network = game.network;
+  if (network.usesServer()) {
+    const response = await network.request({ kind: "admin_story", quest: questId });
+    if (response && response.hero) {
+      applyHeroRecord(response.hero);
+    } else {
+      UI.systemMessage(
+        "The server did not allow it: only admin accounts can change their story there.",
+      );
+    }
+  }
+  saveProgress();
 }
 
 function spawnMonster(monsterId, x, z) {

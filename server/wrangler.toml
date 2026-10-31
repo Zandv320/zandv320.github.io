@@ -7,6 +7,10 @@ main = "src/index.js"
 compatibility_date = "2025-10-01"
 workers_dev = true
 
+# accounts that may use admin tools on the server (begin the story at another quest), comma-separated
+[vars]
+ADMIN_ACCOUNTS = "joey"
+
 # the version of the deployment, so a running object notices new code and restarts itself
 [version_metadata]
 binding = "VERSION"
