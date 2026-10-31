@@ -1831,10 +1831,15 @@ def build_smooth(out_dir):
     print("smooth sprites:", len(list(smooth_dir.glob("*.png"))))
 
 
-# ---------- shields for the crusader: on the off arm, in front of the body or (facing left) behind it ----------
-# Drawn as pixel art in three views (front, side and the inside for the back view) and placed per frame on the
-# torso: one pixel under the eyes (two above the neck in the back view, as the headgear does), beside the centre of
-# the skull on the side of the free arm (screen right in the front view, screen left in the back view).
+# ---------- shields for the crusader: on the free arm, in front of the body or (facing left) behind it ----------
+# Drawn as pixel art per view and placed per frame. The hero is small (about twelve pixels from neck to feet), so
+# only the front view gets the full shield; the other views are smaller and hang from the shoulder:
+#   front  the full face, beside the torso on screen right (the left arm), as before
+#   right  the face turned a little towards us, on the near (left) arm over the chest
+#   left   the far arm: only the rim sticks out behind the back (the _back layer, under the body)
+#   back   the inside with its straps, on the arm at screen left
+# Anchors: the eyes and the centre of the skull (as the headgear), the neck (the top of the body under the skull)
+# and the edges of the torso in the rows under it, which follow the arms as they swing.
 SHIELD_FRONT = """
 .ooooooo.
 orrrrrrro
@@ -1848,30 +1853,36 @@ ormmcmmro
 ..ormro..
 ...ooo...
 """
-SHIELD_SIDE = """
-.oooo.
-orrmmo
-ormcdo
-ocmcdo
-ormcdo
-ormmdo
-ormmdo
-.ormd.
-.ormo.
-..oo..
+SHIELD_TURNED = """
+.ooooo.
+orrrrro
+ormcmdo
+orcccdo
+ormcmdo
+ormmmdo
+.ormdo.
+..odo..
+...o...
+"""
+SHIELD_RIM = """
+oo.
+oro
+odo
+odo
+odo
+odo
+.oo
+..o
 """
 SHIELD_INSIDE = """
-.ooooooo.
-orrrrrrro
-orwWwWwro
-orbbbbbro
-orwwwwwro
-orwWwWwro
-orbbbbbro
-.orwwwro.
-.orwwwro.
-..orrro..
-...ooo...
+.oooo.
+orrrro
+orwwro
+obbbbo
+orwWro
+obbbbo
+.orro.
+..oo..
 """
 SHIELD_WOOD = {"w": (115, 76, 68), "W": (90, 58, 50), "b": (61, 51, 51)}
 SHIELDS = {
@@ -1894,28 +1905,34 @@ SHIELDS = {
         **SHIELD_WOOD,
     },
 }
-# per view (row within an animation: 0 front, 1 left, 2 right, 3 back): drawing, offset of its centre from the
-# skull centre and the eyes, and whether it hangs behind the body
-SHIELD_VIEWS = {
-    0: (SHIELD_FRONT, 5, 11, False),
-    1: (SHIELD_SIDE, 4, 10, True),
-    2: (SHIELD_SIDE, -1, 11, False),
-    3: (SHIELD_INSIDE, -5, 11, False),
-}
+
+
+def shield_spot(view, piece, xc, eye_y, neck, left, right):
+    """Top left corner of the shield piece in a frame, and whether it goes behind the body."""
+    if view == 0:
+        return int(round(xc + 5 - piece.width / 2)), eye_y + 11 - piece.height // 2, False
+    if view == 2:
+        return int(round((left + right) / 2 + 1.5 - piece.width / 2)), neck + 1, False
+    if view == 1:
+        return right - 1, neck + 1, True
+    return left - 2, neck + 2, False
 
 
 def shield(head, body, colors, fw=64, fh=64):
     """The shield layers (front, back) for the whole hero sheet; none in the death frames once the hero falls."""
+    pieces = {
+        0: pixel_drawing(SHIELD_FRONT, colors),
+        1: pixel_drawing(SHIELD_RIM, colors),
+        2: pixel_drawing(SHIELD_TURNED, colors),
+        3: pixel_drawing(SHIELD_INSIDE, colors),
+    }
     front = Image.new("RGBA", head.size, TRANSPARENT)
     back = Image.new("RGBA", head.size, TRANSPARENT)
     src = head.load()
     body_px = body.load()
-    rows = head.height // fh
-    for r in range(rows):
-        art, dx, dy, is_behind = SHIELD_VIEWS[r % 4]
-        piece = pixel_drawing(art, colors)
-        if r % 4 == 1:
-            piece = mirror(piece)
+    for r in range(head.height // fh):
+        view = r % 4
+        piece = pieces[view]
         is_death = r // 4 == 4
         for c in range(head.width // fw):
             if is_death and c >= 2:
@@ -1935,14 +1952,15 @@ def shield(head, body, colors, fw=64, fh=64):
             top = min(y for _, y in hair)
             skull = [x for x, y in hair if y <= top + 3]
             xc = (min(skull) + max(skull)) / 2
-            if eyes:
-                eye_y = min(y for _, y in eyes)
-            else:
-                columns = range(int(round(xc)) - 2, int(round(xc)) + 3)
-                neck = [y for y in range(r * fh, (r + 1) * fh) for x in columns if body_px[x, y][3] > 0]
-                eye_y = (min(neck) - 2) if neck else top + 9
-            x0 = int(round(xc + dx - piece.width / 2))
-            y0 = eye_y + dy - piece.height // 2
+            columns = range(int(round(xc)) - 2, int(round(xc)) + 3)
+            necks = [y for y in range(r * fh, (r + 1) * fh) for x in columns if body_px[x, y][3] > 0]
+            if not necks:
+                continue
+            neck = min(necks)
+            eye_y = min(y for _, y in eyes) if eyes else neck - 2
+            torso = [x for y in range(neck + 1, neck + 7) for x in range(c * fw, (c + 1) * fw) if body_px[x, y][3] > 0]
+            left, right = min(torso), max(torso)
+            x0, y0, is_behind = shield_spot(view, piece, xc, eye_y, neck, left, right)
             (back if is_behind else front).alpha_composite(piece, (x0, y0))
     return front, back
 
