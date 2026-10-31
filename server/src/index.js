@@ -149,7 +149,8 @@ export class World extends DurableObject {
 
   /* the simulation only runs while someone is here; afterwards the object can sleep */
   #startLoop() {
-    if (this.loop || !this.simulation.hasObstacles()) {
+    /* nobody in the world yet (still on the character screen): the first presence with a hero starts it */
+    if (this.loop || !this.simulation.hasObstacles() || !this.#simulationPlayers().length) {
       return;
     }
     this.simulation.spawn(this.#simulationPlayers());
@@ -164,7 +165,12 @@ export class World extends DurableObject {
       const now = Date.now();
       const dt = Math.min(MAX_TICK_SECONDS, (now - this.lastTick) / 1000);
       this.lastTick = now;
-      this.simulation.tick(dt, players);
+      /* one bad step must not stop the world: log it and carry on with the next */
+      try {
+        this.simulation.tick(dt, players);
+      } catch (error) {
+        console.error("simulation tick failed", error);
+      }
       this.#broadcast(null, this.#serverEvent("monsters", this.simulation.snapshot()));
     }, TICK_MS);
   }
@@ -267,6 +273,11 @@ export class World extends DurableObject {
       attachment.presence = isObject(message.presence) ? message.presence : {};
       ws.serializeAttachment(attachment);
       this.#broadcast(ws, { kind: "presence", from: attachment.id, presence: attachment.presence });
+      /* a player who connected on the character screen only counts once their hero is in the world: the loop
+         may have stopped for want of players in the meantime (or the object restarted), so start it again */
+      if (!this.loop) {
+        this.#startLoopFor(ws);
+      }
       return;
     }
     if (
