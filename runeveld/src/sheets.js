@@ -59,7 +59,9 @@ const HERO_LAYER_FILES = [
   "cloak5",
   "cloak5_back",
   "shield1",
+  "shield1_under",
   "shield2",
+  "shield2_under",
 ];
 
 function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {
@@ -169,12 +171,14 @@ export function heroLayerNames(equipment) {
   const cloak = equipment.cloak && ITEMS[equipment.cloak];
   const shield = equipment.shield && ITEMS[equipment.shield];
   /* the cloak hangs behind the body (the _back layer) and comes over the back and shoulders (the plain layer);
-     the shield is in the left hand, over body and cloak, under the head and the sword arm */
+     the shield is in the left hand: over the cloak, under the head and the sword arm, except from behind, where it
+     hangs beside the arm under the cape (the _under layer) */
   return [
     weapon && weapon.layer + "_back",
     cloak && cloak.layer + "_back",
     "hero_body",
     body && body.layer,
+    shield && shield.layer + "_under",
     cloak && cloak.layer,
     shield && shield.layer,
     head ? head.layer : "hero_head",
