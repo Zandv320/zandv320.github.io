@@ -1831,14 +1831,15 @@ def build_smooth(out_dir):
     print("smooth sprites:", len(list(smooth_dir.glob("*.png"))))
 
 
-# ---------- shields for the crusader: held in front, in the free (left) hand ----------
-# Drawn as pixel art per view and placed per frame. The shield is held out in front of the hero:
+# ---------- shields for the crusader: in the free (left) hand ----------
+# Drawn as pixel art per view and placed per frame:
 #   front  the full face, beside the torso on screen right (the left arm)
 #   right  the face, a little turned, at the front edge of the body: the near arm holds it out
-#   left   the same, mirrored, at the front edge: held by the far arm, so the body hides its back part (_back layer)
+#   left   the left hand is the far one, at the back: the shield sticks out behind the back (_back layer, over the
+#          cape's back but under the body), away from the sword in the near hand
 #   back   in front of the hero, so hidden by the body: nothing is drawn
-# Anchors: the eyes and the centre of the skull (as the headgear), the neck (the top of the body under the skull)
-# and the edges of the torso in the rows under it, which follow the arms as they swing.
+# Anchors: the neck (the top of the body under the skull) and the edges of the torso in the rows under it. Not the
+# eyes: standing still only the head breathes, and a shield that rose and fell with it would float.
 SHIELD_FRONT = """
 .ooooooo.
 orrrrrrro
@@ -1883,21 +1884,21 @@ SHIELDS = {
 }
 
 
-def shield_spot(view, piece, xc, eye_y, neck, left, right):
+def shield_spot(view, piece, xc, neck, left, right):
     """Top left corner of the shield piece in a frame and whether it goes behind the body; None when hidden."""
     if view == 0:
-        return int(round(xc + 5 - piece.width / 2)), eye_y + 11 - piece.height // 2, False
+        return int(round(xc + 5 - piece.width / 2)), neck + 3, False
     if view == 2:
         return right - 2, neck + 1, False
     if view == 1:
-        return left - piece.width + 2, neck + 1, True
+        return right - 2, neck + 1, True
     return None
 
 
 def shield(head, body, colors, fw=64, fh=64):
     """The shield layers (front, back) for the whole hero sheet; none in the death frames once the hero falls."""
     side = pixel_drawing(SHIELD_SIDE, colors)
-    pieces = {0: pixel_drawing(SHIELD_FRONT, colors), 1: mirror(side), 2: side, 3: None}
+    pieces = {0: pixel_drawing(SHIELD_FRONT, colors), 1: side, 2: side, 3: None}
     front = Image.new("RGBA", head.size, TRANSPARENT)
     back = Image.new("RGBA", head.size, TRANSPARENT)
     src = head.load()
@@ -1909,16 +1910,12 @@ def shield(head, body, colors, fw=64, fh=64):
         for c in range(head.width // fw):
             if piece is None or (is_death and c >= 2):
                 continue
-            hair, eyes = [], []
-            for y in range(r * fh, (r + 1) * fh):
-                for x in range(c * fw, (c + 1) * fw):
-                    p = src[x, y]
-                    if p[3] == 0:
-                        continue
-                    if p[:3] in HAIR_COLORS:
-                        hair.append((x, y))
-                    elif p[:3] in EYE_COLORS:
-                        eyes.append((x, y))
+            hair = [
+                (x, y)
+                for y in range(r * fh, (r + 1) * fh)
+                for x in range(c * fw, (c + 1) * fw)
+                if src[x, y][3] and src[x, y][:3] in HAIR_COLORS
+            ]
             if not hair:
                 continue
             top = min(y for _, y in hair)
@@ -1929,10 +1926,9 @@ def shield(head, body, colors, fw=64, fh=64):
             if not necks:
                 continue
             neck = min(necks)
-            eye_y = min(y for _, y in eyes) if eyes else neck - 2
             torso = [x for y in range(neck + 1, neck + 7) for x in range(c * fw, (c + 1) * fw) if body_px[x, y][3] > 0]
             left, right = min(torso), max(torso)
-            spot = shield_spot(view, piece, xc, eye_y, neck, left, right)
+            spot = shield_spot(view, piece, xc, neck, left, right)
             if spot:
                 x0, y0, is_behind = spot
                 (back if is_behind else front).alpha_composite(piece, (x0, y0))

@@ -171,11 +171,12 @@ export function heroLayerNames(equipment) {
   const cloak = equipment.cloak && ITEMS[equipment.cloak];
   const shield = equipment.shield && ITEMS[equipment.shield];
   /* the cloak hangs behind the body (the _back layer) and comes over the back and shoulders (the plain layer);
-     the shield is on the free arm: behind the body when the hero faces left (_back), in front of it otherwise */
+     the shield is in the free hand: behind the body (but over the cape's back) when the hero faces left, its
+     _back layer; in front of it otherwise */
   return [
     weapon && weapon.layer + "_back",
-    shield && shield.layer + "_back",
     cloak && cloak.layer + "_back",
+    shield && shield.layer + "_back",
     "hero_body",
     body && body.layer,
     cloak && cloak.layer,
