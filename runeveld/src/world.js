@@ -501,8 +501,24 @@ function buildGround(atlas, decor) {
   /* the wide surroundings outside the world */
   buildValeGround(atlas, decor);
   buildNorthroadGround(atlas, decor);
+  /* with a hole where Greyfall Gorge cuts through the Northroad's ground map (whose own hole shows the gorge) */
+  const surroundings = new THREE.Shape([
+    new THREE.Vector2(-350, -350),
+    new THREE.Vector2(350, -350),
+    new THREE.Vector2(350, 350),
+    new THREE.Vector2(-350, 350),
+  ]);
+  /* the shape lies in x and y; turned flat, y becomes -z */
+  surroundings.holes.push(
+    new THREE.Path([
+      new THREE.Vector2(GORGE.west - 1, -(GORGE.south + 3)),
+      new THREE.Vector2(GORGE.west - 1, -(GORGE.north - 3)),
+      new THREE.Vector2(GORGE.east + 1, -(GORGE.north - 3)),
+      new THREE.Vector2(GORGE.east + 1, -(GORGE.south + 3)),
+    ]),
+  );
   const outside = new THREE.Mesh(
-    new THREE.PlaneGeometry(700, 700),
+    new THREE.ShapeGeometry(surroundings),
     new THREE.MeshBasicMaterial({ color: 0x4f7f2a }),
   );
   outside.rotation.x = -Math.PI / 2;
@@ -666,7 +682,7 @@ function buildNorthroadGround(atlas, decor) {
       Math.round(toCanvasZ(z) - img.height / 2),
     );
   }
-  paintGorge(ctx, x0, z0, random);
+  cutGorge(ctx, x0, z0);
   const texture = makeTexture(canvas, false);
   applyGroundFilter(texture);
   const width = x1 - x0;
@@ -675,7 +691,8 @@ function buildNorthroadGround(atlas, decor) {
   const centerZ = (z0 + z1) / 2;
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depth),
-    new THREE.MeshBasicMaterial({ map: texture }),
+    /* see-through where the gorge is */
+    new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 }),
   );
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.set(centerX, 0.004, centerZ);
@@ -683,17 +700,14 @@ function buildNorthroadGround(atlas, decor) {
   addShadowCatcher(width, depth, centerX, 0.029, centerZ);
 }
 
-/* Greyfall Gorge in the Northroad's ground map (rules/gorge.js): the camera looks north, so behind the south rim
-   it sees the far wall going down in layers of grey rock, a river far below at its foot, and the dark under the
-   near rim. Pixel by pixel, in the band around the gorge only. */
-function paintGorge(ctx, x0, z0, random) {
+/* Greyfall Gorge in the Northroad's ground map (rules/gorge.js): a hole, pixel by pixel, through which the real
+   gorge below (northroad.js) shows; both rims get a lip of grass in shadow. In the band around the gorge only. */
+function cutGorge(ctx, x0, z0) {
   const unitsPerPixel = UNITS_PER_TILE / TILE;
   const top = Math.floor((GORGE.north - 3 - z0) / unitsPerPixel);
   const bottom = Math.ceil((GORGE.south + 3 - z0) / unitsPerPixel);
   const image = ctx.getImageData(0, top, ctx.canvas.width, bottom - top);
   const pixels = image.data;
-  /* the rock's layers: a lighter band now and then, the same along the whole wall */
-  const strata = Array.from({ length: 64 }, () => 0.88 + random() * 0.24);
   for (let py = 0; py < image.height; py++) {
     const z = z0 + (py + top + 0.5) * unitsPerPixel;
     for (let px = 0; px < image.width; px++) {
@@ -701,37 +715,12 @@ function paintGorge(ctx, x0, z0, random) {
       const north = gorgeNorthRim(x);
       const south = gorgeSouthRim(x);
       const index = (py * image.width + px) * 4;
-      let color = null;
-      if (z > south - 0.05 && z < south + 0.45) {
-        /* the lip of the near rim: grass in shadow */
-        const shade = 0.55;
-        color = [pixels[index] * shade, pixels[index + 1] * shade, pixels[index + 2] * shade];
-      } else if (z > north && z < south) {
-        const depth = z - north;
-        const width = south - north;
-        const noise = 0.9 + random() * 0.2;
-        /* the far wall takes the upper half, then the river, then the shadow under the near rim */
-        const wallEnd = width * 0.5;
-        const riverEnd = wallEnd + 1.4;
-        if (depth < wallEnd) {
-          /* the far wall, lit at the top and darker as it goes down, in layers */
-          const fade = 1 - (depth / wallEnd) * 0.62;
-          const light = fade * strata[Math.floor(depth * 5) % strata.length] * noise;
-          color = [138 * light, 132 * light, 122 * light];
-        } else if (depth < riverEnd) {
-          /* the river at its foot, with flecks of foam */
-          const foam = random() < 0.07 ? 1.7 : 1;
-          color = [58 * foam * noise, 86 * foam * noise, 100 * foam * noise];
-        } else {
-          /* under the near rim: the gorge's floor fades into shadow */
-          const light = Math.max(0.28, 1 - (depth - riverEnd) / (width - riverEnd)) * noise;
-          color = [44 * light, 46 * light, 56 * light];
-        }
-      }
-      if (color) {
-        pixels[index] = color[0];
-        pixels[index + 1] = color[1];
-        pixels[index + 2] = color[2];
+      if (z > north && z < south) {
+        pixels[index + 3] = 0;
+      } else if ((z >= south && z < south + 0.3) || (z <= north && z > north - 0.3)) {
+        pixels[index] *= 0.55;
+        pixels[index + 1] *= 0.55;
+        pixels[index + 2] *= 0.55;
       }
     }
   }

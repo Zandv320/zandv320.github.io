@@ -21,6 +21,7 @@ import {
   inGorge,
   gorgeNorthRim,
   gorgeSouthRim,
+  gorgeOpening,
   brokenPlanks,
 } from "./rules/gorge.js";
 import { player, playEffect } from "./game-state.js";
@@ -32,8 +33,12 @@ export const INN_DOOR = [NORTHROAD.inn[0] + 5.2, NORTHROAD.inn[1]];
 export const PELL_CAMP = [-150, -201];
 export const WIL_CART = [-130, -254.5];
 
-/* the bridge's planks, in two halves across: {mesh, x, z, fall (0 standing .. 1 gone)} */
+/* how deep Greyfall Gorge goes below the land */
+const GORGE_DEPTH = 8;
+/* the bridge's planks, in two halves across: {mesh, x, z, y, fall (seconds falling, 0 while it lies in place), spin} */
 const planks = [];
+/* the river at the bottom of the gorge, whose water flows */
+let riverTexture = null;
 /* the humming runestone's crack, which glows and pulses */
 let humGlow = null;
 let nextHumSpark = 0;
@@ -55,10 +60,19 @@ export function buildNorthroad({ scene, prop, place, isFree, seededRandom, pendi
   const rockOptions = { radius: 0.6, shadow: 1.4, scale: 1.2 };
   const lantern = (x, z) => pending.push(prop("lantern", x, z, { radius: 0.25 }));
 
-  /* ----- the road, segment by segment, overlapping a little so the bends are closed ----- */
+  /* ----- the road, segment by segment, overlapping a little so the bends are closed; over the gorge the bridge's
+     own planks are the road, so there only the stubs on the land at either end ----- */
+  const segments = [];
   for (let i = 0; i < NORTH_ROAD.length - 1; i++) {
     const [ax, az] = NORTH_ROAD[i];
     const [bx, bz] = NORTH_ROAD[i + 1];
+    if (az > GORGE.south && bz < GORGE.north) {
+      segments.push([ax, az, bx, GORGE.south + 0.6], [ax, GORGE.north - 0.6, bx, bz]);
+    } else {
+      segments.push([ax, az, bx, bz]);
+    }
+  }
+  for (const [ax, az, bx, bz] of segments) {
     const dx = bx - ax;
     const dz = bz - az;
     scene.add(
@@ -156,6 +170,7 @@ export function buildNorthroad({ scene, prop, place, isFree, seededRandom, pendi
 
   buildNorthwatch({ scene, prop, place, pending, random });
   buildPellCamp({ prop, place, pending });
+  buildGorge({ scene, random });
   buildBridge({ scene, prop, place, pending, random });
 
   /* where the road ends for now: Saltmere's gate is shut, a barrier and a warning */
@@ -317,6 +332,154 @@ function buildPellCamp({ prop, place, pending }) {
   pending.push(prop("woodpile", x - 4.6, z + 0.2, { radius: 0.5 }));
 }
 
+/* ----- Greyfall Gorge: the land's ground map has a hole here (world.js); below it the cliffs go down in layers of
+   grey rock to a floor with a river, and mist hangs in the depth. However the camera turns, it sees the far wall and,
+   over the near rim, part of the bottom; the river runs down the middle, so it is in view from every side. Past the
+   edge of the land the gorge pinches shut, cliffs and river with it. ----- */
+
+/* grey rock in horizontal layers, 64 pixels (four units) square, repeating */
+function rockTexture(random) {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const image = ctx.createImageData(size, size);
+  let y = 0;
+  while (y < size) {
+    const height = 3 + Math.floor(random() * 5);
+    const shade = 0.78 + random() * 0.3;
+    for (let row = y; row < Math.min(size, y + height); row++) {
+      /* each layer is lit along its top edge and has a dark seam under it */
+      const edge = row === y ? 1.18 : row === y + height - 1 ? 0.7 : 1;
+      for (let x = 0; x < size; x++) {
+        const light = shade * edge * (0.92 + random() * 0.16);
+        const index = (row * size + x) * 4;
+        image.data[index] = 128 * light;
+        image.data[index + 1] = 122 * light;
+        image.data[index + 2] = 112 * light;
+        image.data[index + 3] = 255;
+      }
+    }
+    y += height;
+  }
+  /* a few cracks running down */
+  for (let k = 0; k < 6; k++) {
+    let x = Math.floor(random() * size);
+    for (let row = Math.floor(random() * size), n = 0; n < 10; n++, row = (row + 1) % size) {
+      x = (x + Math.round(random() * 2 - 1) + size) % size;
+      const index = (row * size + x) * 4;
+      image.data[index] *= 0.55;
+      image.data[index + 1] *= 0.55;
+      image.data[index + 2] *= 0.55;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/* A cliff along a rim: from the land's edge at y = 0 down to the bottom, leaning `lean` units in z on the way down;
+   lighter at the top, darker at the foot. */
+function cliff(rim, lean, map) {
+  const positions = [];
+  const uvs = [];
+  const colors = [];
+  const indices = [];
+  const step = 0.5;
+  let column = 0;
+  for (let x = GORGE.west; x <= GORGE.east + 0.01; x += step, column++) {
+    const z = rim(x);
+    positions.push(x, 0, z, x, -GORGE_DEPTH, z + lean * gorgeOpening(x));
+    uvs.push(x / 4, 0, x / 4, -GORGE_DEPTH / 4);
+    colors.push(0.9, 0.9, 0.9, 0.36, 0.38, 0.44);
+    if (column > 0) {
+      const a = (column - 1) * 2;
+      indices.push(a, a + 1, a + 3, a, a + 3, a + 2);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  return new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ map, vertexColors: true, side: THREE.DoubleSide }),
+  );
+}
+
+/* the river's middle line on the bottom, halfway between the cliffs */
+const riverZ = (x) => (gorgeNorthRim(x) + gorgeSouthRim(x)) / 2 + 0.5 * Math.sin(0.17 * x);
+
+function buildGorge({ scene, random }) {
+  const rock = rockTexture(random);
+  scene.add(cliff(gorgeNorthRim, 1.5, rock), cliff(gorgeSouthRim, -1.5, rock));
+  /* the bottom: dark scree */
+  const width = NORTHROAD.x1 - NORTHROAD.x0;
+  const middleX = (NORTHROAD.x0 + NORTHROAD.x1) / 2;
+  const middleZ = (GORGE.south + GORGE.north) / 2;
+  const bottomTexture = rock.clone();
+  bottomTexture.repeat.set(width / 4, (GORGE.south - GORGE.north + 4) / 4);
+  bottomTexture.needsUpdate = true;
+  const bottom = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, GORGE.south - GORGE.north + 4),
+    new THREE.MeshBasicMaterial({ map: bottomTexture, color: 0x6a6e78 }),
+  );
+  bottom.rotation.x = -Math.PI / 2;
+  bottom.position.set(middleX, -GORGE_DEPTH, middleZ);
+  scene.add(bottom);
+  /* the river: a strip along the bottom that follows its bends, its water flowing east */
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  let column = 0;
+  for (let x = GORGE.west; x <= GORGE.east + 0.01; x += 1, column++) {
+    const z = riverZ(x);
+    const half = 1.7 * gorgeOpening(x);
+    positions.push(x, -GORGE_DEPTH + 0.05, z - half, x, -GORGE_DEPTH + 0.05, z + half);
+    uvs.push(x / 2, 0, x / 2, 1.7);
+    if (column > 0) {
+      const a = (column - 1) * 2;
+      indices.push(a, a + 1, a + 3, a, a + 3, a + 2);
+    }
+  }
+  const river = new THREE.BufferGeometry();
+  river.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  river.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  river.setIndex(indices);
+  /* a texture of its own (an odd repeat makes builders cache a separate one), so only this water moves */
+  riverTexture = builders.texture("water", 0.999, 1);
+  scene.add(
+    new THREE.Mesh(
+      river,
+      new THREE.MeshBasicMaterial({ map: riverTexture, color: 0x86a6ba, side: THREE.DoubleSide }),
+    ),
+  );
+  /* mist in the depth: two thin veils that grey out what lies deeper */
+  for (const [y, opacity] of [
+    [-2.8, 0.1],
+    [-5.6, 0.16],
+  ]) {
+    const veil = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, GORGE.south - GORGE.north + 2),
+      new THREE.MeshBasicMaterial({
+        color: 0xc6d2de,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+      }),
+    );
+    veil.rotation.x = -Math.PI / 2;
+    veil.position.set(middleX, y, middleZ);
+    scene.add(veil);
+  }
+}
+
 /* ----- the Old King's Bridge: stone piers on both rims, a deck of planks in two halves across, posts and a rail;
    rocks along the rims of the gorge ----- */
 function buildBridge({ scene, prop, place, pending, random }) {
@@ -339,7 +502,6 @@ function buildBridge({ scene, prop, place, pending, random }) {
           map: builders.texture("wood", halfWidth / 2, 0.5),
           /* old, weathered boards: the red of the wood gone grey-brown */
           color: new THREE.Color(tint * 0.74, tint * 0.88, tint * 0.95),
-          transparent: true,
         }),
       );
       const plankX = bridgeX + (side * halfWidth) / 2;
@@ -347,17 +509,34 @@ function buildBridge({ scene, prop, place, pending, random }) {
       mesh.rotation.y = (random() - 0.5) * 0.04;
       mesh.receiveShadow = true;
       scene.add(mesh);
-      planks.push({ mesh, x: plankX, z, y: -0.03, fall: 0 });
+      planks.push({ mesh, x: plankX, z, y: -0.03, fall: 0, spin: (random() - 0.5) * 6 });
     }
   }
   /* the stringers along both edges of the deck */
   for (const side of [-1, 1]) {
     const beam = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3, 0.2, BRIDGE.south - BRIDGE.north),
+      new THREE.BoxGeometry(0.3, 0.7, BRIDGE.south - BRIDGE.north),
       new THREE.MeshLambertMaterial({ map: builders.texture("wood_dark", 0.4, 6) }),
     );
-    beam.position.set(bridgeX + side * (halfWidth + 0.1), 0.02, (BRIDGE.south + BRIDGE.north) / 2);
+    beam.position.set(bridgeX + side * (halfWidth + 0.1), -0.23, (BRIDGE.south + BRIDGE.north) / 2);
     scene.add(beam);
+  }
+  /* two pairs of old stone piers carry it up from the bottom of the gorge, with a timber brace between them */
+  for (const z of [GORGE.south - 5, GORGE.north + 5]) {
+    for (const side of [-1, 1]) {
+      const pier = new THREE.Mesh(
+        new THREE.BoxGeometry(1.1, GORGE_DEPTH, 1.1),
+        builders.material("stone", 1.1, GORGE_DEPTH, 0.86),
+      );
+      pier.position.set(bridgeX + side * (halfWidth + 0.45), -GORGE_DEPTH / 2 - 0.3, z);
+      scene.add(pier);
+    }
+    const brace = new THREE.Mesh(
+      new THREE.BoxGeometry(halfWidth * 2 + 1.8, 0.35, 0.35),
+      new THREE.MeshLambertMaterial({ map: builders.texture("wood_dark", 3, 0.3) }),
+    );
+    brace.position.set(bridgeX, -1.6, z);
+    scene.add(brace);
   }
   /* posts along both sides with a rope rail, over the drop only */
   const railLength = BRIDGE.south - BRIDGE.north;
@@ -422,23 +601,20 @@ const isBroken = (plank) =>
 export function updateNorthroad(dt, time) {
   for (const plank of planks) {
     const shouldFall = isBroken(plank);
-    if (shouldFall && plank.fall < 1) {
-      /* down into the gorge: as the camera looks north, that is down the screen, smaller and darker */
-      plank.fall = Math.min(1, plank.fall + dt * 0.9);
-      const fall = plank.fall;
-      plank.mesh.position.set(plank.x, plank.y - fall * 0.2, plank.z + fall * fall * 3.5);
-      plank.mesh.rotation.x = fall * 2.2;
-      plank.mesh.scale.setScalar(1 - fall * 0.6);
-      plank.mesh.material.opacity = 1 - fall;
-      plank.mesh.visible = fall < 1;
+    const y = plank.y - 4.5 * plank.fall * plank.fall;
+    if (shouldFall && y > -GORGE_DEPTH + 0.1) {
+      /* down into the gorge, tumbling, until it lies at the bottom */
+      plank.fall += dt;
+      plank.mesh.position.set(plank.x, Math.max(-GORGE_DEPTH + 0.1, y), plank.z);
+      plank.mesh.rotation.set(plank.fall * plank.spin, 0, plank.fall * plank.spin * 0.5);
     } else if (!shouldFall && plank.fall > 0) {
       plank.fall = 0;
       plank.mesh.position.set(plank.x, plank.y, plank.z);
-      plank.mesh.rotation.x = 0;
-      plank.mesh.scale.setScalar(1);
-      plank.mesh.material.opacity = 1;
-      plank.mesh.visible = true;
+      plank.mesh.rotation.set(0, 0, 0);
     }
+  }
+  if (riverTexture) {
+    riverTexture.offset.x = (time * 0.25) % 1;
   }
   if (humGlow) {
     humGlow.material.opacity = 0.55 + 0.35 * Math.sin(time * 3.1);

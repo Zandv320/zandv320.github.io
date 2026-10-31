@@ -4,8 +4,11 @@
    beaten or starts over (mendBridge). Northwatch is the ruined watchtower east of the road, held by goblins that
    keep to their own spots around it (northSpotFor). Pure data and geometry, no browser: the server runs it too. */
 
-/* the gorge's rims: north and south of them is land, in between the drop */
-export const GORGE = { name: "Greyfall Gorge", south: -262, north: -278 };
+/* the gorge's rims: north and south of them is land, in between the drop; to the west and east, just past the edge of
+   the land, it pinches shut */
+export const GORGE = { name: "Greyfall Gorge", south: -262, north: -278, west: -184, east: -90 };
+/* over how many units the gorge narrows to nothing at its ends */
+const PINCH = 12;
 
 /* the bridge over it: the deck's centre line, half its width, and its ends on the land at both sides */
 export const BRIDGE = {
@@ -25,8 +28,18 @@ function rimWave(x) {
   return (1.6 * Math.sin(0.21 * x + 1) + 1 * Math.sin(0.47 * x + 2)) * calm;
 }
 
-export const gorgeSouthRim = (x) => GORGE.south + rimWave(x);
-export const gorgeNorthRim = (x) => GORGE.north + rimWave(x) * 0.8;
+/** How open the gorge is at x: 1 along most of it, down to 0 where it ends. */
+export const gorgeOpening = (x) =>
+  Math.max(0, Math.min(1, Math.min(x - GORGE.west, GORGE.east - x) / PINCH));
+
+/* the rims meet halfway as the gorge pinches shut */
+function rim(x, edge) {
+  const middle = (GORGE.south + GORGE.north) / 2 + rimWave(x) * 0.9;
+  return middle + (edge - middle) * gorgeOpening(x);
+}
+
+export const gorgeSouthRim = (x) => rim(x, GORGE.south + rimWave(x));
+export const gorgeNorthRim = (x) => rim(x, GORGE.north + rimWave(x) * 0.8);
 
 /** Is (x, z) over the drop (between the rims)? */
 export const inGorge = (x, z) => z < gorgeSouthRim(x) && z > gorgeNorthRim(x);
