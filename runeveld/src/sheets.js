@@ -175,6 +175,18 @@ export const SHEETS = {
   goblin_chief: cryptSheet("goblin_chief", { ...GOBLIN_FRAMES, height: 32 }),
   grumm: cryptSheet("grumm", GOBLIN_FRAMES),
   rune_construct: cryptSheet("rune_construct", GOBLIN_FRAMES),
+  /* the Ember Isles: the slime pack's magma slime, and the orc pack's goblins as a fire imp and an ash golem */
+  magma_slime: cryptSheet("magma_slime", {
+    idle: 6,
+    walk: 8,
+    attack: 9,
+    hurt: 5,
+    death: 10,
+    feet: 24,
+    height: 20,
+  }),
+  fire_imp: cryptSheet("fire_imp", GOBLIN_FRAMES),
+  ash_golem: cryptSheet("ash_golem", GOBLIN_FRAMES),
 };
 
 /**

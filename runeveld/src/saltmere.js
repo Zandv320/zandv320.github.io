@@ -15,7 +15,7 @@ import { emberShore } from "./rules/ember.js";
 import { sfx } from "./audio.js";
 
 /* the sea reaches this far: past the Grey Sea's edges (rules/sea.js), so it fills the view wherever a ship sails */
-const SEA = { x0: -560, x1: 260, z1: SALTMERE.z0, z0: -1080 };
+const SEA = { x0: -560, x1: 260, z1: SALTMERE.z0, z0: -1500 };
 /* the quay wall goes down this far below the land */
 const QUAY_DEPTH = 1.8;
 
@@ -569,7 +569,7 @@ const SHALLOWS = [
   ...ISLETS.flatMap((islet) =>
     coastCircles(islet.x, islet.z, (angle) => isletReach(islet, angle), 7, islet.radius * 0.6),
   ),
-  ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 24, 10),
+  ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 44, 14),
 ];
 
 /* The water of the sea, drawn on the GPU in the game's pixels: clear turquoise over the shallows along the quay and

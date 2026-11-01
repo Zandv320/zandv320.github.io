@@ -16,6 +16,9 @@ import {
   LAVA_WIDTH,
   emberShore,
   kharosRadius,
+  inCamp,
+  EMBER_LANDS,
+  EMBER_ROADS,
 } from "./rules/ember.js";
 import { VALE, FOREST, CAPITAL, NORTHROAD } from "./regions.js";
 
@@ -317,9 +320,9 @@ function wildLands() {
     return wildCanvas;
   }
   /* wider than the world: on a wide screen the map shows land to either side of it */
-  const x0 = WORLD.x0 - 700;
+  const x0 = WORLD.x0 - 1300;
   const z0 = SALTMERE.z0 - 30;
-  const width = WORLD.x1 - WORLD.x0 + 1400;
+  const width = WORLD.x1 - WORLD.x0 + 2600;
   const height = WORLD.z1 - z0;
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -522,6 +525,34 @@ function drawEmberIsles(g, view) {
     }
   }
   g.restore();
+  /* the roads, trodden ash between the lands */
+  g.save();
+  g.setLineDash([3 * ratio, 2.5 * ratio]);
+  g.strokeStyle = "rgba(214, 190, 140, 0.85)";
+  g.lineWidth = Math.max(1.2 * ratio, scale * 1.4);
+  g.lineCap = "round";
+  for (const road of EMBER_ROADS) {
+    g.beginPath();
+    road.forEach(([x, z], k) => (k ? g.lineTo(px(x), pz(z)) : g.moveTo(px(x), pz(z))));
+    g.stroke();
+  }
+  g.restore();
+  /* the gate in the mountain's north foot */
+  const [gateX, gateZ] = EMBER_LANDS.gate.center;
+  g.fillStyle = "#1c1718";
+  g.fillRect(
+    px(gateX) - Math.max(3 * ratio, scale * 4),
+    pz(gateZ) - Math.max(2 * ratio, scale * 2.5),
+    Math.max(6 * ratio, scale * 8),
+    Math.max(4 * ratio, scale * 5),
+  );
+  g.fillStyle = PALETTE.lava;
+  g.fillRect(
+    px(gateX) - Math.max(1 * ratio, scale * 1.2),
+    pz(gateZ) - Math.max(1.5 * ratio, scale * 2),
+    Math.max(2 * ratio, scale * 2.4),
+    Math.max(3 * ratio, scale * 4),
+  );
   /* the camp: the jetty, two tents and the fire */
   g.fillStyle = "#8a6a42";
   g.fillRect(
@@ -540,11 +571,12 @@ function drawEmberIsles(g, view) {
     g.closePath();
     g.fill();
   };
-  tent(-173.5, -868.5, "#c9473d");
-  tent(-159.5, -868, "#6f8f4a");
+  tent(...inCamp(-5.5, -4.5), "#c9473d");
+  tent(...inCamp(8.5, -4), "#6f8f4a");
   g.fillStyle = "#ffb04a";
   g.beginPath();
-  g.arc(px(-166), pz(-862), Math.max(1.5 * ratio, scale * 0.9), 0, Math.PI * 2);
+  const [fireX, fireZ] = inCamp(2, 2);
+  g.arc(px(fireX), pz(fireZ), Math.max(1.5 * ratio, scale * 0.9), 0, Math.PI * 2);
   g.fill();
 }
 
@@ -552,12 +584,12 @@ function drawEmberIsles(g, view) {
 
 /* the names on the map: where, how big in world units, and whether it is the name of a whole region (in italics) */
 const NAMES = [
-  { text: "Runeveld", x: 0, z: 30, size: 7 },
+  { text: "Runeveld", x: 0, z: 30, size: 7, major: true },
   { text: FOREST.name, x: FOREST.cx, z: FOREST.cz, size: 6 },
   { text: VALE.name, x: -95, z: 50, size: 7, region: true },
-  { text: CAPITAL.name, x: CAPITAL.cx, z: CAPITAL.z0 - 6, size: 7 },
+  { text: CAPITAL.name, x: CAPITAL.cx, z: CAPITAL.z0 - 6, size: 7, major: true },
   { text: NORTHROAD.name, x: -100, z: -180, size: 7, region: true },
-  { text: SALTMERE.name, x: SALTMERE.gate[0], z: SALTMERE.z1 + 8, size: 7 },
+  { text: SALTMERE.name, x: SALTMERE.gate[0], z: SALTMERE.z1 + 8, size: 7, major: true },
   { text: GREY_SEA.name, x: -150, z: -600, size: 18, region: true },
   ...ISLETS.map((islet) => ({
     text: islet.name,
@@ -573,7 +605,13 @@ const NAMES = [
     region: true,
   },
   { text: MOUNT_KHAROS.name, x: MOUNT_KHAROS.x, z: MOUNT_KHAROS.z - 10, size: 5 },
-  { text: CINDER_CAMP.name, x: CINDER_CAMP.x + 16, z: CINDER_CAMP.z + 2, size: 5 },
+  { text: CINDER_CAMP.name, x: CINDER_CAMP.x + 22, z: CINDER_CAMP.z + 6, size: 5 },
+  ...Object.values(EMBER_LANDS).map((land) => ({
+    text: land.name,
+    x: land.center[0],
+    z: land.center[1] + (land === EMBER_LANDS.gate ? -10 : 0),
+    size: 6,
+  })),
   { text: "Uncharted waters", x: WORLD.x0 + 110, z: WORLD.z0 + 40, size: 9, region: true },
 ];
 
@@ -583,6 +621,10 @@ export function drawNames(g, scale, worldX0, worldZ0, ratio) {
   g.textAlign = "center";
   g.textBaseline = "middle";
   for (const name of NAMES) {
+    /* far out only the regions and the great places; the rest once there is room for them */
+    if (!name.region && !name.major && name.size * scale < 6 * ratio) {
+      continue;
+    }
     const size = name.region
       ? Math.max(18 * ratio, Math.min(44 * ratio, name.size * scale))
       : Math.max(13 * ratio, Math.min(24 * ratio, name.size * scale));

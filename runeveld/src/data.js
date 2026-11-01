@@ -484,6 +484,64 @@ export const ITEMS = {
     description:
       "A sliver of blue stone that glows where a rune was cut in it. Maelis' constructs are made of them.",
   },
+  /* Saga II: the Ember Isles */
+  imp_horn: {
+    name: "Imp horn",
+    price: 70,
+    icon: "😈",
+    stack: 99,
+    description: "Warm to the touch, even days later. Alchemists grind them into fire powders.",
+  },
+  golem_core: {
+    name: "Golem core",
+    price: 140,
+    icon: "🟠",
+    stack: 99,
+    description:
+      "The glowing heart of an ash golem, as heavy as a cannonball. The old mages set them in their gates as keys.",
+  },
+  cinder_blade: {
+    name: "Cinder blade",
+    slot: "weapon",
+    layer: "sword2",
+    atk: 40,
+    bonus: { str: 2 },
+    price: 5200,
+    icon: "🗡️",
+    forClass: "swordsman",
+    description: "Black steel folded in the lava of the Ash Flats. The edge never quite cools.",
+  },
+  ashwood_staff: {
+    name: "Ashwood staff",
+    slot: "weapon",
+    layer: "staff2",
+    atk: 10,
+    matk: 56,
+    bonus: { int: 2 },
+    price: 5200,
+    icon: "🪄",
+    forClass: "mage",
+    description:
+      "A branch of Scorchwood, burnt through and harder than iron. Sparks fall from its tip.",
+  },
+  ashen_cloak: {
+    name: "Ashen cloak",
+    slot: "cloak",
+    layer: "cloak1",
+    def: 11,
+    hp: 110,
+    price: 4600,
+    icon: "🧥",
+    description: "Woven of something that does not burn. It smells of smoke anyway.",
+  },
+  obsidian_ring: {
+    name: "Obsidian ring",
+    slot: "ring",
+    bonus: { dex: 3, luk: 2 },
+    price: 4400,
+    icon: "💍",
+    description: "A band of black glass from the Obsidian Steps, so smooth it seems wet.",
+  },
   saltmere_cutlass: {
     name: "Saltmere cutlass",
     slot: "weapon",
@@ -1870,6 +1928,65 @@ export const SALTMERE_MONSTERS = {
 };
 Object.assign(MONSTERS, SALTMERE_MONSTERS);
 
+/* The Ember Isles (rules/ember.js): each keeps watch on its own spot in its land. The magma slimes of the Ash Flats
+   leave burning ash where they crawl (`burns`, burning.js); the fire imps of Scorchwood throw fire; the ash golems
+   of the Obsidian Steps are slow and very hard. */
+export const EMBER_MONSTERS = {
+  magma_slime: {
+    name: "Magma Slime",
+    level: 30,
+    hp: 3200,
+    atk: 128,
+    exp: 560,
+    zeny: [70, 140],
+    speed: 2.3,
+    aggressive: true,
+    range: 1.4,
+    aggroRange: 6,
+    area: "ember",
+    respawn: [30, 50],
+    burns: true,
+    materials: { arcane_dust: 0.25 },
+    loot: { orange_potion: 0.15, grand_potion: 0.05, cinder_blade: 0.012 },
+  },
+  fire_imp: {
+    name: "Fire Imp",
+    level: 31,
+    hp: 2700,
+    atk: 136,
+    exp: 600,
+    zeny: [80, 160],
+    speed: 3.4,
+    aggressive: true,
+    range: 5.5,
+    aggroRange: 8,
+    projectile: 0xff7a2a,
+    scale: 0.85,
+    area: "ember",
+    respawn: [30, 50],
+    materials: { imp_horn: 0.55 },
+    loot: { orange_potion: 0.15, grand_potion: 0.05, ashwood_staff: 0.012 },
+  },
+  ash_golem: {
+    name: "Ash Golem",
+    level: 33,
+    hp: 6400,
+    atk: 168,
+    exp: 1100,
+    zeny: [120, 240],
+    speed: 2,
+    aggressive: true,
+    range: 1.9,
+    aggroRange: 6,
+    scale: 1.45,
+    area: "ember",
+    respawn: [45, 70],
+    materials: { golem_core: 0.45 },
+    loot: { grand_potion: 0.1, ashen_cloak: 0.015, obsidian_ring: 0.015 },
+  },
+};
+Object.assign(MONSTERS, EMBER_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -1984,6 +2101,10 @@ export const SPAWNS = [
   { monster: "grumm", count: 1 },
   /* Saltmere: one per spot in rules/saltmere.js */
   { monster: "rune_construct", count: 8 },
+  /* the Ember Isles: one per spot in rules/ember.js */
+  { monster: "magma_slime", count: 12 },
+  { monster: "fire_imp", count: 12 },
+  { monster: "ash_golem", count: 9 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

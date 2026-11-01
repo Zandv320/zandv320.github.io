@@ -25,6 +25,7 @@ import {
   inSaltmere,
   isSaltmereSafe,
   inCinderCamp,
+  inEmberIsles,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
@@ -237,6 +238,9 @@ export function createSimulation(emit) {
     }
     if (spec.area === "saltmere") {
       return inSaltmere(x, z);
+    }
+    if (spec.area === "ember") {
+      return inEmberIsles(x, z);
     }
     return true;
   }

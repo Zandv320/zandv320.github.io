@@ -6,6 +6,7 @@ import { SHEETS } from "./sheets.js";
 import { Sprite2D } from "./sprites.js";
 import * as UI from "./ui.js";
 import { isNight } from "./daylight.js";
+import { inCamp } from "./rules/ember.js";
 import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } from "./appearance.js";
 
 /* The villagers: looks, route (list of points; a single point = standing still) and lines.
@@ -1262,10 +1263,7 @@ const VILLAGERS = [
     outfit: "armor1",
     tunicColor: "violet",
     /* she reads at her desk, and walks to the fire to think */
-    route: [
-      [-171.3, -866.6],
-      [-168.4, -863.2],
-    ],
+    route: [inCamp(-3.3, -2.6), inCamp(-0.4, 0.8)],
     speed: 0.7,
     pause: [8, 16],
     lines: [
@@ -1274,6 +1272,11 @@ const VILLAGERS = [
       "Maelis was here before us. His boat lay where your ship lies now: the marks are still in the sand.",
     ],
     night: ["Look at the crater. It breathes, slowly, like something asleep."],
+    after: {
+      edda_slag: ["The road west is clear. I can hear the sea again over the hissing."],
+      edda_watch: ["Hearts of stone, given back to the stone. I keep saying it under my breath."],
+      edda_gate: ["The mountain is hammering. Do not look at me like that: I hear it too."],
+    },
   },
   {
     name: "Fisherman Tamsin",
@@ -1281,7 +1284,7 @@ const VILLAGERS = [
     outfit: "armor1",
     tunicColor: "blue",
     headgear: "cap",
-    route: [[-160.2, -863.8]],
+    route: [inCamp(7.8, 0.2)],
     facing: [-1, 0.3],
     shop: "cinder_cove",
     lines: [
@@ -1290,6 +1293,9 @@ const VILLAGERS = [
       "The fish here taste of smoke. Not bad, if you like smoke.",
     ],
     night: ["Hear that rumble? That is the mountain. Or my stomach."],
+    after: {
+      tamsin_nets: ["Not one imp on the beach last night. Grandmother was right after all."],
+    },
   },
 ];
 

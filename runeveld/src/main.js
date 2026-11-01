@@ -55,9 +55,10 @@ import { buildSaltmere, updateSaltmere } from "./saltmere.js";
 import { updateChase } from "./maelis.js";
 import { buildSea, updateSea } from "./sea.js";
 import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
+import { updateBurning } from "./burning.js";
 import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from "./sailing.js";
 import { BERTHS, BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
-import { CINDER_CAMP, MOUNT_KHAROS, onCoveJetty } from "./rules/ember.js";
+import { CINDER_CAMP, MOUNT_KHAROS, onCoveJetty, inCamp, emberLandAt } from "./rules/ember.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
 import { buildNorthroad, updateNorthroad } from "./northroad.js";
@@ -362,7 +363,7 @@ function createWorldLights() {
     [CASTLE.x1 + 2.6, -5.2, 1.1],
     [CASTLE.x1 + 2.6, 5.2, 1.1],
     /* the camp fire in Cinder Cove */
-    [-166, -862, 1],
+    [...inCamp(2, 2), 1],
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
@@ -1969,6 +1970,10 @@ function zoneLabel(zone, x, z) {
     ) {
       return CINDER_CAMP.name;
     }
+    const land = emberLandAt(x, z);
+    if (land) {
+      return land.name;
+    }
     return Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) < MOUNT_KHAROS.radius + 10
       ? MOUNT_KHAROS.name
       : EMBER_ISLES.name;
@@ -2056,6 +2061,7 @@ function stepWorld(dt, time) {
     hostTick(dt);
   }
   updateMonsters(dt);
+  updateBurning();
   updateBossPresentation(dt);
   updatePeers(dt);
   updatePeerShips(dt, time);

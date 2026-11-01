@@ -1452,6 +1452,49 @@ export function runeStone(glyph) {
   return group;
 }
 
+/** The Gate of Kharos: a doorway in the mountain's foot, two great pillars of dark stone under a lintel, and
+    between them a door of carved stone, sealed, its runes glowing like embers. Its front faces +z. */
+export function kharosGate() {
+  const group = new THREE.Group();
+  const w = 8;
+  const h = 6;
+  const d = 2.6;
+  const opening = 3.4;
+  const sideWidth = (w - opening) / 2;
+  for (const side of [-1, 1]) {
+    const x = side * (opening / 2 + sideWidth / 2);
+    const plinth = block(sideWidth + 0.4, 0.6, d + 0.6, "stone", 0.34);
+    plinth.position.x = x;
+    group.add(plinth);
+    const pillar = block(sideWidth, h, d, "stone", 0.4);
+    pillar.position.x = x;
+    group.add(pillar);
+  }
+  const lintel = block(w + 0.8, 1.2, d + 0.4, "stone", 0.38);
+  lintel.position.y = h - 0.2 + 0.6;
+  group.add(lintel);
+  const door = block(opening, h - 0.2, 0.5, "stone", 0.26);
+  group.add(door);
+  /* the runes on the door: short strokes of ember light */
+  const ember = glowMaterial(0xff8a2a);
+  for (const [x, y, length, turn] of [
+    [0, 4.4, 1.4, 0],
+    [-0.7, 3.4, 0.9, 0.5],
+    [0.7, 3.4, 0.9, -0.5],
+    [0, 2.6, 1.8, Math.PI / 2],
+    [-0.9, 1.6, 0.8, 0],
+    [0.9, 1.6, 0.8, 0],
+  ]) {
+    const rune = new THREE.Mesh(new THREE.BoxGeometry(0.14, length, 0.04), ember);
+    rune.position.set(x, y, 0.27);
+    rune.rotation.z = turn;
+    group.add(rune);
+  }
+  group.userData.mapKind = "gatehouse";
+  group.userData.solids = [{ x: 0, z: 0, w, d: d + 0.6 }];
+  return group;
+}
+
 /** The stairs into the crypt at the altar: a low stone frame around steps that go down into the dark. */
 export function cryptEntrance() {
   const group = new THREE.Group();

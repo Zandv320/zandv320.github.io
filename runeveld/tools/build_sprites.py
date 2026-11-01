@@ -2102,6 +2102,10 @@ GOBLINS = {
     "grumm": (1, "troll"),
     # Maelis' wardens in Saltmere: the armoured one in blue stone, its red crest and cloth glowing runes
     "rune_construct": (2, "construct"),
+    # the Ember Isles: the little one in fiery red is a fire imp, the armoured one in ash grey with glowing seams of
+    # lava an ash golem
+    "fire_imp": (1, "imp"),
+    "ash_golem": (2, "ash"),
 }
 ORC_ANIMATIONS = ("idle", "walk", "attack", "hurt", "death")
 
@@ -2120,6 +2124,20 @@ def construct_stone(h, s, v):
     return 0.6, s * 0.28 + 0.06, v * 0.95
 
 
+def imp_fire(h, s, v):
+    """Green skin -> fiery red-orange, a little brighter; the knife and the loincloth (not green) stay."""
+    if 0.14 < h < 0.42 and s > 0.25:
+        return 0.02 + (v - 0.5) * 0.05, min(1, s * 1.1), min(1, v * 1.08)
+    return h, s, v
+
+
+def ash_stone(h, s, v):
+    """Red (the crest, the cloth) -> molten orange glow; everything else -> warm ash-grey stone."""
+    if (h < 0.06 or h > 0.92) and s > 0.35:
+        return 0.07, 0.95, min(1, v * 1.4 + 0.2)
+    return 0.05, s * 0.12 + 0.04, v * 0.72
+
+
 def build_goblins(packs_dir, out_dir):
     """The goblins of Northwatch and Grumm the bridge troll; returns the names of the sprite files written."""
     written = []
@@ -2136,6 +2154,10 @@ def build_goblins(packs_dir, out_dir):
             stacked = hsv_layer(stacked, troll_stone)
         elif colour == "construct":
             stacked = hsv_layer(stacked, construct_stone)
+        elif colour == "imp":
+            stacked = hsv_layer(stacked, imp_fire)
+        elif colour == "ash":
+            stacked = hsv_layer(stacked, ash_stone)
         stacked.save(out_dir / f"{name}.png")
         written.append(name)
         print(name, [frames_in_row(sheet, 64, 64, 0) for sheet in sheets])
@@ -2197,6 +2219,15 @@ def build_ember(packs_dir, out_dir):
         prop = assets.crop(box)
         prop.crop(prop.getbbox()).save(out_dir / f"{name}.png")
         written.append(name)
+    # the magma slime: the slime pack's third slime is one already, black rock with lava in its cracks
+    sheets = [
+        open_rgba(packs_dir / SLIME_DIR / f"Slime3_{anim}_without_shadow.png")
+        for anim in ("Idle", "Walk", "Attack", "Hurt", "Death")
+    ]
+    cols = max(frames_in_row(sheet, 64, 64, 0) for sheet in sheets)
+    stack_animations(sheets, 64, 64, cols).save(out_dir / "magma_slime.png")
+    written.append("magma_slime")
+    print("magma_slime", [frames_in_row(sheet, 64, 64, 0) for sheet in sheets])
     # the basalt cobbles, for the cliffs of the coast and the slopes of Mount Kharos
     tex_dir = out_dir / "tex"
     tex_dir.mkdir(exist_ok=True)

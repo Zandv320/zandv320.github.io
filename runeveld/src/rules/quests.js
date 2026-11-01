@@ -31,6 +31,8 @@
      tutorial  the guide card shown on accepting it (guide.js)
      final     the last quest of a saga */
 
+import { EMBER_LANDS } from "./ember.js";
+
 /* The sagas, with the first chapter of each. */
 export const SAGAS = [
   { title: "Saga I", name: "The Crossed-Out Crown", firstChapter: 1 },
@@ -974,7 +976,7 @@ export const QUESTS = {
       "Take the helm of the Gull's Promise and sail north to the reefs of the Ember Isles, then bring her back to Saltmere. The sea chart (M) shows the islands.",
     completeText:
       "You brought her back! Not a scratch. Well: one scratch. Black reefs and smoke, you say, and no safe cove. Then we need someone who knows that coast. Leave that to me. Rest your sea legs.",
-    goal: { type: "reach", x: -170, z: -822, r: 16, label: "the reefs of the Ember Isles" },
+    goal: { type: "reach", x: -170, z: -975, r: 20, label: "the reefs of the Ember Isles" },
     reward: { exp: 3600, zeny: 2400, items: [{ id: "grand_potion", count: 3 }] },
   },
   /* ---- Saga II, chapter 10: the Ember Isles ---- */
@@ -995,6 +997,120 @@ export const QUESTS = {
       "You came! And with the Gull's Promise, no less. Welcome to Cinder Cove: two tents, one fire, and more ash than I thought the world could hold. The fire seal is inside that mountain, I am sure of it, and Maelis went up there three days ago. Sleep by the fire tonight. If the isles knock you down, Tamsin and I will carry you back to it.",
     goal: { type: "visit", npc: "Scholar Edda" },
     reward: { exp: 4200, zeny: 2800, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  edda_slag: {
+    giver: "Scholar Edda",
+    where: { monster: "magma_slime" },
+    hint: "The Ash Flats lie south-west of the camp, along the road. The magma slimes leave burning ash where they crawl: do not stand in it.",
+    chapter: 10,
+    main: true,
+    title: "Slag and cinders",
+    level: 30,
+    after: "mara_landfall",
+    intro:
+      "Before anyone goes near that mountain, I need to know how the old mages sealed it. They kept a watch on the west coast, the Fallen Watch. But the Ash Flats lie between us and it, and the slimes in them burn everything they touch. Clear a way through: eight of them.",
+    progressText:
+      "Eight magma slimes on the Ash Flats, south-west of the camp. Step out of the burning ash they leave behind.",
+    completeText:
+      "Eight! The road to the west is open, and Tamsin can stop pretending he was not afraid. Now: the Fallen Watch.",
+    goal: { type: "kill", monster: "magma_slime", count: 8 },
+    reward: { exp: 4800, zeny: 3000, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  edda_watch: {
+    giver: "Scholar Edda",
+    hint: "Follow the road from the Ash Flats north to the ruins on the west coast. The standing stones there are carved.",
+    chapter: 10,
+    main: true,
+    title: "The Fallen Watch",
+    level: 30,
+    after: "edda_slag",
+    intro:
+      "The old mages watched the mountain from a tower on the west coast. It fell long ago, but they carved their words in stone, and stone remembers. Go and read what the standing stones say, and come back and tell me every word.",
+    progressText:
+      "Find the ruins of the Fallen Watch on the west coast, north of the Ash Flats, and read the ring of standing stones.",
+    completeText:
+      "'The flame sleeps under the mountain. Its door opens to hearts of stone, given back to the stone.' Hearts of stone! The golems on the Obsidian Steps: their cores are the keys. Of course they are.",
+    goal: {
+      type: "reach",
+      x: EMBER_LANDS.fallenWatch.center[0],
+      z: EMBER_LANDS.fallenWatch.center[1] - 2,
+      r: 7,
+      label: "the standing stones of the Fallen Watch",
+    },
+    reward: { exp: 4200, zeny: 2600 },
+  },
+  edda_imps: {
+    giver: "Scholar Edda",
+    where: { monster: "fire_imp" },
+    hint: "Scorchwood is the burnt forest south-east of the camp. The fire imps throw fire from a distance: close in on them fast.",
+    chapter: 10,
+    main: true,
+    title: "Sparks in Scorchwood",
+    level: 31,
+    after: "edda_watch",
+    intro:
+      "The road to the Obsidian Steps runs through Scorchwood, and the imps there set fire to anything that walks under their trees. Maelis' tracks went that way too, three days ago, and nothing came back. Ten imps, and the road is ours.",
+    progressText: "Ten fire imps in Scorchwood, the burnt forest south-east of the camp.",
+    completeText:
+      "The smoke over Scorchwood is thinning already. You smell of burnt hair, if you do not mind my saying so.",
+    goal: { type: "kill", monster: "fire_imp", count: 10 },
+    reward: { exp: 5400, zeny: 3200, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  edda_cores: {
+    giver: "Scholar Edda",
+    where: { monster: "ash_golem" },
+    hint: "The Obsidian Steps lie east of the mountain, beyond Scorchwood: cross the crusted lava where the road meets the river. The golems are slow and very hard.",
+    chapter: 10,
+    main: true,
+    title: "Hearts of stone",
+    level: 32,
+    after: "edda_imps",
+    intro:
+      "Hearts of stone, given back to the stone. The ash golems on the Obsidian Steps each carry a core of living fire. Bring me four, and we will see whether the Gate of Kharos remembers its keys.",
+    progressText:
+      "Four golem cores from the ash golems on the Obsidian Steps, east of Mount Kharos.",
+    completeText:
+      "Four! They are still warm. Feel them pull, all towards the mountain's north side. That is where the gate must be.",
+    goal: { type: "item", item: "golem_core", count: 4 },
+    reward: { exp: 6200, zeny: 3800, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  edda_gate: {
+    giver: "Scholar Edda",
+    hint: "The roads from the Fallen Watch and from the Obsidian Steps both lead round Mount Kharos to its north side. The gate is cut into the mountain's foot there.",
+    chapter: 10,
+    main: true,
+    title: "The Gate of Kharos",
+    level: 33,
+    after: "edda_cores",
+    intro:
+      "Take the cores round the mountain to its north side, where the old mages cut their gate. Give them back to the stone, and let us see what it does. I will be right behind you. Well. Some way behind you.",
+    progressText:
+      "Go round Mount Kharos to the Gate of Kharos on its north side, and give the golem cores back to the stone.",
+    completeText:
+      "The runes drank the fire of the cores, and the door ground open a hand's breadth. Heat came out, and a sound like hammering, far below. The Forge of the First Flame is awake. And so, I think, is someone inside it.",
+    goal: {
+      type: "reach",
+      x: EMBER_LANDS.gate.center[0],
+      z: EMBER_LANDS.gate.center[1] - 1,
+      r: 6,
+      label: "the Gate of Kharos",
+    },
+    reward: { exp: 6000, zeny: 4000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  tamsin_nets: {
+    giver: "Fisherman Tamsin",
+    where: { monster: "fire_imp" },
+    hint: "The fire imps live in Scorchwood, south-east of the camp. Their horns drop when they fall.",
+    title: "Nets in the fire",
+    level: 30,
+    after: "mara_landfall",
+    intro:
+      "The imps from that burnt wood came down to the beach last night and set fire to my nets. Laughing, they were. Bring me six of their horns: ground up and scattered on the sand, they keep the others away. So my grandmother said.",
+    progressText: "Six imp horns from the fire imps of Scorchwood, south-east of the camp.",
+    completeText:
+      "Six! I will grind them tonight. If they come back, at least I will know my grandmother was wrong.",
+    goal: { type: "item", item: "imp_horn", count: 6 },
+    reward: { exp: 3600, zeny: 2400, items: [{ id: "grand_potion", count: 3 }] },
   },
   tobin_warehouses: {
     giver: "Warden Tobin",

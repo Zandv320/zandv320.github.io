@@ -25,22 +25,15 @@ import {
   kharosRadius,
   outsideKharos,
   onEmberLand,
+  inCamp,
+  roadDistance,
+  EMBER_LANDS,
 } from "./rules/ember.js";
 import { HULL } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { addShadowCatcher, applyGroundFilter, cameraState } from "./world.js";
-import { distanceToPath } from "./regions.js";
 import { clickables, player } from "./game-state.js";
 import { loadTexture } from "./sprites.js";
-
-/* the path the camp has trodden: from the jetty up the beach to the fire, and on towards the mountain */
-const CAMP_PATH = [
-  [COVE_JETTY.x, COVE_JETTY.north],
-  [-163.5, -856],
-  [-167, -861],
-  [-171, -871],
-  [-175, -883],
-];
 
 /* the mountain's shape: height, and the crater's mouth at the top */
 const KHAROS_HEIGHT = MOUNT_KHAROS.height;
@@ -60,12 +53,12 @@ let coveGull = null;
 /** Builds the Ember Isles (world.js calls this with its build context). */
 export function buildEmberIsles({ scene, prop, place, pending, seededRandom, obstacles }) {
   const random = seededRandom(9090);
-  /* the ground is painted from the volcano tiles (sprites/ember_ground.png) once they are loaded */
+  /* the ground is painted from the volcano tiles (sprites/ember_ground.png), chunk by chunk as the hero comes near */
   pending.push(
     Promise.all([
       loadTexture("sprites/ember_ground.png", { raw: true }),
       loadTexture("sprites/ember_patches.png", { raw: true }),
-    ]).then(([tiles, patches]) => buildGround(scene, tiles.image, patches.image)),
+    ]).then(([tiles, patches]) => prepareGround(scene, tiles.image, patches.image)),
   );
   buildLava(scene, random);
   buildSurf(scene);
@@ -73,7 +66,7 @@ export function buildEmberIsles({ scene, prop, place, pending, seededRandom, obs
   buildKharos(scene, random);
   buildJetty(scene, random);
   buildCamp({ scene, prop, place, pending, obstacles });
-  buildScenery({ scene, prop, pending, random });
+  buildScenery({ scene, prop, place, pending, random });
   /* smoke and steam at their places from the start (they are moved only while a hero is in the world) */
   updateEmberIsles(0, 0);
 }
@@ -119,193 +112,303 @@ function pixelsOf(image) {
   return ctx.getImageData(0, 0, image.width, image.height).data;
 }
 
-function buildGround(scene, tilesImage, patchesImage) {
+/* The ground is painted in square chunks of this many units, each when the hero comes near (a few rows a frame,
+   so nothing stutters); the isles are too wide to paint at once. */
+const CHUNK = 40;
+const CHUNK_PIXELS = CHUNK * PX;
+const CELLS = CHUNK_PIXELS / CELL;
+const CELL_UNITS = CELL / PX;
+/* how near the hero (or their ship) a chunk is painted, and how long a frame may spend on it (ms) */
+const PAINT_REACH = 240;
+const PAINT_BUDGET = 5;
+
+/* the painter: the tiles and the sand patches as pixels, the chunks of land still to paint, the one being painted */
+let painter = null;
+
+function prepareGround(scene, tilesImage, patchesImage) {
   const atlas = pixelsOf(tilesImage);
   /* the colour of pixel (gx, gy) of the ground in tile `tile`, the tiles repeating every 32 px */
   const tilePixel = (tile, gx, gy) => {
     const k = ((gy % 32) * tilesImage.width + tile * 32 + (gx % 32)) * 4;
     return [atlas[k], atlas[k + 1], atlas[k + 2]];
   };
-  /* the plain ash of the tiles: specks and pebbles are whatever differs from it */
   const [ashR, ashG, ashB] = tilePixel(TILE.ground, 0, 0);
-  const isAsh = (r, g, b) => r === ashR && g === ashG && b === ashB;
+  /* the chunks over land (or the beach): a chunk wholly out at sea is left out */
   const reach = EMBER_REACH;
-  const x0 = Math.floor(EMBER_ISLES.x - reach);
-  const z0 = Math.floor(EMBER_ISLES.z - reach);
-  const size = Math.ceil(reach * 2);
-  const canvas = document.createElement("canvas");
-  canvas.width = size * PX;
-  canvas.height = size * PX;
-  const ctx = canvas.getContext("2d");
-  const image = ctx.createImageData(canvas.width, canvas.height);
-  const pixels = image.data;
-  const cells = canvas.width / CELL;
-  const cellUnits = CELL / PX;
-  /* the ash's broad lighter and darker patches, at every cell corner; each pixel blends the four round it, so
-     their edges run smooth */
-  const corners = cells + 1;
+  const x0 = Math.floor((EMBER_ISLES.x - reach) / CHUNK) * CHUNK;
+  const z0 = Math.floor((EMBER_ISLES.z - reach) / CHUNK) * CHUNK;
+  const chunks = [];
+  for (let cz = z0; cz < EMBER_ISLES.z + reach; cz += CHUNK) {
+    for (let cx = x0; cx < EMBER_ISLES.x + reach; cx += CHUNK) {
+      let isLand = false;
+      for (let u = 0; u <= 8 && !isLand; u++) {
+        for (let v = 0; v <= 8 && !isLand; v++) {
+          isLand = onEmberLand(cx + (u * CHUNK) / 8, cz + (v * CHUNK) / 8, -3);
+        }
+      }
+      if (isLand) {
+        chunks.push({ x0: cx, z0: cz });
+      }
+    }
+  }
+  /* the sand patches ringed with stones, laid where the ash is open: their spots over the whole isles */
+  const isOpen = (x, z) =>
+    onEmberLand(x, z, 7) &&
+    lavaDistance(x, z) > 2.5 &&
+    roadDistance(x, z) > 3 &&
+    Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) > 11 &&
+    outsideKharos(x, z) > 2;
+  const span = 96 / PX;
+  const patchSpots = [];
+  for (let k = 0; k < 900; k++) {
+    const x = EMBER_ISLES.x - reach + hash(k, 3.3) * reach * 2;
+    const z = EMBER_ISLES.z - reach + hash(k, 8.1) * reach * 2;
+    if ([0, 0.5, 1].every((u) => [0, 0.5, 1].every((v) => isOpen(x + u * span, z + v * span)))) {
+      patchSpots.push({ x: Math.round(x * PX) / PX, z: Math.round(z * PX) / PX, which: k % 2 });
+    }
+  }
+  painter = {
+    scene,
+    tilePixel,
+    isAsh: (r, g, b) => r === ashR && g === ashG && b === ashB,
+    patches: pixelsOf(patchesImage),
+    patchesWidth: patchesImage.width,
+    patchSpots,
+    chunks,
+    job: null,
+  };
+  const size = reach * 2;
+  addShadowCatcher(size, size, EMBER_ISLES.x, 0.029, EMBER_ISLES.z);
+  /* under the chunks a plain ash floor in the coast's shape, so a chunk not painted yet is never a hole */
+  const shape = new THREE.Shape();
+  for (let k = 0; k <= 360; k++) {
+    const angle = (k / 360) * Math.PI * 2;
+    const r = emberShore(angle);
+    const point = [Math.sin(angle) * r, -Math.cos(angle) * r];
+    if (k === 0) {
+      shape.moveTo(...point);
+    } else {
+      shape.lineTo(...point);
+    }
+  }
+  const floor = new THREE.Mesh(
+    new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({
+      color: new THREE.Color().setRGB(91 / 255, 101 / 255, 108 / 255, THREE.SRGBColorSpace),
+    }),
+  );
+  floor.position.set(EMBER_ISLES.x, 0.001, EMBER_ISLES.z);
+  scene.add(floor);
+}
+
+/* Paints on: picks the nearest chunk still to paint within reach of the hero, and paints rows of it until this
+   frame's budget is spent; a finished chunk goes into the scene. */
+function paintGround() {
+  if (!painter) {
+    return;
+  }
+  const started = performance.now();
+  while (performance.now() - started < PAINT_BUDGET) {
+    if (!painter.job) {
+      let best = null;
+      let bestDistance = PAINT_REACH;
+      for (const chunk of painter.chunks) {
+        const distance = Math.hypot(
+          chunk.x0 + CHUNK / 2 - player.x,
+          chunk.z0 + CHUNK / 2 - player.z,
+        );
+        if (!chunk.isPainted && distance < bestDistance) {
+          best = chunk;
+          bestDistance = distance;
+        }
+      }
+      if (!best) {
+        return;
+      }
+      painter.job = startChunk(best);
+    }
+    const job = painter.job;
+    paintCellRow(job, job.row);
+    job.row++;
+    if (job.row >= CELLS) {
+      finishChunk(job);
+      painter.job = null;
+    }
+  }
+}
+
+/* a chunk to paint: its pixels, and the ash's lighter and darker patches at every cell corner (each pixel blends
+   the four round it, so their edges run smooth) */
+function startChunk(chunk) {
+  const corners = CELLS + 1;
   const patchGrid = new Float32Array(corners * corners);
   for (let j = 0; j < corners; j++) {
     for (let i = 0; i < corners; i++) {
-      const x = x0 + i * cellUnits;
-      const z = z0 + j * cellUnits;
+      const x = chunk.x0 + i * CELL_UNITS;
+      const z = chunk.z0 + j * CELL_UNITS;
       patchGrid[j * corners + i] = noise(x * 0.07, z * 0.07) * 0.6 + noise(x * 0.3, z * 0.3) * 0.4;
     }
   }
-  const patchAt = (gx, gy) => {
-    const fx = gx / CELL;
-    const fy = gy / CELL;
-    const i = Math.min(cells - 1, Math.floor(fx));
-    const j = Math.min(cells - 1, Math.floor(fy));
+  return {
+    chunk,
+    pixels: new Uint8ClampedArray(CHUNK_PIXELS * CHUNK_PIXELS * 4),
+    patchGrid,
+    row: 0,
+  };
+}
+
+function paintCellRow(job, j) {
+  const { chunk, pixels, patchGrid } = job;
+  const { tilePixel, isAsh } = painter;
+  const corners = CELLS + 1;
+  const patchAt = (lx, ly) => {
+    const fx = lx / CELL;
+    const fy = ly / CELL;
+    const i = Math.min(CELLS - 1, Math.floor(fx));
+    const jj = Math.min(CELLS - 1, Math.floor(fy));
     const tx = fx - i;
-    const ty = fy - j;
-    const top = patchGrid[j * corners + i] * (1 - tx) + patchGrid[j * corners + i + 1] * tx;
+    const ty = fy - jj;
+    const top = patchGrid[jj * corners + i] * (1 - tx) + patchGrid[jj * corners + i + 1] * tx;
     const bottom =
-      patchGrid[(j + 1) * corners + i] * (1 - tx) + patchGrid[(j + 1) * corners + i + 1] * tx;
+      patchGrid[(jj + 1) * corners + i] * (1 - tx) + patchGrid[(jj + 1) * corners + i + 1] * tx;
     return top * (1 - ty) + bottom * ty;
   };
-  for (let j = 0; j < cells; j++) {
-    for (let i = 0; i < cells; i++) {
-      const x = x0 + (i + 0.5) * cellUnits;
-      const z = z0 + (j + 0.5) * cellUnits;
-      const dx = x - EMBER_ISLES.x;
-      const dz = z - EMBER_ISLES.z;
-      /* how far inland: along the bearing from the isles' middle */
-      const cellInland = emberShore(Math.atan2(dx, dz)) - Math.hypot(dx, dz);
-      if (cellInland < -0.3) {
-        continue;
-      }
-      /* near an edge (the path, the camp, the lava, the mountain) every pixel looks for itself; elsewhere the
-         cell's answer holds for all of it */
-      const cellMountain = outsideKharos(x, z);
-      const cellLava = lavaDistance(x, z);
-      const cellRiver = riverDistance(x, z);
-      const isNearPath =
-        distanceToPath(x, z, CAMP_PATH) < 2.6 ||
-        Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < 10.5;
-      const isTroddenAt = (wx, wz) =>
-        distanceToPath(wx, wz, CAMP_PATH) < 1.1 + noise(wx * 0.9, wz * 0.9) * 0.6 ||
-        Math.hypot(wx - CINDER_CAMP.x, wz - CINDER_CAMP.z) < 6.5 + noise(wx * 0.3, wz * 0.3) * 2.5;
-      const beachWidth = 3 + noise(x * 0.2, z * 0.2) * 3;
-      /* along the shore every pixel looks for itself, so the coast runs smooth instead of in steps */
-      const isShore = cellInland < beachWidth + 0.6;
-      for (let py = 0; py < CELL; py++) {
-        for (let px = 0; px < CELL; px++) {
-          const gx = i * CELL + px;
-          const gy = j * CELL + py;
-          const wx = x0 + (gx + 0.5) / PX;
-          const wz = z0 + (gy + 0.5) / PX;
-          let inland = cellInland;
-          if (isShore) {
-            const pdx = wx - EMBER_ISLES.x;
-            const pdz = wz - EMBER_ISLES.z;
-            inland = emberShore(Math.atan2(pdx, pdz)) - Math.hypot(pdx, pdz);
-            if (inland < 0) {
-              continue;
-            }
+  /* pixel numbers over the whole isles, so the tiles and the grain run on from chunk to chunk */
+  const originX = Math.round(chunk.x0 * PX);
+  const originY = Math.round(chunk.z0 * PX);
+  for (let i = 0; i < CELLS; i++) {
+    const x = chunk.x0 + (i + 0.5) * CELL_UNITS;
+    const z = chunk.z0 + (j + 0.5) * CELL_UNITS;
+    const dx = x - EMBER_ISLES.x;
+    const dz = z - EMBER_ISLES.z;
+    /* how far inland: along the bearing from the isles' middle */
+    const cellInland = emberShore(Math.atan2(dx, dz)) - Math.hypot(dx, dz);
+    if (cellInland < -0.3) {
+      continue;
+    }
+    /* near an edge (a road, the camp, the lava, the mountain) every pixel looks for itself; elsewhere the cell's
+       answer holds for all of it */
+    const cellMountain = outsideKharos(x, z);
+    const cellLava = lavaDistance(x, z);
+    const cellRiver = riverDistance(x, z);
+    const isNearPath =
+      roadDistance(x, z) < 2.6 || Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < 10.5;
+    const isTroddenAt = (wx, wz) =>
+      roadDistance(wx, wz) < 1.1 + noise(wx * 0.9, wz * 0.9) * 0.6 ||
+      Math.hypot(wx - CINDER_CAMP.x, wz - CINDER_CAMP.z) < 6.5 + noise(wx * 0.3, wz * 0.3) * 2.5;
+    const beachWidth = 3 + noise(x * 0.2, z * 0.2) * 3;
+    /* along the shore every pixel looks for itself, so the coast runs smooth instead of in steps */
+    const isShore = cellInland < beachWidth + 0.6;
+    for (let py = 0; py < CELL; py++) {
+      for (let px = 0; px < CELL; px++) {
+        const lx = i * CELL + px;
+        const ly = j * CELL + py;
+        const gx = originX + lx;
+        const gy = originY + ly;
+        const wx = chunk.x0 + (lx + 0.5) / PX;
+        const wz = chunk.z0 + (ly + 0.5) / PX;
+        let inland = cellInland;
+        if (isShore) {
+          const pdx = wx - EMBER_ISLES.x;
+          const pdz = wz - EMBER_ISLES.z;
+          inland = emberShore(Math.atan2(pdx, pdz)) - Math.hypot(pdx, pdz);
+          if (inland < 0) {
+            continue;
           }
-          const fromLava = cellLava < 2.4 ? lavaDistance(wx, wz) : cellLava;
-          const fromMountain = cellMountain < 7 ? outsideKharos(wx, wz) : cellMountain;
-          const isTrodden = isNearPath && isTroddenAt(wx, wz);
-          const grain = hash(gx * 0.37, gy * 0.71);
-          /* the ground: the ash in broad patches a shade lighter or darker, with specks or pebbles strewn in
-             here and there */
-          const variant = hash(Math.floor(gx / 32) + 0.5, Math.floor(gy / 32) + 0.5);
-          const groundTile =
-            variant < 0.5 ? TILE.ground : variant < 0.85 ? TILE.specks : TILE.pebbles;
-          let [r, g, b] = tilePixel(groundTile, gx, gy);
-          const patch = patchAt(gx, gy);
-          let shade = isAsh(r, g, b) ? (patch < 0.38 ? 0.88 : patch > 0.64 ? 1.08 : 1) : 1;
-          if (inland < beachWidth && grain < (beachWidth - inland) / 1.4) {
-            /* sand along the shore, wet and darker at the water, frayed where it meets the ash */
-            [r, g, b] = tilePixel(TILE.sand, gx, gy);
-            shade = inland < 0.6 ? 0.62 : 0.92;
-          } else if (isTrodden) {
-            /* the camp's trodden ground: ash and sand worked together */
-            if (grain < 0.45) {
-              [r, g, b] = tilePixel(TILE.sand, gx, gy);
-              shade = 0.82;
-            }
-          }
-          const isCrust =
-            cellRiver < 1.5 &&
-            riverDistance(wx, wz) < 0.35 &&
-            LAVA_CROSSINGS.some(
-              (crossing) => Math.hypot(wx - crossing.x, wz - crossing.z) < CROSSING_REACH + 0.6,
-            );
-          if (isCrust) {
-            /* a crossing: the lava crusted over, black basalt with a glow in its cracks */
-            [r, g, b] = grain > 0.9 ? EMBER_GLOW[1] : grain > 0.45 ? [58, 52, 54] : [40, 36, 38];
-            shade = 1;
-          } else if (fromLava < 1.6) {
-            /* scorched black beside the lava, with embers in it */
-            shade *= 0.35 + (0.45 * Math.max(0, fromLava)) / 1.6;
-            if (fromLava < 0.7 && grain > 0.93) {
-              [r, g, b] = EMBER_GLOW[grain > 0.97 ? 0 : 1];
-              shade = 1;
-            }
-          } else if (fromMountain < 6) {
-            shade *= 0.72 + fromMountain * 0.045;
-          }
-          const k = (gy * canvas.width + gx) * 4;
-          pixels[k] = r * shade;
-          pixels[k + 1] = g * shade;
-          pixels[k + 2] = b * shade;
-          pixels[k + 3] = 255;
         }
+        const fromLava = cellLava < 2.4 ? lavaDistance(wx, wz) : cellLava;
+        const fromMountain = cellMountain < 7 ? outsideKharos(wx, wz) : cellMountain;
+        const isTrodden = isNearPath && isTroddenAt(wx, wz);
+        const grain = hash(gx * 0.37, gy * 0.71);
+        /* the ground: the ash in broad patches a shade lighter or darker, with specks or pebbles strewn in here
+           and there */
+        const variant = hash(Math.floor(gx / 32) + 0.5, Math.floor(gy / 32) + 0.5);
+        const groundTile =
+          variant < 0.5 ? TILE.ground : variant < 0.85 ? TILE.specks : TILE.pebbles;
+        let [r, g, b] = tilePixel(groundTile, ((gx % 32) + 32) % 32, ((gy % 32) + 32) % 32);
+        const patch = patchAt(lx, ly);
+        let shade = isAsh(r, g, b) ? (patch < 0.38 ? 0.88 : patch > 0.64 ? 1.08 : 1) : 1;
+        if (inland < beachWidth && grain < (beachWidth - inland) / 1.4) {
+          /* sand along the shore, wet and darker at the water, frayed where it meets the ash */
+          [r, g, b] = tilePixel(TILE.sand, ((gx % 32) + 32) % 32, ((gy % 32) + 32) % 32);
+          shade = inland < 0.6 ? 0.62 : 0.92;
+        } else if (isTrodden && grain < 0.45) {
+          /* the trodden roads and the camp: ash and sand worked together */
+          [r, g, b] = tilePixel(TILE.sand, ((gx % 32) + 32) % 32, ((gy % 32) + 32) % 32);
+          shade = 0.82;
+        }
+        const isCrust =
+          cellRiver < 1.5 &&
+          riverDistance(wx, wz) < 0.35 &&
+          LAVA_CROSSINGS.some(
+            (crossing) => Math.hypot(wx - crossing.x, wz - crossing.z) < CROSSING_REACH + 0.6,
+          );
+        if (isCrust) {
+          /* a crossing: the lava crusted over, black basalt with a glow in its cracks */
+          [r, g, b] = grain > 0.9 ? EMBER_GLOW[1] : grain > 0.45 ? [58, 52, 54] : [40, 36, 38];
+          shade = 1;
+        } else if (fromLava < 1.6) {
+          /* scorched black beside the lava, with embers in it */
+          shade *= 0.35 + (0.45 * Math.max(0, fromLava)) / 1.6;
+          if (fromLava < 0.7 && grain > 0.93) {
+            [r, g, b] = EMBER_GLOW[grain > 0.97 ? 0 : 1];
+            shade = 1;
+          }
+        } else if (fromMountain < 6) {
+          shade *= 0.72 + fromMountain * 0.045;
+        }
+        const k = (ly * CHUNK_PIXELS + lx) * 4;
+        pixels[k] = r * shade;
+        pixels[k + 1] = g * shade;
+        pixels[k + 2] = b * shade;
+        pixels[k + 3] = 255;
       }
     }
   }
-  /* patches of sand ringed with stones, laid where the ash is open */
-  const patches = pixelsOf(patchesImage);
+}
+
+/* the sand patches that fall on this chunk, then the chunk into the scene */
+function finishChunk(job) {
+  const { chunk, pixels } = job;
+  const { patches, patchesWidth, isAsh, patchSpots } = painter;
   const PATCH = 96;
-  const patchCount = patchesImage.width / PATCH;
-  const isOpen = (x, z) => {
-    const dx = x - EMBER_ISLES.x;
-    const dz = z - EMBER_ISLES.z;
-    return (
-      emberShore(Math.atan2(dx, dz)) - Math.hypot(dx, dz) > 7 &&
-      lavaDistance(x, z) > 2.5 &&
-      distanceToPath(x, z, CAMP_PATH) > 3 &&
-      Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) > 11 &&
-      outsideKharos(x, z) > 2
-    );
-  };
-  for (let k = 0; k < 160; k++) {
-    const left = Math.floor(hash(k, 3.3) * (canvas.width - PATCH));
-    const top = Math.floor(hash(k, 8.1) * (canvas.height - PATCH));
-    const span = PATCH / PX;
-    const wx = x0 + left / PX;
-    const wz = z0 + top / PX;
-    if (![0, 0.5, 1].every((u) => [0, 0.5, 1].every((v) => isOpen(wx + u * span, wz + v * span)))) {
+  for (const spot of patchSpots) {
+    const left = Math.round((spot.x - chunk.x0) * PX);
+    const top = Math.round((spot.z - chunk.z0) * PX);
+    if (left >= CHUNK_PIXELS || top >= CHUNK_PIXELS || left + PATCH <= 0 || top + PATCH <= 0) {
       continue;
     }
-    const which = k % patchCount;
-    for (let py = 0; py < PATCH; py++) {
-      for (let px = 0; px < PATCH; px++) {
-        const from = (py * patchesImage.width + which * PATCH + px) * 4;
+    for (let py = Math.max(0, -top); py < Math.min(PATCH, CHUNK_PIXELS - top); py++) {
+      for (let px = Math.max(0, -left); px < Math.min(PATCH, CHUNK_PIXELS - left); px++) {
+        const from = (py * patchesWidth + spot.which * PATCH + px) * 4;
         if (patches[from + 3] === 0 || isAsh(patches[from], patches[from + 1], patches[from + 2])) {
           continue;
         }
-        const to = ((top + py) * canvas.width + left + px) * 4;
+        const to = ((top + py) * CHUNK_PIXELS + left + px) * 4;
+        if (pixels[to + 3] === 0) {
+          continue;
+        }
         pixels[to] = patches[from];
         pixels[to + 1] = patches[from + 1];
         pixels[to + 2] = patches[from + 2];
       }
     }
   }
-  ctx.putImageData(image, 0, 0);
+  const canvas = document.createElement("canvas");
+  canvas.width = CHUNK_PIXELS;
+  canvas.height = CHUNK_PIXELS;
+  canvas.getContext("2d").putImageData(new ImageData(pixels, CHUNK_PIXELS, CHUNK_PIXELS), 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   applyGroundFilter(texture);
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(size, size),
+    new THREE.PlaneGeometry(CHUNK, CHUNK),
     new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 }),
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(x0 + size / 2, 0.004, z0 + size / 2);
-  scene.add(ground);
-  addShadowCatcher(size, size, x0 + size / 2, 0.029, z0 + size / 2);
+  ground.position.set(chunk.x0 + CHUNK / 2, 0.004, chunk.z0 + CHUNK / 2);
+  painter.scene.add(ground);
+  chunk.isPainted = true;
 }
 
 /* ---------- lava: from the crater down the mountain, across the land in rivers and pools, down the beaches into
@@ -1111,64 +1214,94 @@ export function setCoveGullVisible(isVisible) {
 
 function buildCamp({ scene, prop, place, pending, obstacles }) {
   const lantern = (x, z) => pending.push(prop("lantern", x, z, { radius: 0.25 }));
-  place(builders.campfire(), -166, -862, { radius: 0.9 });
+  place(builders.campfire(), ...inCamp(2, 2), { radius: 0.9 });
   /* Edda's tent with her books before it, and the fisherman's */
-  place(builders.tent(3.4, 3.4, "cloth_red"), -173.5, -868.5, { rotation: 0.5, radius: 1.8 });
-  place(builders.tent(3, 3.2, "cloth_green"), -159.5, -868, { rotation: -0.4, radius: 1.7 });
-  place(builders.writingDesk(), -170.6, -865.2, { rotation: 0.5, radius: 0.9 });
+  place(builders.tent(3.4, 3.4, "cloth_red"), ...inCamp(-5.5, -4.5), {
+    rotation: 0.5,
+    radius: 1.8,
+  });
+  place(builders.tent(3, 3.2, "cloth_green"), ...inCamp(8.5, -4), { rotation: -0.4, radius: 1.7 });
+  place(builders.writingDesk(), ...inCamp(-2.6, -1.2), { rotation: 0.5, radius: 0.9 });
   /* stores from the boat */
-  pending.push(prop("crypt_crates", -162.4, -857.2, { radius: 0.7, scale: 0.9 }));
-  pending.push(prop("woodpile", -169.5, -858.5, { radius: 0.7 }));
-  for (const [x, z] of [
-    [-157.6, -862.4],
-    [-157, -861.2],
-    [-158.4, -861],
-  ]) {
+  pending.push(prop("crypt_crates", ...inCamp(5.6, 6.8), { radius: 0.7, scale: 0.9 }));
+  pending.push(prop("woodpile", ...inCamp(-1.5, 5.5), { radius: 0.7 }));
+  for (const [x, z] of [inCamp(10.4, 1.6), inCamp(11, 2.8), inCamp(9.6, 3)]) {
     place(builders.barrel(), x, z, { radius: 0.45 });
   }
-  place(builders.chest(), -161.2, -866.2, { rotation: -0.4, radius: 0.5 });
-  place(builders.netRack(2.6), -177.6, -861.6, { rotation: 1.2 });
-  place(builders.flag(2.8, "cloth_red"), -163.2, -853.4, { radius: 0.2 });
+  place(builders.chest(), ...inCamp(6.8, -2.2), { rotation: -0.4, radius: 0.5 });
+  place(builders.netRack(2.6), ...inCamp(-9.6, 2.4), { rotation: 1.2 });
+  place(builders.flag(2.8, "cloth_red"), ...inCamp(4.8, 10.6), { radius: 0.2 });
   lantern(COVE_JETTY.x + 1.6, COVE_JETTY.north + 0.5);
-  lantern(-171.4, -861.6);
-  lantern(-162.8, -869.8);
+  lantern(...inCamp(-3.4, 2.4));
+  lantern(...inCamp(5.2, -5.8));
   /* the fishing boat, drawn up on the beach west of the cove */
   const boat = builders.rowingBoat(4.6, 1.8);
-  boat.position.set(-180.5, 0.05, -853.5);
+  const [boatX, boatZ] = inCamp(-12.5, 10.5);
+  boat.position.set(boatX, 0.05, boatZ);
   boat.rotation.set(0.04, 1.1, 0.12);
   scene.add(boat);
-  obstacles.push({ x: -180.5, z: -853.5, r: 1.6 });
+  obstacles.push({ x: boatX, z: boatZ, r: 1.6 });
 }
 
 /* ---------- the burnt land: dead trees and bushes, rocks, bones, and little lava mounds that steam ---------- */
 
 /* what stands about on the isles, from the volcano pack: [sprite, how many, scale, collision radius, shadow] */
+/* what stands about on the isles, from the volcano pack: [sprite, how many, scale, collision radius, shadow], all
+   over the isles */
 const SCENERY = [
-  [["ember_tree1", "ember_tree2"], 24, 0.75, 0.45, 1.6],
-  [["ember_bush1", "ember_bush2"], 46, 0.65, 0, 0.9],
-  [["ember_rock1", "ember_rock2", "ember_rock3"], 40, 0.7, 0.3, 0.6],
-  [["ember_rock4", "ember_boulder"], 22, 0.75, 0.7, 1.2],
-  [["ember_ram_skull", "ember_skull", "ember_ribs"], 14, 0.6, 0, 0.5],
-  [["ember_stump"], 9, 0.65, 0.3, 0.6],
+  [["ember_tree1", "ember_tree2"], 50, 0.75, 0.45, 1.6],
+  [["ember_bush1", "ember_bush2"], 130, 0.65, 0, 0.9],
+  [["ember_rock1", "ember_rock2", "ember_rock3"], 120, 0.7, 0.3, 0.6],
+  [["ember_rock4", "ember_boulder"], 50, 0.75, 0.7, 1.2],
+  [["ember_ram_skull", "ember_skull", "ember_ribs"], 30, 0.6, 0, 0.5],
+  [["ember_stump"], 24, 0.65, 0.3, 0.6],
 ];
+/* and more of some in each land: Scorchwood's dead forest, the bones and mounds of the Ash Flats, the boulders of
+   the Obsidian Steps */
+const LAND_SCENERY = {
+  scorchwood: [
+    [["ember_tree1", "ember_tree2"], 110, 0.8, 0.45, 1.6],
+    [["ember_stump"], 30, 0.65, 0.3, 0.6],
+    [["ember_bush1", "ember_bush2"], 40, 0.65, 0, 0.9],
+  ],
+  ashFlats: [
+    [["ember_ram_skull", "ember_skull", "ember_ribs"], 26, 0.6, 0, 0.5],
+    [["ember_rock1", "ember_rock2", "ember_rock3"], 40, 0.7, 0.3, 0.6],
+  ],
+  obsidianSteps: [
+    [["ember_rock4", "ember_boulder"], 70, 0.85, 0.8, 1.3],
+    [["ember_rock1", "ember_rock2", "ember_rock3"], 50, 0.75, 0.3, 0.6],
+  ],
+};
 const MOUNDS = ["ember_mound1", "ember_mound2", "ember_mound3", "ember_mound4"];
 
-function buildScenery({ scene, prop, pending, random }) {
+function buildScenery({ scene, prop, place, pending, random }) {
   const reach = EMBER_REACH;
   const taken = [];
-  /* a free spot on the isles: on the land, off the camp, the path and the lava, and not on top of anything else */
-  const freeSpot = (room, isNearMountain) => {
+  const isClear = (x, z, room) =>
+    Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) > CINDER_CAMP.radius + 2 &&
+    roadDistance(x, z) > 2.5 &&
+    lavaDistance(x, z) > 1.2 &&
+    taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + room + 0.6);
+  /* a free spot on the isles (or within a land, or at the mountain's foot): on the land, off the camp, the roads
+     and the lava, and not on top of anything else */
+  const freeSpot = (room, land = null, isNearMountain = false) => {
     for (let tries = 0; tries < 60; tries++) {
-      const x = EMBER_ISLES.x + (random() * 2 - 1) * reach;
-      const z = EMBER_ISLES.z + (random() * 2 - 1) * reach;
-      const fromMountain = outsideKharos(x, z);
+      let x;
+      let z;
+      if (land) {
+        const angle = random() * Math.PI * 2;
+        const distance = Math.sqrt(random()) * land.radius;
+        x = land.center[0] + Math.sin(angle) * distance;
+        z = land.center[1] + Math.cos(angle) * distance;
+      } else {
+        x = EMBER_ISLES.x + (random() * 2 - 1) * reach;
+        z = EMBER_ISLES.z + (random() * 2 - 1) * reach;
+      }
       const isFree =
         inEmberIsles(x, z, 1.5) &&
-        Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) > CINDER_CAMP.radius + 2 &&
-        distanceToPath(x, z, CAMP_PATH) > 2.5 &&
-        lavaDistance(x, z) > 1.2 &&
-        (!isNearMountain || fromMountain < 20) &&
-        taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + room + 0.6);
+        (!isNearMountain || outsideKharos(x, z) < 22) &&
+        isClear(x, z, room);
       if (isFree) {
         taken.push([x, z, room]);
         return [x, z];
@@ -1176,22 +1309,30 @@ function buildScenery({ scene, prop, pending, random }) {
     }
     return null;
   };
-  /* the sign by the path, pointing up to the mountain */
-  taken.push([-173.6, -876.2, 0.4]);
-  pending.push(prop("ember_sign", -173.6, -876.2, { radius: 0.3, scale: 0.55, shadow: 0.6 }));
+  const scatter = (list, land) => {
+    for (const [names, count, scale, radius, shadow] of list) {
+      for (let k = 0; k < count; k++) {
+        const spot = freeSpot(Math.max(radius, 0.5), land);
+        if (spot) {
+          pending.push(prop(names[k % names.length], spot[0], spot[1], { radius, scale, shadow }));
+        }
+      }
+    }
+  };
+  /* the sign where the roads leave the camp */
+  const sign = inCamp(0, -13);
+  taken.push([...sign, 0.4]);
+  pending.push(prop("ember_sign", ...sign, { radius: 0.3, scale: 0.55, shadow: 0.6 }));
+  buildGate({ scene, place, taken, random });
+  buildRuins({ prop, place, pending, taken, random, isClear });
   /* rocks fallen from the mountain, heaped round its foot */
   const FALLEN = ["ember_boulder", "ember_rock4", "ember_rock1", "ember_rock2", "ember_rock3"];
-  for (let k = 0; k < 70; k++) {
+  for (let k = 0; k < 160; k++) {
     const angle = random() * Math.PI * 2;
-    const distance = kharosRadius(angle, 0) + 0.4 + random() * random() * 4;
+    const distance = kharosRadius(angle, 0) + 0.4 + random() * random() * 5;
     const x = MOUNT_KHAROS.x + Math.sin(angle) * distance;
     const z = MOUNT_KHAROS.z + Math.cos(angle) * distance;
-    const isFree =
-      onEmberLand(x, z, 2) &&
-      lavaDistance(x, z) > 1 &&
-      distanceToPath(x, z, CAMP_PATH) > 2 &&
-      taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + 0.9);
-    if (!isFree) {
+    if (!onEmberLand(x, z, 2) || !isClear(x, z, 0.4)) {
       continue;
     }
     const name = FALLEN[k % FALLEN.length];
@@ -1201,22 +1342,89 @@ function buildScenery({ scene, prop, pending, random }) {
       prop(name, x, z, { radius: isBig ? 0.7 : 0.3, scale: 0.7 + random() * 0.25, shadow: 1 }),
     );
   }
-  /* the lava mounds, at the mountain's foot: each smokes */
-  for (let k = 0; k < 12; k++) {
-    const spot = freeSpot(1.6, true);
+  /* the lava mounds, at the mountain's foot and out on the Ash Flats: each smokes */
+  const mound = (spot, k) => {
     if (!spot) {
-      continue;
+      return;
     }
     const [x, z] = spot;
     pending.push(prop(MOUNDS[k % MOUNDS.length], x, z, { radius: 1.1, scale: 0.7, shadow: 1.8 }));
     addVent(scene, x, z + 0.1, random);
+  };
+  for (let k = 0; k < 16; k++) {
+    mound(freeSpot(1.6, null, true), k);
   }
-  for (const [names, count, scale, radius, shadow] of SCENERY) {
-    for (let k = 0; k < count; k++) {
-      const spot = freeSpot(Math.max(radius, 0.5), false);
-      if (spot) {
-        pending.push(prop(names[k % names.length], spot[0], spot[1], { radius, scale, shadow }));
-      }
+  for (let k = 0; k < 10; k++) {
+    mound(freeSpot(1.6, EMBER_LANDS.ashFlats), k);
+  }
+  for (const [key, list] of Object.entries(LAND_SCENERY)) {
+    scatter(list, EMBER_LANDS[key]);
+  }
+  scatter(SCENERY, null);
+}
+
+/* The Gate of Kharos in the mountain's north foot, facing away from it, with fire baskets either side. */
+function buildGate({ scene, place, taken, random }) {
+  const [x, z] = EMBER_LANDS.gate.center;
+  const bearing = Math.atan2(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z);
+  /* set into the slope: its back against the mountain */
+  const into = kharosRadius(bearing, 0) - 1.2;
+  const gateX = MOUNT_KHAROS.x + Math.sin(bearing) * into;
+  const gateZ = MOUNT_KHAROS.z + Math.cos(bearing) * into;
+  place(builders.kharosGate(), gateX, gateZ, { rotation: bearing });
+  taken.push([gateX, gateZ, 5]);
+  for (const side of [-1, 1]) {
+    const bx = gateX + Math.cos(bearing) * side * 5.6 + Math.sin(bearing) * 2.4;
+    const bz = gateZ - Math.sin(bearing) * side * 5.6 + Math.cos(bearing) * 2.4;
+    place(builders.brazier(), bx, bz, { radius: 0.5 });
+    taken.push([bx, bz, 1]);
+    emberLights.push({ x: bx, z: bz, y: 1.2, radius: 4, color: [255, 150, 70], strength: 0.85 });
+    addVent(scene, bx, bz, random, { size: 0.35, y: 1.4, height: 2.5 });
+  }
+}
+
+/* The Fallen Watch: what is left of the old mages' outpost, two broken towers, walls, standing stones in a ring
+   and the rubble of their halls. */
+function buildRuins({ prop, place, pending, taken, random, isClear }) {
+  const [cx, cz] = EMBER_LANDS.fallenWatch.center;
+  const near = (dx, dz) => [cx + dx, cz + dz];
+  const stand = (group, [x, z], rotation, room) => {
+    if (inEmberIsles(x, z, 1) && isClear(x, z, room)) {
+      place(group, x, z, { rotation, radius: room });
+      taken.push([x, z, room]);
+    }
+  };
+  stand(builders.tower(1.9, 3.4, { hasRoof: false }), near(-9, 6), 0, 2.2);
+  stand(builders.tower(1.6, 2.2, { hasRoof: false }), near(10, 5), 0.6, 1.9);
+  for (const [dx, dz, turn] of [
+    [-4, 9, 0],
+    [3, 10, 0.1],
+    [12, -1, Math.PI / 2],
+    [-12, -1, Math.PI / 2 + 0.1],
+  ]) {
+    stand(builders.wall(4 + random() * 2, 1.4 + random() * 1.4, 1), near(dx, dz), turn, 1.5);
+  }
+  /* the ring of standing stones where the watch kept its fire */
+  for (let k = 0; k < 7; k++) {
+    const angle = (k / 7) * Math.PI * 2;
+    stand(
+      builders.menhir(1.6 + random() * 1.2),
+      near(Math.sin(angle) * 6, Math.cos(angle) * 6 - 2),
+      -angle,
+      0.6,
+    );
+  }
+  for (const [name, dx, dz, scale] of [
+    ["crypt_ruin", -6, -8, 0.9],
+    ["crypt_arch", 6, -9, 0.9],
+    ["crypt_tombs", 0, 13, 0.8],
+    ["crypt_bones", -14, 8, 0.8],
+    ["crypt_skulls", 14, 10, 0.7],
+  ]) {
+    const [x, z] = near(dx, dz);
+    if (inEmberIsles(x, z, 1) && isClear(x, z, 1)) {
+      taken.push([x, z, 1]);
+      pending.push(prop(name, x, z, { radius: 0.8, scale, shadow: 1.2 }));
     }
   }
 }
@@ -1358,6 +1566,7 @@ export function updateEmberIsles(dt, time) {
       puff.material.opacity = 0.4 * (1 - t);
     }
   }
+  paintGround();
   updateSparks(dt);
   updateMountainFade(dt);
   updateAsh(dt, time);

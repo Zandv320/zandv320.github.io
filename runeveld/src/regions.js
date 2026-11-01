@@ -16,7 +16,7 @@ import {
 } from "./rules/gorge.js";
 
 import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/saltmere.js";
-import { inEmberIsles, inCinderCamp } from "./rules/ember.js";
+import { inEmberIsles, inCinderCamp, emberSpotFor } from "./rules/ember.js";
 
 export {
   inCrypt,
@@ -239,17 +239,17 @@ export const isNorthroadHome = ([north, south], x, z) =>
   inNorthroad(x, z, 2) && z > north - 12 && z < south + 12;
 
 /** The fixed spot of a monster that keeps watch in one place (the crypt's, Northwatch's goblins, the bridge troll,
-    Saltmere's constructs),
-    or null for one that roams. */
+    Saltmere's constructs, the monsters of the Ember Isles), or null for one that roams. */
 export const fixedSpot = (key, id) =>
-  spotFor(key, id) || northSpotFor(key, id) || saltmereSpotFor(key, id);
+  spotFor(key, id) || northSpotFor(key, id) || saltmereSpotFor(key, id) || emberSpotFor(key, id);
 
 /** Does this monster go back to its own spot after a fight (and give up on anyone who leads it too far)? */
 export const keepsHome = (spec) =>
   spec.area === "crypt" ||
   spec.area === "northwatch" ||
   spec.area === "bridge" ||
-  spec.area === "saltmere";
+  spec.area === "saltmere" ||
+  spec.area === "ember";
 
 /** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere, the Ember Isles or the
     crypt), with a margin to the edge? The crypt needs none: its walls are obstacles. */

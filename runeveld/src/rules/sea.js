@@ -8,11 +8,11 @@ import { EMBER_ISLES, COVE_BERTH, COVE_LANDING, nearEmberLand } from "./ember.js
 export { EMBER_ISLES };
 
 /* where a ship may sail: the sea north of Saltmere's quay */
-export const GREY_SEA = { name: "The Grey Sea", x0: -430, x1: 130, z0: -980, z1: SALTMERE.z0 };
+export const GREY_SEA = { name: "The Grey Sea", x0: -430, x1: 130, z0: -1440, z1: SALTMERE.z0 };
 
 /* how a ship handles: top speed (units per second), how fast it gathers way and loses it, and how fast it turns
    (radians per second at full speed; slower when slow) */
-export const SAILING = { speed: 9, accelerate: 2.2, slowdown: 3, turnRate: 1.1 };
+export const SAILING = { speed: 12, accelerate: 2.6, slowdown: 3, turnRate: 1.1 };
 /* the hull, for running into things: three circles along it, bow, middle and stern */
 export const HULL = { length: 16, beam: 5, radius: 2.4 };
 
