@@ -40,7 +40,7 @@ import pathlib
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 TRANSPARENT = (0, 0, 0, 0)
 
@@ -182,44 +182,56 @@ def build_hero_layers(swordsman_dir, out_dir):
     return stacked, body
 
 
+def turn_over_hand(pixels, gx, gy, mirror_x):
+    """A frame's sword turned over the hand at (gx, gy): mirrored up, and with mirror_x also across (half round)."""
+    out = Image.new("RGBA", pixels.size, TRANSPARENT)
+    src, dst = pixels.load(), out.load()
+    for y in range(pixels.height):
+        for x in range(pixels.width):
+            if src[x, y][3] == 0:
+                continue
+            nx, ny = (2 * gx - x if mirror_x else x), 2 * gy - y
+            if 0 <= nx < pixels.width and 0 <= ny < pixels.height:
+                dst[nx, ny] = src[x, y]
+    return out
+
+
+def covered_pixels(layer, cover):
+    """How many pixels of `layer` lie over `cover` (both one frame)."""
+    a, b = layer.load(), cover.load()
+    return sum(1 for y in range(layer.height) for x in range(layer.width) if a[x, y][3] and b[x, y][3])
+
+
+IDLE_LEFT, IDLE_RIGHT = 1, 2
+
+
 def raise_idle_swords(front, back, body, head, fw=64, fh=64):
     """At rest (the idle rows) the pack holds the sword point down, and its point sinks into the ground below the
     feet. Turn it over the hand in every idle frame where it points down, so the blade rises from the hand: either
     mirrored up (same angle, the same side) or turned half round (up on the other side), whichever crosses the
-    face least (seen from the side the pack holds it backwards, and mirrored up it would cut across the face).
+    face least. Facing right the pack holds it low in front of the legs, and no turn looks right there; the body
+    facing right is the one facing left mirrored, so the sword is too: up and forwards, in the far hand.
     Returns new front and back sheets."""
     front, back = front.copy(), back.copy()
     grips = weapon_grips(front, back, body, fw, fh, rows=4)
-    head_px = head.load()
     for (r, c), frame in grips.items():
         grip = frame["grip"]
-        if r >= 4 or not grip or grip[3] <= 0:
+        if r >= 4 or r == IDLE_RIGHT or not grip or grip[3] <= 0:
             continue
         gx, gy = grip[0] - c * fw, grip[1] - r * fh
         cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
         cells = [sheet.crop(cell) for sheet in (front, back)]
-
-        def turned(pixels, mirror_x):
-            out = Image.new("RGBA", (fw, fh), TRANSPARENT)
-            src, dst = pixels.load(), out.load()
-            for y in range(fh):
-                for x in range(fw):
-                    if src[x, y][3] == 0:
-                        continue
-                    nx, ny = (2 * gx - x if mirror_x else x), 2 * gy - y
-                    if 0 <= nx < fw and 0 <= ny < fh:
-                        dst[nx, ny] = src[x, y]
-            return out
-
-        def over_face(sheets):
-            # only the front half is drawn over the head
-            px = sheets[0].load()
-            return sum(1 for y in range(fh) for x in range(fw) if px[x, y][3] and head_px[c * fw + x, r * fh + y][3])
-
-        options = [[turned(pixels, mirror_x) for pixels in cells] for mirror_x in (False, True)]
-        best = min(options, key=over_face)
+        face = head.crop(cell)
+        options = [[turn_over_hand(pixels, gx, gy, mirror_x) for pixels in cells] for mirror_x in (False, True)]
+        # only the front half is drawn over the head
+        best = min(options, key=lambda turned: covered_pixels(turned[0], face))
         for sheet, pixels in zip((front, back), best, strict=True):
             sheet.paste(pixels, cell[:2])
+    for c in range(front.width // fw):
+        left = (c * fw, IDLE_LEFT * fh, (c + 1) * fw, (IDLE_LEFT + 1) * fh)
+        right = (c * fw, IDLE_RIGHT * fh, (c + 1) * fw, (IDLE_RIGHT + 1) * fh)
+        for sheet in (front, back):
+            sheet.paste(ImageOps.mirror(sheet.crop(left)), right[:2])
     return front, back
 
 
