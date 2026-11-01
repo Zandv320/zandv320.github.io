@@ -223,6 +223,7 @@ export function drawHero(ctx, layers, time, { anim = "idle", direction = "down" 
   const sheet = SHEETS.hero;
   const animation = sheet.anims[anim] || sheet.anims.idle;
   const frame = Math.floor(time * animation.fps) % animation.frames;
+  const column = animation.columns?.[direction]?.[frame] ?? frame;
   const row = animation.row + (sheet.directions[direction] ?? 0);
   /* crop factor relative to the original 64 px frame (2 in smooth mode) */
   const k = sheet.frameWidth / 64;
@@ -231,7 +232,7 @@ export function drawHero(ctx, layers, time, { anim = "idle", direction = "down" 
   for (const texture of layers) {
     ctx.drawImage(
       texture.image,
-      frame * sheet.frameWidth + 14 * k,
+      column * sheet.frameWidth + 14 * k,
       row * sheet.frameHeight + 10 * k,
       36 * k,
       40 * k,

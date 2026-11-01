@@ -132,7 +132,14 @@ export const SHEETS = {
     /* layer name → url; loadSheets() replaces this with layer name → texture */
     layers: Object.fromEntries(HERO_LAYER_FILES.map((name) => [name, `sprites/${name}.png`])),
     anims: {
-      idle: { row: 0, frames: 12, fps: 8 },
+      /* facing away the pack breathes in 4 frames, three times over the 12: played once, slowly, it keeps the
+         calm pace of the other directions instead of twitching every half second */
+      idle: {
+        row: 0,
+        frames: 12,
+        fps: 8,
+        columns: { up: [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3] },
+      },
       walk: { row: 4, frames: 8, fps: 13 },
       attack: { row: 8, frames: 8, fps: 16, once: true },
       hurt: { row: 12, frames: 5, fps: 12, once: true },

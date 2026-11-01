@@ -165,7 +165,8 @@ function figureGeometry(width, height, feet, hip) {
 export class Sprite2D {
   /* sheet: {texture, frameWidth, frameHeight, scale, feet, height, hip, directions:{down,left,right,up},
              anims:{name:{row, frames, fps, once, perDirection, columns, crouch, work, mirrorLeft}}}
-       columns: {direction: [column per frame]} instead of consecutive columns
+       columns: {direction: [column per frame]} instead of consecutive columns (a direction left out plays them
+                in order)
        crouch: 0..1, how far the legs are squeezed (the hip row of the geometry goes down)
        work: name of a work sheet (sheet.workSheets[name] → texture with the tool, 4 rows in front of the body,
              then 4 rows behind it, a column per frame); the weapon layers hide meanwhile
@@ -556,9 +557,7 @@ export class Sprite2D {
         directions[opposite] !== undefined;
     }
     const row = (anim.row || 0) + (anim.perDirection === false ? 0 : directionRow);
-    const column = anim.columns
-      ? anim.columns[direction][this.frame]
-      : (anim.column || 0) + this.frame;
+    const column = anim.columns?.[direction]?.[this.frame] ?? (anim.column || 0) + this.frame;
     this.mirrored = mirror;
     const cellWidth = 1 / this.cols;
     const cellHeight = 1 / this.rows;
