@@ -35,12 +35,13 @@ Output (all pixel art, 1 world unit = 16 px, see world.js):
 """
 
 import colorsys
+import math
 import json
 import pathlib
 import sys
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 
 TRANSPARENT = (0, 0, 0, 0)
 
@@ -175,63 +176,84 @@ def build_hero_layers(swordsman_dir, out_dir):
     # clothing as the difference with the bare body; sword in front and behind
     for i, level in enumerate((1, 2, 3)):
         layer_difference(stacked[2 + 3 * i], body).save(out_dir / f"armor{level}.png")
-        # the saved swords are held up at rest; the stacked ones (that staffs and tools follow) stay as they are
-        front, back = raise_idle_swords(stacked[3 + 3 * i], stacked[4 + 3 * i], body, stacked[1])
+        # the saved swords point forwards at rest; the stacked ones (that staffs and tools follow) stay as they are
+        front, back = hold_idle_swords_forward(stacked[3 + 3 * i], stacked[4 + 3 * i])
         front.save(out_dir / f"sword{level}.png")
         back.save(out_dir / f"sword{level}_back.png")
     return stacked, body
 
 
-def turn_over_hand(pixels, gx, gy, mirror_x):
-    """A frame's sword turned over the hand at (gx, gy): mirrored up, and with mirror_x also across (half round)."""
-    out = Image.new("RGBA", pixels.size, TRANSPARENT)
-    src, dst = pixels.load(), out.load()
-    for y in range(pixels.height):
-        for x in range(pixels.width):
-            if src[x, y][3] == 0:
-                continue
-            nx, ny = (2 * gx - x if mirror_x else x), 2 * gy - y
-            if 0 <= nx < pixels.width and 0 <= ny < pixels.height:
-                dst[nx, ny] = src[x, y]
+# at rest the sword points forwards, this many degrees below level, to whichever side the pack holds its point
+IDLE_SWORD_DROP = 25
+
+
+def idle_sword_ends(cells):
+    """The hilt and the point of a resting sword over its front and back cell: the point is its lowest pixel (at
+    rest the pack lets it hang), the hilt the pixel farthest from it."""
+    points = []
+    for im in cells:
+        px = im.load()
+        points += [(x, y) for y in range(im.height) for x in range(im.width) if px[x, y][3]]
+    if len(points) < 3:
+        return None
+    tip = max(points, key=lambda p: (p[1], -abs(p[0] - im.width / 2)))
+    hilt = max(points, key=lambda p: (p[0] - tip[0]) ** 2 + (p[1] - tip[1]) ** 2)
+    return hilt, tip
+
+
+def turn_round(im, hx, hy, angle):
+    """The pixels of `im` turned by `angle` radians (counter-clockwise on screen) round (hx, hy), nearest pixel."""
+    out = Image.new("RGBA", im.size, TRANSPARENT)
+    src, dst = im.load(), out.load()
+    cos, sin = math.cos(-angle), math.sin(-angle)
+    for y in range(im.height):
+        for x in range(im.width):
+            dx, dy = x - hx, hy - y
+            sx = round(hx + dx * cos - dy * sin)
+            sy = round(hy - (dx * sin + dy * cos))
+            if 0 <= sx < im.width and 0 <= sy < im.height and src[sx, sy][3]:
+                dst[x, y] = src[sx, sy]
     return out
 
 
-def covered_pixels(layer, cover):
-    """How many pixels of `layer` lie over `cover` (both one frame)."""
-    a, b = layer.load(), cover.load()
-    return sum(1 for y in range(layer.height) for x in range(layer.width) if a[x, y][3] and b[x, y][3])
+def sword_middle(cells):
+    """The middle of a sword over its front and back cell (where it hangs from the hand, at rest), or None."""
+    points = []
+    for im in cells:
+        px = im.load()
+        points += [(x, y) for y in range(im.height) for x in range(im.width) if px[x, y][3]]
+    if not points:
+        return None
+    return sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points)
 
 
-IDLE_LEFT, IDLE_RIGHT = 1, 2
-
-
-def raise_idle_swords(front, back, body, head, fw=64, fh=64):
-    """At rest (the idle rows) the pack holds the sword point down, and its point sinks into the ground below the
-    feet. Turn it over the hand in every idle frame where it points down, so the blade rises from the hand: either
-    mirrored up (same angle, the same side) or turned half round (up on the other side), whichever crosses the
-    face least. Facing right the pack holds it low in front of the legs, and no turn looks right there; the body
-    facing right is the one facing left mirrored, so the sword is too: up and forwards, in the far hand.
-    Returns new front and back sheets."""
+def hold_idle_swords_forward(front, back, fw=64, fh=64):
+    """At rest (the idle rows) the pack lets the sword hang point down, and the point sinks into the ground below
+    the feet. Turn it round its hilt so it points forwards, a little below level, to the side the pack holds its
+    point. It is turned once per direction (in the row's first frame) and in the other frames only moved along
+    with the hand, so it never jumps. Front and back halves turn alike and stay in their own layer (the hand that
+    holds it stays the same). Returns new sheets."""
     front, back = front.copy(), back.copy()
-    grips = weapon_grips(front, back, body, fw, fh, rows=4)
-    for (r, c), frame in grips.items():
-        grip = frame["grip"]
-        if r >= 4 or r == IDLE_RIGHT or not grip or grip[3] <= 0:
+    for r in range(4):
+        first = (0, r * fh, fw, (r + 1) * fh)
+        ends = idle_sword_ends([front.crop(first), back.crop(first)])
+        if not ends:
             continue
-        gx, gy = grip[0] - c * fw, grip[1] - r * fh
-        cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
-        cells = [sheet.crop(cell) for sheet in (front, back)]
-        face = head.crop(cell)
-        options = [[turn_over_hand(pixels, gx, gy, mirror_x) for pixels in cells] for mirror_x in (False, True)]
-        # only the front half is drawn over the head
-        best = min(options, key=lambda turned: covered_pixels(turned[0], face))
-        for sheet, pixels in zip((front, back), best, strict=True):
-            sheet.paste(pixels, cell[:2])
-    for c in range(front.width // fw):
-        left = (c * fw, IDLE_LEFT * fh, (c + 1) * fw, (IDLE_LEFT + 1) * fh)
-        right = (c * fw, IDLE_RIGHT * fh, (c + 1) * fw, (IDLE_RIGHT + 1) * fh)
-        for sheet in (front, back):
-            sheet.paste(ImageOps.mirror(sheet.crop(left)), right[:2])
+        (hx, hy), (tx, ty) = ends
+        current = math.atan2(hy - ty, tx - hx)
+        wanted = math.radians(-IDLE_SWORD_DROP if tx >= hx else 180 + IDLE_SWORD_DROP)
+        turned = [turn_round(sheet.crop(first), hx, hy, wanted - current) for sheet in (front, back)]
+        anchor = sword_middle([front.crop(first), back.crop(first)])
+        for c in range(front.width // fw):
+            cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
+            middle = sword_middle([front.crop(cell), back.crop(cell)])
+            if not middle:
+                continue
+            dx, dy = round(middle[0] - anchor[0]), round(middle[1] - anchor[1])
+            for sheet, im in zip((front, back), turned, strict=True):
+                moved = Image.new("RGBA", (fw, fh), TRANSPARENT)
+                moved.paste(im, (dx, dy))
+                sheet.paste(moved, cell[:2])
     return front, back
 
 
