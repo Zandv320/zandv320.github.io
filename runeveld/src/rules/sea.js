@@ -3,6 +3,9 @@
    Ember Isles on the horizon. The sea chart (world-map.js) shows all of it. Pure data and geometry, no browser: the
    server runs it too. */
 import { SALTMERE, PIERS, MOLE } from "./saltmere.js";
+import { EMBER_ISLES, COVE_BERTH, COVE_LANDING, nearEmberLand } from "./ember.js";
+
+export { EMBER_ISLES };
 
 /* where a ship may sail: the sea north of Saltmere's quay */
 export const GREY_SEA = { name: "The Grey Sea", x0: -430, x1: 130, z0: -980, z1: SALTMERE.z0 };
@@ -17,6 +20,11 @@ export const HULL = { length: 16, beam: 5, radius: 2.4 };
 export const BERTH = { name: "Saltmere", x: -117.5, z: -397, heading: 0 };
 /* where a hero comes ashore from the berth: the east pier */
 export const BERTH_LANDING = [PIERS[2].x + 0.6, -397];
+/* every berth where she can moor, with the spot where a hero steps ashore from her there */
+export const BERTHS = [
+  { ...BERTH, id: "saltmere", landing: BERTH_LANDING },
+  { ...COVE_BERTH, id: "cinder_cove", landing: COVE_LANDING },
+];
 
 /* sea stacks: [x, z, radius] */
 export const ROCKS = [
@@ -38,8 +46,6 @@ export const ISLETS = [
   { name: "Greenhollow", x: -70, z: -690, radius: 12 },
   { name: "Widow's Isle", x: -330, z: -660, radius: 9 },
 ];
-/* the Ember Isles: for now a coast nobody can land on, under a smoking mountain */
-export const EMBER_ISLES = { name: "The Ember Isles", x: -170, z: -905, radius: 70 };
 
 /** Is (x, z) out on the Grey Sea (water, not land)? */
 export const inGreySea = (x, z) =>
@@ -81,7 +87,7 @@ export function isOpenWater(x, z, room = HULL.radius) {
       return false;
     }
   }
-  return Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) >= EMBER_ISLES.radius + room;
+  return !nearEmberLand(x, z, room);
 }
 
 /** The three points along a hull at (x, z) with this heading (bow to (-sin, -cos)), for running into things. */

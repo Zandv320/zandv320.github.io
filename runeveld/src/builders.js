@@ -28,6 +28,7 @@ const TEXTURE_NAMES = [
   "crypt_floor",
   "iron",
   "carpet",
+  "basalt",
 ];
 const OUTLINE_COLOR = 0x0c0f2a;
 
@@ -1221,6 +1222,34 @@ export function campfire() {
   return group;
 }
 
+/** A scholar's writing desk under the open sky: a plank table with a few books on it. */
+export function writingDesk() {
+  const group = new THREE.Group();
+  const top = box(1.6, 0.08, 0.8, material("wood", 1.6, 0.8));
+  top.position.y = 0.72;
+  group.add(top);
+  for (const [x, z] of [
+    [-0.7, -0.32],
+    [0.7, -0.32],
+    [-0.7, 0.32],
+    [0.7, 0.32],
+  ]) {
+    const leg = box(0.08, 0.72, 0.08, material("wood_dark", 0.08, 0.72));
+    leg.position.x = x;
+    leg.position.z = z;
+    group.add(leg);
+  }
+  const covers = [0x7a2a2a, 0x2a4a6a, 0x5a4a2a, 0x2a5a3a];
+  covers.forEach((color, k) => {
+    const height = 0.08 + (k % 2) * 0.05;
+    const book = box(0.32, height, 0.24, new THREE.MeshLambertMaterial({ color }));
+    book.position.set(-0.5 + k * 0.3, 0.76 + height / 2, k % 2 ? 0.12 : -0.1);
+    book.rotation.y = (k - 1.5) * 0.2;
+    group.add(book);
+  });
+  return group;
+}
+
 /** Enchanting altar: a stepped stone base with a violet crystal on top and four rune stones around it. */
 export function enchantingAltar() {
   const group = altar();
@@ -1769,8 +1798,10 @@ export function ship({
   }
 
   /* ----- masts with yards and sails, a jib, shrouds with ratlines, a crow's nest ----- */
+  /* the yards reach well out over the sides, and the sails spread wide under them */
+  const sailWidth = beam * 1.6;
   const sailMaterial = sail
-    ? material(sail, beam, 4)
+    ? material(sail, sailWidth, 4)
     : new THREE.MeshLambertMaterial({ color: 0xefe6cf });
   sailMaterial.side = THREE.DoubleSide;
   sailMaterial.transparent = true;
@@ -1830,17 +1861,17 @@ export function ship({
     );
     mast.position.set(0, deckHeight + height / 2, z);
     group.add(mast);
-    const yard = box(beam * 0.95, 0.14, 0.14, material("wood_dark", beam, 0.2));
+    const yard = box(sailWidth + 0.5, 0.14, 0.14, material("wood_dark", sailWidth, 0.2));
     yard.position.set(0, deckHeight + height - 0.6, z);
     group.add(yard);
     /* the sail: full of wind, bellied a little towards the bow */
     const sailHeight = height - 2.4;
-    const sailGeometry = new THREE.PlaneGeometry(beam * 0.9, sailHeight, 6, 4);
+    const sailGeometry = new THREE.PlaneGeometry(sailWidth, sailHeight, 8, 4);
     const positions = sailGeometry.attributes.position;
     for (let k = 0; k < positions.count; k++) {
-      const u = positions.getX(k) / (beam * 0.45);
+      const u = positions.getX(k) / (sailWidth / 2);
       const v = positions.getY(k) / (sailHeight / 2);
-      positions.setZ(k, -0.7 * (1 - u * u) * (1 - 0.3 * v * v));
+      positions.setZ(k, -0.95 * (1 - u * u) * (1 - 0.3 * v * v));
     }
     sailGeometry.computeVertexNormals();
     const sailMesh = new THREE.Mesh(sailGeometry, sailMaterial);

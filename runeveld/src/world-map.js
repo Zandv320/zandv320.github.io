@@ -27,6 +27,24 @@ import {
 import { inGorge, onBridge } from "./rules/gorge.js";
 import { SALTMERE, inSaltmere, onPier } from "./rules/saltmere.js";
 import { GREY_SEA, ROCKS, ISLETS, EMBER_ISLES } from "./rules/sea.js";
+import { emberShore, MOUNT_KHAROS, CINDER_CAMP, COVE_JETTY } from "./rules/ember.js";
+
+/* Traces the coast of the Ember Isles (with Cinder Cove cut into it) as a path on `g`, through `px`/`pz`. */
+function traceEmberCoast(g, px, pz) {
+  g.beginPath();
+  for (let k = 0; k <= 120; k++) {
+    const angle = (k / 120) * Math.PI * 2;
+    const reach = emberShore(angle);
+    const x = px(EMBER_ISLES.x + Math.sin(angle) * reach);
+    const z = pz(EMBER_ISLES.z + Math.cos(angle) * reach);
+    if (k === 0) {
+      g.moveTo(x, z);
+    } else {
+      g.lineTo(x, z);
+    }
+  }
+  g.closePath();
+}
 import { PIERS, MOLE, LIGHTHOUSE } from "./rules/saltmere.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
@@ -794,6 +812,9 @@ export function createWorldMap(deps) {
       if (islet) {
         return islet.name;
       }
+      if (Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < 18) {
+        return CINDER_CAMP.name;
+      }
       if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius + 10) {
         return EMBER_ISLES.name;
       }
@@ -1032,24 +1053,22 @@ export function createWorldMap(deps) {
       circle(islet.x, islet.z, islet.radius * 0.9, "#6a9a4a", 2);
       name(islet.name, islet.x, islet.z + islet.radius + 9, placeSize);
     }
-    /* the Ember Isles: black rock, the mountain and its glow */
+    /* the Ember Isles: black rock round Cinder Cove, the mountain and its glow, the camp */
     g.fillStyle = "#3a3436";
-    g.beginPath();
-    for (let k = 0; k <= 48; k++) {
-      const angle = (k / 48) * Math.PI * 2;
-      const wobble = 1 + 0.08 * Math.sin(angle * 5 + 1) + 0.05 * Math.sin(angle * 11);
-      const x = EMBER_ISLES.x + Math.sin(angle) * EMBER_ISLES.radius * wobble;
-      const z = EMBER_ISLES.z + Math.cos(angle) * EMBER_ISLES.radius * wobble;
-      if (k === 0) {
-        g.moveTo(px(x), pz(z));
-      } else {
-        g.lineTo(px(x), pz(z));
-      }
-    }
+    traceEmberCoast(g, px, pz);
     g.fill();
-    circle(EMBER_ISLES.x - 10, EMBER_ISLES.z - 18, 26, "#4a4244");
-    circle(EMBER_ISLES.x - 10, EMBER_ISLES.z - 18, 5, "#ff7a2a", 3);
+    circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, MOUNT_KHAROS.radius * 0.7, "#4a4244");
+    circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, 5, "#ff7a2a", 3);
+    g.fillStyle = "#8a6a42";
+    g.fillRect(
+      px(COVE_JETTY.x - COVE_JETTY.halfWidth),
+      pz(COVE_JETTY.north),
+      Math.max(2 * ratio, COVE_JETTY.halfWidth * 2 * scale),
+      (COVE_JETTY.south - COVE_JETTY.north) * scale,
+    );
+    circle(CINDER_CAMP.x, CINDER_CAMP.z, 2.5, "#ffb04a", 3);
     name(EMBER_ISLES.name, EMBER_ISLES.x, EMBER_ISLES.z + EMBER_ISLES.radius + 14, placeSize * 1.2);
+    name(CINDER_CAMP.name, CINDER_CAMP.x, CINDER_CAMP.z - 7, placeSize);
     name(SALTMERE.name, SALTMERE.gate[0], SALTMERE.z1 - 2, placeSize * 1.2);
     name(GREY_SEA.name, -150, -600, placeSize * 2.2, true);
     name("Uncharted waters", -150, SEA_CHART.z0 + 18, placeSize * 1.1, true);
@@ -1203,7 +1222,21 @@ export function createWorldMap(deps) {
       circle(x, z, radius + 1, "#d8c08a");
       circle(x, z, radius * 0.9, "#6a9a4a");
     }
-    circle(EMBER_ISLES.x, EMBER_ISLES.z, EMBER_ISLES.radius, "#3a3436");
+    context.fillStyle = "#3a3436";
+    traceEmberCoast(
+      context,
+      (x) => (x - worldX0) * scale,
+      (z) => (z - worldZ0) * scale,
+    );
+    context.fill();
+    circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, MOUNT_KHAROS.radius, "#4a4244");
+    context.fillStyle = "#8a6a42";
+    context.fillRect(
+      (COVE_JETTY.x - COVE_JETTY.halfWidth - worldX0) * scale,
+      (COVE_JETTY.north - worldZ0) * scale,
+      COVE_JETTY.halfWidth * 2 * scale,
+      (COVE_JETTY.south - COVE_JETTY.north) * scale,
+    );
   }
 
   return {

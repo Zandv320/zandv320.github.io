@@ -37,6 +37,7 @@ import { burst } from "./particles.js";
 import { inCrypt, CRYPT_ENTRY } from "./rules/crypt.js";
 import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
 import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
+import { inEmberIsles, CAMP_WAKE } from "./rules/ember.js";
 import { inGreySea } from "./rules/sea.js";
 import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
@@ -590,6 +591,12 @@ function respawn() {
      Halfway Inn once they have slept there */
   if (inCrypt(player.x, player.z)) {
     [player.x, player.z] = CRYPT_ENTRY;
+  } else if (
+    inEmberIsles(player.x, player.z, -2) &&
+    player.quests.mara_landfall?.state === "done"
+  ) {
+    /* on the Ember Isles: by the fire in Cinder Cove, once the camp has taken them in */
+    [player.x, player.z] = CAMP_WAKE;
   } else if (
     (inSaltmere(player.x, player.z, -2) ||
       inGreySea(player.x, player.z) ||

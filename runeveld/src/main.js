@@ -48,13 +48,16 @@ import {
   BRIDGE,
   SALTMERE,
   inSaltmere,
+  inEmberIsles,
 } from "./regions.js";
 import { inWarehouses, WAREHOUSES } from "./rules/saltmere.js";
 import { buildSaltmere, updateSaltmere } from "./saltmere.js";
 import { updateChase } from "./maelis.js";
 import { buildSea, updateSea } from "./sea.js";
+import { buildEmberIsles, updateEmberIsles } from "./ember.js";
 import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from "./sailing.js";
-import { BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
+import { BERTHS, BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
+import { CINDER_CAMP, MOUNT_KHAROS, onCoveJetty } from "./rules/ember.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
 import { buildNorthroad, updateNorthroad } from "./northroad.js";
@@ -230,6 +233,7 @@ const ZONES = {
   northroad: [NORTHROAD.name, "The long road north to the sea. Watch the sky."],
   saltmere: [SALTMERE.name, "The great harbor of the realm. Ships leave for the edge of the map."],
   sea: ["The Grey Sea", "Open water, and no chart past the lighthouse."],
+  ember: [EMBER_ISLES.name, "Ash, black rock and the smoking mountain. Something waits under it."],
   /* the stairs announce the crypt themselves (crypt.js) */
   crypt: null,
 };
@@ -246,7 +250,14 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
   await loadSheets();
-  await buildWorld([buildCrypt, buildSeals, buildNorthroad, buildSaltmere, buildSea]);
+  await buildWorld([
+    buildCrypt,
+    buildSeals,
+    buildNorthroad,
+    buildSaltmere,
+    buildSea,
+    buildEmberIsles,
+  ]);
   clickables.push(...cryptClickables(), ...sealClickables());
   createMerchant();
   createVillagers(scene, clickables);
@@ -477,7 +488,7 @@ function restoreHero(hero) {
   player.buffs = hero.buffs && typeof hero.buffs === "object" ? hero.buffs : {};
   resetSailing();
   /* saved at sea (sailing, out of the game): back on the pier at the Gull's Promise's berth */
-  if (inGreySea(player.x, player.z)) {
+  if (inGreySea(player.x, player.z) && !inEmberIsles(player.x, player.z)) {
     [player.x, player.z] = BERTH_LANDING;
   }
   if (!insideWorld(player.x, player.z, 1)) {
@@ -773,15 +784,16 @@ function walkTo(x, z) {
   return true;
 }
 
-/* The Gull's Promise at her berth: walk to the gangway and take the helm (sailing.js), once Captain Mara Holt has
-   her ship ready. */
-function boardShip() {
+/* The Gull's Promise at a berth (rules/sea.js BERTHS): walk to the gangway and take the helm (sailing.js), once
+   Captain Mara Holt has her ship ready. */
+function boardShip(berthId) {
   if (player.quests.mara_ship?.state !== "done") {
     UI.systemMessage("Captain Mara Holt lets nobody aboard until her ship is ready to sail.");
     return;
   }
-  const [x, z] = BERTH_LANDING;
-  const board = () => takeHelm();
+  const berth = BERTHS.find((each) => each.id === berthId) || BERTHS[0];
+  const [x, z] = berth.landing;
+  const board = () => takeHelm(berth.id);
   game.dialogue.close();
   if (Math.hypot(x - player.x, z - player.z) < 2.6) {
     board();
@@ -1547,7 +1559,7 @@ function handleClick(clientX, clientY, mode = "select") {
     }
     if (data.boardShip) {
       clearTarget();
-      boardShip();
+      boardShip(data.boardShip);
       return;
     }
     if (data.peerId !== undefined) {
@@ -1918,6 +1930,9 @@ function zoneAt(x, z) {
   if (inSaltmere(x, z, -1)) {
     return "saltmere";
   }
+  if (inEmberIsles(x, z, -1)) {
+    return "ember";
+  }
   if (inGreySea(x, z)) {
     return "sea";
   }
@@ -1937,6 +1952,17 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "ember") {
+    if (
+      Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < CINDER_CAMP.radius + 6 ||
+      onCoveJetty(x, z, -2)
+    ) {
+      return CINDER_CAMP.name;
+    }
+    return Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) < MOUNT_KHAROS.radius + 10
+      ? MOUNT_KHAROS.name
+      : EMBER_ISLES.name;
+  }
   if (zone === "sea") {
     if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius + 30) {
       return EMBER_ISLES.name;
@@ -2014,6 +2040,7 @@ function stepWorld(dt, time) {
   updateNorthroad(dt, time);
   updateSaltmere(dt, time);
   updateSea(dt, time);
+  updateEmberIsles(dt, time);
   updateChase(dt);
   if (game.host) {
     hostTick(dt);

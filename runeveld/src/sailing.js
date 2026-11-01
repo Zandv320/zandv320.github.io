@@ -1,15 +1,17 @@
 /* Eldoria – sailing the Gull's Promise yourself (the sea's rules are in rules/sea.js). A hero who has helped Captain
-   Mara Holt takes the helm at her berth by Saltmere's east pier. At sea the hero is the ship: the walking keys (or a
-   click on the water or the sea chart) give the course, the ship comes round and gathers way, runs into rocks and
-   stops, and moors by itself when brought slowly back to its berth. Other players see each other's ships (their
+   Mara Holt takes the helm at her berth by Saltmere's east pier (or at the jetty in Cinder Cove, once she lies
+   there). At sea the hero is the ship: the walking keys (or a click on the water or the sea chart) give the course,
+   the ship comes round and gathers way, runs into rocks and stops, and moors by itself when brought slowly to a
+   berth. Other players see each other's ships (their
    presence carries `ship: [x, z, heading]`). */
 import * as builders from "./builders.js";
-import { SAILING, HULL, BERTH, BERTH_LANDING, EMBER_ISLES, canSail } from "./rules/sea.js";
+import { SAILING, HULL, BERTHS, EMBER_ISLES, canSail } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { player, peers, now } from "./game-state.js";
 import { keyDirection } from "./player.js";
 import { setMooredGullVisible } from "./saltmere.js";
+import { setCoveGullVisible } from "./ember.js";
 import { createWake } from "./sea.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
@@ -49,28 +51,38 @@ function fadeSails(group, heading) {
   }
 }
 
-/** The hero takes the helm of the Gull's Promise at her berth in Saltmere. */
-export function takeHelm() {
+/* The Gull's Promise lying at her berths shows only while the hero is ashore: at sea they sail her. */
+function showMooredGulls(isVisible) {
+  setMooredGullVisible(isVisible);
+  setCoveGullVisible(isVisible);
+}
+
+/* May the hero bring her in at this berth? Cinder Cove only once Mara has told them the way through the reefs. */
+const mayMoorAt = (berth) => berth.id !== "cinder_cove" || !!player.quests.mara_landfall;
+
+/** The hero takes the helm of the Gull's Promise at her berth with this id (rules/sea.js BERTHS). */
+export function takeHelm(berthId = "saltmere") {
   if (player.ship || player.isDead) {
     return;
   }
   if (!ship) {
     ship = buildShip();
   }
-  /* `from`: still in the berth, so she does not moor again before she has left it */
+  const berth = BERTHS.find((each) => each.id === berthId) || BERTHS[0];
+  /* `from`: still in this berth, so she does not moor there again before she has left it */
   player.ship = {
-    x: BERTH.x,
-    z: BERTH.z,
-    heading: BERTH.heading,
+    x: berth.x,
+    z: berth.z,
+    heading: berth.heading,
     speed: 0,
     destination: null,
-    from: "berth",
+    from: berth.id,
   };
   player.destination = null;
   player.target = null;
   player.isAttacking = false;
   ship.visible = true;
-  setMooredGullVisible(false);
+  showMooredGulls(false);
   UI.setTargetFrame(null);
   UI.systemMessage(
     "You take the helm of the Gull's Promise. Steer with the walking keys, or click the water (or the sea chart, M) to sail there.",
@@ -86,7 +98,7 @@ function leaveShip(landX, landZ) {
   player.destination = null;
   ship.visible = false;
   wake.hide();
-  setMooredGullVisible(true);
+  showMooredGulls(true);
   cameraState.target.set(player.x, 0, player.z);
 }
 
@@ -97,7 +109,7 @@ export function resetSailing() {
     ship.visible = false;
     wake.hide();
   }
-  setMooredGullVisible(true);
+  showMooredGulls(true);
 }
 
 /** A click on the water while sailing: set the course for that spot. */
@@ -185,29 +197,35 @@ export function updateSailing(dt) {
     state.speed = 0;
   }
 
-  /* home: brought slowly to the berth, she moors */
-  const isHome = Math.hypot(state.x - BERTH.x, state.z - BERTH.z) < MOOR_DISTANCE;
-  if (isHome && state.speed < MOOR_SPEED && !wantsWay && state.from !== "berth") {
-    leaveShip(...BERTH_LANDING);
-    UI.systemMessage("You bring the Gull's Promise alongside and make her fast at Saltmere.");
-    return true;
-  }
-  /* once out of the berth, she may moor there again */
-  if (
-    state.from === "berth" &&
-    Math.hypot(state.x - BERTH.x, state.z - BERTH.z) > MOOR_DISTANCE + 2
-  ) {
-    state.from = "sea";
+  /* brought slowly to a berth, she moors */
+  for (const berth of BERTHS) {
+    const distance = Math.hypot(state.x - berth.x, state.z - berth.z);
+    if (berth.id === state.from) {
+      /* once out of the berth she set off from, she may moor there again */
+      if (distance > MOOR_DISTANCE + 2) {
+        state.from = "sea";
+      }
+      continue;
+    }
+    if (distance < MOOR_DISTANCE && state.speed < MOOR_SPEED && !wantsWay && mayMoorAt(berth)) {
+      leaveShip(...berth.landing);
+      UI.systemMessage(
+        `You bring the Gull's Promise alongside and make her fast at ${berth.name}.`,
+      );
+      return true;
+    }
   }
 
-  /* the Ember Isles: for now the reefs keep everyone off */
+  /* the Ember Isles: a word about their coast, the first time she comes near */
   if (
     !toldIsles &&
-    Math.hypot(state.x - EMBER_ISLES.x, state.z - EMBER_ISLES.z) < EMBER_ISLES.radius + 20
+    Math.hypot(state.x - EMBER_ISLES.x, state.z - EMBER_ISLES.z) < EMBER_ISLES.radius + 24
   ) {
     toldIsles = true;
     UI.systemMessage(
-      "The Ember Isles: black reefs, ash and smoke. There is no safe cove here yet.",
+      player.quests.mara_landfall
+        ? "Cinder Cove opens between the reefs on the south coast. Bring her in slowly, alongside the jetty."
+        : "The Ember Isles: black reefs, ash and smoke. Nobody you know has ever found a way in.",
     );
   }
 

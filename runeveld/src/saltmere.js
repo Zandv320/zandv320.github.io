@@ -335,7 +335,7 @@ export function buildSaltmere({ scene, prop, place, pending, seededRandom, obsta
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
   );
   boardHit.position.set(BERTH.x, 0, BERTH.z);
-  boardHit.userData.boardShip = "berth";
+  boardHit.userData.boardShip = "saltmere";
   scene.add(boardHit);
   clickables.push(boardHit);
   mooredGull.userData.boardHit = boardHit;

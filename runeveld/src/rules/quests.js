@@ -58,6 +58,7 @@ export const CHAPTERS = {
   7: "The Northroad",
   8: "Saltmere",
   9: "Across the Grey Sea",
+  10: "The Ember Isles",
 };
 
 export const QUESTS = {
@@ -975,6 +976,25 @@ export const QUESTS = {
       "You brought her back! Not a scratch. Well: one scratch. Black reefs and smoke, you say, and no safe cove. Then we need someone who knows that coast. Leave that to me. Rest your sea legs.",
     goal: { type: "reach", x: -170, z: -822, r: 16, label: "the reefs of the Ember Isles" },
     reward: { exp: 3600, zeny: 2400, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  /* ---- Saga II, chapter 10: the Ember Isles ---- */
+  mara_landfall: {
+    giver: "Captain Mara Holt",
+    turnIn: "Scholar Edda",
+    hint: "Take the helm of the Gull's Promise at the east pier and sail north to the Ember Isles. Cinder Cove opens in the middle of their south coast: come in slowly, alongside the jetty on the east side of the cove, and she moors.",
+    chapter: 10,
+    main: true,
+    title: "Landfall",
+    level: 30,
+    after: "mara_sail",
+    intro:
+      "A gull came in this morning with a letter on its leg. A scholar, Edda, put in at the Ember Isles a week ago with old Tamsin's fishing boat. She has found a cove on the south coast, Cinder Cove, with a way in between the reefs, and she has a jetty and a camp. And she says Maelis landed there before her. Take my ship, find her cove and moor at her jetty. Gently.",
+    progressText:
+      "Sail the Gull's Promise north to Cinder Cove, in the middle of the Ember Isles' south coast. Bring her in slowly beside the jetty, then find Scholar Edda in the camp.",
+    completeText:
+      "You came! And with the Gull's Promise, no less. Welcome to Cinder Cove: two tents, one fire, and more ash than I thought the world could hold. The fire seal is inside that mountain, I am sure of it, and Maelis went up there three days ago. Sleep by the fire tonight. If the isles knock you down, Tamsin and I will carry you back to it.",
+    goal: { type: "visit", npc: "Scholar Edda" },
+    reward: { exp: 4200, zeny: 2800, items: [{ id: "grand_potion", count: 4 }] },
   },
   tobin_warehouses: {
     giver: "Warden Tobin",

@@ -10,6 +10,7 @@ The packs dir holds the unpacked zips from runeveld/_download/, each in its own 
     free-village-pixel-tileset-for-top-down-defense/
     free-medieval-fortress-top-down-pixel-minigame-kit/
     fx-explosion/, fx-magic/
+    volcanoe_tileset_and_assets/ (schwarnhild's volcano pack, itch.io)
 
 Output (all pixel art, 1 world unit = 16 px, see world.js):
     hero_body.png          bare base body (underwear), 64x64 frames, 12 columns, 4 rows per animation
@@ -2141,6 +2142,69 @@ def build_goblins(packs_dir, out_dir):
     return written
 
 
+# ---------- the Ember Isles: ash ground, basalt, lava and the props of a burnt land ----------
+# From schwarnhild's free "Volcanoe Tileset and Asset Pack 32x32" (itch.io): the grey ground, the sand, the basalt
+# cobbles and the lava tiles, and its props (dead trees and bushes, rocks, bones, a sign, little smoking lava mounds).
+VOLCANO_DIR = "volcanoe_tileset_and_assets"
+# the tiles for the ground map of the isles (ember.js), side by side in this order: (column, row) in the 32 px grid
+EMBER_TILES = {
+    "ground": (10, 1),
+    "ground_specks": (4, 1),
+    "ground_pebbles": (10, 8),
+    "sand": (1, 1),
+}
+# patches of sand ringed with stones, 3x3 tiles each, laid here and there over the ash: (column, row) of the corner
+EMBER_PATCHES = [(0, 0), (0, 6)]
+# props: name -> box in volcanoe_assets.png
+EMBER_PROPS = {
+    "ember_rock1": (10, 7, 30, 29),
+    "ember_rock2": (43, 11, 60, 28),
+    "ember_rock3": (70, 11, 87, 28),
+    "ember_rock4": (96, 5, 127, 32),
+    "ember_boulder": (144, 46, 176, 79),
+    "ember_ram_skull": (163, 10, 190, 29),
+    "ember_skull": (199, 10, 218, 28),
+    "ember_ribs": (227, 11, 254, 29),
+    "ember_tree1": (6, 53, 61, 127),
+    "ember_tree2": (69, 37, 126, 127),
+    "ember_sign": (200, 44, 243, 89),
+    "ember_stump": (134, 109, 158, 125),
+    "ember_bush1": (6, 142, 60, 179),
+    "ember_bush2": (72, 145, 124, 181),
+    "ember_mound1": (9, 195, 73, 223),
+    "ember_mound2": (101, 202, 152, 223),
+    "ember_mound3": (10, 246, 90, 282),
+    "ember_mound4": (96, 257, 160, 285),
+}
+
+
+def build_ember(packs_dir, out_dir):
+    """The ground tiles, the basalt texture and the props of the Ember Isles; returns the sprite names written."""
+    written = []
+    tiles = open_rgba(packs_dir / VOLCANO_DIR / "volcanoe_tiles.png")
+    atlas = Image.new("RGBA", (32 * len(EMBER_TILES), 32), TRANSPARENT)
+    for k, (col, row) in enumerate(EMBER_TILES.values()):
+        atlas.paste(tiles.crop((col * 32, row * 32, col * 32 + 32, row * 32 + 32)), (k * 32, 0))
+    atlas.save(out_dir / "ember_ground.png")
+    written.append("ember_ground")
+    patches = Image.new("RGBA", (96 * len(EMBER_PATCHES), 96), TRANSPARENT)
+    for k, (col, row) in enumerate(EMBER_PATCHES):
+        patches.paste(tiles.crop((col * 32, row * 32, col * 32 + 96, row * 32 + 96)), (k * 96, 0))
+    patches.save(out_dir / "ember_patches.png")
+    written.append("ember_patches")
+    assets = open_rgba(packs_dir / VOLCANO_DIR / "volcanoe_assets.png")
+    for name, box in EMBER_PROPS.items():
+        prop = assets.crop(box)
+        prop.crop(prop.getbbox()).save(out_dir / f"{name}.png")
+        written.append(name)
+    # the basalt cobbles, for the cliffs of the coast and the slopes of Mount Kharos
+    tex_dir = out_dir / "tex"
+    tex_dir.mkdir(exist_ok=True)
+    tiles.crop((4 * 32, 4 * 32, 5 * 32, 5 * 32)).save(tex_dir / "basalt.png")
+    print("ember:", written)
+    return written
+
+
 def main():
     packs_dir = pathlib.Path(sys.argv[1])
     out_dir = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "runeveld/sprites")
@@ -2157,6 +2221,7 @@ def main():
             "crypt": lambda: build_crypt(packs_dir, out_dir),
             "shields": lambda: build_shields(out_dir),
             "goblins": lambda: build_goblins(packs_dir, out_dir),
+            "ember": lambda: build_ember(packs_dir, out_dir),
         }
         names = builders[part]()
         for name in names:
@@ -2179,6 +2244,7 @@ def main():
     build_crypt(packs_dir, out_dir)
     build_shields(out_dir)
     build_goblins(packs_dir, out_dir)
+    build_ember(packs_dir, out_dir)
     build_smooth(out_dir)
     print("done:", sorted(p.name for p in out_dir.glob("*.png")))
 

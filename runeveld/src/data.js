@@ -1362,6 +1362,12 @@ export const SHOPS = {
       "harbor_charm",
     ],
   },
+  /* the camp in Cinder Cove: what is left in Tamsin's boat */
+  cinder_cove: {
+    name: "Fisherman Tamsin",
+    greeting: '"Whatever is left in my boat is for sale. Mind the ash on the labels."',
+    items: ["orange_potion", "mana_potion", "grand_potion", "cooked_pike"],
+  },
   saltmere_smith: {
     name: "Weaponsmith Dorran",
     greeting: '"Blades for the deck, staves for the storm. Nothing here rusts, I promise you."',

@@ -24,6 +24,7 @@ import {
   keepsHome,
   inSaltmere,
   isSaltmereSafe,
+  inCinderCamp,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
@@ -55,8 +56,10 @@ const KNOCKBACK_SCALE = 0.6;
 
 const randomBetween = (min, max) => min + Math.random() * (max - min);
 const inVillage = (x, z) => Math.abs(x) < VILLAGE_HALF_SIZE && Math.abs(z) < VILLAGE_HALF_SIZE;
-/* players in the village, the capital or Saltmere (but for its warehouses) cannot be attacked */
-const isSafe = (x, z) => inVillage(x, z) || inCapital(x, z) || isSaltmereSafe(x, z);
+/* players in the village, the capital, Saltmere (but for its warehouses) or the camp in Cinder Cove cannot be
+   attacked */
+const isSafe = (x, z) =>
+  inVillage(x, z) || inCapital(x, z) || isSaltmereSafe(x, z) || inCinderCamp(x, z);
 const nowSeconds = () => Date.now() / 1000;
 
 function gameHour() {

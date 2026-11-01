@@ -16,8 +16,19 @@ import {
 } from "./rules/gorge.js";
 
 import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/saltmere.js";
+import { inEmberIsles, inCinderCamp } from "./rules/ember.js";
 
-export { inCrypt, GORGE, BRIDGE, NORTHWATCH, SALTMERE, inSaltmere, isSaltmereSafe };
+export {
+  inCrypt,
+  GORGE,
+  BRIDGE,
+  NORTHWATCH,
+  SALTMERE,
+  inSaltmere,
+  isSaltmereSafe,
+  inEmberIsles,
+  inCinderCamp,
+};
 
 /* Half width of the ground map around the village. */
 export const FIELD_SIZE = 60;
@@ -240,8 +251,8 @@ export const keepsHome = (spec) =>
   spec.area === "bridge" ||
   spec.area === "saltmere";
 
-/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere or the crypt), with a
-    margin to the edge? The crypt needs none: its walls are obstacles. */
+/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere, the Ember Isles or the
+    crypt), with a margin to the edge? The crypt needs none: its walls are obstacles. */
 export function insideWorld(x, z, margin = 1.5) {
   return (
     inFields(x, z, margin) ||
@@ -249,6 +260,7 @@ export function insideWorld(x, z, margin = 1.5) {
     inVale(x, z, margin) ||
     inNorthroad(x, z, margin) ||
     inSaltmere(x, z, margin) ||
+    inEmberIsles(x, z, margin) ||
     inCrypt(x, z)
   );
 }

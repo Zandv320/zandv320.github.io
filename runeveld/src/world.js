@@ -397,7 +397,7 @@ function seededRandom(seed) {
 }
 
 /* filtering for a ground canvas texture: soft with mipmaps in smooth mode, crisp otherwise */
-function applyGroundFilter(texture) {
+export function applyGroundFilter(texture) {
   texture.magFilter = SMOOTH ? THREE.LinearFilter : THREE.NearestFilter;
   if (SMOOTH) {
     texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -410,7 +410,7 @@ function applyGroundFilter(texture) {
 }
 
 /* a transparent plane that only shows the cast shadows of buildings and fences, in the outline colour */
-function addShadowCatcher(width, depth, x, y, z) {
+export function addShadowCatcher(width, depth, x, y, z) {
   const catcher = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depth),
     new THREE.ShadowMaterial({ color: 0x1a1540, opacity: 0.38 }),

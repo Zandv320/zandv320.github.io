@@ -1255,6 +1255,37 @@ const VILLAGERS = [
     ],
     night: ["No wind, no flour. I might as well sleep."],
   },
+  /* ---- the camp in Cinder Cove, on the Ember Isles ---- */
+  {
+    name: "Scholar Edda",
+    hair: "brown",
+    outfit: "armor1",
+    tunicColor: "violet",
+    route: [[-171.3, -866.6]],
+    facing: [0.4, 1],
+    lines: [
+      "The old mages built the fire seal inside the mountain. Of course they did. Nobody ever builds a seal in a meadow.",
+      "Ash in my tea, ash in my books, ash in my hair. I have never been happier.",
+      "Maelis was here before us. His boat lay where your ship lies now: the marks are still in the sand.",
+    ],
+    night: ["Look at the crater. It breathes, slowly, like something asleep."],
+  },
+  {
+    name: "Fisherman Tamsin",
+    hair: "silver",
+    outfit: "armor1",
+    tunicColor: "blue",
+    headgear: "cap",
+    route: [[-160.2, -863.8]],
+    facing: [-1, 0.3],
+    shop: "cinder_cove",
+    lines: [
+      "Forty years I fished the Grey Sea, and never once came this close to that mountain. Then she paid in gold.",
+      "Potions, rope, dry biscuits. Whatever is left in my boat is for sale.",
+      "The fish here taste of smoke. Not bad, if you like smoke.",
+    ],
+    night: ["Hear that rumble? That is the mountain. Or my stomach."],
+  },
 ];
 
 VILLAGERS.push({
