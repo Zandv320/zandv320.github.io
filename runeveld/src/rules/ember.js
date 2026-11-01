@@ -183,7 +183,7 @@ export const LAVA_CROSSINGS = [
   { x: -298.5, z: -1224.9 },
   { x: -24.4, z: -1203.2 },
 ];
-export const CROSSING_REACH = 2.8;
+export const CROSSING_REACH = 3.6;
 export const LAVA_POOLS = [
   { x: -226, z: -1060, r: 4 },
   { x: -268, z: -1103, r: 3.5 },
@@ -200,7 +200,10 @@ export function distanceToLine(x, z, line) {
     const [bx, bz] = line[i + 1];
     const dx = bx - ax;
     const dz = bz - az;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    const lengthSquared = dx * dx + dz * dz;
+    const t = lengthSquared
+      ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / lengthSquared))
+      : 0;
     best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
   }
   return best;
@@ -215,14 +218,42 @@ export function riverDistance(x, z) {
   return Math.min(...LAVA_FLOWS.map((flow) => distanceToLine(x, z, flow))) - LAVA_WIDTH;
 }
 
+/* The rivers as they burn: each cut where it has crusted over, so the crust between the pieces is free to walk on.
+   A piece ends a river's width short of the crust, because the lava rounds off that far past its end. */
+const LAVA_RUNS = LAVA_FLOWS.flatMap((flow) => {
+  const runs = [];
+  let run = [];
+  for (let k = 0; k < flow.length - 1; k++) {
+    const [ax, az] = flow[k];
+    const [bx, bz] = flow[k + 1];
+    const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
+    for (let step = 0; step <= steps; step++) {
+      const x = ax + ((bx - ax) * step) / steps;
+      const z = az + ((bz - az) * step) / steps;
+      const isCrust = LAVA_CROSSINGS.some(
+        (crossing) => Math.hypot(x - crossing.x, z - crossing.z) < CROSSING_REACH + LAVA_WIDTH,
+      );
+      if (isCrust) {
+        if (run.length > 1) {
+          runs.push(run);
+        }
+        run = [];
+      } else {
+        run.push([x, z]);
+      }
+    }
+  }
+  if (run.length > 1) {
+    runs.push(run);
+  }
+  return runs;
+});
+
 /** How far (x, z) lies from the nearest lava, river or pool: below 0 inside it (the crust of a crossing is not lava). */
 export function lavaDistance(x, z) {
   let best = Infinity;
-  const onCrust = LAVA_CROSSINGS.some(
-    (crossing) => Math.hypot(x - crossing.x, z - crossing.z) < CROSSING_REACH,
-  );
-  for (const flow of onCrust ? [] : LAVA_FLOWS) {
-    best = Math.min(best, distanceToLine(x, z, flow) - LAVA_WIDTH);
+  for (const run of LAVA_RUNS) {
+    best = Math.min(best, distanceToLine(x, z, run) - LAVA_WIDTH);
   }
   for (const pool of LAVA_POOLS) {
     best = Math.min(best, Math.hypot(x - pool.x, z - pool.z) - pool.r);
