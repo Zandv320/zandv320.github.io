@@ -187,9 +187,11 @@ def build_hero_layers(swordsman_dir, out_dir):
 # (idle row → 1 to the right, -1 to the left), seen from the front or back to whichever side the pack holds its point
 IDLE_SWORD_DROP = 25
 IDLE_SWORD_SIDE = {1: -1, 2: 1}
-# facing right the pack holds the sword in the hand at the back of the body, so pointed forwards it would run
-# straight through the hero: there it is carried forwards to the front of the body, with a hand on its grip
-IDLE_SWORD_TO_FRONT = {2}
+# facing right the pack holds the sword in the right hand, the near one, that hangs at the back of the body:
+# pointed forwards it would run through the hero, so there it keeps hanging as the pack draws it, only lifted
+# until its point is clear of the ground
+IDLE_SWORD_HANGS = {2}
+IDLE_SWORD_CLEARANCE = 3
 
 
 def idle_sword_ends(cells):
@@ -252,11 +254,38 @@ def close_grip_gap(im, hx, hy, angle, reach=12):
             px[x, y] = px[along[i - 1]]
 
 
+def hang_idle_sword(front, back, body, grips, r, fw=64, fh=64):
+    """One idle row where the sword keeps hanging as the pack draws it, lifted (the same in every frame) until its
+    point is IDLE_SWORD_CLEARANCE pixels above the feet; the gap for the hand is closed and the hand drawn over the
+    grip, so the body does not show through the sword."""
+    first = (0, r * fh, fw, (r + 1) * fh)
+    feet = body.crop(first).getbbox()[3]
+    lowest = max(im.getbbox()[3] for im in (front.crop(first), back.crop(first)) if im.getbbox())
+    lift = max(0, lowest - (feet - IDLE_SWORD_CLEARANCE))
+    for c in range(front.width // fw):
+        cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
+        cells = [front.crop(cell), back.crop(cell)]
+        ends = idle_sword_ends(cells)
+        if not ends:
+            continue
+        (hx, hy), (tx, ty) = ends
+        angle = math.atan2(hy - ty, tx - hx)
+        for sheet, im in zip((front, back), cells, strict=True):
+            lifted = Image.new("RGBA", (fw, fh), TRANSPARENT)
+            lifted.paste(im, (0, -lift))
+            close_grip_gap(lifted, hx, hy - lift, angle, reach=max(fw, fh))
+            sheet.paste(lifted, cell[:2])
+        grip = grips[(r, c)]["grip"]
+        if grip:
+            hand_over(PixelCanvas(front), front.copy(), body, grip[0], grip[1], fw, fh, r, c)
+
+
 def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
     """At rest (the idle rows) the pack lets the sword hang point down, and the point sinks into the ground below
     the feet. Turn it round its hilt so it points forwards, a little below level: seen from the side the way the
     hero faces (facing right the pack lets it hang backwards, across the legs), seen from the front or back to the
-    side the pack holds its point. It is turned once per direction (in the row's first frame) and in the other
+    side the pack holds its point (facing right it keeps hanging, lifted: hang_idle_sword). It is turned once per
+    direction (in the row's first frame) and in the other
     frames only moved along with the hand, so it never jumps. Front and back halves turn alike and stay in their
     own layer (the hand that holds it stays the same). The gap the pack leaves for the hand is closed, so the sword
     is whole in front of the body, and the hand is drawn over its grip again. Returns new sheets."""
@@ -266,6 +295,9 @@ def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
         first = (0, r * fh, fw, (r + 1) * fh)
         ends = idle_sword_ends([front.crop(first), back.crop(first)])
         if not ends:
+            continue
+        if r in IDLE_SWORD_HANGS:
+            hang_idle_sword(front, back, body, grips, r, fw, fh)
             continue
         (hx, hy), (tx, ty) = ends
         current = math.atan2(hy - ty, tx - hx)
@@ -277,20 +309,6 @@ def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
         opaque = [im.width * im.height - im.getchannel("A").histogram()[0] for im in turned]
         is_front = opaque[0] >= opaque[1]
         grip = grips[(r, 0)]["grip"]
-        shift, hand = 0, []
-        if r in IDLE_SWORD_TO_FRONT and grip:
-            gx, gy = grip[0], grip[1] - r * fh
-            body_cell = body.crop(first)
-            body_px = body_cell.load()
-            row_xs = [x for x in range(fw) if body_px[x, gy][3]]
-            shift = max(0, max(row_xs) - 1 - gx) if row_xs else 0
-            # the hand that will hold it there: the skin round the old grip
-            hand = [
-                (x - gx, y - gy, body_px[x, y])
-                for y in range(gy - 1, gy + 2)
-                for x in range(gx - 1, gx + 2)
-                if body_px[x, y][3] and body_px[x, y][:3] in SKIN
-            ]
         anchor = sword_middle([front.crop(first), back.crop(first)])
         for c in range(front.width // fw):
             cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
@@ -300,15 +318,9 @@ def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
             dx, dy = round(middle[0] - anchor[0]), round(middle[1] - anchor[1])
             for sheet, im in zip((front, back), turned, strict=True):
                 moved = Image.new("RGBA", (fw, fh), TRANSPARENT)
-                moved.paste(im, (dx + shift, dy))
+                moved.paste(im, (dx, dy))
                 sheet.paste(moved, cell[:2])
-            if hand:
-                layer = (front if is_front else back).load()
-                for ox, oy, color in hand:
-                    x, y = grip[0] + shift + ox + dx, grip[1] + oy + dy
-                    if layer[c * fw + x, y][3]:
-                        layer[c * fw + x, y] = color
-            elif grip and is_front:
+            if grip and is_front:
                 gx, gy = grip[0] + c * fw + dx, grip[1] + dy
                 hand_over(PixelCanvas(front), front.copy(), body, gx, gy, fw, fh, r, c)
     return front, back
