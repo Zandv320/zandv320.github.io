@@ -12,6 +12,7 @@
               'visit'       talk to `npc`
               'reach'       come within `r` of (x, z); `label` describes the place in the tracker
               'ritual'      wake the runes of a seal (`seal`) at (x, z) (seals.js); `label` as with 'reach'
+              'chase'       keep up with a fleeing `label` to the end of his route (maelis.js)
               'equip'       wear something in `slot`                   } checked against the hero's state
               'stat'        raise any stat once                        } (syncStateQuests in progression.js)
               'skill'       learn any skill                            }
@@ -55,6 +56,7 @@ export const CHAPTERS = {
   5: "The Kingsroad",
   6: "The Seventh Seal",
   7: "The Northroad",
+  8: "Saltmere",
 };
 
 export const QUESTS = {
@@ -882,6 +884,106 @@ export const QUESTS = {
       items: [{ id: "orange_potion", count: 8 }],
     },
   },
+  /* ---- Saga II, chapter 8: Saltmere ---- */
+  wil_saltmere: {
+    giver: "Carter Wil",
+    turnIn: "Harbormaster Quill",
+    hint: "Follow the Northroad over the bridge to the gate of Saltmere. Harbormaster Quill keeps the office on the west side of the harbor square.",
+    chapter: 8,
+    main: true,
+    title: "The harbormaster's seal",
+    level: 26,
+    after: "wil_bridge",
+    intro:
+      "Saltmere is half a day north of the bridge, and now the bridge is open again. You carry a letter for the harbormaster, do you not? Quill. Sharp as a hook, and twice as hard to get off. Give him Aldric's seal and he will find you a ship.",
+    progressText:
+      "Over the bridge and north to Saltmere. Quill's office is on the west side of the harbor square.",
+    completeText:
+      "A letter from Captain Aldric, with the archmage's seal beside it. Well. A ship south-west, past the edge of the charts? Nobody sails there. I will ask around, but not tonight. Get a room: the Salty Gull, behind the square.",
+    goal: { type: "visit", npc: "Harbormaster Quill" },
+    reward: { exp: 1800, zeny: 800 },
+  },
+  quill_gull: {
+    giver: "Harbormaster Quill",
+    turnIn: "Innkeeper Marla",
+    hint: "The Salty Gull stands in the west quarter, north-west of the gate. Marla keeps the door.",
+    chapter: 8,
+    main: true,
+    title: "A room at the Salty Gull",
+    level: 26,
+    after: "wil_saltmere",
+    intro:
+      "Marla at the Salty Gull keeps a room for my guests. Tell her Quill sent you, and do not touch the fish soup.",
+    progressText: "The Salty Gull stands in the west quarter of Saltmere. Marla keeps the door.",
+    completeText:
+      "Quill's guest? Then you get the room over the kitchen: warm, and only a little fishy. If you fall anywhere near the city, they will carry you back here. Sleep well.",
+    goal: { type: "visit", npc: "Innkeeper Marla" },
+    reward: { exp: 1200, zeny: 300, items: [{ id: "cooked_pike", count: 3 }] },
+  },
+  marla_thief: {
+    giver: "Innkeeper Marla",
+    turnIn: "Harbormaster Quill",
+    hint: "Maelis waits by the door of the Salty Gull. Stay close behind him: he runs on whenever you catch up, and leaves runes on the ground that hold you. If you lose him, he goes back to where he started.",
+    chapter: 8,
+    main: true,
+    title: "Thief in the night",
+    level: 26,
+    after: "quill_gull",
+    intro:
+      "Wake up! A man in a black coat came down your stairs with your satchel under his arm. The archmage's chart! He is still in the street, laughing at the door, as if he wants you to follow. Go!",
+    progressText:
+      "Chase Maelis through the streets of Saltmere. Keep up with him; step out of the runes he leaves behind.",
+    completeText:
+      "Maelis the Unbound. I know the name: a mage who wants the old seals broken. And he has your chart, and a boat. Only one captain in this harbor would follow a man like that to the edge of the map: Mara Holt, on the Gull's Promise, by the east pier.",
+    goal: { type: "chase", label: "Maelis" },
+    reward: { exp: 2600, zeny: 1200, items: [{ id: "orange_potion", count: 5 }] },
+  },
+  mara_ship: {
+    giver: "Captain Mara Holt",
+    where: { monster: "rune_construct" },
+    hint: "Rune constructs guard Maelis' old warehouses in the east quarter and the mole to the lighthouse. Their shards fall when they break.",
+    chapter: 8,
+    main: true,
+    title: "A captain with nothing to lose",
+    level: 26,
+    after: "marla_thief",
+    intro:
+      "You want to follow Maelis? Good. He sank my last ship with one of his stone things, and I have been waiting for someone mad enough. The Gull's Promise is ready but for one thing: a compass that can follow magic. Bring me eight shards of his constructs and my navigator will tune it to his trail.",
+    progressText:
+      "Eight rune shards from the constructs in the old warehouses and on the mole, east of the square.",
+    completeText:
+      "Eight. Feel them hum: they all point the same way, out over the grey sea. That is where he is going. We sail as soon as the tide turns. Say your goodbyes to the land.",
+    goal: { type: "item", item: "rune_shard", count: 8 },
+    reward: { exp: 3200, zeny: 2000, items: [{ id: "orange_potion", count: 6 }] },
+  },
+  tobin_warehouses: {
+    giver: "Warden Tobin",
+    where: { monster: "rune_construct" },
+    hint: "The rune constructs keep watch in the old warehouses east of the square and on the mole out to the lighthouse.",
+    title: "Stone in the warehouses",
+    level: 26,
+    after: "marla_thief",
+    intro:
+      "Those stone things in the east warehouses: my watch cannot touch them, and the dockers will not go near. Ten of them broken, and Saltmere can unload its own ships again.",
+    progressText: "Ten rune constructs in the old warehouses and on the mole.",
+    completeText:
+      "Ten! The dockers are already rolling barrels back in. The watch owes you, and so does the city.",
+    goal: { type: "kill", monster: "rune_construct", count: 10 },
+    reward: { exp: 2400, zeny: 1600, items: [{ id: "grand_potion", count: 2 }] },
+  },
+  netta_trout: {
+    giver: "Fishwife Netta",
+    hint: "Trout bite off the west quay and beside the middle pier. You need a fishing rod (fishing level 12).",
+    title: "Fresh off the quay",
+    level: 20,
+    after: "wil_saltmere",
+    intro:
+      "My Hendrik is out with the boats, and the morning market wants trout. Five, fresh off the quay. You have the hands for a rod, I can tell.",
+    progressText: "Five trout, caught off the west quay or beside the middle pier.",
+    completeText: "Five, and still flapping! Here, for your trouble. And come back for soup.",
+    goal: { type: "gather", item: "trout", count: 5 },
+    reward: { exp: 1400, zeny: 700, items: [{ id: "cooked_pike", count: 3 }] },
+  },
   tilda_boars: {
     giver: "Farmer Tilda",
     where: { monster: "ridge_boar" },
@@ -1028,6 +1130,9 @@ export function progressText(id, progress, monsterName, itemName) {
   }
   if (goal.type === "ritual") {
     return count ? `Woke ${goal.label}` : `Wake ${goal.label}`;
+  }
+  if (goal.type === "chase") {
+    return count ? `Followed ${goal.label} to his boat` : `Chase ${goal.label}`;
   }
   if (goal.type === "gather") {
     return `${itemName(goal.item)} gathered ${count}/${goal.count}`;

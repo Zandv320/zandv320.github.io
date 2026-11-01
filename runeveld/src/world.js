@@ -36,6 +36,7 @@ import {
   NORTH_FARMS,
   inNorthroad,
   GORGE,
+  SALTMERE,
 } from "./regions.js";
 import { inGorge, gorgeNorthRim, gorgeSouthRim } from "./rules/gorge.js";
 import { buildForest } from "./forest.js";
@@ -501,6 +502,7 @@ function buildGround(atlas, decor) {
   /* the wide surroundings outside the world */
   buildValeGround(atlas, decor);
   buildNorthroadGround(atlas, decor);
+  buildSaltmereGround(atlas);
   /* with a hole where Greyfall Gorge cuts through the Northroad's ground map (whose own hole shows the gorge) */
   const surroundings = new THREE.Shape([
     new THREE.Vector2(-350, -350),
@@ -698,6 +700,62 @@ function buildNorthroadGround(atlas, decor) {
   mesh.position.set(centerX, 0.004, centerZ);
   scene.add(mesh);
   addShadowCatcher(width, depth, centerX, 0.029, centerZ);
+}
+
+/* The land around Saltmere, from the end of the Northroad's map to the quay (rules/saltmere.js; the city's cobbles
+   and the sea are saltmere.js's): grass, darker outside the walls where nobody walks. */
+function buildSaltmereGround(atlas) {
+  const random = seededRandom(5151);
+  const x0 = -232;
+  const x1 = -60;
+  const z0 = SALTMERE.z0;
+  const z1 = NORTHROAD.z0;
+  const tilesX = Math.round((x1 - x0) / UNITS_PER_TILE);
+  const tilesZ = Math.round((z1 - z0) / UNITS_PER_TILE);
+  const canvas = document.createElement("canvas");
+  canvas.width = tilesX * TILE;
+  canvas.height = tilesZ * TILE;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  for (let j = 0; j < tilesZ; j++) {
+    for (let i = 0; i < tilesX; i++) {
+      ctx.drawImage(
+        atlas,
+        grassTileIndex(random) * TILE,
+        0,
+        TILE,
+        TILE,
+        i * TILE,
+        j * TILE,
+        TILE,
+        TILE,
+      );
+    }
+  }
+  const cellPixels = TILE / 4;
+  const cellUnits = UNITS_PER_TILE / 4;
+  for (let j = 0; j < tilesZ * 4; j++) {
+    for (let i = 0; i < tilesX * 4; i++) {
+      const x = (i + 0.5) * cellUnits + x0;
+      const z = (j + 0.5) * cellUnits + z0;
+      /* the Northroad's land runs on up to the wall */
+      const isRoadLand = inNorthroad(x, Math.max(z, NORTHROAD.z0 + 1), -2.5);
+      if (!insideWorld(x, z, 0) && !isRoadLand) {
+        ctx.fillStyle = insideWorld(x, z, -3) ? "rgba(10,28,20,.25)" : "rgba(10,28,20,.5)";
+        ctx.fillRect(i * cellPixels, j * cellPixels, cellPixels, cellPixels);
+      }
+    }
+  }
+  const texture = makeTexture(canvas, false);
+  applyGroundFilter(texture);
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(x1 - x0, z1 - z0),
+    new THREE.MeshBasicMaterial({ map: texture }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set((x0 + x1) / 2, 0.004, (z0 + z1) / 2);
+  scene.add(mesh);
+  addShadowCatcher(x1 - x0, z1 - z0, (x0 + x1) / 2, 0.029, (z0 + z1) / 2);
 }
 
 /* Greyfall Gorge in the Northroad's ground map (rules/gorge.js): a hole, pixel by pixel, through which the real

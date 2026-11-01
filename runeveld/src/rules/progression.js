@@ -540,7 +540,7 @@ export function markQuestProgress(hero, id) {
   if (!progress || !quest || progress.state !== "active") {
     return false;
   }
-  const isPlaceGoal = ["visit", "reach", "ritual"].includes(quest.goal.type);
+  const isPlaceGoal = ["visit", "reach", "ritual", "chase"].includes(quest.goal.type);
   if (isPlaceGoal && !progress.count) {
     progress.count = 1;
     return true;

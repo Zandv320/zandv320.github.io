@@ -74,6 +74,12 @@ const NODE_TABLE = [
   /* the forgotten vault in the crypt, behind the cracked wall */
   ["crypt_1", "silver_ore", ...cryptPoint(-25.6, 26.4)],
   ["crypt_2", "gold_ore", ...cryptPoint(-20.4, 26.4)],
+  /* the sea at Saltmere: off the quay and beside the piers (rules/saltmere.js) */
+  ["sea_quay_west", "trout", -184, -388.5],
+  ["sea_pier_west", "pike", -170, -396],
+  ["sea_pier_middle", "trout", -156, -398],
+  ["sea_quay_east", "pike", -139, -388.5],
+  ["sea_pier_east", "golden_carp", -131, -400],
 ];
 
 /* {id, resource, x, z, profession} by id */

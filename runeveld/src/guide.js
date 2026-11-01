@@ -13,6 +13,7 @@ import { GATHER_NODES } from "./rules/gather-nodes.js";
 import { inCrypt, CRYPT_STAIRS, CRYPT_EXIT } from "./rules/crypt.js";
 import { RECIPES, PROFESSIONS, STATION_PLACES } from "./rules/professions.js";
 import { GUIDE_TOPICS } from "./guide-topics.js";
+import { chaseMarker } from "./maelis.js";
 import { icon } from "./icons.js";
 import { escapeHtml } from "./ui.js";
 
@@ -133,6 +134,8 @@ export function createGuide(deps) {
       case "reach":
       case "ritual":
         return { x: goal.x, z: goal.z, height: 0.5 };
+      case "chase":
+        return chaseMarker();
       case "kill":
         return nearestMonster(goal.monster);
       case "item":

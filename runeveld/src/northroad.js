@@ -173,10 +173,8 @@ export function buildNorthroad({ scene, prop, place, isFree, seededRandom, pendi
   buildGorge({ scene, random });
   buildBridge({ scene, prop, place, pending, random });
 
-  /* where the road ends for now: Saltmere's gate is shut, a barrier and a warning */
-  const [endX, endZ] = NORTH_ROAD[NORTH_ROAD.length - 1];
-  place(builders.fence(4), endX, endZ + 2.2, { radius: 0 });
-  pending.push(prop("sign", endX + 3, endZ + 3, { radius: 0.3 }));
+  /* a signpost where the road comes out of the hills before Saltmere's gate */
+  pending.push(prop("sign", -142.5, -322, { radius: 0.3 }));
 
   /* ----- the land: trees and rocks in the hills, a dense tree row along the edge ----- */
   const isOpen = (x, z, margin = 0) =>

@@ -9,7 +9,7 @@ import { SMOOTH } from "./sprites.js";
 import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
 import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests.js";
 import { stormStrength, setStormOverride } from "./rules/weather.js";
-import { NORTHROAD, BRIDGE, GORGE } from "./regions.js";
+import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -312,6 +312,8 @@ export function createAdminPanel(ctx) {
       ["Halfway Inn", () => ctx.teleport(NORTHROAD.inn[0] + 6, NORTHROAD.inn[1])],
       ["Northwatch", () => ctx.teleport(-138, -212)],
       ["Bridge", () => ctx.teleport(BRIDGE.x, GORGE.south + 5)],
+      ["Saltmere", () => ctx.teleport(SALTMERE.gate[0], SALTMERE.gate[1] - 4)],
+      ["Quay", () => ctx.teleport(SALTMERE.square[0], SALTMERE.z0 + 3)],
     ]);
 
     /* ---------- monsters ---------- */

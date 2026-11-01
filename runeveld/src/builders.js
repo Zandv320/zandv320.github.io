@@ -1553,3 +1553,157 @@ export function crackedWall(w, h, d) {
   );
   return mesh;
 }
+
+/* ---------- ships (Saltmere, Saga II): a hull with a pointed bow, a deck, a rail, a cabin, masts and sails ---------- */
+
+/* the hull's outline seen from above: `beam` wide, `length` long, the bow towards -z */
+function hullShape(beam, length, inset = 0) {
+  const half = beam / 2 - inset;
+  const stern = length / 2 - inset;
+  const bow = -length / 2 + inset;
+  const shape = new THREE.Shape();
+  /* the shape lies in x and y; turned to lie flat, y becomes -z */
+  shape.moveTo(-half * 0.8, -stern);
+  shape.lineTo(half * 0.8, -stern);
+  shape.quadraticCurveTo(half * 1.05, -stern * 0.2, half, stern * 0.15);
+  shape.quadraticCurveTo(half * 0.75, -bow * 0.75, 0, -bow);
+  shape.quadraticCurveTo(-half * 0.75, -bow * 0.75, -half, stern * 0.15);
+  shape.quadraticCurveTo(-half * 1.05, -stern * 0.2, -half * 0.8, -stern);
+  return shape;
+}
+
+/* a shape lifted into a solid of `height`, lying flat with its bottom at y = `bottom` */
+function hullPart(shape, height, bottom, partMaterial) {
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate(0, bottom, 0);
+  return outline(new THREE.Mesh(geometry, partMaterial), 40);
+}
+
+/**
+ * A sailing ship lying in the water: the hull reaches `draft` below y = 0 (the waterline) and its deck stands at
+ * `deckHeight`. The bow points to -z. `sail` is a cloth texture name or null for plain canvas; userData.deck is the
+ * deck's height, for whoever stands on it.
+ */
+export function ship({
+  length = 14,
+  beam = 4.6,
+  deckHeight = 1.3,
+  draft = 1.2,
+  masts = 2,
+  sail = null,
+  hullColor = 0x5a3a2a,
+} = {}) {
+  const group = new THREE.Group();
+  const hullMaterial = new THREE.MeshLambertMaterial({
+    map: texture("wood_dark", 0.5, 0.5),
+    color: new THREE.Color(hullColor).multiplyScalar(2.2),
+  });
+  /* below the waterline narrower and darker, above it the full hull, then a painted band under the rail */
+  const lower = hullPart(hullShape(beam * 0.8, length * 0.92), draft, -draft, hullMaterial);
+  group.add(lower);
+  group.add(hullPart(hullShape(beam, length), deckHeight, 0, hullMaterial));
+  const band = hullPart(
+    hullShape(beam + 0.06, length + 0.06),
+    0.25,
+    deckHeight - 0.45,
+    new THREE.MeshLambertMaterial({ color: 0xd8c8a0 }),
+  );
+  group.add(band);
+  /* the deck, and a rail all round it */
+  const deck = new THREE.Mesh(
+    new THREE.ShapeGeometry(hullShape(beam, length, 0.2)).rotateX(-Math.PI / 2),
+    new THREE.MeshLambertMaterial({ map: texture("wood", 0.5, 0.5), color: 0xd8c8b0 }),
+  );
+  deck.position.y = deckHeight + 0.01;
+  group.add(deck);
+  const railShape = hullShape(beam, length);
+  railShape.holes.push(hullShape(beam, length, 0.18));
+  group.add(hullPart(railShape, 0.45, deckHeight, hullMaterial));
+  /* the captain's cabin at the stern */
+  const cabin = block(beam * 0.55, 1.2, length * 0.16, "wood", 0.85);
+  cabin.position.set(0, deckHeight, length * 0.36);
+  group.add(cabin);
+  const cabinRoof = block(beam * 0.62, 0.15, length * 0.18, "wood_dark", 0.9);
+  cabinRoof.position.set(0, deckHeight + 1.2, length * 0.36);
+  group.add(cabinRoof);
+  /* masts with a yard and a sail each, the tallest in the middle; a pennant on the main mast */
+  const sailMaterial = sail
+    ? material(sail, beam, 4)
+    : new THREE.MeshLambertMaterial({ color: 0xefe6cf, side: THREE.DoubleSide });
+  sailMaterial.side = THREE.DoubleSide;
+  const mastSpots = masts === 1 ? [0] : [-length * 0.18, length * 0.12];
+  mastSpots.forEach((z, i) => {
+    const height = i === 0 && masts > 1 ? 7.5 : 9;
+    const mast = outline(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.17, height, 8),
+        material("wood_dark", 0.4, height),
+      ),
+      40,
+    );
+    mast.position.set(0, deckHeight + height / 2, z);
+    group.add(mast);
+    const yard = box(beam * 0.95, 0.14, 0.14, material("wood_dark", beam, 0.2));
+    yard.position.set(0, deckHeight + height - 0.6, z);
+    group.add(yard);
+    /* the sail: full of wind, bellied a little towards the bow */
+    const sailHeight = height - 2.4;
+    const sailGeometry = new THREE.PlaneGeometry(beam * 0.9, sailHeight, 6, 4);
+    const positions = sailGeometry.attributes.position;
+    for (let k = 0; k < positions.count; k++) {
+      const u = positions.getX(k) / (beam * 0.45);
+      const v = positions.getY(k) / (sailHeight / 2);
+      positions.setZ(k, -0.7 * (1 - u * u) * (1 - 0.3 * v * v));
+    }
+    sailGeometry.computeVertexNormals();
+    const sailMesh = new THREE.Mesh(sailGeometry, sailMaterial);
+    sailMesh.position.set(0, deckHeight + height - 0.75 - sailHeight / 2, z - 0.1);
+    group.add(sailMesh);
+    if (i === mastSpots.length - 1) {
+      const pennant = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.4, 0.4).translate(0.7, 0, 0),
+        material("cloth_red", 1.4, 0.4),
+      );
+      pennant.material.side = THREE.DoubleSide;
+      pennant.position.set(0.1, deckHeight + height + 0.1, z);
+      group.add(pennant);
+    }
+  });
+  /* the bowsprit */
+  const bowsprit = outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.12, 3, 6).rotateX(Math.PI / 2 - 0.3),
+      material("wood_dark", 0.3, 3),
+    ),
+    40,
+  );
+  bowsprit.position.set(0, deckHeight + 0.6, -length / 2 - 0.8);
+  group.add(bowsprit);
+  group.userData.deck = deckHeight;
+  group.userData.mapKind = "ship";
+  return group;
+}
+
+/** A rowing boat on the water, the bow towards -z. */
+export function rowingBoat(length = 3.2, beam = 1.3) {
+  const group = new THREE.Group();
+  const hullMaterial = new THREE.MeshLambertMaterial({
+    map: texture("wood", 0.5, 0.5),
+    color: 0xb08a6a,
+  });
+  const shape = hullShape(beam, length);
+  shape.holes.push(hullShape(beam, length, 0.12));
+  group.add(hullPart(shape, 0.55, -0.25, hullMaterial));
+  const floor = new THREE.Mesh(
+    new THREE.ShapeGeometry(hullShape(beam, length, 0.1)).rotateX(-Math.PI / 2),
+    hullMaterial,
+  );
+  floor.position.y = -0.1;
+  group.add(floor);
+  const bench = box(beam * 0.9, 0.08, 0.3, material("wood_dark", beam, 0.3));
+  bench.position.set(0, 0.12, 0.2);
+  group.add(bench);
+  group.userData.mapKind = "ship";
+  return group;
+}

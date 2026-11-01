@@ -25,6 +25,7 @@ import {
   GORGE,
 } from "./regions.js";
 import { inGorge, onBridge } from "./rules/gorge.js";
+import { SALTMERE, inSaltmere, onPier } from "./rules/saltmere.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
 const COLORS = {
@@ -32,6 +33,7 @@ const COLORS = {
   cryptOutside: "#08070c",
   barley: "#c9a44c",
   gorge: "#1d1f27",
+  sea: "#3c6a88",
   bridge: "#8a6a42",
   cryptWall: "#2a2738",
   cryptFloor: "#5a5674",
@@ -89,7 +91,7 @@ const ROUND_KINDS = new Set(["pond", "well", "altar", "menhir", "tower", "founta
 /* The world: Kingsvale in the west, the fields, the forest above them, the Northroad up north of Aurelia. */
 const X0 = VALE.x0 - 4;
 const X1 = 70;
-const Z0 = NORTHROAD.z0 - 4;
+const Z0 = SALTMERE.mapZ0 - 4;
 const Z1 = 70;
 
 /* The static layer is rendered at 8 px per unit (× device pixel ratio): the whole world in one canvas that phones
@@ -200,6 +202,16 @@ export function createWorldMap(deps) {
           return inCastle(x, z) ? "castleGround" : "capital";
         }
         return "meadow";
+      }
+      /* Saltmere: the city like Aurelia, its piers like the bridge, and the sea beyond the quay */
+      if (onPier(x, z)) {
+        return "bridge";
+      }
+      if (inSaltmere(x, z)) {
+        return "capital";
+      }
+      if (z < SALTMERE.z0 && x > SALTMERE.x0 - 40 && x < SALTMERE.x1 + 40) {
+        return "sea";
       }
       /* Greyfall Gorge cuts across the Northroad's land; the bridge is the only way over */
       if (inGorge(x, z) && distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z)) {
@@ -459,6 +471,7 @@ export function createWorldMap(deps) {
     drawName("Halfway Inn", NORTHROAD.inn[0], NORTHROAD.inn[1] - 8, placeSize, true);
     drawName(NORTHWATCH.name, NORTHWATCH.x, NORTHWATCH.z - NORTHWATCH.radius - 1, placeSize, true);
     drawName(GORGE.name, NORTHROAD.x0 + 26, GORGE.north - 3, placeSize, true);
+    drawName(SALTMERE.name, SALTMERE.gate[0], SALTMERE.gate[1] + 6, scale * 2.4);
 
     /* ---- a compass rose in the bottom left corner ---- */
     const rx = layer.width * 0.06;

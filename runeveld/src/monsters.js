@@ -19,6 +19,8 @@ import {
   isNorthroadHome,
   fixedSpot,
   keepsHome,
+  inSaltmere,
+  isSaltmereSafe,
 } from "./regions.js";
 import { isStorm } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
@@ -272,11 +274,14 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "northroad" || spec.area === "northwatch" || spec.area === "bridge") {
     return inNorthroad(x, z);
   }
+  if (spec.area === "saltmere") {
+    return inSaltmere(x, z);
+  }
   return true;
 }
 
-/** Safe places: inside the palisade of Runeveld and inside the walls of Aurelia. */
-export const isSafe = (x, z) => inVillage(x, z) || inCapital(x, z);
+/** Safe places: inside the palisade of Runeveld, inside the walls of Aurelia, and Saltmere but for its warehouses. */
+export const isSafe = (x, z) => inVillage(x, z) || inCapital(x, z) || isSaltmereSafe(x, z);
 
 /** A monster died: death animation, smoke, and (on the host) the respawn timer. */
 export function monsterDied(monster) {

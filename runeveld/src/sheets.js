@@ -174,6 +174,7 @@ export const SHEETS = {
   goblin_raider: cryptSheet("goblin_raider", GOBLIN_FRAMES),
   goblin_chief: cryptSheet("goblin_chief", { ...GOBLIN_FRAMES, height: 32 }),
   grumm: cryptSheet("grumm", GOBLIN_FRAMES),
+  rune_construct: cryptSheet("rune_construct", GOBLIN_FRAMES),
 };
 
 /**

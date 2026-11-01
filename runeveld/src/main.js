@@ -46,7 +46,12 @@ import {
   NORTHWATCH,
   GORGE,
   BRIDGE,
+  SALTMERE,
+  inSaltmere,
 } from "./regions.js";
+import { inWarehouses, WAREHOUSES } from "./rules/saltmere.js";
+import { buildSaltmere, updateSaltmere } from "./saltmere.js";
+import { updateChase } from "./maelis.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
 import { buildNorthroad, updateNorthroad } from "./northroad.js";
@@ -220,6 +225,7 @@ const ZONES = {
   vale: [VALE.name, "Meadows along the Kingsroad. Bandits roam here."],
   capital: [CAPITAL.name, "The capital of Eldoria. Safe within the walls."],
   northroad: [NORTHROAD.name, "The long road north to the sea. Watch the sky."],
+  saltmere: [SALTMERE.name, "The great harbor of the realm. Ships leave for the edge of the map."],
   /* the stairs announce the crypt themselves (crypt.js) */
   crypt: null,
 };
@@ -236,7 +242,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
   await loadSheets();
-  await buildWorld([buildCrypt, buildSeals, buildNorthroad]);
+  await buildWorld([buildCrypt, buildSeals, buildNorthroad, buildSaltmere]);
   clickables.push(...cryptClickables(), ...sealClickables());
   createMerchant();
   createVillagers(scene, clickables);
@@ -1848,6 +1854,9 @@ function zoneAt(x, z) {
   if (inCrypt(x, z)) {
     return "crypt";
   }
+  if (inSaltmere(x, z, -1)) {
+    return "saltmere";
+  }
   if (inNorthroad(x, z) && !inVale(x, z)) {
     return "northroad";
   }
@@ -1864,6 +1873,18 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "saltmere") {
+    if (inWarehouses(x, z)) {
+      return z < SALTMERE.z0 - 4 ? "The Lighthouse" : WAREHOUSES.name;
+    }
+    if (z < SALTMERE.z0 + 9) {
+      return "The Quays";
+    }
+    const [squareX, squareZ] = SALTMERE.square;
+    return Math.abs(x - squareX) < 13 && Math.abs(z - squareZ) < 8
+      ? "Harbor Square"
+      : SALTMERE.name;
+  }
   if (zone === "northroad") {
     const near = ([px, pz], r) => Math.hypot(x - px, z - pz) < r;
     if (near(NORTHROAD.fort, 14)) {
@@ -1920,6 +1941,8 @@ function stepWorld(dt, time) {
   updateRunePowers();
   updateStorm(dt, time);
   updateNorthroad(dt, time);
+  updateSaltmere(dt, time);
+  updateChase(dt);
   if (game.host) {
     hostTick(dt);
   }

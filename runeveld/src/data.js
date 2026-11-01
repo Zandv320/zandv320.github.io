@@ -475,6 +475,64 @@ export const ITEMS = {
     icon: "📿",
     description: "A chip of the Old King's Bridge, worn smooth by a troll's thumb.",
   },
+  /* Saga II: Saltmere */
+  rune_shard: {
+    name: "Rune shard",
+    price: 90,
+    icon: "🔹",
+    stack: 99,
+    description:
+      "A sliver of blue stone that glows where a rune was cut in it. Maelis' constructs are made of them.",
+  },
+  saltmere_cutlass: {
+    name: "Saltmere cutlass",
+    slot: "weapon",
+    layer: "sword2",
+    atk: 30,
+    price: 4200,
+    icon: "🗡️",
+    forClass: "swordsman",
+    description: "A sailor's curved blade: short enough for a crowded deck.",
+  },
+  tidecaller_staff: {
+    name: "Tidecaller staff",
+    slot: "weapon",
+    layer: "staff2",
+    atk: 8,
+    matk: 42,
+    price: 4200,
+    icon: "🪄",
+    forClass: "mage",
+    description: "Driftwood bound in brass. It smells of the sea, even in the desert.",
+  },
+  sailcloth_cloak: {
+    name: "Sailcloth cloak",
+    slot: "cloak",
+    layer: "cloak2",
+    def: 6,
+    hp: 50,
+    price: 1800,
+    icon: "🧥",
+    description: "Oiled sailcloth: the rain runs off, the wind stays out.",
+  },
+  sea_boots: {
+    name: "Sea boots",
+    slot: "boots",
+    def: 7,
+    hp: 40,
+    price: 2600,
+    icon: "🥾",
+    description: "Tarred leather to the knee. Dry feet on a wet deck.",
+  },
+  harbor_charm: {
+    name: "Harbor charm",
+    slot: "necklace",
+    hp: 60,
+    sp: 60,
+    price: 2400,
+    icon: "📿",
+    description: "A little brass gull. Sailors wear one so the sea knows to give them back.",
+  },
   grave_dust: {
     name: "Grave dust",
     price: 20,
@@ -1287,6 +1345,41 @@ export const SHOPS = {
       "leather_boots",
     ],
   },
+  /* Saltmere */
+  saltmere_harbor: {
+    name: "Chandler Bess",
+    greeting:
+      '"Rope, tar, biscuits and potions. Everything a ship needs, and most of what a sailor wants."',
+    items: [
+      "red_potion",
+      "orange_potion",
+      "mana_potion",
+      "grand_potion",
+      "cooked_pike",
+      "fly_rod",
+      "sailcloth_cloak",
+      "sea_boots",
+      "harbor_charm",
+    ],
+  },
+  saltmere_smith: {
+    name: "Weaponsmith Dorran",
+    greeting: '"Blades for the deck, staves for the storm. Nothing here rusts, I promise you."',
+    items: ["saltmere_cutlass", "tidecaller_staff", "steel_armor", "archmage_robe", "iron_boots"],
+  },
+  saltmere_runes: {
+    name: "Runecarver Ysolde",
+    greeting:
+      '"Runes, cut by hand. Since the seals began to crack, they sell faster than I can carve."',
+    items: [
+      "arcane_dust",
+      "arcane_crystal",
+      "rune_of_sharpness",
+      "rune_of_warding",
+      "rune_of_flame",
+      "rune_of_frost",
+    ],
+  },
   tailor: {
     name: "Tailor Maud",
     greeting: '"Wool, silk, and no patience for haggling. The cloaks are on the left."',
@@ -1593,7 +1686,7 @@ export const NORTH_MONSTERS = {
     level: 22,
     hp: 1700,
     atk: 92,
-    exp: 450,
+    exp: 320,
     zeny: [70, 150],
     speed: 3,
     aggressive: true,
@@ -1623,7 +1716,7 @@ export const NORTH_MONSTERS = {
     level: 22,
     hp: 1800,
     atk: 88,
-    exp: 430,
+    exp: 300,
     zeny: [40, 90],
     speed: 2.8,
     range: 1.4,
@@ -1640,7 +1733,7 @@ export const NORTH_MONSTERS = {
     level: 24,
     hp: 1650,
     atk: 98,
-    exp: 480,
+    exp: 330,
     zeny: [50, 110],
     speed: 3.6,
     aggressive: true,
@@ -1662,7 +1755,7 @@ export const NORTH_MONSTERS = {
     level: 24,
     hp: 1450,
     atk: 96,
-    exp: 470,
+    exp: 340,
     zeny: [60, 130],
     speed: 3.2,
     aggressive: true,
@@ -1684,7 +1777,7 @@ export const NORTH_MONSTERS = {
     level: 25,
     hp: 2100,
     atk: 108,
-    exp: 560,
+    exp: 400,
     zeny: [80, 160],
     speed: 3,
     aggressive: true,
@@ -1747,6 +1840,29 @@ export const NORTH_MONSTERS = {
   },
 };
 Object.assign(MONSTERS, NORTH_MONSTERS);
+
+/* Saltmere (rules/saltmere.js): Maelis' rune constructs keep watch in the old warehouses and on the mole, each on its
+   own spot. */
+export const SALTMERE_MONSTERS = {
+  rune_construct: {
+    name: "Rune Construct",
+    level: 26,
+    hp: 2600,
+    atk: 112,
+    exp: 420,
+    zeny: [60, 120],
+    speed: 2.6,
+    aggressive: true,
+    range: 1.6,
+    aggroRange: 6.5,
+    scale: 1.2,
+    area: "saltmere",
+    respawn: [35, 55],
+    materials: { rune_shard: 0.75, arcane_dust: 0.2 },
+    loot: { orange_potion: 0.15, grand_potion: 0.04, harbor_charm: 0.02 },
+  },
+};
+Object.assign(MONSTERS, SALTMERE_MONSTERS);
 
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
@@ -1860,6 +1976,8 @@ export const SPAWNS = [
   { monster: "goblin_raider", count: 5 },
   { monster: "goblin_chief", count: 1 },
   { monster: "grumm", count: 1 },
+  /* Saltmere: one per spot in rules/saltmere.js */
+  { monster: "rune_construct", count: 8 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

@@ -1,5 +1,5 @@
-/* Eldoria – regions of the world. Its only imports are the layouts of the crypt and of Greyfall Gorge (pure rules),
-   so every file (client and server) can use this.
+/* Eldoria – regions of the world. Its only imports are the layouts of the crypt, Greyfall Gorge and Saltmere (pure
+   rules), so every file (client and server) can use this.
    The fields around the village and the forest "Whisperwood" north of it have organic edges: a radius that
    undulates with the angle (fixed phases, so the shape is the same every time). The forest overlaps the fields
    by a few units at the north gate; that is the only way in. The rectangles (FOREST, FIELD_SIZE) are the bounding
@@ -15,7 +15,9 @@ import {
   northSpotFor,
 } from "./rules/gorge.js";
 
-export { inCrypt, GORGE, BRIDGE, NORTHWATCH };
+import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/saltmere.js";
+
+export { inCrypt, GORGE, BRIDGE, NORTHWATCH, SALTMERE, inSaltmere, isSaltmereSafe };
 
 /* Half width of the ground map around the village. */
 export const FIELD_SIZE = 60;
@@ -145,7 +147,7 @@ export const BANDIT_CAMP = [-82, -44];
 
 /* The Northroad (Saga II): from Aurelia's north gate up through farmland and hills, past Fort Harrow to the
    Halfway Inn, past the ruins of Northwatch and over the Old King's Bridge across Greyfall Gorge (rules/gorge.js),
-   towards Saltmere (built later). The land is a wavy band along the road. */
+   to the gate of Saltmere (rules/saltmere.js). The land is a wavy band along the road. */
 export const NORTH_ROAD = [
   [-137, -40],
   [-137, -64],
@@ -162,6 +164,7 @@ export const NORTH_ROAD = [
   [BRIDGE.x, BRIDGE.north - 2],
   [-141, -300],
   [-146, -318],
+  [SALTMERE.gate[0], SALTMERE.gate[1] + 1],
 ];
 
 export const NORTHROAD = {
@@ -224,22 +227,28 @@ export function northroadSpot(random, [north, south], isOk, tries = 120) {
 export const isNorthroadHome = ([north, south], x, z) =>
   inNorthroad(x, z, 2) && z > north - 12 && z < south + 12;
 
-/** The fixed spot of a monster that keeps watch in one place (the crypt's, Northwatch's goblins, the bridge troll),
+/** The fixed spot of a monster that keeps watch in one place (the crypt's, Northwatch's goblins, the bridge troll,
+    Saltmere's constructs),
     or null for one that roams. */
-export const fixedSpot = (key, id) => spotFor(key, id) || northSpotFor(key, id);
+export const fixedSpot = (key, id) =>
+  spotFor(key, id) || northSpotFor(key, id) || saltmereSpotFor(key, id);
 
 /** Does this monster go back to its own spot after a fight (and give up on anyone who leads it too far)? */
 export const keepsHome = (spec) =>
-  spec.area === "crypt" || spec.area === "northwatch" || spec.area === "bridge";
+  spec.area === "crypt" ||
+  spec.area === "northwatch" ||
+  spec.area === "bridge" ||
+  spec.area === "saltmere";
 
-/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad or the crypt), with a margin to the
-    edge? The crypt needs none: its walls are obstacles. */
+/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere or the crypt), with a
+    margin to the edge? The crypt needs none: its walls are obstacles. */
 export function insideWorld(x, z, margin = 1.5) {
   return (
     inFields(x, z, margin) ||
     inForest(x, z, margin) ||
     inVale(x, z, margin) ||
     inNorthroad(x, z, margin) ||
+    inSaltmere(x, z, margin) ||
     inCrypt(x, z)
   );
 }

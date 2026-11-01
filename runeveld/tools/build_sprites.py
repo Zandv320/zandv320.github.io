@@ -2099,6 +2099,8 @@ GOBLINS = {
     "goblin_raider": (2, None),
     "goblin_chief": (3, None),
     "grumm": (1, "troll"),
+    # Maelis' wardens in Saltmere: the armoured one in blue stone, its red crest and cloth glowing runes
+    "rune_construct": (2, "construct"),
 }
 ORC_ANIMATIONS = ("idle", "walk", "attack", "hurt", "death")
 
@@ -2108,6 +2110,13 @@ def troll_stone(h, s, v):
     if 0.14 < h < 0.42 and s > 0.25:
         return 0.38, s * 0.22, v * 0.82
     return h, s, v
+
+
+def construct_stone(h, s, v):
+    """Red (the crest, the cloth) -> glowing cyan; everything else -> cold blue stone."""
+    if (h < 0.06 or h > 0.92) and s > 0.35:
+        return 0.5, 0.75, min(1, v * 1.5 + 0.25)
+    return 0.6, s * 0.28 + 0.06, v * 0.95
 
 
 def build_goblins(packs_dir, out_dir):
@@ -2124,6 +2133,8 @@ def build_goblins(packs_dir, out_dir):
         stacked = stack_animations(sheets, 64, 64, cols)
         if colour == "troll":
             stacked = hsv_layer(stacked, troll_stone)
+        elif colour == "construct":
+            stacked = hsv_layer(stacked, construct_stone)
         stacked.save(out_dir / f"{name}.png")
         written.append(name)
         print(name, [frames_in_row(sheet, 64, 64, 0) for sheet in sheets])

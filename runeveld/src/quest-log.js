@@ -156,6 +156,21 @@ export function createQuestLog(player, deps) {
     return changed;
   }
 
+  /** The hero kept up with a fleeing figure to the end of his route (maelis.js): that chase quest is done. */
+  function onChase(id) {
+    const record = player.quests[id];
+    if (!record || record.state !== "active" || QUESTS[id].goal.type !== "chase" || record.count) {
+      return false;
+    }
+    record.count = 1;
+    reportProgress(id);
+    logLevelMessage(
+      `${UI.escapeHtml(QUESTS[id].title)}: you followed ${UI.escapeHtml(QUESTS[id].goal.label)} to the end. Return to ${UI.escapeHtml(turnInNpc(id))}.`,
+    );
+    refresh();
+    return true;
+  }
+
   /* ---- events ---- */
 
   function onKill(monsterId) {
@@ -344,6 +359,7 @@ export function createQuestLog(player, deps) {
     onBagChanged,
     onPosition,
     onRitual,
+    onChase,
     onStateChanged,
     refresh,
     list,

@@ -35,7 +35,8 @@ import { groundRing, launchProjectile } from "./skill-effects.js";
 import { hitStop, buzz, flyToHud, screenFlash } from "./feel.js";
 import { burst } from "./particles.js";
 import { inCrypt, CRYPT_ENTRY } from "./rules/crypt.js";
-import { inNorthroad } from "./regions.js";
+import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
+import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
 import { INN_DOOR } from "./northroad.js";
 import { absorbWithRunes } from "./rune-powers.js";
 import { useSkill } from "./abilities.js";
@@ -583,6 +584,13 @@ function respawn() {
      Halfway Inn once they have slept there */
   if (inCrypt(player.x, player.z)) {
     [player.x, player.z] = CRYPT_ENTRY;
+  } else if (
+    (inSaltmere(player.x, player.z, -2) ||
+      (inNorthroad(player.x, player.z) && player.z < GORGE.north)) &&
+    player.quests.quill_gull?.state === "done"
+  ) {
+    /* in Saltmere, or north of the gorge on the way there: the Salty Gull, once they have a room */
+    [player.x, player.z] = SALTY_GULL_DOOR;
   } else if (inNorthroad(player.x, player.z) && player.quests.bren_inn?.state === "done") {
     [player.x, player.z] = INN_DOOR;
   } else {
