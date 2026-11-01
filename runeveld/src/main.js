@@ -52,6 +52,9 @@ import {
 import { inWarehouses, WAREHOUSES } from "./rules/saltmere.js";
 import { buildSaltmere, updateSaltmere } from "./saltmere.js";
 import { updateChase } from "./maelis.js";
+import { buildSea, updateSea } from "./sea.js";
+import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from "./sailing.js";
+import { BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
 import { buildNorthroad, updateNorthroad } from "./northroad.js";
@@ -226,6 +229,7 @@ const ZONES = {
   capital: [CAPITAL.name, "The capital of Eldoria. Safe within the walls."],
   northroad: [NORTHROAD.name, "The long road north to the sea. Watch the sky."],
   saltmere: [SALTMERE.name, "The great harbor of the realm. Ships leave for the edge of the map."],
+  sea: ["The Grey Sea", "Open water, and no chart past the lighthouse."],
   /* the stairs announce the crypt themselves (crypt.js) */
   crypt: null,
 };
@@ -242,7 +246,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
   await loadSheets();
-  await buildWorld([buildCrypt, buildSeals, buildNorthroad, buildSaltmere]);
+  await buildWorld([buildCrypt, buildSeals, buildNorthroad, buildSaltmere, buildSea]);
   clickables.push(...cryptClickables(), ...sealClickables());
   createMerchant();
   createVillagers(scene, clickables);
@@ -471,6 +475,11 @@ function restoreHero(hero) {
   }
   player.professions = sanitizeProfessions(hero.professions);
   player.buffs = hero.buffs && typeof hero.buffs === "object" ? hero.buffs : {};
+  resetSailing();
+  /* saved at sea (sailing, out of the game): back on the pier at the Gull's Promise's berth */
+  if (inGreySea(player.x, player.z)) {
+    [player.x, player.z] = BERTH_LANDING;
+  }
   if (!insideWorld(player.x, player.z, 1)) {
     player.x = 0;
     player.z = 4;
@@ -737,6 +746,14 @@ function createPanels(name) {
     ],
     markers: () => [...game.gathering.markers(), ...game.guide.markers()],
     walkTo,
+    /* at the helm a click on the map sets the course instead */
+    sailTo: (x, z) => {
+      if (!player.ship) {
+        return false;
+      }
+      sailTo(x, z);
+      return true;
+    },
   });
 }
 
@@ -754,6 +771,27 @@ function walkTo(x, z) {
   }
   groundRing(x, z, 0xffffff, 0.5, 0.1, 0.35, 0.7);
   return true;
+}
+
+/* The Gull's Promise at her berth: walk to the gangway and take the helm (sailing.js), once Captain Mara Holt has
+   her ship ready. */
+function boardShip() {
+  if (player.quests.mara_ship?.state !== "done") {
+    UI.systemMessage("Captain Mara Holt lets nobody aboard until her ship is ready to sail.");
+    return;
+  }
+  const [x, z] = BERTH_LANDING;
+  const board = () => takeHelm();
+  game.dialogue.close();
+  if (Math.hypot(x - player.x, z - player.z) < 2.6) {
+    board();
+    return;
+  }
+  player.destination = [x, z];
+  player.onArrive = board;
+  if (player.isSitting) {
+    setSitting(false);
+  }
 }
 
 /* npcs and villagers only in the real world, not on the select screen */
@@ -1344,6 +1382,8 @@ function sendPresence() {
     dead: player.isDead,
     sitting: player.isSitting,
     equipment: player.equipment,
+    /* at the helm: the ship's [x, z, heading] (sailing.js) */
+    ship: shipPresence(),
   };
   const key = JSON.stringify(presence);
   if (key === lastPresenceKey) {
@@ -1432,6 +1472,15 @@ function handleClick(clientX, clientY, mode = "select") {
   if (player.isDead) {
     return;
   }
+  /* at the helm a click sets the course (sailing.js) */
+  if (player.ship) {
+    const point = groundPoint(clientX, clientY);
+    if (point && mode !== "attack") {
+      sailTo(point.x, point.z);
+      groundRing(point.x, point.z, 0xffffff, 0.8, 0.2, 0.4, 0.7);
+    }
+    return;
+  }
   const hits = screenRay(clientX, clientY)
     .intersectObjects(clickables, false)
     .filter((hit) => hit.object.visible && hit.object.parent.visible);
@@ -1487,6 +1536,11 @@ function handleClick(clientX, clientY, mode = "select") {
     if (data.station) {
       clearTarget();
       game.gathering.clickStation(data.station);
+      return;
+    }
+    if (data.boardShip) {
+      clearTarget();
+      boardShip();
       return;
     }
     if (data.peerId !== undefined) {
@@ -1857,6 +1911,9 @@ function zoneAt(x, z) {
   if (inSaltmere(x, z, -1)) {
     return "saltmere";
   }
+  if (inGreySea(x, z)) {
+    return "sea";
+  }
   if (inNorthroad(x, z) && !inVale(x, z)) {
     return "northroad";
   }
@@ -1873,6 +1930,13 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "sea") {
+    if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius + 30) {
+      return EMBER_ISLES.name;
+    }
+    const islet = ISLETS.find((isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius + 18);
+    return islet ? islet.name : "The Grey Sea";
+  }
   if (zone === "saltmere") {
     if (inWarehouses(x, z)) {
       return z < SALTMERE.z0 - 4 ? "The Lighthouse" : WAREHOUSES.name;
@@ -1942,6 +2006,7 @@ function stepWorld(dt, time) {
   updateStorm(dt, time);
   updateNorthroad(dt, time);
   updateSaltmere(dt, time);
+  updateSea(dt, time);
   updateChase(dt);
   if (game.host) {
     hostTick(dt);
@@ -1949,6 +2014,7 @@ function stepWorld(dt, time) {
   updateMonsters(dt);
   updateBossPresentation(dt);
   updatePeers(dt);
+  updatePeerShips(dt, time);
   sendPresence();
 
   const jobExpMax = player.jobLevel < maxJobLevel() ? jobExpForLevel(player.jobLevel) : 0;

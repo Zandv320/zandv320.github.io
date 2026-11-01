@@ -104,6 +104,16 @@ export const GUIDE_TOPICS = {
       "Once you have slept at the <b>Halfway Inn</b>, you wake up there when the road knocks you down.",
     ],
   },
+  sailing: {
+    title: "Sailing",
+    icons: ["ui_map"],
+    body: [
+      "Click the <b>Gull's Promise</b> at the east pier of Saltmere to go aboard and <b>take the helm</b>.",
+      "Steer with the walking keys, or <b>click the water</b> to sail there. She comes round slowly and gathers way; mind the rocks and the islets.",
+      "The <b>sea chart</b> (<kbd>M</kbd>, or the ⚓ on the map) shows the Grey Sea: Saltmere, the islets, the rocks and the Ember Isles. At the helm, <b>click the chart</b> to set your course.",
+      "Bring her back <b>slowly</b> to her berth by the east pier and she moors by herself. The hero comes ashore on the pier.",
+    ],
+  },
   saga_end: {
     title: "Saga I complete",
     icons: ["amulet_of_aurelia", "ui_quests"],
@@ -127,4 +137,5 @@ export const GUIDE_ORDER = [
   "enchanting",
   "travel",
   "northroad",
+  "sailing",
 ];

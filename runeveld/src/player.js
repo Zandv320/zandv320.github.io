@@ -37,6 +37,8 @@ import { burst } from "./particles.js";
 import { inCrypt, CRYPT_ENTRY } from "./rules/crypt.js";
 import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
 import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
+import { inGreySea } from "./rules/sea.js";
+import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
 import { absorbWithRunes } from "./rune-powers.js";
 import { useSkill } from "./abilities.js";
@@ -148,7 +150,7 @@ function arrive() {
 }
 
 /* The movement direction from the keys (relative to the camera), or [0, 0]. */
-function keyDirection(dt) {
+export function keyDirection(dt) {
   let moveX = 0;
   let moveZ = 0;
   if (!isChatActive()) {
@@ -218,6 +220,10 @@ export function updatePlayer(dt) {
     }
     player.sprite.update(dt, cameraState);
     UI.positionLabel(player.label, player.x, player.sprite.height + 0.15, player.z, camera);
+    return;
+  }
+  /* at the helm the hero is the ship (sailing.js) */
+  if (updateSailing(dt)) {
     return;
   }
   const isBusy = time < player.busyUntil;
@@ -586,10 +592,11 @@ function respawn() {
     [player.x, player.z] = CRYPT_ENTRY;
   } else if (
     (inSaltmere(player.x, player.z, -2) ||
+      inGreySea(player.x, player.z) ||
       (inNorthroad(player.x, player.z) && player.z < GORGE.north)) &&
     player.quests.quill_gull?.state === "done"
   ) {
-    /* in Saltmere, or north of the gorge on the way there: the Salty Gull, once they have a room */
+    /* in Saltmere, out at sea, or north of the gorge on the way there: the Salty Gull, once they have a room */
     [player.x, player.z] = SALTY_GULL_DOOR;
   } else if (inNorthroad(player.x, player.z) && player.quests.bren_inn?.state === "done") {
     [player.x, player.z] = INN_DOOR;

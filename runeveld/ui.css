@@ -2099,6 +2099,10 @@ body.touch #world-map .hint-mouse {
 body.touch #world-map .hint-touch {
   display: inline;
 }
+/* the sea chart has no monsters or villagers to explain */
+#world-map.sea-chart .legend {
+  display: none;
+}
 #world-map-canvas {
   display: block;
   border-radius: 3px;

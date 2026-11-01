@@ -26,6 +26,8 @@ import {
 } from "./regions.js";
 import { inGorge, onBridge } from "./rules/gorge.js";
 import { SALTMERE, inSaltmere, onPier } from "./rules/saltmere.js";
+import { GREY_SEA, ROCKS, ISLETS, EMBER_ISLES } from "./rules/sea.js";
+import { PIERS, MOLE, LIGHTHOUSE } from "./rules/saltmere.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
 const COLORS = {
@@ -94,6 +96,15 @@ const X1 = 70;
 const Z0 = SALTMERE.mapZ0 - 4;
 const Z1 = 70;
 
+/* The sea chart: the Grey Sea from Saltmere's quay to past the Ember Isles, drawn fresh each time it is shown. */
+const SEA_CHART = {
+  x0: GREY_SEA.x0 - 10,
+  x1: GREY_SEA.x1 + 10,
+  z0: GREY_SEA.z0 - 10,
+  z1: SALTMERE.z1 + 6,
+};
+const LAND_MAP = { x0: X0, x1: X1, z0: Z0, z1: Z1 };
+
 /* The static layer is rendered at 8 px per unit (× device pixel ratio): the whole world in one canvas that phones
    can still hold. */
 const STATIC_SCALE = 8;
@@ -104,7 +115,7 @@ const MINIMAP_SIZE = 156;
 /**
  * @param {object} deps {scene, billboards, player, monsters, peers, npcs() → [{name, x, z, label}],
  *   markers() → [{x, z, emoji, title}] (crafting stations), VILLAGE_HALF_SIZE, inVillage(x, z), walkTo(x, z),
- *   isPartyMember(id)}
+ *   sailTo(x, z) (true when the hero is at a helm and sets a course), isPartyMember(id)}
  */
 export function createWorldMap(deps) {
   const $ = (selector) => document.querySelector(selector);
@@ -644,13 +655,16 @@ export function createWorldMap(deps) {
      wheel, a pinch or the + and − buttons; drag to pan, click or tap to walk there. On a phone (or a short
      screen) the map fills the screen and opens zoomed in on the player. ---- */
 
-  const WORLD_WIDTH = X1 - X0;
-  const WORLD_HEIGHT = Z1 - Z0;
+  /* the land map or the sea chart (the ⚓ button switches; it opens on the sea chart out at sea) */
+  let isSeaChart = false;
+  let bounds = LAND_MAP;
+  const worldWidth = () => bounds.x1 - bounds.x0;
+  const worldHeight = () => bounds.z1 - bounds.z0;
   const viewport = $("#world-map-viewport");
   const fillsScreen = () => matchMedia("(max-width: 700px), (max-height: 520px)").matches;
   let zoom = 1;
-  let centerX = (X0 + X1) / 2;
-  let centerZ = (Z0 + Z1) / 2;
+  let centerX = (bounds.x0 + bounds.x1) / 2;
+  let centerZ = (bounds.z0 + bounds.z1) / 2;
   let fitScale = 1;
   let pixelRatio = 1;
   let drag = null;
@@ -665,13 +679,13 @@ export function createWorldMap(deps) {
     if (fillsScreen()) {
       width = Math.max(120, viewport.clientWidth);
       height = Math.max(120, viewport.clientHeight);
-      fitScale = Math.min(width / WORLD_WIDTH, height / WORLD_HEIGHT);
+      fitScale = Math.min(width / worldWidth(), height / worldHeight());
     } else {
       const maxWidth = Math.min(innerWidth - 48, 960);
       const maxHeight = innerHeight - 150;
-      fitScale = Math.max(2, Math.min(maxWidth / WORLD_WIDTH, maxHeight / WORLD_HEIGHT));
-      width = Math.round(WORLD_WIDTH * fitScale);
-      height = Math.round(WORLD_HEIGHT * fitScale);
+      fitScale = Math.max(1, Math.min(maxWidth / worldWidth(), maxHeight / worldHeight()));
+      width = Math.round(worldWidth() * fitScale);
+      height = Math.round(worldHeight() * fitScale);
     }
     if (canvas.style.width !== width + "px" || canvas.style.height !== height + "px") {
       canvas.style.width = width + "px";
@@ -685,7 +699,7 @@ export function createWorldMap(deps) {
   const coverZoom = () => {
     const width = canvas.width / pixelRatio;
     const height = canvas.height / pixelRatio;
-    return Math.max(width / WORLD_WIDTH, height / WORLD_HEIGHT) / fitScale;
+    return Math.max(width / worldWidth(), height / worldHeight()) / fitScale;
   };
   const maxZoom = () => coverZoom() * 4;
 
@@ -710,14 +724,15 @@ export function createWorldMap(deps) {
     const viewWidth = canvas.width / scale;
     const viewHeight = canvas.height / scale;
     /* stay within the world; a view wider (or taller) than the world keeps it centred */
+    const { x0, x1, z0, z1 } = bounds;
     centerX =
-      viewWidth >= WORLD_WIDTH
-        ? (X0 + X1) / 2
-        : Math.max(X0 + viewWidth / 2, Math.min(X1 - viewWidth / 2, centerX));
+      viewWidth >= worldWidth()
+        ? (x0 + x1) / 2
+        : Math.max(x0 + viewWidth / 2, Math.min(x1 - viewWidth / 2, centerX));
     centerZ =
-      viewHeight >= WORLD_HEIGHT
-        ? (Z0 + Z1) / 2
-        : Math.max(Z0 + viewHeight / 2, Math.min(Z1 - viewHeight / 2, centerZ));
+      viewHeight >= worldHeight()
+        ? (z0 + z1) / 2
+        : Math.max(z0 + viewHeight / 2, Math.min(z1 - viewHeight / 2, centerZ));
     return {
       scale,
       worldX0: centerX - viewWidth / 2,
@@ -732,6 +747,11 @@ export function createWorldMap(deps) {
       return;
     }
     resizeCanvas();
+    if (isSeaChart) {
+      const { scale, worldX0, worldZ0 } = view();
+      drawSeaChart(context, scale, worldX0, worldZ0, pixelRatio);
+      return;
+    }
     const layer = ensureStaticLayer(STATIC_SCALE * pixelRatio);
     const { scale, worldX0, worldZ0, viewWidth, viewHeight } = view();
     const layerScale = STATIC_SCALE * pixelRatio;
@@ -769,6 +789,16 @@ export function createWorldMap(deps) {
   };
 
   const regionNameAt = (x, z) => {
+    if (isSeaChart) {
+      const islet = ISLETS.find((isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius + 6);
+      if (islet) {
+        return islet.name;
+      }
+      if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius + 10) {
+        return EMBER_ISLES.name;
+      }
+      return z > SALTMERE.z0 ? SALTMERE.name : GREY_SEA.name;
+    }
     if (inCapital(x, z)) {
       return CAPITAL.name;
     }
@@ -855,7 +885,8 @@ export function createWorldMap(deps) {
       return;
     }
     const [x, z] = toWorld(event);
-    if (deps.walkTo(x, z)) {
+    /* at the helm a click on the chart (or the map) sets the course; ashore it is a walk */
+    if ((deps.sailTo && deps.sailTo(x, z)) || deps.walkTo(x, z)) {
       close();
     }
   });
@@ -865,13 +896,41 @@ export function createWorldMap(deps) {
     drag = null;
   });
   $("#world-map-close").onclick = () => close();
+  $("#world-map-sea").onclick = () => setSeaChart(!isSeaChart);
   $("#world-map-zoom-in").onclick = () => zoomAt(1.5);
   $("#world-map-zoom-out").onclick = () => zoomAt(1 / 1.5);
   addEventListener("resize", () => render());
 
+  /* the land map or the sea chart, fresh at zoom 1 (or around the hero on a phone) */
+  function setSeaChart(isSea) {
+    isSeaChart = isSea;
+    bounds = isSea ? SEA_CHART : LAND_MAP;
+    $("#world-map-title").textContent = isSea ? "Sea chart" : "World map";
+    $("#world-map-sea").textContent = isSea ? "🗺️" : "⚓";
+    $("#world-map-sea").title = isSea ? "World map" : "Sea chart";
+    panel.classList.toggle("sea-chart", isSea);
+    zoom = 1;
+    centerX = (bounds.x0 + bounds.x1) / 2;
+    centerZ = (bounds.z0 + bounds.z1) / 2;
+    if (isOpenNow) {
+      resizeCanvas();
+      if (fillsScreen()) {
+        zoom = Math.min(maxZoom(), Math.max(1, coverZoom()));
+        centerX = deps.player.x;
+        centerZ = deps.player.z;
+      }
+      render();
+    }
+  }
+
   function show() {
     isOpenNow = true;
     panel.hidden = false;
+    /* out at sea the sea chart, ashore the map of the land */
+    const isAtSea = deps.player.z < SALTMERE.z0 - 2;
+    if (isAtSea !== isSeaChart) {
+      setSeaChart(isAtSea);
+    }
     resizeCanvas();
     if (fillsScreen()) {
       /* a phone: fill the screen, centred on the player */
@@ -879,8 +938,8 @@ export function createWorldMap(deps) {
       centerX = deps.player.x;
       centerZ = deps.player.z;
     } else if (zoom === 1) {
-      centerX = (X0 + X1) / 2;
-      centerZ = (Z0 + Z1) / 2;
+      centerX = (bounds.x0 + bounds.x1) / 2;
+      centerZ = (bounds.z0 + bounds.z1) / 2;
     }
     render();
   }
@@ -888,6 +947,177 @@ export function createWorldMap(deps) {
   function close() {
     isOpenNow = false;
     panel.hidden = true;
+  }
+
+  /* ---- the sea chart: the Grey Sea as a sailor's chart, with the ships on it ---- */
+
+  function drawSeaChart(g, scale, worldX0, worldZ0, ratio) {
+    const px = (x) => (x - worldX0) * scale;
+    const pz = (z) => (z - worldZ0) * scale;
+    const { width, height } = g.canvas;
+    /* the water, a little lighter near the coast; a grid of fifty units */
+    const water = g.createLinearGradient(0, pz(SEA_CHART.z0), 0, pz(SALTMERE.z0));
+    water.addColorStop(0, "#26475e");
+    water.addColorStop(1, "#3c6a88");
+    g.fillStyle = water;
+    g.fillRect(0, 0, width, height);
+    g.strokeStyle = "rgba(220, 235, 245, 0.08)";
+    g.lineWidth = 1;
+    for (let x = Math.ceil(SEA_CHART.x0 / 50) * 50; x < SEA_CHART.x1; x += 50) {
+      g.beginPath();
+      g.moveTo(px(x), pz(SEA_CHART.z0));
+      g.lineTo(px(x), pz(SALTMERE.z0));
+      g.stroke();
+    }
+    for (let z = Math.ceil(SEA_CHART.z0 / 50) * 50; z < SALTMERE.z0; z += 50) {
+      g.beginPath();
+      g.moveTo(px(SEA_CHART.x0), pz(z));
+      g.lineTo(px(SEA_CHART.x1), pz(z));
+      g.stroke();
+    }
+    /* the coast of the land and Saltmere on it: its walls, piers, the mole and the lighthouse */
+    g.fillStyle = COLORS.meadow;
+    g.fillRect(0, pz(SALTMERE.z0), width, height);
+    g.fillStyle = COLORS.capital;
+    g.fillRect(
+      px(SALTMERE.x0),
+      pz(SALTMERE.z0),
+      (SALTMERE.x1 - SALTMERE.x0) * scale,
+      (SALTMERE.z1 - SALTMERE.z0) * scale,
+    );
+    g.fillStyle = COLORS.bridge;
+    for (const pier of PIERS) {
+      g.fillRect(
+        px(pier.x - pier.halfWidth),
+        pz(pier.end),
+        pier.halfWidth * 2 * scale,
+        (SALTMERE.z0 - pier.end) * scale,
+      );
+    }
+    g.fillStyle = "#9a948a";
+    g.fillRect(
+      px(MOLE.x - MOLE.halfWidth),
+      pz(MOLE.end),
+      MOLE.halfWidth * 2 * scale,
+      (SALTMERE.z0 - MOLE.end) * scale,
+    );
+    const circle = (x, z, radius, fill, minimum = 1.5) => {
+      g.fillStyle = fill;
+      g.beginPath();
+      g.arc(px(x), pz(z), Math.max(radius * scale, minimum * ratio), 0, Math.PI * 2);
+      g.fill();
+    };
+    circle(MOLE.head[0], MOLE.head[1], MOLE.headRadius, "#9a948a");
+    circle(LIGHTHOUSE[0], LIGHTHOUSE[1], 1.8, "#e05a48", 2.5);
+    /* sea stacks, islets and their names */
+    for (const [x, z, radius] of ROCKS) {
+      circle(x, z, radius * 1.5, "rgba(240, 246, 250, 0.25)");
+      circle(x, z, radius, "#5a5658", 2);
+    }
+    const name = (text, x, z, size, isRegion = false) => {
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.font = isRegion
+        ? `italic 700 ${size}px Cinzel, Rubik, serif`
+        : `600 ${size}px Rubik, sans-serif`;
+      g.lineWidth = Math.max(2, size * 0.22);
+      g.strokeStyle = "rgba(10, 16, 24, 0.75)";
+      g.strokeText(text, px(x), pz(z));
+      g.fillStyle = isRegion ? "rgba(220, 235, 245, 0.55)" : "rgba(255, 244, 214, 0.95)";
+      g.fillText(text, px(x), pz(z));
+    };
+    const placeSize = Math.max(11 * ratio, scale * 6);
+    for (const islet of ISLETS) {
+      circle(islet.x, islet.z, islet.radius + 1.5, "#d8c08a", 3);
+      circle(islet.x, islet.z, islet.radius * 0.9, "#6a9a4a", 2);
+      name(islet.name, islet.x, islet.z + islet.radius + 9, placeSize);
+    }
+    /* the Ember Isles: black rock, the mountain and its glow */
+    g.fillStyle = "#3a3436";
+    g.beginPath();
+    for (let k = 0; k <= 48; k++) {
+      const angle = (k / 48) * Math.PI * 2;
+      const wobble = 1 + 0.08 * Math.sin(angle * 5 + 1) + 0.05 * Math.sin(angle * 11);
+      const x = EMBER_ISLES.x + Math.sin(angle) * EMBER_ISLES.radius * wobble;
+      const z = EMBER_ISLES.z + Math.cos(angle) * EMBER_ISLES.radius * wobble;
+      if (k === 0) {
+        g.moveTo(px(x), pz(z));
+      } else {
+        g.lineTo(px(x), pz(z));
+      }
+    }
+    g.fill();
+    circle(EMBER_ISLES.x - 10, EMBER_ISLES.z - 18, 26, "#4a4244");
+    circle(EMBER_ISLES.x - 10, EMBER_ISLES.z - 18, 5, "#ff7a2a", 3);
+    name(EMBER_ISLES.name, EMBER_ISLES.x, EMBER_ISLES.z + EMBER_ISLES.radius + 14, placeSize * 1.2);
+    name(SALTMERE.name, SALTMERE.gate[0], SALTMERE.z1 - 2, placeSize * 1.2);
+    name(GREY_SEA.name, -150, -600, placeSize * 2.2, true);
+    name("Uncharted waters", -150, SEA_CHART.z0 + 18, placeSize * 1.1, true);
+    /* a compass in the corner */
+    const compassX = 34 * ratio;
+    const compassY = 40 * ratio;
+    g.fillStyle = "rgba(255, 233, 168, 0.85)";
+    g.beginPath();
+    g.moveTo(compassX, compassY - 18 * ratio);
+    g.lineTo(compassX + 6 * ratio, compassY);
+    g.lineTo(compassX - 6 * ratio, compassY);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "rgba(255, 233, 168, 0.4)";
+    g.beginPath();
+    g.moveTo(compassX, compassY + 18 * ratio);
+    g.lineTo(compassX + 6 * ratio, compassY);
+    g.lineTo(compassX - 6 * ratio, compassY);
+    g.closePath();
+    g.fill();
+    g.font = `700 ${11 * ratio}px Cinzel, Rubik, serif`;
+    g.fillStyle = "#ffe9a8";
+    g.fillText("N", compassX, compassY - 26 * ratio);
+    /* the other players' ships, and the hero: a ship under sail with the course ahead, or a dot ashore */
+    for (const peer of deps.peers.values()) {
+      const pose = peer.presence && peer.presence.ship;
+      if (Array.isArray(pose)) {
+        drawShip(g, px(pose[0]), pz(pose[1]), pose[2], COLORS.otherPlayer, ratio);
+      } else {
+        drawDot(g, px(peer.x), pz(peer.z), 3 * ratio, COLORS.otherPlayer, "#000");
+      }
+    }
+    const ship = deps.player.ship;
+    if (ship) {
+      if (ship.destination) {
+        g.setLineDash([6 * ratio, 5 * ratio]);
+        g.strokeStyle = "rgba(255, 233, 168, 0.8)";
+        g.lineWidth = 1.5 * ratio;
+        g.beginPath();
+        g.moveTo(px(ship.x), pz(ship.z));
+        g.lineTo(px(ship.destination[0]), pz(ship.destination[1]));
+        g.stroke();
+        g.setLineDash([]);
+        circle(ship.destination[0], ship.destination[1], 0, "rgba(255, 233, 168, 0.8)", 3);
+      }
+      drawShip(g, px(ship.x), pz(ship.z), ship.heading, COLORS.player, ratio);
+    } else {
+      drawDot(g, px(deps.player.x), pz(deps.player.z), 4 * ratio, COLORS.player, "#000");
+    }
+  }
+
+  /* a little ship on the chart, its bow along `heading` (to (-sin, -cos)) */
+  function drawShip(g, x, y, heading, color, ratio) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(-heading);
+    g.fillStyle = color;
+    g.strokeStyle = "#000";
+    g.lineWidth = 1.5 * ratio;
+    g.beginPath();
+    g.moveTo(0, -9 * ratio);
+    g.quadraticCurveTo(5 * ratio, -2 * ratio, 4 * ratio, 7 * ratio);
+    g.lineTo(-4 * ratio, 7 * ratio);
+    g.quadraticCurveTo(-5 * ratio, -2 * ratio, 0, -9 * ratio);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.restore();
   }
 
   /* ---- the minimap: a window around the player, cut from the same static layer ---- */
@@ -925,7 +1155,13 @@ export function createWorldMap(deps) {
       minimapContext.rect(0, 0, width, height);
     }
     minimapContext.clip();
-    minimapContext.fillStyle = isBelow ? COLORS.cryptOutside : COLORS.outside;
+    /* out at sea, beyond the map of the land: open water */
+    const isAtSea = deps.player.z < SALTMERE.z0 - 2;
+    minimapContext.fillStyle = isBelow
+      ? COLORS.cryptOutside
+      : isAtSea
+        ? COLORS.sea
+        : COLORS.outside;
     minimapContext.fillRect(0, 0, width, height);
     minimapContext.imageSmoothingEnabled = true;
     minimapContext.drawImage(
@@ -939,8 +1175,35 @@ export function createWorldMap(deps) {
       width,
       height,
     );
+    if (isAtSea) {
+      drawSea(minimapContext, scale, worldX0, worldZ0, ratio);
+    }
     drawLiveLayer(minimapContext, scale, (worldX0 - X0) * scale, (worldZ0 - Z0) * scale, ratio);
     minimapContext.restore();
+  }
+
+  /* the Grey Sea on the minimap: the darker water of the Reach, rocks, islets and the Ember Isles */
+  function drawSea(context, scale, worldX0, worldZ0, ratio) {
+    const circle = (x, z, radius, fill) => {
+      context.fillStyle = fill;
+      context.beginPath();
+      context.arc(
+        (x - worldX0) * scale,
+        (z - worldZ0) * scale,
+        Math.max(radius * scale, 1.5 * ratio),
+        0,
+        Math.PI * 2,
+      );
+      context.fill();
+    };
+    for (const [x, z, radius] of ROCKS) {
+      circle(x, z, radius, "#5a5658");
+    }
+    for (const { x, z, radius } of ISLETS) {
+      circle(x, z, radius + 1, "#d8c08a");
+      circle(x, z, radius * 0.9, "#6a9a4a");
+    }
+    circle(EMBER_ISLES.x, EMBER_ISLES.z, EMBER_ISLES.radius, "#3a3436");
   }
 
   return {

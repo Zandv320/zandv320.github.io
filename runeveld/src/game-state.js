@@ -34,6 +34,8 @@ export const player = {
   zeny: 0,
   x: 0,
   z: 4,
+  /* at the helm of a ship: {x, z, heading, speed, destination, from} (sailing.js), else null */
+  ship: null,
   equipment: { ...CLASSES.swordsman.starterEquipment },
   /* refine and enchant of what is worn, per slot */
   equipmentMods: {},

@@ -57,6 +57,7 @@ export const CHAPTERS = {
   6: "The Seventh Seal",
   7: "The Northroad",
   8: "Saltmere",
+  9: "Across the Grey Sea",
 };
 
 export const QUESTS = {
@@ -955,6 +956,25 @@ export const QUESTS = {
       "Eight. Feel them hum: they all point the same way, out over the grey sea. That is where he is going. We sail as soon as the tide turns. Say your goodbyes to the land.",
     goal: { type: "item", item: "rune_shard", count: 8 },
     reward: { exp: 3200, zeny: 2000, items: [{ id: "orange_potion", count: 6 }] },
+  },
+  /* ---- Saga II, chapter 9: across the Grey Sea ---- */
+  mara_sail: {
+    giver: "Captain Mara Holt",
+    hint: "Click the Gull's Promise at the east pier to take the helm, and sail north across the Grey Sea to the smoking Ember Isles. The sea chart (M) shows the way.",
+    tutorial: "sailing",
+    chapter: 9,
+    main: true,
+    title: "Sea legs",
+    level: 27,
+    after: "mara_ship",
+    intro:
+      "The compass is tuned, the ship is ready, and I have a broken leg and a bad temper. So you take her out. Sail north, all the way to the Ember Isles, and look at that coast: black rock, smoke, and somewhere a cove where Maelis put in. Then bring her back to me in one piece.",
+    progressText:
+      "Take the helm of the Gull's Promise and sail north to the reefs of the Ember Isles, then bring her back to Saltmere. The sea chart (M) shows the islands.",
+    completeText:
+      "You brought her back! Not a scratch. Well: one scratch. Black reefs and smoke, you say, and no safe cove. Then we need someone who knows that coast. Leave that to me. Rest your sea legs.",
+    goal: { type: "reach", x: -170, z: -822, r: 16, label: "the reefs of the Ember Isles" },
+    reward: { exp: 3600, zeny: 2400, items: [{ id: "grand_potion", count: 3 }] },
   },
   tobin_warehouses: {
     giver: "Warden Tobin",

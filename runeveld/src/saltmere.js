@@ -9,11 +9,12 @@ import * as THREE from "three";
 import * as builders from "./builders.js";
 import { SALTMERE, PIERS, MOLE, LIGHTHOUSE, SALTY_GULL, WATER_Y } from "./rules/saltmere.js";
 import { daylight } from "./daylight.js";
-import { player } from "./game-state.js";
+import { player, clickables } from "./game-state.js";
+import { BERTH, HULL } from "./rules/sea.js";
 import { sfx } from "./audio.js";
 
-/* the sea reaches this far, so it fills the view from anywhere in the city however the camera turns */
-const SEA = { x0: -330, x1: 30, z1: SALTMERE.z0, z0: -580 };
+/* the sea reaches this far: past the Grey Sea's edges (rules/sea.js), so it fills the view wherever a ship sails */
+const SEA = { x0: -560, x1: 260, z1: SALTMERE.z0, z0: -1080 };
 /* the quay wall goes down this far below the land */
 const QUAY_DEPTH = 1.8;
 
@@ -22,6 +23,8 @@ const ships = [];
 let seaTexture = null;
 let lighthouseBeam = null;
 let lighthouseLamp = null;
+/* the Gull's Promise at her berth, and what a click on her catches */
+let mooredGull = null;
 /* the foam along the quay and around the mole, which breathes with the waves */
 const foam = [];
 /* the gulls: flying ones {group, wings, cx, cz, radius, height, speed, angle}, sitting ones {group, hopAt} */
@@ -319,13 +322,23 @@ export function buildSaltmere({ scene, prop, place, pending, seededRandom, obsta
   moor(scene, builders.rowingBoat(4, 1.6), -148.6, -394, 0.1);
   moor(scene, builders.rowingBoat(3.6, 1.5), -155.4, -397, -0.12);
   moor(scene, builders.rowingBoat(3.4, 1.4), -148.4, -400, 0.05);
-  moor(
-    scene,
-    builders.ship({ length: 16, beam: 5, sail: "cloth_red", hullColor: 0x3e4a5a }),
-    -121,
-    -397,
-    0,
+  mooredGull = builders.ship({
+    length: HULL.length,
+    beam: HULL.beam,
+    sail: "cloth_red",
+    hullColor: 0x3e4a5a,
+  });
+  moor(scene, mooredGull, BERTH.x, BERTH.z, BERTH.heading);
+  /* a click on her: go aboard and take the helm (main.js), once Mara Holt will let you */
+  const boardHit = new THREE.Mesh(
+    new THREE.BoxGeometry(HULL.beam, 4, HULL.length).translate(0, 1, 0),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
   );
+  boardHit.position.set(BERTH.x, 0, BERTH.z);
+  boardHit.userData.boardShip = "berth";
+  scene.add(boardHit);
+  clickables.push(boardHit);
+  mooredGull.userData.boardHit = boardHit;
   /* lanterns out on the piers and the mole */
   for (const [x, z] of [
     [-127, -393],
@@ -512,6 +525,14 @@ function buildGulls(scene) {
     group.rotation.y = Math.random() * Math.PI * 2;
     scene.add(group);
     sittingGulls.push({ group, y, hopAt: Math.random() * 8 });
+  }
+}
+
+/** The Gull's Promise at her berth shows only while nobody here sails her (sailing.js). */
+export function setMooredGullVisible(isVisible) {
+  if (mooredGull) {
+    mooredGull.visible = isVisible;
+    mooredGull.userData.boardHit.visible = isVisible;
   }
 }
 
