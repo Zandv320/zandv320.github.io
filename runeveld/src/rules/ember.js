@@ -23,13 +23,34 @@ export const CINDER_CAMP = { name: "Cinder Cove", x: -168, z: -864, radius: 15 }
 export const CAMP_WAKE = [-164.5, -860.5];
 
 /* Mount Kharos, smoking in the middle of the isles: nobody climbs it (yet) */
-export const MOUNT_KHAROS = { name: "Mount Kharos", x: -180, z: -923, radius: 40 };
+export const MOUNT_KHAROS = {
+  name: "Mount Kharos",
+  x: -176,
+  z: -916,
+  radius: 36,
+  height: 32,
+  craterRadius: 6,
+};
+
+/** How far Mount Kharos's slope lies from its middle along this bearing, at height share t (0 the foot, 1 the
+    crater's rim): a cone that narrows upwards, its foot wavy and gullies running down it. */
+export function kharosRadius(angle, t) {
+  const { radius, craterRadius } = MOUNT_KHAROS;
+  const wave =
+    1 + (0.06 * Math.sin(angle * 5 + 0.7) + 0.04 * Math.sin(angle * 13 + t * 6.4)) * (1 - t * 0.6);
+  return (radius * Math.pow(1 - t, 1.25) + craterRadius * t) * wave;
+}
+
+/** How far (x, z) lies outside the foot of Mount Kharos (below 0 under it). */
+export const outsideKharos = (x, z) =>
+  Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) -
+  kharosRadius(Math.atan2(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z), 0);
 
 /* rivers of lava from the mountain's foot down to the sea, west and east of the camp: [x, z] along each, and
    pools of it at the foot ({x, z, r}). Nobody walks through them. */
 export const LAVA_FLOWS = [
   [
-    [-215, -906],
+    [-211, -908],
     [-223, -893],
     [-231, -880],
     [-236, -866],
@@ -45,6 +66,15 @@ export const LAVA_FLOWS = [
   ],
 ];
 export const LAVA_WIDTH = 1.7;
+/* where the lava has crusted over, black and cool enough to walk across: on each river, so every part of the isles
+   can be reached ({x, z} on a river, and how far along the river the crust reaches either way) */
+export const LAVA_CROSSINGS = [
+  { x: -219, z: -899.5 },
+  { x: -233.5, z: -873 },
+  { x: -131, z: -901 },
+  { x: -110, z: -887 },
+];
+export const CROSSING_REACH = 2.4;
 export const LAVA_POOLS = [
   { x: -203, z: -880, r: 3.2 },
   { x: -148, z: -885, r: 2.4 },
@@ -65,10 +95,18 @@ function distanceToLine(x, z, line) {
   return best;
 }
 
-/** How far (x, z) lies from the nearest lava, river or pool: below 0 inside it. */
+/** How far (x, z) lies from the nearest river of lava, crossings and all: below 0 over it. */
+export function riverDistance(x, z) {
+  return Math.min(...LAVA_FLOWS.map((flow) => distanceToLine(x, z, flow))) - LAVA_WIDTH;
+}
+
+/** How far (x, z) lies from the nearest lava, river or pool: below 0 inside it (the crust of a crossing is not lava). */
 export function lavaDistance(x, z) {
   let best = Infinity;
-  for (const flow of LAVA_FLOWS) {
+  const onCrust = LAVA_CROSSINGS.some(
+    (crossing) => Math.hypot(x - crossing.x, z - crossing.z) < CROSSING_REACH,
+  );
+  for (const flow of onCrust ? [] : LAVA_FLOWS) {
     best = Math.min(best, distanceToLine(x, z, flow) - LAVA_WIDTH);
   }
   for (const pool of LAVA_POOLS) {
@@ -77,10 +115,21 @@ export function lavaDistance(x, z) {
   return best;
 }
 
-/** The coast's distance from the isles' middle along this bearing (atan2(dx, dz)): a wavy circle. */
+/** The coast's distance from the isles' middle along this bearing (atan2(dx, dz)): capes and bays, wide and
+    small (chosen so the camp, the lava and a way round the mountain all stay on land). */
 export function emberCoast(angle) {
-  return EMBER_ISLES.radius * (1 + 0.08 * Math.sin(angle * 5 + 1) + 0.05 * Math.sin(angle * 11));
+  return (
+    EMBER_ISLES.radius *
+    (1 +
+      0.19 * Math.sin(angle * 2 + 3.05) +
+      0.14 * Math.sin(angle * 3 + 2.49) +
+      0.07 * Math.sin(angle * 5 + 1) +
+      0.04 * Math.sin(angle * 11))
+  );
 }
+
+/* how far the coast reaches at most, for the ground map */
+export const EMBER_REACH = EMBER_ISLES.radius * 1.3;
 
 /** How far the land reaches from the isles' middle along this bearing: to the coast, or to the cove's near edge. */
 export function emberShore(angle) {
@@ -121,7 +170,7 @@ export function inEmberIsles(x, z, margin = 0) {
   /* a strip of surf along the shore stays wet */
   return (
     onEmberLand(x, z, 1.2 + margin) &&
-    Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) > MOUNT_KHAROS.radius + margin &&
+    outsideKharos(x, z) > margin &&
     lavaDistance(x, z) > 0.4 + margin
   );
 }

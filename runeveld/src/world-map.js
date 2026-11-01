@@ -26,17 +26,25 @@ import {
 } from "./regions.js";
 import { inGorge, onBridge } from "./rules/gorge.js";
 import { SALTMERE, inSaltmere, onPier } from "./rules/saltmere.js";
-import { GREY_SEA, ROCKS, ISLETS, EMBER_ISLES } from "./rules/sea.js";
+import {
+  GREY_SEA,
+  ROCKS,
+  ISLETS,
+  EMBER_ISLES,
+  BERTHS,
+  MOOR_DISTANCE,
+  isletReach,
+} from "./rules/sea.js";
 import { emberShore, MOUNT_KHAROS, CINDER_CAMP, COVE_JETTY } from "./rules/ember.js";
 
-/* Traces the coast of the Ember Isles (with Cinder Cove cut into it) as a path on `g`, through `px`/`pz`. */
-function traceEmberCoast(g, px, pz) {
+/* Traces a coast round (cx, cz) that reaches `reach(angle)` (plus `grow`) as a path on `g`, through `px`/`pz`. */
+function traceCoast(g, px, pz, cx, cz, reach, grow = 0) {
   g.beginPath();
   for (let k = 0; k <= 120; k++) {
     const angle = (k / 120) * Math.PI * 2;
-    const reach = emberShore(angle);
-    const x = px(EMBER_ISLES.x + Math.sin(angle) * reach);
-    const z = pz(EMBER_ISLES.z + Math.cos(angle) * reach);
+    const r = reach(angle) + grow;
+    const x = px(cx + Math.sin(angle) * r);
+    const z = pz(cz + Math.cos(angle) * r);
     if (k === 0) {
       g.moveTo(x, z);
     } else {
@@ -670,8 +678,8 @@ export function createWorldMap(deps) {
   }
 
   /* ---- the map panel: at zoom 1 the whole world fits; zoom in up to 4× beyond what fills the panel with the
-     wheel, a pinch or the + and − buttons; drag to pan, click or tap to walk there. On a phone (or a short
-     screen) the map fills the screen and opens zoomed in on the player. ---- */
+     wheel, a pinch or the + and − buttons; drag to pan, click or tap to walk there. The sea chart, and on a phone
+     (or a short screen) the land map too, fills the screen and opens zoomed in on the player. ---- */
 
   /* the land map or the sea chart (the ⚓ button switches; it opens on the sea chart out at sea) */
   let isSeaChart = false;
@@ -679,7 +687,9 @@ export function createWorldMap(deps) {
   const worldWidth = () => bounds.x1 - bounds.x0;
   const worldHeight = () => bounds.z1 - bounds.z0;
   const viewport = $("#world-map-viewport");
-  const fillsScreen = () => matchMedia("(max-width: 700px), (max-height: 520px)").matches;
+  /* the sea chart always fills the screen (there is a lot of sea); the land map on a phone or a short screen */
+  const fillsScreen = () =>
+    isSeaChart || matchMedia("(max-width: 700px), (max-height: 520px)").matches;
   let zoom = 1;
   let centerX = (bounds.x0 + bounds.x1) / 2;
   let centerZ = (bounds.z0 + bounds.z1) / 2;
@@ -1049,13 +1059,18 @@ export function createWorldMap(deps) {
     };
     const placeSize = Math.max(11 * ratio, scale * 6);
     for (const islet of ISLETS) {
-      circle(islet.x, islet.z, islet.radius + 1.5, "#d8c08a", 3);
-      circle(islet.x, islet.z, islet.radius * 0.9, "#6a9a4a", 2);
-      name(islet.name, islet.x, islet.z + islet.radius + 9, placeSize);
+      const reach = (angle) => isletReach(islet, angle);
+      g.fillStyle = "#d8c08a";
+      traceCoast(g, px, pz, islet.x, islet.z, reach, 1.2);
+      g.fill();
+      g.fillStyle = "#6a9a4a";
+      traceCoast(g, px, pz, islet.x, islet.z, (angle) => reach(angle) * 0.85);
+      g.fill();
+      name(islet.name, islet.x, islet.z + islet.radius * 1.5 + 8, placeSize);
     }
     /* the Ember Isles: black rock round Cinder Cove, the mountain and its glow, the camp */
     g.fillStyle = "#3a3436";
-    traceEmberCoast(g, px, pz);
+    traceCoast(g, px, pz, EMBER_ISLES.x, EMBER_ISLES.z, emberShore);
     g.fill();
     circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, MOUNT_KHAROS.radius * 0.7, "#4a4244");
     circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, 5, "#ff7a2a", 3);
@@ -1069,6 +1084,14 @@ export function createWorldMap(deps) {
     circle(CINDER_CAMP.x, CINDER_CAMP.z, 2.5, "#ffb04a", 3);
     name(EMBER_ISLES.name, EMBER_ISLES.x, EMBER_ISLES.z + EMBER_ISLES.radius + 14, placeSize * 1.2);
     name(CINDER_CAMP.name, CINDER_CAMP.x, CINDER_CAMP.z - 7, placeSize);
+    /* the golden circles where the Gull's Promise moors: sail into one */
+    for (const berth of BERTHS) {
+      g.strokeStyle = "rgba(255, 208, 96, 0.95)";
+      g.lineWidth = Math.max(2 * ratio, scale * 0.6);
+      g.beginPath();
+      g.arc(px(berth.x), pz(berth.z), Math.max(6 * ratio, MOOR_DISTANCE * scale), 0, Math.PI * 2);
+      g.stroke();
+    }
     name(SALTMERE.name, SALTMERE.gate[0], SALTMERE.z1 - 2, placeSize * 1.2);
     name(GREY_SEA.name, -150, -600, placeSize * 2.2, true);
     name("Uncharted waters", -150, SEA_CHART.z0 + 18, placeSize * 1.1, true);
@@ -1218,16 +1241,19 @@ export function createWorldMap(deps) {
     for (const [x, z, radius] of ROCKS) {
       circle(x, z, radius, "#5a5658");
     }
-    for (const { x, z, radius } of ISLETS) {
-      circle(x, z, radius + 1, "#d8c08a");
-      circle(x, z, radius * 0.9, "#6a9a4a");
+    const px = (x) => (x - worldX0) * scale;
+    const pz = (z) => (z - worldZ0) * scale;
+    for (const islet of ISLETS) {
+      const reach = (angle) => isletReach(islet, angle);
+      context.fillStyle = "#d8c08a";
+      traceCoast(context, px, pz, islet.x, islet.z, reach, 1);
+      context.fill();
+      context.fillStyle = "#6a9a4a";
+      traceCoast(context, px, pz, islet.x, islet.z, (angle) => reach(angle) * 0.85);
+      context.fill();
     }
     context.fillStyle = "#3a3436";
-    traceEmberCoast(
-      context,
-      (x) => (x - worldX0) * scale,
-      (z) => (z - worldZ0) * scale,
-    );
+    traceCoast(context, px, pz, EMBER_ISLES.x, EMBER_ISLES.z, emberShore);
     context.fill();
     circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, MOUNT_KHAROS.radius, "#4a4244");
     context.fillStyle = "#8a6a42";

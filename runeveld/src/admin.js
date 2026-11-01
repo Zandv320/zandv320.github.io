@@ -10,6 +10,7 @@ import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
 import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests.js";
 import { stormStrength, setStormOverride } from "./rules/weather.js";
 import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
+import { CAMP_WAKE, MOUNT_KHAROS } from "./rules/ember.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -314,6 +315,8 @@ export function createAdminPanel(ctx) {
       ["Bridge", () => ctx.teleport(BRIDGE.x, GORGE.south + 5)],
       ["Saltmere", () => ctx.teleport(SALTMERE.gate[0], SALTMERE.gate[1] - 4)],
       ["Quay", () => ctx.teleport(SALTMERE.square[0], SALTMERE.z0 + 3)],
+      ["Cinder Cove", () => ctx.teleport(...CAMP_WAKE)],
+      ["Kharos foot", () => ctx.teleport(MOUNT_KHAROS.x, MOUNT_KHAROS.z + MOUNT_KHAROS.radius + 4)],
     ]);
 
     /* ---------- monsters ---------- */

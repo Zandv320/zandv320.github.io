@@ -20,6 +20,8 @@ export const HULL = { length: 16, beam: 5, radius: 2.4 };
 export const BERTH = { name: "Saltmere", x: -117.5, z: -397, heading: 0 };
 /* where a hero comes ashore from the berth: the east pier */
 export const BERTH_LANDING = [PIERS[2].x + 0.6, -397];
+/* sailed into the circle this far round a berth, she moors there */
+export const MOOR_DISTANCE = 6;
 /* every berth where she can moor, with the spot where a hero steps ashore from her there */
 export const BERTHS = [
   { ...BERTH, id: "saltmere", landing: BERTH_LANDING },
@@ -39,13 +41,30 @@ export const ROCKS = [
   [-30, -770, 4],
   [-150, -790, 3.5],
 ];
-/* the islets nobody lives on, with the names the sailors give them */
+/* the islets nobody lives on, with the names the sailors give them; `shape` turns their coasts this way and that
+   (phases for the waves of isletReach) */
 export const ISLETS = [
-  { name: "Saltwind Isle", x: -280, z: -520, radius: 11 },
-  { name: "Little Tern", x: -20, z: -548, radius: 8 },
-  { name: "Greenhollow", x: -70, z: -690, radius: 12 },
-  { name: "Widow's Isle", x: -330, z: -660, radius: 9 },
+  { name: "Saltwind Isle", x: -280, z: -520, radius: 11, shape: [0.4, 2.1, 5.2] },
+  { name: "Little Tern", x: -20, z: -548, radius: 8, shape: [2.6, 0.3, 1.7] },
+  { name: "Greenhollow", x: -70, z: -690, radius: 12, shape: [4.4, 3.8, 0.9] },
+  { name: "Widow's Isle", x: -330, z: -660, radius: 9, shape: [1.3, 5.5, 3.6] },
 ];
+
+/** How far an islet's coast reaches from its middle along this bearing (atan2(dx, dz)): long and lobed. */
+export function isletReach(islet, angle) {
+  const [a, b, c] = islet.shape;
+  return (
+    islet.radius *
+    (1 +
+      0.26 * Math.sin(angle * 2 + a) +
+      0.15 * Math.sin(angle * 3 + b) +
+      0.07 * Math.sin(angle * 5 + c))
+  );
+}
+
+/** How far (x, z) lies outside this islet's coast (below 0 on it). */
+export const outsideIslet = (islet, x, z) =>
+  Math.hypot(x - islet.x, z - islet.z) - isletReach(islet, Math.atan2(x - islet.x, z - islet.z));
 
 /** Is (x, z) out on the Grey Sea (water, not land)? */
 export const inGreySea = (x, z) =>
@@ -83,7 +102,7 @@ export function isOpenWater(x, z, room = HULL.radius) {
     }
   }
   for (const islet of ISLETS) {
-    if (Math.hypot(x - islet.x, z - islet.z) < islet.radius + room) {
+    if (outsideIslet(islet, x, z) < room) {
       return false;
     }
   }

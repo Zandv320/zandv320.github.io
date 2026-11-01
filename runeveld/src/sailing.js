@@ -1,11 +1,12 @@
 /* Eldoria – sailing the Gull's Promise yourself (the sea's rules are in rules/sea.js). A hero who has helped Captain
    Mara Holt takes the helm at her berth by Saltmere's east pier (or at the jetty in Cinder Cove, once she lies
    there). At sea the hero is the ship: the walking keys (or a click on the water or the sea chart) give the course,
-   the ship comes round and gathers way, runs into rocks and stops, and moors by itself when brought slowly to a
-   berth. Other players see each other's ships (their
+   the ship comes round and gathers way, runs into rocks and stops, and moors by itself when sailed into the golden
+   circle round a berth. Other players see each other's ships (their
    presence carries `ship: [x, z, heading]`). */
+import * as THREE from "three";
 import * as builders from "./builders.js";
-import { SAILING, HULL, BERTHS, EMBER_ISLES, canSail } from "./rules/sea.js";
+import { SAILING, HULL, BERTHS, MOOR_DISTANCE, EMBER_ISLES, canSail } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { player, peers, now } from "./game-state.js";
@@ -16,9 +17,6 @@ import { createWake } from "./sea.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
 
-/* brought this close to the berth and this slow, the ship moors */
-const MOOR_DISTANCE = 6;
-const MOOR_SPEED = 2.6;
 /* a click on the water: sail there, and stop this close */
 const ARRIVE_DISTANCE = 4;
 
@@ -57,8 +55,47 @@ function showMooredGulls(isVisible) {
   setCoveGullVisible(isVisible);
 }
 
-/* May the hero bring her in at this berth? Cinder Cove only once Mara has told them the way through the reefs. */
-const mayMoorAt = (berth) => berth.id !== "cinder_cove" || !!player.quests.mara_landfall;
+/* the golden circles on the water round every berth, shown while sailing: sail into one to moor */
+let mooringRings = null;
+
+function buildMooringRings() {
+  return BERTHS.map((berth) => {
+    const group = new THREE.Group();
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(MOOR_DISTANCE - 0.35, MOOR_DISTANCE, 48).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, depthWrite: false }),
+    );
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(MOOR_DISTANCE - 0.35, 48).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, depthWrite: false }),
+    );
+    group.add(disc, ring);
+    group.position.set(berth.x, WATER_Y + 0.06, berth.z);
+    /* drawn over the night haze, so the way in is clear in the dark too */
+    ring.renderOrder = 10001;
+    disc.renderOrder = 10001;
+    group.visible = false;
+    scene.add(group);
+    return { berth, group, ring, disc };
+  });
+}
+
+/* the circles show while sailing, breathing; the one she set off from stays faint until she has left it */
+function updateMooringRings(time, state) {
+  if (!mooringRings) {
+    mooringRings = buildMooringRings();
+  }
+  for (const { berth, group, ring, disc } of mooringRings) {
+    group.visible = !!state;
+    if (!state) {
+      continue;
+    }
+    const pulse = 0.5 + 0.5 * Math.sin(time * 3);
+    const isOrigin = state.from === berth.id;
+    ring.material.opacity = isOrigin ? 0.25 : 0.65 + 0.35 * pulse;
+    disc.material.opacity = isOrigin ? 0.04 : 0.1 + 0.08 * pulse;
+  }
+}
 
 /** The hero takes the helm of the Gull's Promise at her berth with this id (rules/sea.js BERTHS). */
 export function takeHelm(berthId = "saltmere") {
@@ -125,6 +162,7 @@ const forwardOf = (heading) => [-Math.sin(heading), -Math.cos(heading)];
 /** Per frame while sailing: course, speed, the hull against rocks, mooring; the hero stands at the helm. */
 export function updateSailing(dt) {
   const state = player.ship;
+  updateMooringRings(now(), state);
   if (!state) {
     return false;
   }
@@ -207,7 +245,7 @@ export function updateSailing(dt) {
       }
       continue;
     }
-    if (distance < MOOR_DISTANCE && state.speed < MOOR_SPEED && !wantsWay && mayMoorAt(berth)) {
+    if (distance < MOOR_DISTANCE) {
       leaveShip(...berth.landing);
       UI.systemMessage(
         `You bring the Gull's Promise alongside and make her fast at ${berth.name}.`,
@@ -223,9 +261,7 @@ export function updateSailing(dt) {
   ) {
     toldIsles = true;
     UI.systemMessage(
-      player.quests.mara_landfall
-        ? "Cinder Cove opens between the reefs on the south coast. Bring her in slowly, alongside the jetty."
-        : "The Ember Isles: black reefs, ash and smoke. Nobody you know has ever found a way in.",
+      "The Ember Isles: black reefs, ash and smoke. Cinder Cove opens on the south coast: sail into the golden circle by its jetty to moor.",
     );
   }
 

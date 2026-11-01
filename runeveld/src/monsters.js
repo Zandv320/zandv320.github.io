@@ -103,6 +103,9 @@ export function ensureMonster(id) {
   if (spec.tint) {
     sprite.tint(spec.tint);
   }
+  /* out of sight until a snapshot or the host puts it in its place (before that it would stand at the world's
+     middle, in the village well, on the character screen) */
+  sprite.group.visible = false;
   scene.add(sprite.group);
 
   monster = {
@@ -336,6 +339,12 @@ function reviveMonster(monster, [x, z]) {
   monster.sprite.play("idle", true);
 }
 
+/** Shows a monster's sprite where the monster is (after it was made with ensureMonster). */
+export function placeMonsterSprite(monster) {
+  monster.sprite.group.position.set(monster.x, 0, monster.z);
+  monster.sprite.group.visible = true;
+}
+
 /** This client becomes the host: spawn all monsters, or take over the ones received from the old host. */
 export function becomeHost() {
   game.host = { snapshotTimer: 0 };
@@ -348,6 +357,7 @@ export function becomeHost() {
         monster.z = monster.targetZ = z;
         monster.home = keepsHome(monster.spec) ? [x, z] : null;
         monster.isNew = false;
+        placeMonsterSprite(monster);
       }
     }
     return;
@@ -538,6 +548,7 @@ function spawnHelper(key, x, z, targetId) {
   helper.targetZ = helper.z;
   helper.isNew = false;
   helper.isHelper = true;
+  placeMonsterSprite(helper);
   helper.aggroTarget = targetId;
 }
 
@@ -630,8 +641,9 @@ export function applyMonsterSnapshot(data) {
       monster.z = z;
       if (state === MONSTER_STATE.dead) {
         monster.isDead = true;
-        monster.sprite.group.visible = false;
         monster.label.el.hidden = true;
+      } else {
+        placeMonsterSprite(monster);
       }
     }
     if (state === MONSTER_STATE.dead && !monster.isDead) {

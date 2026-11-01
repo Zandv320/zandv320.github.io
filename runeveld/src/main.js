@@ -54,7 +54,7 @@ import { inWarehouses, WAREHOUSES } from "./rules/saltmere.js";
 import { buildSaltmere, updateSaltmere } from "./saltmere.js";
 import { updateChase } from "./maelis.js";
 import { buildSea, updateSea } from "./sea.js";
-import { buildEmberIsles, updateEmberIsles } from "./ember.js";
+import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
 import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from "./sailing.js";
 import { BERTHS, BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
 import { CINDER_CAMP, MOUNT_KHAROS, onCoveJetty } from "./rules/ember.js";
@@ -173,6 +173,7 @@ import {
   applyMonsterSnapshot,
   knockBack,
   updateMonsters,
+  placeMonsterSprite,
 } from "./monsters.js";
 import {
   pressedKeys,
@@ -335,8 +336,8 @@ async function init() {
   game.characterSelect.show();
 }
 
-/* Day and night: lanterns and the altar give light at night; the bandit campfire and the fire baskets at the
-   castle gate always burn. */
+/* Day and night: lanterns and the altar give light at night; the bandit campfire, the fire baskets at the
+   castle gate and the camp fire in Cinder Cove always burn, and the lava of the Ember Isles glows. */
 function createWorldLights() {
   const lights = billboards
     .filter((billboard) => billboard.name === "lantern")
@@ -360,11 +361,15 @@ function createWorldLights() {
     [BANDIT_CAMP[0], BANDIT_CAMP[1], 1.7],
     [CASTLE.x1 + 2.6, -5.2, 1.1],
     [CASTLE.x1 + 2.6, 5.2, 1.1],
+    /* the camp fire in Cinder Cove */
+    [-166, -862, 1],
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
     lights.push({ x, z, y: 0.8, radius: 3.5 * size, color: [255, 160, 80], strength: 0.9 });
   }
+  /* the lava of the Ember Isles glows all night */
+  lights.push(...emberLights);
   return lights;
 }
 
@@ -1003,6 +1008,10 @@ function respec() {
 }
 
 function teleport(x, z) {
+  /* off the ship first, if at the helm */
+  if (player.ship) {
+    resetSailing();
+  }
   /* anywhere in the world (the vale, the crypt); outside it, to the nearest point of the fields */
   const limit = FIELD_SIZE - 1;
   const isInside = insideWorld(x, z, 0.5);
@@ -1050,6 +1059,7 @@ function spawnMonster(monsterId, x, z) {
   monster.x = monster.targetX = x;
   monster.z = monster.targetZ = z;
   monster.isNew = false;
+  placeMonsterSprite(monster);
   return true;
 }
 

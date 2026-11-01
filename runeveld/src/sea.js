@@ -3,7 +3,7 @@
    under sail leaves behind her (createWake). The Ember Isles are ember.js's. */
 import * as THREE from "three";
 import * as builders from "./builders.js";
-import { ROCKS, ISLETS, HULL } from "./rules/sea.js";
+import { ROCKS, ISLETS, HULL, isletReach } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { scene as worldScene } from "./world.js";
 
@@ -35,34 +35,32 @@ export function buildSea({ scene, prop, pending, seededRandom }) {
     scene.add(stack);
     addSurf(scene, x, z, radius * 1.05, radius * 1.45);
   }
-  /* ----- islets: a mound of green on a ring of sand, a few trees ----- */
-  for (const { x, z, radius } of ISLETS) {
-    const sand = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius, radius + 1.2, 1.4, 24).translate(0, WATER_Y + 0.4, 0),
-      new THREE.MeshLambertMaterial({ color: 0xd8c08a }),
-    );
-    sand.position.set(x, 0, z);
+  /* ----- islets: green land on a beach of sand, each in its own shape, a few trees ----- */
+  const sandMaterial = new THREE.MeshLambertMaterial({ color: 0xd8c08a, flatShading: true });
+  const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x6a9a4a, flatShading: true });
+  for (const islet of ISLETS) {
+    const { x, z, radius } = islet;
+    const reach = (angle) => isletReach(islet, angle);
+    /* the beach, sloping down into the water, and the grass on it */
+    const sand = new THREE.Mesh(coastSlab(reach, 1, 0.2, 1.3, 1), sandMaterial);
+    sand.position.set(x, WATER_Y - 0.5, z);
     scene.add(sand);
-    const mound = new THREE.Mesh(
-      new THREE.SphereGeometry(radius * 0.92, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshLambertMaterial({ color: 0x6a9a4a, flatShading: true }),
-    );
-    mound.scale.y = 0.18;
-    mound.position.set(x, WATER_Y + 1.05, z);
-    scene.add(mound);
-    for (let k = 0; k < Math.round(radius / 2.5); k++) {
+    const grass = new THREE.Mesh(coastSlab(reach, 0.78, -0.2, 0.3, 0.5), grassMaterial);
+    grass.position.set(x, WATER_Y + 1, z);
+    scene.add(grass);
+    for (let k = 0; k < Math.round(radius / 2); k++) {
       const angle = random() * Math.PI * 2;
-      const distance = random() * radius * 0.6;
+      const distance = random() * reach(angle) * 0.6;
       pending.push(
         prop(
           random() < 0.6 ? "pine" : "tree",
-          x + Math.cos(angle) * distance,
-          z + Math.sin(angle) * distance,
+          x + Math.sin(angle) * distance,
+          z + Math.cos(angle) * distance,
           { shadow: 1.6, scale: 1.3 },
         ),
       );
     }
-    addSurf(scene, x, z, radius + 1.1, radius + 2.2);
+    addSurf(scene, x, z, 1.1, 2.2, reach);
   }
 }
 
@@ -227,10 +225,47 @@ export function createWake() {
   };
 }
 
-/* a ring of white foam round something standing in the sea */
-function addSurf(scene, x, z, inner, outer) {
+/* The outline of a coast that reaches `reach(angle)` from its middle, times `scale` plus `grow`, as a flat shape
+   (in the xy plane, y towards -z once laid down). */
+function coastShape(reach, scale, grow) {
+  const shape = new THREE.Shape();
+  for (let k = 0; k <= 64; k++) {
+    const angle = (k / 64) * Math.PI * 2;
+    const r = reach(angle) * scale + grow;
+    if (k === 0) {
+      shape.moveTo(Math.sin(angle) * r, -Math.cos(angle) * r);
+    } else {
+      shape.lineTo(Math.sin(angle) * r, -Math.cos(angle) * r);
+    }
+  }
+  return shape;
+}
+
+/* a slab in a coast's shape, `depth` thick, its top edge rounded off over `bevel`; standing on y = 0 */
+function coastSlab(reach, scale, grow, depth, bevel) {
+  return new THREE.ExtrudeGeometry(coastShape(reach, scale, grow), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: bevel * 0.4,
+    bevelSize: bevel,
+    bevelSegments: 2,
+    curveSegments: 1,
+  }).rotateX(-Math.PI / 2);
+}
+
+/* A ring of white foam round something standing in the sea, `inner` to `outer` from its middle, or from its coast
+   when `reach(angle)` gives one. */
+function addSurf(scene, x, z, inner, outer, reach = null) {
+  let geometry;
+  if (reach) {
+    const shape = coastShape(reach, 1, outer);
+    shape.holes.push(coastShape(reach, 1, inner));
+    geometry = new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2);
+  } else {
+    geometry = new THREE.RingGeometry(inner, outer, 40).rotateX(-Math.PI / 2);
+  }
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(inner, outer, 40).rotateX(-Math.PI / 2),
+    geometry,
     new THREE.MeshBasicMaterial({
       color: 0xf2f6f8,
       transparent: true,

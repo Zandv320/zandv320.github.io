@@ -1261,8 +1261,13 @@ const VILLAGERS = [
     hair: "brown",
     outfit: "armor1",
     tunicColor: "violet",
-    route: [[-171.3, -866.6]],
-    facing: [0.4, 1],
+    /* she reads at her desk, and walks to the fire to think */
+    route: [
+      [-171.3, -866.6],
+      [-168.4, -863.2],
+    ],
+    speed: 0.7,
+    pause: [8, 16],
     lines: [
       "The old mages built the fire seal inside the mountain. Of course they did. Nobody ever builds a seal in a meadow.",
       "Ash in my tea, ash in my books, ash in my hair. I have never been happier.",

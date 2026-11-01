@@ -10,7 +10,8 @@ import * as builders from "./builders.js";
 import { SALTMERE, PIERS, MOLE, LIGHTHOUSE, SALTY_GULL, WATER_Y } from "./rules/saltmere.js";
 import { daylight } from "./daylight.js";
 import { player, clickables } from "./game-state.js";
-import { BERTH, HULL, ROCKS, ISLETS, EMBER_ISLES } from "./rules/sea.js";
+import { BERTH, HULL, ROCKS, ISLETS, EMBER_ISLES, isletReach } from "./rules/sea.js";
+import { emberShore } from "./rules/ember.js";
 import { sfx } from "./audio.js";
 
 /* the sea reaches this far: past the Grey Sea's edges (rules/sea.js), so it fills the view wherever a ship sails */
@@ -551,11 +552,24 @@ function bollard() {
   return group;
 }
 
+/* Circles just inside a coast that reaches `reach(angle)` from (x, z), `count` of them all round, each `radius`
+   wide: together they give the shallows the coast's own shape. */
+function coastCircles(x, z, reach, count, radius) {
+  return Array.from({ length: count }, (_, k) => {
+    const angle = (k / count) * Math.PI * 2;
+    const r = Math.min(radius, reach(angle) * 0.5);
+    const distance = reach(angle) - r;
+    return [x + Math.sin(angle) * distance, z + Math.cos(angle) * distance, r];
+  });
+}
+
 /* everything standing in the sea that has shallows round it: [x, z, radius] for the shader */
 const SHALLOWS = [
   ...ROCKS,
-  ...ISLETS.map((islet) => [islet.x, islet.z, islet.radius]),
-  [EMBER_ISLES.x, EMBER_ISLES.z, EMBER_ISLES.radius],
+  ...ISLETS.flatMap((islet) =>
+    coastCircles(islet.x, islet.z, (angle) => isletReach(islet, angle), 7, islet.radius * 0.6),
+  ),
+  ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 24, 10),
 ];
 
 /* The water of the sea, drawn on the GPU in the game's pixels: clear turquoise over the shallows along the quay and

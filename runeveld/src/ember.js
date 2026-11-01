@@ -7,6 +7,7 @@ import * as THREE from "three";
 import * as builders from "./builders.js";
 import {
   EMBER_ISLES,
+  EMBER_REACH,
   CINDER_COVE,
   COVE_JETTY,
   COVE_BERTH,
@@ -15,15 +16,21 @@ import {
   LAVA_FLOWS,
   LAVA_POOLS,
   LAVA_WIDTH,
+  LAVA_CROSSINGS,
+  CROSSING_REACH,
+  riverDistance,
   emberShore,
   inEmberIsles,
   lavaDistance,
+  kharosRadius,
+  outsideKharos,
+  onEmberLand,
 } from "./rules/ember.js";
 import { HULL } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
-import { addShadowCatcher, applyGroundFilter } from "./world.js";
+import { addShadowCatcher, applyGroundFilter, cameraState } from "./world.js";
 import { distanceToPath } from "./regions.js";
-import { clickables } from "./game-state.js";
+import { clickables, player } from "./game-state.js";
 import { loadTexture } from "./sprites.js";
 
 /* the path the camp has trodden: from the jetty up the beach to the fire, and on towards the mountain */
@@ -36,13 +43,17 @@ const CAMP_PATH = [
 ];
 
 /* the mountain's shape: height, and the crater's mouth at the top */
-const KHAROS_HEIGHT = 32;
-const CRATER_RADIUS = 6;
+const KHAROS_HEIGHT = MOUNT_KHAROS.height;
+const CRATER_RADIUS = MOUNT_KHAROS.craterRadius;
 
 const volcanoSmoke = [];
 /* steam rising from cracks in the ash: {x, z, puffs} */
 const steamVents = [];
 let craterGlow = null;
+/* the mountain, which fades while the hero is behind it */
+let mountain = null;
+/* the surf all along the coast, breathing */
+const surf = [];
 /* the Gull's Promise at the jetty, and her swell */
 let coveGull = null;
 
@@ -56,7 +67,8 @@ export function buildEmberIsles({ scene, prop, place, pending, seededRandom, obs
       loadTexture("sprites/ember_patches.png", { raw: true }),
     ]).then(([tiles, patches]) => buildGround(scene, tiles.image, patches.image)),
   );
-  buildLava(scene);
+  buildLava(scene, random);
+  buildSurf(scene);
   buildCoast(scene, random);
   buildKharos(scene, random);
   buildJetty(scene, random);
@@ -117,7 +129,7 @@ function buildGround(scene, tilesImage, patchesImage) {
   /* the plain ash of the tiles: specks and pebbles are whatever differs from it */
   const [ashR, ashG, ashB] = tilePixel(TILE.ground, 0, 0);
   const isAsh = (r, g, b) => r === ashR && g === ashG && b === ashB;
-  const reach = EMBER_ISLES.radius * 1.15;
+  const reach = EMBER_REACH;
   const x0 = Math.floor(EMBER_ISLES.x - reach);
   const z0 = Math.floor(EMBER_ISLES.z - reach);
   const size = Math.ceil(reach * 2);
@@ -140,7 +152,7 @@ function buildGround(scene, tilesImage, patchesImage) {
       if (inland < 0) {
         continue;
       }
-      const fromMountain = Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) - MOUNT_KHAROS.radius;
+      const fromMountain = outsideKharos(x, z);
       const fromLava = lavaDistance(x, z);
       const isTrodden =
         distanceToPath(x, z, CAMP_PATH) < 1.1 + noise(x * 0.9, z * 0.9) * 0.6 ||
@@ -173,7 +185,16 @@ function buildGround(scene, tilesImage, patchesImage) {
               shade = 0.82;
             }
           }
-          if (fromLava < 1.6) {
+          const isCrust =
+            riverDistance(x, z) < 0.35 &&
+            LAVA_CROSSINGS.some(
+              (crossing) => Math.hypot(x - crossing.x, z - crossing.z) < CROSSING_REACH + 0.6,
+            );
+          if (isCrust) {
+            /* a crossing: the lava crusted over, black basalt with a glow in its cracks */
+            [r, g, b] = grain > 0.9 ? EMBER_GLOW[1] : grain > 0.45 ? [58, 52, 54] : [40, 36, 38];
+            shade = 1;
+          } else if (fromLava < 1.6) {
             /* scorched black beside the lava, with embers in it */
             shade *= 0.35 + (0.45 * Math.max(0, fromLava)) / 1.6;
             if (fromLava < 0.7 && grain > 0.93) {
@@ -204,7 +225,7 @@ function buildGround(scene, tilesImage, patchesImage) {
       lavaDistance(x, z) > 2.5 &&
       distanceToPath(x, z, CAMP_PATH) > 3 &&
       Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) > 11 &&
-      Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) > MOUNT_KHAROS.radius + 2
+      outsideKharos(x, z) > 2
     );
   };
   for (let k = 0; k < 160; k++) {
@@ -244,7 +265,8 @@ function buildGround(scene, tilesImage, patchesImage) {
   addShadowCatcher(size, size, x0 + size / 2, 0.029, z0 + size / 2);
 }
 
-/* ---------- lava: rivers and pools that glow by day and night ---------- */
+/* ---------- lava: from the crater down the mountain, across the land in rivers and pools, over the cliffs into
+   the sea; it glows by day and night ---------- */
 
 /* Lava in pixel art, 64 px square (4 units) and tileable: plates of red-hot crust with bright cracks between them. */
 function lavaTexture() {
@@ -300,55 +322,300 @@ function lavaTexture() {
   return texture;
 }
 
-/* A flat shape over all the lava (rivers as strips with round joints, pools as discs), `grow` wider than the lava
-   itself, at height y; its uvs follow the world, so one tileable texture runs on without seams. */
-function lavaShape(grow, y) {
-  const positions = [];
-  const disc = (cx, cz, radius) => {
-    const SEGMENTS = 20;
-    for (let k = 0; k < SEGMENTS; k++) {
-      const a = (k / SEGMENTS) * Math.PI * 2;
-      const b = ((k + 1) / SEGMENTS) * Math.PI * 2;
-      positions.push(
-        cx,
-        y,
-        cz,
-        cx + Math.sin(b) * radius,
-        y,
-        cz + Math.cos(b) * radius,
-        cx + Math.sin(a) * radius,
-        y,
-        cz + Math.cos(a) * radius,
-      );
-    }
-  };
-  const width = LAVA_WIDTH + grow;
+/* The rivers as they are drawn: each runs on until it reaches the coast, and there it falls into the sea. Returns
+   the rivers' lines on land and, per mouth, where it pours over and which way. */
+function riversToTheSea() {
+  const lines = [];
+  const mouths = [];
   for (const flow of LAVA_FLOWS) {
+    const line = [flow[0]];
     for (let k = 0; k < flow.length - 1; k++) {
       const [ax, az] = flow[k];
       const [bx, bz] = flow[k + 1];
       const length = Math.hypot(bx - ax, bz - az);
-      const sideX = (-(bz - az) / length) * width;
-      const sideZ = ((bx - ax) / length) * width;
-      const quad = [
-        [ax + sideX, az + sideZ],
-        [ax - sideX, az - sideZ],
-        [bx + sideX, bz + sideZ],
-        [bx - sideX, bz - sideZ],
-      ];
-      for (const index of [0, 2, 1, 1, 2, 3]) {
-        positions.push(quad[index][0], y, quad[index][1]);
+      let mouth = null;
+      for (let t = 0.2; t <= length; t += 0.2) {
+        const x = ax + ((bx - ax) * t) / length;
+        const z = az + ((bz - az) * t) / length;
+        if (!onEmberLand(x, z, 0)) {
+          mouth = { x, z, dirX: (bx - ax) / length, dirZ: (bz - az) / length };
+          break;
+        }
       }
-      disc(ax, az, width);
+      if (mouth) {
+        line.push([mouth.x, mouth.z]);
+        mouths.push(mouth);
+        break;
+      }
+      line.push(flow[k + 1]);
     }
-    disc(...flow[flow.length - 1], width);
+    lines.push(line);
+  }
+  return { lines, mouths };
+}
+
+/* The lava on the ground, drawn on the GPU in the game's pixels: each pixel finds how far it lies from the rivers
+   and pools; inside it is molten (plates of crust drifting on it, bright cracks between them, a hot band along the
+   banks), just outside a ragged rim of bright yellow. A pixel beyond the coast (looked up in a strip of the coast's
+   reach per bearing) is never lava, nor one on the crust of a crossing. */
+const LAVA_VERTEX = /* glsl */ `
+  varying vec2 vWorld;
+  void main() {
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vWorld = world.xz;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+const lavaFragment = (segments, pools, crossings) => /* glsl */ `
+  uniform float uTime;
+  uniform float uWidth;
+  uniform float uReach;
+  uniform vec2 uCenter;
+  uniform sampler2D uShore;
+  uniform vec4 uSegments[${segments}];
+  uniform vec3 uPools[${pools}];
+  uniform vec2 uCrossings[${crossings}];
+  uniform vec3 uDark;
+  uniform vec3 uRed;
+  uniform vec3 uHot;
+  uniform vec3 uBright;
+  uniform vec3 uWhite;
+  varying vec2 vWorld;
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  vec2 hash2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+  }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+  }
+  float cellEdge(vec2 p, float t) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    float first = 8.0;
+    float second = 8.0;
+    for (int y = -1; y <= 1; y++) {
+      for (int x = -1; x <= 1; x++) {
+        vec2 g = vec2(float(x), float(y));
+        vec2 o = 0.5 + 0.35 * sin(t + 6.2831 * hash2(i + g));
+        float d = length(g + o - f);
+        if (d < first) {
+          second = first;
+          first = d;
+        } else if (d < second) {
+          second = d;
+        }
+      }
+    }
+    return second - first;
+  }
+  float segmentDistance(vec2 p, vec4 s) {
+    vec2 a = s.xy;
+    vec2 ab = s.zw - a;
+    float t = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+    return length(p - a - ab * t);
+  }
+  void main() {
+    /* one game pixel is a sixteenth of a unit */
+    vec2 p = (floor(vWorld * 16.0) + 0.5) / 16.0;
+    vec2 rel = p - uCenter;
+    float shore = texture2D(uShore, vec2(fract(atan(rel.x, rel.y) / 6.2831853), 0.5)).r;
+    if (length(rel) > shore - 0.2) {
+      discard;
+    }
+    float river = 1000.0;
+    for (int k = 0; k < ${segments}; k++) {
+      river = min(river, segmentDistance(p, uSegments[k]) - uWidth);
+    }
+    for (int k = 0; k < ${crossings}; k++) {
+      if (length(p - uCrossings[k]) < uReach) {
+        river = 1000.0;
+      }
+    }
+    float d = river;
+    for (int k = 0; k < ${pools}; k++) {
+      d = min(d, length(p - uPools[k].xy) - uPools[k].z);
+    }
+    /* ragged banks */
+    d += (noise(p * 1.7) - 0.5) * 0.45;
+    if (d > 0.22) {
+      discard;
+    }
+    float t = uTime;
+    vec3 color;
+    if (d > 0.0) {
+      color = hash(p * 7.3) > 0.45 ? uBright : uHot;
+    } else {
+      float edge = cellEdge(p * 0.55 + vec2(t * 0.05, t * 0.035), t * 0.25);
+      float glow = noise(p * 0.8 + t * 0.4);
+      color = mix(uDark, uRed, smoothstep(0.2, 0.8, glow));
+      if (edge < 0.05) {
+        color = hash(p * 3.1 + floor(t * 3.0)) > 0.7 ? uWhite : uBright;
+      } else if (edge < 0.13) {
+        color = uHot;
+      }
+      if (d > -0.45) {
+        color = mix(color, uHot, 0.7);
+      }
+    }
+    gl_FragColor = vec4(color, 1.0);
+    #include <colorspace_fragment>
+  }
+`;
+
+/* the coast's reach per bearing as a strip texture, for the lava shader */
+function shoreTexture() {
+  const SIZE = 512;
+  const data = new Float32Array(SIZE);
+  for (let k = 0; k < SIZE; k++) {
+    data[k] = emberShore(((k + 0.5) / SIZE) * Math.PI * 2);
+  }
+  const texture = new THREE.DataTexture(data, SIZE, 1, THREE.RedFormat, THREE.FloatType);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/* the lava that moves: the ground's shader, the streams down the mountain, the falls into the sea */
+let lavaMaterial = null;
+const lavaStreams = [];
+/* the streams on the mountain and its crater's glow, which fade with it */
+const mountainLava = [];
+/* glowing sparks rising from the lava, and ash falling over the isles */
+let embers = null;
+let ash = null;
+/* the lava's light at night (main.js gives every one a warm hole in the haze) */
+export const emberLights = [];
+
+function buildLava(scene, random) {
+  const { lines, mouths } = riversToTheSea();
+  const segments = [];
+  for (const line of lines) {
+    for (let k = 0; k < line.length - 1; k++) {
+      segments.push(new THREE.Vector4(...line[k], ...line[k + 1]));
+    }
+  }
+  lavaMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uWidth: { value: LAVA_WIDTH },
+      uReach: { value: CROSSING_REACH },
+      uCenter: { value: new THREE.Vector2(EMBER_ISLES.x, EMBER_ISLES.z) },
+      uShore: { value: shoreTexture() },
+      uSegments: { value: segments },
+      uPools: { value: LAVA_POOLS.map((pool) => new THREE.Vector3(pool.x, pool.z, pool.r)) },
+      uCrossings: {
+        value: LAVA_CROSSINGS.map((crossing) => new THREE.Vector2(crossing.x, crossing.z)),
+      },
+      uDark: { value: new THREE.Color(0x7a2416) },
+      uRed: { value: new THREE.Color(0xc23a1c) },
+      uHot: { value: new THREE.Color(0xf07a2c) },
+      uBright: { value: new THREE.Color(0xffc24a) },
+      uWhite: { value: new THREE.Color(0xfff0a0) },
+    },
+    vertexShader: LAVA_VERTEX,
+    fragmentShader: lavaFragment(segments.length, LAVA_POOLS.length, LAVA_CROSSINGS.length),
+    transparent: true,
+  });
+  /* only over the lava: a strip along each river and a square round each pool, the shader does the rest */
+  const cover = [];
+  const pad = LAVA_WIDTH + 0.6;
+  for (const segment of segments) {
+    const length = Math.hypot(segment.z - segment.x, segment.w - segment.y);
+    const plane = new THREE.PlaneGeometry(pad * 2, length + pad * 2).rotateX(-Math.PI / 2);
+    plane.rotateY(Math.atan2(segment.z - segment.x, segment.w - segment.y));
+    plane.translate((segment.x + segment.z) / 2, 0.038, (segment.y + segment.w) / 2);
+    cover.push(plane);
   }
   for (const pool of LAVA_POOLS) {
-    disc(pool.x, pool.z, pool.r + grow);
+    const size = (pool.r + 0.8) * 2;
+    cover.push(
+      new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2).translate(pool.x, 0.038, pool.z),
+    );
   }
+  for (const geometry of cover) {
+    /* drawn over the night haze, so it glows in the dark */
+    const mesh = new THREE.Mesh(geometry, lavaMaterial);
+    mesh.renderOrder = 10002;
+    scene.add(mesh);
+  }
+  buildStreams(scene, mouths);
+  /* light: along the rivers, at the pools, at every fall */
+  for (const line of lines) {
+    for (let k = 0; k < line.length - 1; k++) {
+      const [ax, az] = line[k];
+      const [bx, bz] = line[k + 1];
+      const length = Math.hypot(bx - ax, bz - az);
+      for (let t = 2; t < length; t += 7) {
+        emberLights.push({
+          x: ax + ((bx - ax) * t) / length,
+          z: az + ((bz - az) * t) / length,
+          y: 0.4,
+          radius: 4.5,
+          color: [255, 120, 50],
+          strength: 0.7,
+        });
+      }
+    }
+  }
+  for (const pool of LAVA_POOLS) {
+    emberLights.push({
+      x: pool.x,
+      z: pool.z,
+      y: 0.4,
+      radius: pool.r + 4,
+      color: [255, 120, 50],
+      strength: 0.8,
+    });
+  }
+  for (const mouth of mouths) {
+    emberLights.push({
+      x: mouth.x,
+      z: mouth.z,
+      y: 0.2,
+      radius: 4,
+      color: [255, 140, 70],
+      strength: 0.7,
+    });
+    addVent(scene, mouth.x + mouth.dirX * 1.4, mouth.z + mouth.dirZ * 1.4, random, {
+      size: 1.4,
+      y: WATER_Y + 0.3,
+      height: 6,
+    });
+  }
+  embers = buildEmbers(scene, lines, random);
+  ash = buildAsh(scene);
+}
+
+/* Lava as a strip that moves along its length: down the mountain's slopes from the crater, and over the cliffs
+   into the sea. `points` along the middle, `widths` at each point, `across` the direction across it there. */
+function streamGeometry(points, widths, acrossAt) {
+  const positions = [];
   const uvs = [];
-  for (let k = 0; k < positions.length; k += 3) {
-    uvs.push(positions[k] / 4, -positions[k + 2] / 4);
+  let along = 0;
+  for (let k = 0; k < points.length - 1; k++) {
+    const a = points[k];
+    const b = points[k + 1];
+    const step = a.distanceTo(b);
+    const [ax, az] = acrossAt(k);
+    const [bx, bz] = acrossAt(k + 1);
+    const quad = [
+      [a.x - ax * widths[k], a.y, a.z - az * widths[k], 0, along / 4],
+      [a.x + ax * widths[k], a.y, a.z + az * widths[k], 0.5, along / 4],
+      [b.x - bx * widths[k + 1], b.y, b.z - bz * widths[k + 1], 0, (along + step) / 4],
+      [b.x + bx * widths[k + 1], b.y, b.z + bz * widths[k + 1], 0.5, (along + step) / 4],
+    ];
+    along += step;
+    for (const index of [0, 2, 1, 1, 2, 3]) {
+      positions.push(quad[index][0], quad[index][1], quad[index][2]);
+      uvs.push(quad[index][3], quad[index][4]);
+    }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
@@ -356,25 +623,199 @@ function lavaShape(grow, y) {
   return geometry;
 }
 
-let lavaMaterial = null;
+function buildStreams(scene, mouths) {
+  const material = (isOnMountain) => {
+    const map = lavaTexture();
+    const result = new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide, transparent: true });
+    lavaStreams.push(result);
+    if (isOnMountain) {
+      mountainLava.push(result);
+    }
+    return result;
+  };
+  /* down the mountain: from the crater's rim to where each river begins at its foot */
+  for (const flow of LAVA_FLOWS) {
+    const [startX, startZ] = flow[0];
+    const bearing = Math.atan2(startX - MOUNT_KHAROS.x, startZ - MOUNT_KHAROS.z);
+    const points = [];
+    const widths = [];
+    const angles = [];
+    const STEPS = 40;
+    for (let k = 0; k <= STEPS; k++) {
+      const t = 0.97 * (1 - k / STEPS);
+      const angle = bearing + 0.07 * Math.sin(t * 11) + 0.03 * Math.sin(t * 29);
+      const radius = kharosRadius(angle, t) + 0.3;
+      points.push(
+        new THREE.Vector3(
+          MOUNT_KHAROS.x + Math.sin(angle) * radius,
+          -0.4 + KHAROS_HEIGHT * t + 0.25,
+          MOUNT_KHAROS.z + Math.cos(angle) * radius,
+        ),
+      );
+      widths.push(0.45 + (1 - t) * 0.9);
+      angles.push(angle);
+    }
+    const across = (k) => [Math.cos(angles[k]), -Math.sin(angles[k])];
+    const stream = new THREE.Mesh(streamGeometry(points, widths, across), material(true));
+    stream.renderOrder = 10002;
+    scene.add(stream);
+  }
+  /* over the cliff into the sea, where each river ends */
+  for (const mouth of mouths) {
+    const width = LAVA_WIDTH * 0.85;
+    const points = [];
+    for (let k = 0; k <= 4; k++) {
+      const out = 0.3 + k * 0.12;
+      points.push(
+        new THREE.Vector3(
+          mouth.x + mouth.dirX * out,
+          0.04 - (k / 4) * (0.04 - (WATER_Y - 0.1)),
+          mouth.z + mouth.dirZ * out,
+        ),
+      );
+    }
+    const across = () => [-mouth.dirZ, mouth.dirX];
+    const fall = new THREE.Mesh(
+      streamGeometry(
+        points,
+        points.map(() => width),
+        across,
+      ),
+      material(false),
+    );
+    fall.renderOrder = 10002;
+    scene.add(fall);
+  }
+}
 
-function buildLava(scene) {
-  /* a bright rim round the lava, then the lava over it; both drawn over the night haze, so they glow in the dark
-     (and above the shadow catcher, which is drawn before them) */
-  const rim = new THREE.Mesh(
-    lavaShape(0.22, 0.034),
-    new THREE.MeshBasicMaterial({ color: 0xffc04a, side: THREE.DoubleSide, transparent: true }),
+/* Sparks: points that rise glowing from the lava and go out. */
+function buildEmbers(scene, lines, random) {
+  const COUNT = 140;
+  const sources = [];
+  for (const line of lines) {
+    for (let k = 0; k < line.length - 1; k++) {
+      sources.push([line[k], line[k + 1]]);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(COUNT * 3), 3));
+  const points = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      color: 0xffa040,
+      size: 3,
+      sizeAttenuation: false,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
   );
-  rim.renderOrder = 10001;
-  scene.add(rim);
-  lavaMaterial = new THREE.MeshBasicMaterial({
-    map: lavaTexture(),
-    side: THREE.DoubleSide,
-    transparent: true,
-  });
-  const lava = new THREE.Mesh(lavaShape(0, 0.038), lavaMaterial);
-  lava.renderOrder = 10002;
-  scene.add(lava);
+  points.frustumCulled = false;
+  points.renderOrder = 10003;
+  scene.add(points);
+  const sparks = Array.from({ length: COUNT }, () => ({
+    age: random() * 3,
+    life: 1,
+    x: 0,
+    z: 0,
+    driftX: 0,
+  }));
+  /* a new spark somewhere over the lava: a river, a pool or the crater */
+  const spawn = (spark) => {
+    const pick = random();
+    if (pick < 0.15) {
+      const pool = LAVA_POOLS[Math.floor(random() * LAVA_POOLS.length)];
+      const angle = random() * Math.PI * 2;
+      spark.x = pool.x + Math.sin(angle) * pool.r * random();
+      spark.z = pool.z + Math.cos(angle) * pool.r * random();
+      spark.y = 0.1;
+    } else if (pick < 0.3) {
+      spark.x = MOUNT_KHAROS.x + (random() - 0.5) * CRATER_RADIUS;
+      spark.z = MOUNT_KHAROS.z + (random() - 0.5) * CRATER_RADIUS;
+      spark.y = KHAROS_HEIGHT - 2;
+    } else {
+      const [[ax, az], [bx, bz]] = sources[Math.floor(random() * sources.length)];
+      const t = random();
+      spark.x = ax + (bx - ax) * t + (random() - 0.5) * LAVA_WIDTH;
+      spark.z = az + (bz - az) * t + (random() - 0.5) * LAVA_WIDTH;
+      spark.y = 0.1;
+    }
+    spark.age = 0;
+    spark.life = 1.5 + random() * 2;
+    spark.driftX = (random() - 0.5) * 0.8;
+  };
+  for (const spark of sparks) {
+    spawn(spark);
+    spark.age = random() * spark.life;
+  }
+  return { points, sparks, spawn };
+}
+
+/* Ash: grey flakes drifting down round the hero while they are on or near the isles. */
+function buildAsh(scene) {
+  const COUNT = 220;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(COUNT * 3), 3));
+  const points = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      color: 0xb8b0ac,
+      size: 2,
+      sizeAttenuation: false,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false,
+    }),
+  );
+  points.frustumCulled = false;
+  scene.add(points);
+  const flakes = Array.from({ length: COUNT }, (_, k) => ({
+    x: (hash(k, 1.1) - 0.5) * 60,
+    y: hash(k, 2.2) * 12,
+    z: (hash(k, 3.3) - 0.5) * 60,
+    sway: hash(k, 4.4) * 6.28,
+  }));
+  return { points, flakes };
+}
+
+/* the surf: a band of foam all along the coast, in three pieces that breathe out of step */
+function buildSurf(scene) {
+  const PIECES = 3;
+  const SEGMENTS = 120;
+  for (let piece = 0; piece < PIECES; piece++) {
+    const positions = [];
+    for (let k = 0; k < SEGMENTS; k++) {
+      const a = ((piece * SEGMENTS + k) / (PIECES * SEGMENTS)) * Math.PI * 2;
+      const b = ((piece * SEGMENTS + k + 1) / (PIECES * SEGMENTS)) * Math.PI * 2;
+      const at = (angle, out) => {
+        const r = emberShore(angle) + out;
+        return [
+          EMBER_ISLES.x + Math.sin(angle) * r,
+          WATER_Y + 0.03,
+          EMBER_ISLES.z + Math.cos(angle) * r,
+        ];
+      };
+      const quad = [at(a, 0.3), at(a, 1.6), at(b, 0.3), at(b, 1.6)];
+      for (const index of [0, 1, 2, 2, 1, 3]) {
+        positions.push(...quad[index]);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    const band = new THREE.Mesh(
+      geometry,
+      new THREE.MeshBasicMaterial({
+        color: 0xf2f6f8,
+        transparent: true,
+        opacity: 0.25,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    scene.add(band);
+    surf.push(band);
+  }
 }
 
 /* ---------- the coast: low cliffs of basalt down to the water, with boulders in the surf ---------- */
@@ -437,8 +878,8 @@ function buildCoast(scene, random) {
   );
   scene.add(cliff);
   /* boulders: along the coast in the surf, but not in the cove's mouth where the ship comes in */
-  const boulder = builders.material("basalt", 2, 2, 0.8);
-  for (let k = 0; k < 240; k++) {
+  const boulder = builders.material("basalt", 1.2, 1.2, 1.25);
+  for (let k = 0; k < 170; k++) {
     const angle = random() * Math.PI * 2;
     const distance = emberShore(angle) + 0.4 + random() * 2.2;
     const x = EMBER_ISLES.x + Math.sin(angle) * distance;
@@ -447,7 +888,7 @@ function buildCoast(scene, random) {
       continue;
     }
     const stone = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.35 + random() * random() * 1.1, 0),
+      new THREE.DodecahedronGeometry(0.3 + random() * random() * 0.8, 0),
       boulder,
     );
     stone.position.set(x, WATER_Y + random() * 0.6, z);
@@ -469,75 +910,72 @@ function buildCoast(scene, random) {
   }
 }
 
-/* ---------- Mount Kharos: a wide black cone, ash grey towards the top, with a glowing crater ---------- */
+/* ---------- Mount Kharos: a rugged cone of basalt, ridges and gullies down its sides, grey with ash towards the
+   top, scorched red where the lava runs down, with a glowing crater ---------- */
 
 function buildKharos(scene, random) {
-  const SIDES = 56;
-  const RINGS = 16;
-  const positions = [];
-  const colors = [];
-  const uvs = [];
-  /* the basalt runs round the mountain a whole number of times, so it meets itself without a seam */
-  const around = Math.round((Math.PI * MOUNT_KHAROS.radius) / 1) / SIDES;
-  const slope = Math.hypot(MOUNT_KHAROS.radius - CRATER_RADIUS, KHAROS_HEIGHT) / 2;
-  const ringUv = (side, ring) => [side * around, (ring / RINGS) * slope];
-  const ringPoint = (side, ring) => {
+  const SIDES = 72;
+  const RINGS = 18;
+  const H = KHAROS_HEIGHT;
+  /* the bearings of the lava streams, where the rock is scorched */
+  const streamBearings = LAVA_FLOWS.map(([[x, z]]) =>
+    Math.atan2(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z),
+  );
+  /* a point on the slope: the foot exactly as the rules have it, every point above it a little out of true */
+  const slopePoint = (side, ring) => {
     const angle = (side / SIDES) * Math.PI * 2;
     const t = ring / RINGS;
-    /* a wavy foot, and gullies that run down the slopes */
-    const wave =
-      1 +
-      (0.06 * Math.sin(angle * 5 + 0.7) + 0.04 * Math.sin(angle * 13 + ring * 0.4)) * (1 - t * 0.6);
-    const radius = (MOUNT_KHAROS.radius * Math.pow(1 - t, 1.25) + CRATER_RADIUS * t) * wave;
-    const y = -0.4 + KHAROS_HEIGHT * t;
+    const rough = ring === 0 || ring === RINGS ? 0 : 1;
+    const radius = kharosRadius(angle, t) * (1 + (hash(side % SIDES, ring) - 0.5) * 0.09 * rough);
+    const y = -0.4 + H * t + (hash(ring, side % SIDES) - 0.5) * 0.9 * rough;
     return [
       MOUNT_KHAROS.x + Math.sin(angle) * radius,
       y,
       MOUNT_KHAROS.z + Math.cos(angle) * radius,
     ];
   };
-  const colorAt = (ring) => {
-    const t = ring / RINGS;
-    /* the basalt as it is at the foot, greyer with ash towards the top */
-    const ash = Math.max(0, (t - 0.45) / 0.55);
-    const tint = 0.85 + random() * 0.2;
-    const color = new THREE.Color().setRGB(
-      (0.8 + ash * 0.5) * tint,
-      (0.78 + ash * 0.5) * tint,
-      (0.8 + ash * 0.48) * tint,
-      THREE.SRGBColorSpace,
-    );
-    return [color.r, color.g, color.b];
+  const ASH = new THREE.Color(0x857c78);
+  const BASALT = new THREE.Color(0x3c3537);
+  const DARK = new THREE.Color(0x231e20);
+  const SCORCHED = new THREE.Color(0x5e2a1e);
+  /* the colour of one facet: darker in the gullies and at the foot, ash grey towards the top, red near the lava */
+  const facetColor = (side, ring) => {
+    const angle = ((side + 0.5) / SIDES) * Math.PI * 2;
+    const t = (ring + 0.5) / RINGS;
+    const gully = Math.sin(angle * 13 + t * 6.4);
+    const color = BASALT.clone().lerp(DARK, Math.max(0, -gully) * 0.55 + (1 - t) * 0.15);
+    color.lerp(ASH, Math.pow(Math.max(0, (t - 0.45) / 0.55), 1.4) * 0.85);
+    for (const bearing of streamBearings) {
+      const off = Math.abs(Math.atan2(Math.sin(angle - bearing), Math.cos(angle - bearing)));
+      if (off < 0.16 && t < 0.97) {
+        color.lerp(SCORCHED, 0.7 * (1 - off / 0.16));
+      }
+    }
+    return color.multiplyScalar(0.88 + hash(side + 0.3, ring + 0.7) * 0.24);
+  };
+  const positions = [];
+  const colors = [];
+  const facet = (points, color) => {
+    for (const point of points) {
+      positions.push(...point);
+      colors.push(color.r, color.g, color.b);
+    }
   };
   for (let ring = 0; ring < RINGS; ring++) {
-    const lower = colorAt(ring);
-    const upper = colorAt(ring + 1);
     for (let side = 0; side < SIDES; side++) {
-      const quad = [
-        ringPoint(side, ring),
-        ringPoint(side + 1, ring),
-        ringPoint(side, ring + 1),
-        ringPoint(side + 1, ring + 1),
-      ];
-      const quadUvs = [
-        ringUv(side, ring),
-        ringUv(side + 1, ring),
-        ringUv(side, ring + 1),
-        ringUv(side + 1, ring + 1),
-      ];
-      for (const index of [0, 1, 2, 1, 3, 2]) {
-        positions.push(...quad[index]);
-        uvs.push(...quadUvs[index]);
-        colors.push(...(index < 2 ? lower : upper));
-      }
+      const a = slopePoint(side, ring);
+      const b = slopePoint(side + 1, ring);
+      const c = slopePoint(side, ring + 1);
+      const d = slopePoint(side + 1, ring + 1);
+      const color = facetColor(side, ring);
+      facet([a, b, c], color);
+      facet([b, d, c], color.clone().multiplyScalar(0.94));
     }
   }
   /* the crater: its inner wall down to a glowing floor */
-  const rimY = -0.4 + KHAROS_HEIGHT;
-  const rim = new THREE.Color().setRGB(1.1, 1, 1, THREE.SRGBColorSpace);
-  const floor = new THREE.Color().setRGB(1.6, 0.6, 0.3, THREE.SRGBColorSpace);
-  const rimColor = [rim.r, rim.g, rim.b];
-  const floorColor = [floor.r, floor.g, floor.b];
+  const rimY = -0.4 + H;
+  const RIM = new THREE.Color(0x6e6462);
+  const INNER = new THREE.Color(0x6a2a1a);
   for (let side = 0; side < SIDES; side++) {
     const a = (side / SIDES) * Math.PI * 2;
     const b = ((side + 1) / SIDES) * Math.PI * 2;
@@ -546,30 +984,20 @@ function buildKharos(scene, random) {
       y,
       MOUNT_KHAROS.z + Math.cos(angle) * radius,
     ];
-    const quad = [
-      at(a, CRATER_RADIUS, rimY),
-      at(b, CRATER_RADIUS, rimY),
-      at(a, CRATER_RADIUS * 0.6, rimY - 3),
-      at(b, CRATER_RADIUS * 0.6, rimY - 3),
-    ];
-    for (const index of [0, 1, 2, 2, 1, 3]) {
-      positions.push(...quad[index]);
-      uvs.push((index % 2 ? side + 1 : side) * around, index < 2 ? 0 : 1.5);
-      colors.push(...(index < 2 ? rimColor : floorColor));
-    }
+    const rimA = at(a, kharosRadius(a, 1), rimY);
+    const rimB = at(b, kharosRadius(b, 1), rimY);
+    const innerA = at(a, CRATER_RADIUS * 0.6, rimY - 3);
+    const innerB = at(b, CRATER_RADIUS * 0.6, rimY - 3);
+    facet([rimA, rimB, innerA], RIM);
+    facet([rimB, innerB, innerA], INNER);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
-  const mountain = new THREE.Mesh(
+  mountain = new THREE.Mesh(
     geometry,
-    new THREE.MeshLambertMaterial({
-      map: builders.texture("basalt", 1, 1),
-      vertexColors: true,
-      flatShading: true,
-    }),
+    new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
   );
   mountain.castShadow = true;
   scene.add(mountain);
@@ -699,14 +1127,14 @@ const SCENERY = [
 const MOUNDS = ["ember_mound1", "ember_mound2", "ember_mound3", "ember_mound4"];
 
 function buildScenery({ scene, prop, pending, random }) {
-  const reach = EMBER_ISLES.radius * 1.15;
+  const reach = EMBER_REACH;
   const taken = [];
   /* a free spot on the isles: on the land, off the camp, the path and the lava, and not on top of anything else */
   const freeSpot = (room, isNearMountain) => {
     for (let tries = 0; tries < 60; tries++) {
       const x = EMBER_ISLES.x + (random() * 2 - 1) * reach;
       const z = EMBER_ISLES.z + (random() * 2 - 1) * reach;
-      const fromMountain = Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) - MOUNT_KHAROS.radius;
+      const fromMountain = outsideKharos(x, z);
       const isFree =
         inEmberIsles(x, z, 1.5) &&
         Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) > CINDER_CAMP.radius + 2 &&
@@ -724,7 +1152,29 @@ function buildScenery({ scene, prop, pending, random }) {
   /* the sign by the path, pointing up to the mountain */
   taken.push([-173.6, -876.2, 0.4]);
   pending.push(prop("ember_sign", -173.6, -876.2, { radius: 0.3, scale: 0.55, shadow: 0.6 }));
-  /* the lava mounds first, at the mountain's foot: each smokes */
+  /* rocks fallen from the mountain, heaped round its foot */
+  const FALLEN = ["ember_boulder", "ember_rock4", "ember_rock1", "ember_rock2", "ember_rock3"];
+  for (let k = 0; k < 70; k++) {
+    const angle = random() * Math.PI * 2;
+    const distance = kharosRadius(angle, 0) + 0.4 + random() * random() * 4;
+    const x = MOUNT_KHAROS.x + Math.sin(angle) * distance;
+    const z = MOUNT_KHAROS.z + Math.cos(angle) * distance;
+    const isFree =
+      onEmberLand(x, z, 2) &&
+      lavaDistance(x, z) > 1 &&
+      distanceToPath(x, z, CAMP_PATH) > 2 &&
+      taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + 0.9);
+    if (!isFree) {
+      continue;
+    }
+    const name = FALLEN[k % FALLEN.length];
+    const isBig = k % FALLEN.length < 2;
+    taken.push([x, z, isBig ? 0.8 : 0.4]);
+    pending.push(
+      prop(name, x, z, { radius: isBig ? 0.7 : 0.3, scale: 0.7 + random() * 0.25, shadow: 1 }),
+    );
+  }
+  /* the lava mounds, at the mountain's foot: each smokes */
   for (let k = 0; k < 12; k++) {
     const spot = freeSpot(1.6, true);
     if (!spot) {
@@ -744,12 +1194,12 @@ function buildScenery({ scene, prop, pending, random }) {
   }
 }
 
-/* a thread of steam rising from a lava mound */
-function addVent(scene, x, z, random) {
-  const vent = { x, z, puffs: [] };
+/* a thread of steam rising from (x, z): `size` the puffs, from height `y`, rising `height` */
+function addVent(scene, x, z, random, { size = 0.6, y = 0.9, height = 4 } = {}) {
+  const vent = { x, z, y, height, puffs: [] };
   for (let p = 0; p < 4; p++) {
     const puff = new THREE.Mesh(
-      new THREE.SphereGeometry(0.6, 8, 6),
+      new THREE.SphereGeometry(size, 8, 6),
       new THREE.MeshLambertMaterial({
         color: 0xd8d4d0,
         transparent: true,
@@ -764,6 +1214,93 @@ function addVent(scene, x, z, random) {
   steamVents.push(vent);
 }
 
+/* the sparks rise, drift and go out; a spent one starts again somewhere over the lava */
+function updateSparks(dt) {
+  const positions = embers.points.geometry.attributes.position;
+  embers.sparks.forEach((spark, k) => {
+    spark.age += dt;
+    if (spark.age > spark.life) {
+      embers.spawn(spark);
+    }
+    const share = spark.age / spark.life;
+    positions.setXYZ(
+      k,
+      spark.x + spark.driftX * share,
+      spark.y + share * 3.2,
+      spark.z + Math.sin(spark.age * 3 + k) * 0.15,
+    );
+  });
+  positions.needsUpdate = true;
+  /* they flicker together, a little */
+  embers.points.material.opacity = 0.75 + 0.2 * Math.sin(performance.now() * 0.013);
+}
+
+/* the ash falls slowly round the hero while they are anywhere near the isles, and nowhere else */
+function updateAsh(dt, time) {
+  const isNear = Math.hypot(player.x - EMBER_ISLES.x, player.z - EMBER_ISLES.z) < EMBER_REACH + 30;
+  ash.points.visible = isNear;
+  if (!isNear) {
+    return;
+  }
+  const positions = ash.points.geometry.attributes.position;
+  ash.flakes.forEach((flake, k) => {
+    flake.y -= dt * 0.7;
+    if (flake.y < 0) {
+      flake.y += 12;
+    }
+    const x = flake.x + Math.sin(time * 0.6 + flake.sway) * 0.8 + time * 0.4;
+    /* the flakes keep round the hero: wrapped into a 60-unit square about them */
+    const wrap = (value, centre) => centre + ((((value - centre + 30) % 60) + 60) % 60) - 30;
+    positions.setXYZ(k, wrap(x, player.x), flake.y, wrap(flake.z, player.z));
+  });
+  positions.needsUpdate = true;
+}
+
+/* How high Mount Kharos stands at (x, z): 0 off it. */
+function kharosHeightAt(x, z) {
+  const foot = MOUNT_KHAROS.radius;
+  const r = Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z);
+  if (r >= foot) {
+    return 0;
+  }
+  /* the inverse of the slope's radius (radius × (1 − t)^1.25), near enough */
+  return KHAROS_HEIGHT * (1 - Math.pow(Math.max(r - CRATER_RADIUS * 0.5, 0) / foot, 0.8));
+}
+
+/* Is the hero hidden behind the mountain? Walk from them towards the camera, rising as the line of sight does, and
+   see whether the slope stands above that line anywhere. */
+function isBehindMountain() {
+  const { yaw, tilt } = cameraState;
+  const rise = Math.tan(tilt);
+  for (let s = 1; s < 70; s += 1.5) {
+    const x = player.x + Math.sin(yaw) * s;
+    const z = player.z + Math.cos(yaw) * s;
+    if (kharosHeightAt(x, z) > s * rise + 0.6) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* the mountain turns see-through while the hero is behind it, and solid again when they come out */
+function updateMountainFade(dt) {
+  const goal = isBehindMountain() ? 0.3 : 1;
+  const material = mountain.material;
+  material.opacity += (goal - material.opacity) * Math.min(1, dt * 6);
+  const isSolid = material.opacity > 0.98;
+  if (isSolid) {
+    material.opacity = 1;
+  }
+  for (const lava of [...mountainLava, craterGlow.material]) {
+    lava.opacity = material.opacity;
+  }
+  if (material.transparent === isSolid) {
+    material.transparent = !isSolid;
+    material.depthWrite = isSolid;
+    material.needsUpdate = true;
+  }
+}
+
 /** Per frame: the mountain smokes, its crater flickers, the vents steam and the ship at the jetty rides the swell. */
 export function updateEmberIsles(dt, time) {
   if (!craterGlow) {
@@ -775,18 +1312,30 @@ export function updateEmberIsles(dt, time) {
     puff.scale.setScalar(1 + t * 2.5);
     puff.material.opacity = 0.5 * (1 - t);
   }
-  craterGlow.material.color.setRGB(1, 0.42 + 0.1 * Math.sin(time * 2.3), 0.15);
-  /* the lava creeps, and breathes a little brighter and darker */
-  lavaMaterial.map.offset.set((time * 0.012) % 1, (time * 0.02) % 1);
-  const glow = 0.88 + 0.12 * Math.sin(time * 1.7);
-  lavaMaterial.color.setRGB(glow, glow, glow);
+  craterGlow.material.color.setRGB(
+    1,
+    0.36 + 0.08 * Math.sin(time * 2.3),
+    0.1,
+    THREE.SRGBColorSpace,
+  );
+  /* the lava creeps; the streams run down the mountain and over the cliffs */
+  lavaMaterial.uniforms.uTime.value = time;
+  for (const stream of lavaStreams) {
+    stream.map.offset.set(0, (-time * 0.25) % 1);
+  }
   for (const vent of steamVents) {
     for (const puff of vent.puffs) {
       const t = (time * 0.18 + puff.userData.phase) % 1;
-      puff.position.set(vent.x + t * 1.2, 0.9 + t * 4, vent.z);
+      puff.position.set(vent.x + t * 1.2, vent.y + t * vent.height, vent.z);
       puff.scale.setScalar(0.5 + t * 1.6);
       puff.material.opacity = 0.4 * (1 - t);
     }
+  }
+  updateSparks(dt);
+  updateMountainFade(dt);
+  updateAsh(dt, time);
+  for (let k = 0; k < surf.length; k++) {
+    surf[k].material.opacity = 0.18 + 0.12 * Math.sin(time * 1.2 + k * 1.7);
   }
   if (coveGull.visible) {
     const wave = time * 1.1 + 3.7;
