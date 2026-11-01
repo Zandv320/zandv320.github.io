@@ -293,11 +293,17 @@ export function loadLayer(name) {
   return layersLoading[name];
 }
 
-/* swords and staffs hide while the hero works with a tool */
+/* swords and staffs hide while the hero works with a tool; shields are marked for their enchantment's light
+   (weapon-fx.js) */
 function markWeapon(name, texture) {
   if (/^(sword|staff)\d/.test(name)) {
     texture.userData.isWeapon = true;
   }
+  if (/^shield\d/.test(name)) {
+    texture.userData.isShield = true;
+  }
+  /* the half behind the body */
+  texture.userData.isBack = name.endsWith("_back");
 }
 
 /** Profession animations: name → {tool, fps, once, crouch, impact, columns, tips} (sprites/work.json). */

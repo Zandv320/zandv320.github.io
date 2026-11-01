@@ -331,6 +331,7 @@ const RECIPE_TABLE = [
   ["rune_of_frost", "enchanting", 15, { arcane_dust: 3, sapphire: 1 }],
   ["rune_of_storms", "enchanting", 20, { arcane_dust: 3, topaz: 1 }],
   ["rune_of_the_arcane", "enchanting", 30, { arcane_dust: 4, arcane_crystal: 1 }],
+  ["rune_of_radiance", "enchanting", 25, { arcane_dust: 4, gold_bar: 1 }],
 ];
 
 /* Recipes by output id: {output, profession, level, inputs, count, exp}. */

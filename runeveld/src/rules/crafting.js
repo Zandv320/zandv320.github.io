@@ -19,6 +19,8 @@ import {
   MAX_REFINE,
   isRefinable,
   isWeapon,
+  isEnchantable,
+  fitsEnchantment,
   modsOf,
   displayName,
 } from "./item-mods.js";
@@ -310,19 +312,23 @@ export function refine(hero, target, rng = Math.random) {
 }
 
 /**
- * Enchant a weapon with an elemental rune; replaces any enchantment it had. Always succeeds.
+ * Enchant a weapon with an elemental rune, or a shield with a rune of light; replaces any enchantment it had.
+ * Always succeeds.
  * @returns {{ok: true, enchant, name, exp, levelUps, level} | {ok: false, reason}}
  */
 export function enchant(hero, target, runeId) {
   const resolved = resolveTarget(hero, target);
   const item = resolved && ITEMS[resolved.id];
-  if (!item || !isWeapon(item)) {
-    return fail("Only weapons can be enchanted.");
+  if (!item || !isEnchantable(item)) {
+    return fail("Only weapons and shields can be enchanted.");
   }
   const element = ITEMS[runeId] && ITEMS[runeId].rune;
   const enchantment = ENCHANTMENTS[element];
   if (!enchantment) {
     return fail("That is not an enchanting rune.");
+  }
+  if (!fitsEnchantment(item, element)) {
+    return fail(`That rune is for a ${enchantment.slot}.`);
   }
   if (professionLevel(hero, "enchanting") < enchantment.level) {
     return fail(`Needs Enchanting level ${enchantment.level}.`);

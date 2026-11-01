@@ -13,7 +13,14 @@ import {
   disenchantDust,
 } from "./rules/professions.js";
 import * as crafting from "./rules/crafting.js";
-import { ENCHANTMENTS, displayName, isRefinable, isWeapon, modsOf } from "./rules/item-mods.js";
+import {
+  ENCHANTMENTS,
+  displayName,
+  isRefinable,
+  isEnchantable,
+  fitsEnchantment,
+  modsOf,
+} from "./rules/item-mods.js";
 import { bagCount } from "./rules/progression.js";
 import { icon } from "./icons.js";
 import { modsBadge, modsText } from "./character-sheet.js";
@@ -164,13 +171,17 @@ export function createWorkbench(player, deps) {
   }
 
   function renderEnchant() {
-    const list = candidates(isWeapon);
-    let html = itemPicker(list, "You carry no weapon to enchant.");
+    const list = candidates(isEnchantable);
+    let html = itemPicker(list, "You carry no weapon or shield to enchant.");
     const entry = pickedEntry(list);
     if (entry) {
       const level = professionOf(player, "enchanting").level;
       html += `<div class="work-detail"><b>${itemLine(entry.id, entry.mods)}</b>${modsText(entry.mods)}<div class="rune-list">`;
+      const item = ITEMS[entry.id];
       for (const [element, enchantment] of Object.entries(ENCHANTMENTS)) {
+        if (!fitsEnchantment(item, element)) {
+          continue;
+        }
         const have = bagCount(player, enchantment.rune);
         const canUse = have > 0 && level >= enchantment.level;
         html += `<div class="rune-option ${canUse ? "" : "unavailable"}"><span class="item-icon">${icon(enchantment.rune, ITEMS[enchantment.rune].icon)}</span><div><b>${UI.escapeHtml(enchantment.name)}</b> <small>×${have} · Lv ${enchantment.level}</small><small class="ench ${element}">${UI.escapeHtml(enchantment.effect)}</small></div><button class="btn small" data-work="enchant" data-rune="${enchantment.rune}" ${canUse ? "" : "disabled"}>Enchant</button></div>`;
@@ -298,6 +309,7 @@ export function createWorkbench(player, deps) {
       frost: "frost",
       storms: "lightning",
       arcane: "rune_circle",
+      radiance: "light_rays",
     };
     deps.playEffect(looks[result.enchant] || "sparkle", place);
     deps.reportProgress(result);

@@ -1446,6 +1446,7 @@ function sendPresence() {
     equipment: player.equipment,
     /* the element of an enchanted weapon, for its glow (weapon-fx.js) */
     enchant: player.equipmentMods?.weapon?.enchant || null,
+    shieldEnchant: player.equipmentMods?.shield?.enchant || null,
     /* at the helm: the ship's [x, z, heading] (sailing.js) */
     ship: shipPresence(),
   };
@@ -2225,16 +2226,17 @@ function step(dt) {
   }
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
-  /* enchanted weapons: their glow and their element's particles, on everyone who carries one */
+  /* enchanted weapons and shields: their glow and their element's particles, on everyone who carries one */
   updateWeaponFx(
     dt,
     game.isStarted
       ? [
           { sprite: player.sprite, element: player.equipmentMods?.weapon?.enchant },
-          ...[...peers.values()].map((peer) => ({
-            sprite: peer.sprite,
-            element: peer.presence.enchant,
-          })),
+          { sprite: player.sprite, element: player.equipmentMods?.shield?.enchant },
+          ...[...peers.values()].flatMap((peer) => [
+            { sprite: peer.sprite, element: peer.presence.enchant },
+            { sprite: peer.sprite, element: peer.presence.shieldEnchant },
+          ]),
         ]
       : [],
   );

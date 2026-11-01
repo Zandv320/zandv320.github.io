@@ -119,7 +119,9 @@ export function modsBadge(source) {
     return "";
   }
   const label = mods.refine ? "+" + mods.refine : "";
-  const element = mods.enchant ? icon("ench_" + mods.enchant, "", "tiny") : "";
+  /* an enchantment without an icon of its own shows its rune's */
+  const fallback = mods.enchant ? ITEMS[ENCHANTMENTS[mods.enchant].rune]?.icon || "" : "";
+  const element = mods.enchant ? icon("ench_" + mods.enchant, fallback, "tiny") : "";
   return `<span class="mods-badge ${mods.enchant || ""}">${label}${element}</span>`;
 }
 

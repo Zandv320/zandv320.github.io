@@ -1369,6 +1369,15 @@ export const ITEMS = {
     stack: 99,
     description: "Enchants a weapon with raw magic: +15% magic attack.",
   },
+  rune_of_radiance: {
+    name: "Rune of Radiance",
+    rune: "radiance",
+    price: 320,
+    icon: "☀️",
+    stack: 99,
+    description:
+      "Enchants a shield with light: +6 DEF, +80 max HP, and a cross of light on its face.",
+  },
 };
 
 /* What a new hero carries in the bag. */

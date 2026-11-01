@@ -1,4 +1,5 @@
-/* Eldoria – an enchanted weapon shows its element (rules/item-mods.js ENCHANTMENTS) on the hero who carries it:
+/* Eldoria – an enchanted weapon or shield shows its enchantment (rules/item-mods.js ENCHANTMENTS) on the hero who
+   carries it:
    a glow that follows the outline of the blade or staff frame by frame, and particles that rise, drift, crackle
    or circle from the weapon itself. Not pixel art: soft light over the pixel sprites, so the enchantment reads at
    a glance.
@@ -6,18 +7,62 @@
      frost   a cold blue rime: a slow shimmer, snow sparkles and a breath of mist sinking from it
      storms  it crackles: a stuttering yellow-white glow, lightning arcs jumping along it and sparks spitting off
      arcane  violet light pulses along it, and motes of it circle the weapon
+     radiance  (shields) a warm white light round the shield, a cross of light on its face that reaches past its
+             rim, and golden motes rising from it
    The glow is a second mesh on each weapon layer of the sprite (the front and the back half of the weapon), with
    the same geometry and texture, drawn additively after the night haze; the particles are one point cloud for all
    heroes. Where the particles start comes from the weapon's own pixels in the frame on show (Sprite2D.cell). */
 import * as THREE from "three";
 import { scene, camera, cameraState } from "./world.js";
 
-/* per element: glow (halo) and core colours, the light it casts at night (daylight.js) */
+/* per enchantment: the part it lights, glow (halo) and core colours, the light it casts at night (daylight.js) */
 const ELEMENTS = {
-  flame: { kind: 0, glow: 0xff6a14, core: 0xffd27a, light: [255, 140, 60], strength: 1.15 },
-  frost: { kind: 1, glow: 0x4cc4ff, core: 0xe4f8ff, light: [140, 210, 255], strength: 1 },
-  storms: { kind: 2, glow: 0xffd23a, core: 0xfffbe0, light: [255, 230, 140], strength: 1.1 },
-  arcane: { kind: 3, glow: 0xa45cff, core: 0xf2e0ff, light: [190, 130, 255], strength: 1.05 },
+  flame: {
+    part: "weapon",
+    kind: 0,
+    glow: 0xff6a14,
+    core: 0xffd27a,
+    light: [255, 140, 60],
+    strength: 1.15,
+  },
+  frost: {
+    part: "weapon",
+    kind: 1,
+    glow: 0x4cc4ff,
+    core: 0xe4f8ff,
+    light: [140, 210, 255],
+    strength: 1,
+  },
+  storms: {
+    part: "weapon",
+    kind: 2,
+    glow: 0xffd23a,
+    core: 0xfffbe0,
+    light: [255, 230, 140],
+    strength: 1.1,
+  },
+  arcane: {
+    part: "weapon",
+    kind: 3,
+    glow: 0xa45cff,
+    core: 0xf2e0ff,
+    light: [190, 130, 255],
+    strength: 1.05,
+  },
+  radiance: {
+    part: "shield",
+    kind: 4,
+    glow: 0xffd98a,
+    core: 0xfff8e6,
+    light: [255, 238, 196],
+    strength: 1,
+  },
+};
+
+/* the layers of the sprite that make up each part */
+const PARTS = {
+  weapon: (layer) => !!layer.source?.userData?.isWeapon,
+  shield: (layer) => !!layer.source?.userData?.isShield,
 };
 
 /* ---------------------------------------------------------------- the glow ----------------------------------- */
@@ -39,6 +84,8 @@ const glowFragment = /* glsl */ `
   uniform float uTime;
   uniform float uKind;
   uniform float uStrength;
+  uniform vec2 uCenter;
+  uniform float uCross;
   varying vec2 vUv;
 
   /* the weapon's alpha at a point of the frame (0 to 1 across it); nothing outside the frame */
@@ -73,9 +120,12 @@ const glowFragment = /* glsl */ `
       /* storms: a stuttering crackle */
       float flick = step(0.35, hash(vec2(floor(uTime * 18.0), 3.1)));
       n = (0.35 + 0.9 * step(0.62, noise(q * 1.7 + uTime * 26.0))) * (0.55 + 0.45 * flick);
-    } else {
+    } else if (uKind < 3.5) {
       /* arcane: waves of light pulsing along it */
       n = 0.55 + 0.45 * sin(uTime * 3.4 - (vUv.x + vUv.y) * 30.0);
+    } else {
+      /* radiance: a slow, warm breathing */
+      n = 0.75 + 0.25 * sin(uTime * 1.7);
     }
     float own = alphaAt(vUv);
     float halo = 0.0;
@@ -86,7 +136,24 @@ const glowFragment = /* glsl */ `
     }
     halo = clamp(halo / 5.0, 0.0, 1.0);
     float edge = halo * (1.0 - own);
-    vec3 color = uGlow * edge * (0.45 + 0.75 * n) + uCore * own * (0.16 + 0.3 * n);
+    vec3 color;
+    if (uKind > 3.5) {
+      /* radiance: only a soft light round the rim of the shield, its face left as it is */
+      color = uGlow * edge * (0.3 + 0.25 * n);
+    } else {
+      color = uGlow * edge * (0.45 + 0.75 * n) + uCore * own * (0.16 + 0.3 * n);
+    }
+    if (uCross > 0.5) {
+      /* a small cross of light in the middle of the shield's face: thin, the upright longer than the bar, which
+         sits a little high, growing and shrinking a little as it breathes */
+      vec2 d = (vUv - uCenter) / uStep;
+      float reach = 3.6 + 0.8 * sin(uTime * 1.3);
+      float barY = d.y - 1.0;
+      float upright = exp(-d.x * d.x * 2.0) * exp(-d.y * d.y / (reach * reach));
+      float bar = exp(-barY * barY * 2.0) * exp(-d.x * d.x / (reach * reach * 0.5));
+      float heart = exp(-dot(d, d) / 3.0);
+      color += uCore * max(upright, bar) * own * (0.6 + 0.3 * n) + uCore * heart * 0.25 * n;
+    }
     gl_FragColor = vec4(color * uStrength, 1.0);
   }
 `;
@@ -102,6 +169,8 @@ function makeGlow(layer) {
       uTime: { value: 0 },
       uKind: { value: 0 },
       uStrength: { value: 1 },
+      uCenter: { value: new THREE.Vector2(0.5, 0.5) },
+      uCross: { value: 0 },
     },
     vertexShader: glowVertex,
     fragmentShader: glowFragment,
@@ -127,8 +196,6 @@ function removeGlow(layer) {
     delete layer.mesh.userData.weaponGlow;
   }
 }
-
-const isWeaponLayer = (layer) => !!layer.source?.userData?.isWeapon;
 
 /* ---------------------------------------------------------------- the weapon's pixels ------------------------ */
 
@@ -269,6 +336,8 @@ const STORM_WHITE = new THREE.Color(0xfffff0);
 const STORM_GOLD = new THREE.Color(0xffc83a);
 const ARCANE_LIGHT = new THREE.Color(0xfbeaff);
 const ARCANE_VIOLET = new THREE.Color(0x9d4dff);
+const RADIANT_WHITE = new THREE.Color(0xfffcf0);
+const RADIANT_GOLD = new THREE.Color(0xffc860);
 const scratch = new THREE.Color();
 
 /* the colour and brightness of a particle at share t of its life */
@@ -291,6 +360,12 @@ function particleColor(particle, t) {
       return mixColor(STORM_WHITE, STORM_GOLD, t, scratch);
     case "bolt":
       return scratch.copy(STORM_WHITE).multiplyScalar(1 - t * 0.5);
+    case "holy":
+      return mixColor(RADIANT_WHITE, RADIANT_GOLD, t, scratch).multiplyScalar(
+        Math.sin(Math.PI * t),
+      );
+    case "glint":
+      return scratch.copy(RADIANT_WHITE).multiplyScalar(Math.sin(Math.PI * t) * 1.2);
     case "mote":
       return mixColor(ARCANE_LIGHT, ARCANE_VIOLET, t, scratch).multiplyScalar(
         0.6 + 0.4 * Math.sin(particle.seed + t * 9),
@@ -415,8 +490,6 @@ function finishArcs() {
 
 /* ---------------------------------------------------------------- per hero ----------------------------------- */
 
-/* sprite → {element, carry (particles owed), arcs: [{a, b, until}], light} */
-const auras = new Map();
 const pointA = new THREE.Vector3();
 const towardsCamera = new THREE.Vector3();
 
@@ -519,6 +592,35 @@ const EMITTERS = {
       },
     ],
   ],
+  radiance: [
+    [
+      14,
+      (p) => ({
+        kind: "holy",
+        x: p.x + random(-0.08, 0.08),
+        y: p.y,
+        z: p.z,
+        vx: random(-0.05, 0.05),
+        vy: random(0.35, 0.75),
+        life: random(1, 1.7),
+        size0: random(0.16, 0.24),
+        size1: 0.04,
+      }),
+    ],
+    [
+      4,
+      (p) => ({
+        kind: "glint",
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        life: random(0.3, 0.45),
+        size0: 0.2,
+        size1: 0.05,
+        shape: 1,
+      }),
+    ],
+  ],
   arcane: [
     [
       30,
@@ -543,24 +645,47 @@ const EMITTERS = {
   ],
 };
 
+/* sprite → part ("weapon", "shield") → {element, carry (particles owed), arcs: [{a, b, until}], light, seen} */
+const auras = new Map();
+let frameNumber = 0;
+
+/* the middle of a part's pixels in the frame on show, as a point of the mesh's uv (for the shield's cross) */
+function partCenter(sprite, pixels, target) {
+  let x = 0;
+  let y = 0;
+  const count = pixels.length / 2;
+  for (let k = 0; k < pixels.length; k += 2) {
+    x += pixels[k];
+    y += pixels[k + 1];
+  }
+  const u = (x / count + 0.5) / 64;
+  return target.set(sprite.mirrored ? 1 - u : u, 1 - (y / count + 0.5) / 64);
+}
+
 function updateAura(sprite, element, dt, time) {
-  let aura = auras.get(sprite);
+  const spec = ELEMENTS[element];
+  const isPart = PARTS[spec.part];
+  let parts = auras.get(sprite);
+  if (!parts) {
+    parts = new Map();
+    auras.set(sprite, parts);
+  }
+  let aura = parts.get(spec.part);
   if (!aura) {
-    aura = { carry: {}, arcs: [], light: null, seen: true };
-    auras.set(sprite, aura);
+    aura = { carry: {}, arcs: [], light: null };
+    parts.set(spec.part, aura);
   }
   aura.seen = true;
-  aura.element = element;
-  const spec = ELEMENTS[element];
-  const weaponLayers = sprite.layers.filter(isWeaponLayer);
-  const isShown = sprite.group.visible && weaponLayers.some((layer) => layer.mesh.visible);
-  for (const layer of sprite.layers) {
-    if (!isWeaponLayer(layer)) {
-      removeGlow(layer);
-      continue;
-    }
+  if (aura.element !== element) {
+    aura.element = element;
+    aura.carry = {};
+  }
+  const partLayers = sprite.layers.filter(isPart);
+  const isShown = sprite.group.visible && partLayers.some((layer) => layer.mesh.visible);
+  for (const layer of partLayers) {
     const glow =
       layer.mesh.userData.weaponGlow || (layer.mesh.userData.weaponGlow = makeGlow(layer));
+    glow.userData.frame = frameNumber;
     const uniforms = glow.material.uniforms;
     if (uniforms.map.value !== layer.texture) {
       uniforms.map.value = layer.texture;
@@ -574,6 +699,13 @@ function updateAura(sprite, element, dt, time) {
     uniforms.uTime.value = time;
     /* breathing a little, so it lives even when the hero stands still */
     uniforms.uStrength.value = spec.strength * (0.88 + 0.12 * Math.sin(time * 2.4));
+    /* the cross of light only on the face of the shield we see, not on the half behind the body */
+    const pixels =
+      spec.kind === 4 && !layer.source.userData.isBack && weaponPixels(layer.source, sprite);
+    uniforms.uCross.value = pixels && pixels.length ? 1 : 0;
+    if (uniforms.uCross.value) {
+      partCenter(sprite, pixels, uniforms.uCenter.value);
+    }
     glow.geometry = layer.mesh.geometry;
   }
   aura.light = isShown ? aura.light || { y: 1, radius: 2.6, strength: 0.5 } : null;
@@ -581,18 +713,18 @@ function updateAura(sprite, element, dt, time) {
     return;
   }
   /* the front half (drawn after the body) first */
-  const sources = weaponLayers
+  const sources = partLayers
     .filter((layer) => layer.mesh.visible)
     .map((layer) => ({
       pixels: weaponPixels(layer.source, sprite),
-      lift: sprite.layers.indexOf(layer) > 0 ? 0.35 : -0.08,
+      lift: layer.source.userData.isBack ? -0.08 : 0.35,
     }))
     .filter((source) => source.pixels.length)
     .sort((a, b) => b.lift - a.lift);
   if (!sources.length) {
     return;
   }
-  /* the weapon's light, on the hero, flickering by element */
+  /* the light it casts, on the hero, flickering by element */
   aura.light.x = sprite.group.position.x;
   aura.light.z = sprite.group.position.z;
   aura.light.color = spec.light;
@@ -601,7 +733,9 @@ function updateAura(sprite, element, dt, time) {
       ? 0.35 + 0.35 * Math.random()
       : element === "flame"
         ? 0.48 + 0.08 * Math.sin(time * 13) + 0.05 * Math.sin(time * 7.7)
-        : 0.45;
+        : element === "radiance"
+          ? 0.5 + 0.08 * Math.sin(time * 1.7)
+          : 0.45;
   for (const [index, [rate, make]] of EMITTERS[element].entries()) {
     aura.carry[index] = (aura.carry[index] || 0) + rate * dt;
     while (aura.carry[index] >= 1) {
@@ -628,16 +762,19 @@ function updateAura(sprite, element, dt, time) {
   }
 }
 
-function dropAura(sprite, aura) {
+/* glows on layers no aura lit this frame (an enchantment gone, gear changed) go out */
+function removeStaleGlows(sprite) {
   for (const layer of sprite.layers) {
-    removeGlow(layer);
+    const glow = layer.mesh.userData.weaponGlow;
+    if (glow && glow.userData.frame !== frameNumber) {
+      removeGlow(layer);
+    }
   }
-  aura.light = null;
 }
 
 /**
- * Per frame, after the sprites have been updated: `holders` lists every hero with a weapon to show, as
- * {sprite, element} (element: an ENCHANTMENTS key, or null for none).
+ * Per frame, after the sprites have been updated: `holders` lists every enchanted weapon and shield to show, as
+ * {sprite, element} (element: an ENCHANTMENTS key, or null for none); a hero with both is in it twice.
  */
 export function updateWeaponFx(dt, holders) {
   if (!cloud) {
@@ -647,17 +784,25 @@ export function updateWeaponFx(dt, holders) {
   const time = performance.now() / 1000;
   camera.getWorldDirection(towardsCamera).negate();
   arcs.used = 0;
-  for (const aura of auras.values()) {
-    aura.seen = false;
+  frameNumber++;
+  for (const parts of auras.values()) {
+    for (const aura of parts.values()) {
+      aura.seen = false;
+    }
   }
   for (const { sprite, element } of holders) {
     if (sprite && ELEMENTS[element]) {
       updateAura(sprite, element, dt, time);
     }
   }
-  for (const [sprite, aura] of auras) {
-    if (!aura.seen) {
-      dropAura(sprite, aura);
+  for (const [sprite, parts] of auras) {
+    for (const [part, aura] of parts) {
+      if (!aura.seen) {
+        parts.delete(part);
+      }
+    }
+    removeStaleGlows(sprite);
+    if (!parts.size) {
       auras.delete(sprite);
     }
   }
@@ -665,5 +810,9 @@ export function updateWeaponFx(dt, holders) {
   updateCloud(dt);
 }
 
-/** The light the enchanted weapons cast (for daylight.js: a glow round the hero at night and underground). */
-export const weaponLights = () => [...auras.values()].map((aura) => aura.light).filter(Boolean);
+/** The light the enchanted weapons and shields cast (for daylight.js: a glow round the hero at night and
+    underground). */
+export const weaponLights = () =>
+  [...auras.values()]
+    .flatMap((parts) => [...parts.values()].map((aura) => aura.light))
+    .filter(Boolean);
