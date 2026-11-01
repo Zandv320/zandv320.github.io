@@ -10,7 +10,7 @@ import * as builders from "./builders.js";
 import { SALTMERE, PIERS, MOLE, LIGHTHOUSE, SALTY_GULL, WATER_Y } from "./rules/saltmere.js";
 import { daylight } from "./daylight.js";
 import { player, clickables } from "./game-state.js";
-import { BERTH, HULL } from "./rules/sea.js";
+import { BERTH, HULL, ROCKS, ISLETS, EMBER_ISLES } from "./rules/sea.js";
 import { sfx } from "./audio.js";
 
 /* the sea reaches this far: past the Grey Sea's edges (rules/sea.js), so it fills the view wherever a ship sails */
@@ -20,8 +20,7 @@ const QUAY_DEPTH = 1.8;
 
 /* everything riding the swell (ships, boats, buoys): {group, y, rotation, phase, roll} */
 const ships = [];
-let seaTexture = null;
-let seaGloss = null;
+let seaMaterial = null;
 let lighthouseBeam = null;
 let lighthouseLamp = null;
 /* the Gull's Promise at her berth, and what a click on her catches */
@@ -552,45 +551,126 @@ function bollard() {
   return group;
 }
 
+/* everything standing in the sea that has shallows round it: [x, z, radius] for the shader */
+const SHALLOWS = [
+  ...ROCKS,
+  ...ISLETS.map((islet) => [islet.x, islet.z, islet.radius]),
+  [EMBER_ISLES.x, EMBER_ISLES.z, EMBER_ISLES.radius],
+];
+
+/* The water of the sea, drawn on the GPU in the game's pixels: clear turquoise over the shallows along the quay and
+   round every rock and island, deepening to a dark blue out at sea under slow cloudy shadows; over it all a net of
+   light (the sun through the moving surface) that wanders and shifts, and here and there a white glint on it. */
+const SEA_VERTEX = /* glsl */ `
+  varying vec2 vWorld;
+  void main() {
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vWorld = world.xz;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+const SEA_FRAGMENT = /* glsl */ `
+  #define SHALLOWS ${SHALLOWS.length}
+  uniform float uTime;
+  uniform float uShore;
+  uniform vec3 uShallows[SHALLOWS];
+  uniform vec3 uShallow;
+  uniform vec3 uMiddle;
+  uniform vec3 uDeep;
+  uniform vec3 uShadow;
+  uniform vec3 uLight;
+  uniform vec3 uGlint;
+  varying vec2 vWorld;
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  vec2 hash2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+  }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+  }
+  /* how far p lies from the edge between two cells of a moving cell pattern: 0 on the edge */
+  float cellEdge(vec2 p, float t) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    float first = 8.0;
+    float second = 8.0;
+    for (int y = -1; y <= 1; y++) {
+      for (int x = -1; x <= 1; x++) {
+        vec2 g = vec2(float(x), float(y));
+        vec2 o = 0.5 + 0.4 * sin(t + 6.2831 * hash2(i + g));
+        float d = length(g + o - f);
+        if (d < first) {
+          second = first;
+          first = d;
+        } else if (d < second) {
+          second = d;
+        }
+      }
+    }
+    return second - first;
+  }
+  void main() {
+    /* one game pixel is a sixteenth of a unit: the water is drawn in those */
+    vec2 p = floor(vWorld * 16.0) / 16.0;
+    float t = uTime;
+    /* how shallow: along the quay, and round everything standing in the sea */
+    float shallow = exp(-(uShore - p.y) / 16.0);
+    for (int k = 0; k < SHALLOWS; k++) {
+      vec3 rock = uShallows[k];
+      float d = max(0.0, length(p - rock.xy) - rock.z);
+      shallow = max(shallow, exp(-d / (5.0 + rock.z * 0.15)));
+    }
+    /* deeper the further out to sea, under slow shadows of cloud and depth */
+    float far = clamp((uShore - p.y) / 240.0, 0.0, 1.0);
+    vec3 color = mix(uMiddle, uDeep, far);
+    float cloud = noise(p * 0.025 + vec2(t * 0.004, t * 0.006)) * 0.6 + noise(p * 0.07 - vec2(t * 0.01, 0.0)) * 0.4;
+    color = mix(color, uShadow, smoothstep(0.38, 0.75, cloud) * 0.85);
+    color = mix(color, uShallow, smoothstep(0.0, 1.0, shallow));
+    /* the net of light, its threads wavering */
+    vec2 warp = vec2(noise(p * 0.4 + t * 0.15), noise(p * 0.4 + 5.2 - t * 0.12)) - 0.5;
+    float thread = 1.0 - smoothstep(0.015, 0.05, cellEdge(p * 0.62 + warp * 0.7, t * 0.7));
+    /* a second, finer and fainter net drifting through the first */
+    float fine = 1.0 - smoothstep(0.01, 0.04, cellEdge(p * 1.1 - warp * 0.5 + 3.7, t * 0.9));
+    /* the light comes and goes in patches, so the net is never whole */
+    float patches = smoothstep(0.3, 0.7, noise(p * 0.18 + vec2(-t * 0.05, t * 0.07)));
+    float strength = mix(0.09, 0.6, shallow) * (1.0 - cloud * 0.6);
+    color = mix(color, uLight, max(thread * patches, fine * mix(0.15, 0.4, shallow) * (1.0 - patches * 0.5)) * strength);
+    /* white glints where the sun catches it, coming and going */
+    float sparkle = step(0.82, noise(p * 2.6 + vec2(t * 0.4, -t * 0.3))) * thread * patches;
+    color = mix(color, uGlint, sparkle * mix(0.55, 0.9, shallow));
+    gl_FragColor = vec4(color, 1.0);
+    #include <colorspace_fragment>
+  }
+`;
+
 /* The sea below the land, darker further out, its water moving; and the wall of the quay down to it. */
 function buildSea(scene) {
   const width = SEA.x1 - SEA.x0;
   const depth = SEA.z1 - SEA.z0;
-  const geometry = new THREE.PlaneGeometry(width, depth, 1, 12);
-  const colors = [];
-  const positions = geometry.attributes.position;
-  for (let k = 0; k < positions.count; k++) {
-    /* the plane's y is -z once it lies flat: the far edge is darker */
-    const far = (positions.getY(k) + depth / 2) / depth;
-    const light = 1 - far * 0.45;
-    colors.push(light, light, light);
-  }
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  /* a texture of its own (builders caches one per repeat), so only the sea moves */
-  seaTexture = builders.texture("water", width / 2.003, depth / 2);
-  const sea = new THREE.Mesh(
-    geometry,
-    new THREE.MeshBasicMaterial({ map: seaTexture, color: 0x8fb4c8, vertexColors: true }),
-  );
+  seaMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uShore: { value: SEA.z1 },
+      uShallows: { value: SHALLOWS.map(([x, z, radius]) => new THREE.Vector3(x, z, radius)) },
+      uShallow: { value: new THREE.Color(0x2b9be0) },
+      uMiddle: { value: new THREE.Color(0x1a5fae) },
+      uDeep: { value: new THREE.Color(0x10377a) },
+      uShadow: { value: new THREE.Color(0x0b2556) },
+      uLight: { value: new THREE.Color(0x7fd2ff) },
+      uGlint: { value: new THREE.Color(0xf4fbff) },
+    },
+    vertexShader: SEA_VERTEX,
+    fragmentShader: SEA_FRAGMENT,
+  });
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), seaMaterial);
   sea.rotation.x = -Math.PI / 2;
   sea.position.set((SEA.x0 + SEA.x1) / 2, WATER_Y, (SEA.z0 + SEA.z1) / 2);
   scene.add(sea);
-  /* a second layer of the same water, finer and drifting the other way: where the two cross, the sea glints */
-  seaGloss = builders.texture("water", width / 1.31, depth / 1.29);
-  const gloss = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, depth),
-    new THREE.MeshBasicMaterial({
-      map: seaGloss,
-      color: 0xd8ecf4,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
-  gloss.rotation.x = -Math.PI / 2;
-  gloss.position.set((SEA.x0 + SEA.x1) / 2, WATER_Y + 0.01, (SEA.z0 + SEA.z1) / 2);
-  scene.add(gloss);
   /* the quay wall, along the whole shore */
   const wallWidth = 200;
   const wall = new THREE.Mesh(
@@ -751,11 +831,10 @@ function moor(scene, vessel, x, z, rotation) {
 
 /** Per frame: the sea flows, the ships ride the swell, and after dark the lighthouse turns its beam. */
 export function updateSaltmere(dt, time) {
-  if (!seaTexture) {
+  if (!seaMaterial) {
     return;
   }
-  seaTexture.offset.set((time * 0.02) % 1, (time * 0.035) % 1);
-  seaGloss.offset.set((-time * 0.03) % 1, (time * 0.012) % 1);
+  seaMaterial.uniforms.uTime.value = time;
   for (const ship of ships) {
     const wave = time * 1.1 + ship.phase;
     ship.group.position.y = ship.y + Math.sin(wave) * 0.07;

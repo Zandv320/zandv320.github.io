@@ -1,31 +1,17 @@
 /* Eldoria – the Grey Sea as the players see it (the rules are in rules/sea.js; the water itself is laid by
    saltmere.js): sea stacks with surf round their feet, green islets with sand and trees, the Ember Isles under their
-   smoking mountain with its glowing crater; whitecaps that come and go on the water around the camera (fixed in the
-   world, so a ship under way sees them slide past), and the wake every ship under sail leaves (createWake). */
+   smoking mountain with its glowing crater, and the wake every ship under sail leaves behind her (createWake). */
 import * as THREE from "three";
 import * as builders from "./builders.js";
-import { ROCKS, ISLETS, EMBER_ISLES, HULL, isOpenWater } from "./rules/sea.js";
-import { WATER_Y, SALTMERE } from "./rules/saltmere.js";
-import { scene as worldScene, cameraState } from "./world.js";
-
-/* whitecaps: this many, in a square of this size around the camera, each living this long */
-const WHITECAPS = 420;
-const WHITECAP_FIELD = 90;
-const WHITECAP_LIFE = [2.5, 5];
+import { ROCKS, ISLETS, EMBER_ISLES, HULL } from "./rules/sea.js";
+import { WATER_Y } from "./rules/saltmere.js";
+import { scene as worldScene } from "./world.js";
 
 const volcanoSmoke = [];
 /* steam rising from cracks along the Ember Isles' coast: {x, z, puffs} */
 const steamVents = [];
 const surf = [];
 let craterGlow = null;
-/* the whitecaps' instanced mesh and each one's {x, z, angle, size, age, life} */
-let whitecapMesh = null;
-const whitecaps = [];
-const matrix = new THREE.Matrix4();
-const rotation = new THREE.Quaternion();
-const up = new THREE.Vector3(0, 1, 0);
-const spot = new THREE.Vector3();
-const size = new THREE.Vector3();
 
 /** Builds the Grey Sea (world.js calls this with its build context). */
 export function buildSea({ scene, prop, pending, seededRandom }) {
@@ -176,98 +162,46 @@ export function buildSea({ scene, prop, pending, seededRandom }) {
     steamVents.push(vent);
   }
   addSurf(scene, EMBER_ISLES.x, EMBER_ISLES.z, EMBER_ISLES.radius + 5, EMBER_ISLES.radius + 8);
-  buildWhitecaps(scene);
 }
 
-/* the whitecaps: thin flat crescents of foam on the water */
-function buildWhitecaps(scene) {
-  const crest = new THREE.Shape();
-  crest.moveTo(-0.6, 0);
-  crest.quadraticCurveTo(0, 0.28, 0.6, 0);
-  crest.quadraticCurveTo(0, 0.12, -0.6, 0);
-  whitecapMesh = new THREE.InstancedMesh(
-    new THREE.ShapeGeometry(crest).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({
-      color: 0xf4f8fa,
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-    }),
-    WHITECAPS,
-  );
-  whitecapMesh.frustumCulled = false;
-  scene.add(whitecapMesh);
-  for (let k = 0; k < WHITECAPS; k++) {
-    whitecaps.push({ x: 0, z: 0, angle: 0, size: 1, age: 0, life: 0 });
-  }
-}
-
-/* a whitecap born somewhere around the camera, at its own age */
-function placeWhitecap(cap, centerX, centerZ) {
-  cap.x = centerX + (Math.random() - 0.5) * WHITECAP_FIELD;
-  cap.z = centerZ + (Math.random() - 0.5) * WHITECAP_FIELD;
-  /* the waves run mostly one way, from the north-west */
-  cap.angle = 0.6 + (Math.random() - 0.5) * 0.7;
-  cap.size = 0.7 + Math.random() * 1.1;
-  cap.life = WHITECAP_LIFE[0] + Math.random() * (WHITECAP_LIFE[1] - WHITECAP_LIFE[0]);
-  cap.age = 0;
-  cap.isWater = cap.z < SALTMERE.z0 - 0.8 && isOpenWater(cap.x, cap.z, 0.8);
-}
-
-function updateWhitecaps(dt) {
-  const centerX = cameraState.target.x;
-  const centerZ = cameraState.target.z;
-  /* only where the camera looks over the sea */
-  const isNearSea = centerZ < SALTMERE.z0 + WHITECAP_FIELD / 2;
-  whitecapMesh.visible = isNearSea;
-  if (!isNearSea) {
-    return;
-  }
-  for (let k = 0; k < whitecaps.length; k++) {
-    const cap = whitecaps[k];
-    cap.age += dt;
-    const isOutside =
-      Math.abs(cap.x - centerX) > WHITECAP_FIELD / 2 ||
-      Math.abs(cap.z - centerZ) > WHITECAP_FIELD / 2;
-    if (cap.age >= cap.life || isOutside) {
-      placeWhitecap(cap, centerX, centerZ);
-      /* a fresh one starts somewhere along its life, so they do not all blink in step */
-      cap.age = isOutside ? 0 : Math.random() * 0.5;
-    }
-    /* it swells, curls and fades */
-    const t = cap.age / cap.life;
-    const grow = cap.isWater ? Math.sin(t * Math.PI) : 0;
-    rotation.setFromAxisAngle(up, cap.angle);
-    spot.set(cap.x + t * 0.8, WATER_Y + 0.025, cap.z + t * 0.5);
-    size.set(cap.size * (0.6 + 0.4 * grow), 1, grow * cap.size);
-    matrix.compose(spot, rotation, size);
-    whitecapMesh.setMatrixAt(k, matrix);
-  }
-  whitecapMesh.instanceMatrix.needsUpdate = true;
-}
-
-/* Foam: white flecks and streaks with clear water between them, repeating (a canvas texture, made once). */
+/* The wake's foam: small round bubbles, thick along both edges (the arms of the wake) and loose in the churned
+   middle, with clear water between; u runs across the wake, v along it (a canvas texture, made once). */
 let foamTexture = null;
 function foam() {
   if (!foamTexture) {
-    const size = 64;
+    const width = 64;
+    const height = 128;
     const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = size;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
-    for (let k = 0; k < 140; k++) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.35 + Math.random() * 0.65})`;
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      /* along the trail (y) the flecks are drawn out into streaks */
-      ctx.fillRect(
-        Math.round(x),
-        Math.round(y),
-        1 + Math.floor(Math.random() * 3),
-        2 + Math.floor(Math.random() * 6),
+    const bubble = (u, radius, alpha) => {
+      const x = u * width;
+      const y = Math.random() * height;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      /* drawn once more at the far end, so the pattern runs on without a seam */
+      ctx.beginPath();
+      ctx.arc(x, y + (y < height / 2 ? height : -height), radius, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    for (let k = 0; k < 200; k++) {
+      /* the arms: a loose band near each edge, densest a little in from it */
+      const edge = 0.12 + Math.abs(gaussian()) * 0.12;
+      bubble(
+        Math.random() < 0.5 ? edge : 1 - edge,
+        0.7 + Math.random() * 1.8,
+        0.25 + Math.random() * 0.5,
       );
     }
+    for (let k = 0; k < 160; k++) {
+      /* the churned water in between, fainter */
+      bubble(0.25 + Math.random() * 0.5, 0.6 + Math.random() * 1.4, 0.12 + Math.random() * 0.3);
+    }
     foamTexture = new THREE.CanvasTexture(canvas);
-    foamTexture.wrapS = foamTexture.wrapT = THREE.RepeatWrapping;
+    foamTexture.wrapT = THREE.RepeatWrapping;
     foamTexture.magFilter = THREE.NearestFilter;
     foamTexture.minFilter = THREE.NearestFilter;
     foamTexture.generateMipmaps = false;
@@ -275,20 +209,23 @@ function foam() {
   return foamTexture;
 }
 
+/* a number around 0, mostly between -1 and 1 */
+const gaussian = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.3;
+
 /**
- * The wake of a ship: a trail of foam behind the stern that widens and fades, and the bow wave, a V of foam from the
- * stem. update(x, z, heading, speed, dt) every frame the ship sails (heading: bow to (-sin, -cos)); hide() when she
- * is gone.
+ * The wake of a ship, behind her only: a trail of foam from the stern that opens out into a V and fades, its
+ * bubbles lying where they fell on the water. update(x, z, heading, speed, dt) every frame the ship sails (heading:
+ * bow to (-sin, -cos)); hide() when she is gone.
  */
 export function createWake() {
-  const POINTS = 40;
-  const SAMPLE = 0.12;
+  const POINTS = 48;
+  const SAMPLE = 0.1;
   const trail = [];
   let sampleTimer = 0;
   const positions = new Float32Array(POINTS * 2 * 3);
   const colors = new Float32Array(POINTS * 2 * 4);
   const uvs = new Float32Array(POINTS * 2 * 2);
-  /* how far the stern has come, so the foam's pattern stays where it fell on the water */
+  /* how far the stern has come, so the bubbles stay where they fell on the water */
   let travelled = 0;
   let lastX = null;
   let lastZ = null;
@@ -302,64 +239,29 @@ export function createWake() {
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 4));
   geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
-  const foamMaterial = () =>
+  const trailMesh = new THREE.Mesh(
+    geometry,
     new THREE.MeshBasicMaterial({
       map: foam(),
-      color: 0xf2f6f8,
+      color: 0xe8f2f6,
       vertexColors: true,
       transparent: true,
       depthWrite: false,
       side: THREE.DoubleSide,
-    });
-  const trailMesh = new THREE.Mesh(geometry, foamMaterial());
+    }),
+  );
   trailMesh.frustumCulled = false;
   worldScene.add(trailMesh);
-  /* the bow wave, in the ship's own axes: from the stem back along both sides, spreading out */
-  const bow = new THREE.BufferGeometry();
   const half = HULL.length / 2;
-  const bowPositions = [];
-  const bowColors = [];
-  const bowIndices = [];
-  for (const side of [-1, 1]) {
-    const base = bowPositions.length / 3;
-    bowPositions.push(
-      side * 0.3,
-      0,
-      -half - 0.4,
-      side * 1.0,
-      0,
-      -half - 0.6,
-      side * (HULL.beam / 2 + 2.6),
-      0,
-      -half + 7,
-      side * (HULL.beam / 2 + 0.3),
-      0,
-      -half + 7.5,
-    );
-    bowColors.push(1, 1, 1, 0.75, 1, 1, 1, 0.6, 1, 1, 1, 0, 1, 1, 1, 0);
-    bowIndices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-  }
-  bow.setAttribute("position", new THREE.Float32BufferAttribute(bowPositions, 3));
-  bow.setAttribute("color", new THREE.Float32BufferAttribute(bowColors, 4));
-  bow.setAttribute(
-    "uv",
-    new THREE.Float32BufferAttribute(
-      [0, 0, 0.3, 0, 2, 2.5, 0.4, 2.6, 0, 0, 0.3, 0, 2, 2.5, 0.4, 2.6],
-      2,
-    ),
-  );
-  bow.setIndex(bowIndices);
-  const bowMesh = new THREE.Mesh(bow, foamMaterial());
-  worldScene.add(bowMesh);
 
   return {
     update(x, z, heading, speed, dt) {
       const forwardX = -Math.sin(heading);
       const forwardZ = -Math.cos(heading);
       const way = Math.min(1, speed / 5);
-      /* a new point of the trail at the stern, now and then; the oldest falls off */
-      const sternX = x - forwardX * (half - 0.5);
-      const sternZ = z - forwardZ * (half - 0.5);
+      /* a new point of the trail just under the stern, now and then; the oldest falls off */
+      const sternX = x - forwardX * (half - 1);
+      const sternZ = z - forwardZ * (half - 1);
       if (lastX !== null) {
         travelled += Math.hypot(sternX - lastX, sternZ - lastZ);
       }
@@ -391,9 +293,10 @@ export function createWake() {
           acrossX /= length;
           acrossZ /= length;
         }
-        /* narrow under the stern, spreading out behind; it fades as it goes, and at the very end */
-        const width = 1.2 + age * 3.6;
-        const alpha = i >= trail.length ? 0 : Math.pow(1 - age, 1.4) * 0.85 * point.way;
+        /* as wide as the stern under it, opening out into a V behind; strongest just astern, then fading */
+        const width = HULL.beam * 0.4 + age * 7;
+        const fadeIn = Math.min(1, i / 2);
+        const alpha = i >= trail.length ? 0 : fadeIn * Math.pow(1 - age, 1.6) * 0.75 * point.way;
         for (const [k, sign] of [
           [i * 2, -1],
           [i * 2 + 1, 1],
@@ -405,24 +308,19 @@ export function createWake() {
           colors[k * 4 + 1] = 1;
           colors[k * 4 + 2] = 1;
           colors[k * 4 + 3] = alpha;
-          uvs[k * 2] = sign > 0 ? width * 0.5 : 0;
-          uvs[k * 2 + 1] = point.along / 4;
+          uvs[k * 2] = sign > 0 ? 1 : 0;
+          uvs[k * 2 + 1] = point.along / 9;
         }
       }
       geometry.attributes.position.needsUpdate = true;
       geometry.attributes.color.needsUpdate = true;
       geometry.attributes.uv.needsUpdate = true;
       trailMesh.visible = true;
-      bowMesh.visible = way > 0.05;
-      bowMesh.material.opacity = way;
-      bowMesh.position.set(x, WATER_Y + 0.04, z);
-      bowMesh.rotation.y = heading;
     },
     hide() {
       trail.length = 0;
       lastX = null;
       trailMesh.visible = false;
-      bowMesh.visible = false;
     },
   };
 }
@@ -448,7 +346,6 @@ export function updateSea(dt, time) {
   if (!craterGlow) {
     return;
   }
-  updateWhitecaps(dt);
   for (let k = 0; k < surf.length; k++) {
     surf[k].material.opacity = 0.2 + 0.14 * Math.sin(time * 1.2 + k);
   }

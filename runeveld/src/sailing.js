@@ -4,22 +4,13 @@
    stops, and moors by itself when brought slowly back to its berth. Other players see each other's ships (their
    presence carries `ship: [x, z, heading]`). */
 import * as builders from "./builders.js";
-import {
-  SAILING,
-  HULL,
-  BERTH,
-  BERTH_LANDING,
-  EMBER_ISLES,
-  canSail,
-  hullPoints,
-} from "./rules/sea.js";
+import { SAILING, HULL, BERTH, BERTH_LANDING, EMBER_ISLES, canSail } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { player, peers, now } from "./game-state.js";
 import { keyDirection } from "./player.js";
 import { setMooredGullVisible } from "./saltmere.js";
 import { createWake } from "./sea.js";
-import { burst } from "./particles.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
 
@@ -32,7 +23,6 @@ const ARRIVE_DISTANCE = 4;
 /* the hero's own ship (built the first time they take the helm) and her wake */
 let ship = null;
 let wake = null;
-let wakeTimer = 0;
 let bumpedAt = 0;
 let toldIsles = false;
 
@@ -248,19 +238,6 @@ export function updateSailing(dt) {
     camera,
   );
 
-  /* spray thrown up at the bow when she runs fast (the wake itself is sea.js's) */
-  wakeTimer -= dt;
-  if (state.speed > 5 && wakeTimer <= 0) {
-    wakeTimer = 0.09;
-    const [bow] = hullPoints(state.x, state.z, state.heading);
-    burst(bow[0] + forwardX * 2.2, WATER_Y + 0.3, bow[1] + forwardZ * 2.2, {
-      color: 0xf2f6f8,
-      count: 3,
-      speed: 2.2,
-      size: 3,
-      life: 0.5,
-    });
-  }
   return true;
 }
 

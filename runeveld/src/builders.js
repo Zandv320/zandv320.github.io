@@ -1744,9 +1744,10 @@ export function ship({
     standAt(step, 0, deckHeight, quarterFront - 0.96 + k * 0.32);
     group.add(step);
   }
-  /* the wheel, at the front of the quarterdeck; whoever steers stands just behind it */
+  /* the wheel, at the front of the quarterdeck; whoever steers stands a good step behind it (a figure leans back
+     towards the camera's far side, and would cut through a wheel any closer) */
   const wheel = helmWheel();
-  wheel.position.set(0, deckHeight + quarterHeight + 0.06, quarterFront + 0.9);
+  wheel.position.set(0, deckHeight + quarterHeight + 0.06, quarterFront + 0.6);
   group.add(wheel);
   /* lanterns at the stern corners */
   for (const side of [-1, 1]) {
@@ -1978,7 +1979,7 @@ export function ship({
   group.add(staff, ensign);
 
   group.userData.deck = deckHeight;
-  group.userData.helm = { z: quarterFront + 1.55, y: deckHeight + quarterHeight + 0.12 };
+  group.userData.helm = { z: quarterFront + 2.15, y: deckHeight + quarterHeight + 0.12 };
   group.userData.wheel = wheel.userData.wheel;
   group.userData.sails = sails;
   group.userData.mapKind = "ship";
