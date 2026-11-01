@@ -98,6 +98,7 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { initParticles, updateParticles } from "./particles.js";
+import { updateWeaponFx, weaponLights } from "./weapon-fx.js";
 import {
   bossTelegraph,
   bossCharge,
@@ -1443,6 +1444,8 @@ function sendPresence() {
     dead: player.isDead,
     sitting: player.isSitting,
     equipment: player.equipment,
+    /* the element of an enchanted weapon, for its glow (weapon-fx.js) */
+    enchant: player.equipmentMods?.weapon?.enchant || null,
     /* at the helm: the ship's [x, z, heading] (sailing.js) */
     ship: shipPresence(),
   };
@@ -2222,6 +2225,19 @@ function step(dt) {
   }
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
+  /* enchanted weapons: their glow and their element's particles, on everyone who carries one */
+  updateWeaponFx(
+    dt,
+    game.isStarted
+      ? [
+          { sprite: player.sprite, element: player.equipmentMods?.weapon?.enchant },
+          ...[...peers.values()].map((peer) => ({
+            sprite: peer.sprite,
+            element: peer.presence.enchant,
+          })),
+        ]
+      : [],
+  );
   updateParticles(dt, cameraState.px);
   updateBossEffects(dt);
   updateMissiles(dt);
@@ -2253,7 +2269,10 @@ function step(dt) {
       strength: 0.4,
     };
     heroLightIn(isHeroInCrypt() || isHeroInForge(), heroLight);
-    game.daylight.update(cameraState, game.isStarted && !player.isDead ? [heroLight] : []);
+    game.daylight.update(
+      cameraState,
+      game.isStarted && !player.isDead ? [heroLight, ...weaponLights()] : weaponLights(),
+    );
   }
   clockTimer += dt;
   if (clockTimer > 1) {

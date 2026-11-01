@@ -559,6 +559,8 @@ export class Sprite2D {
     const row = (anim.row || 0) + (anim.perDirection === false ? 0 : directionRow);
     const column = anim.columns?.[direction]?.[this.frame] ?? (anim.column || 0) + this.frame;
     this.mirrored = mirror;
+    /* the cell of the sheet on show, for effects that follow what is drawn in it (weapon-fx.js) */
+    this.cell = { row, column };
     const cellWidth = 1 / this.cols;
     const cellHeight = 1 / this.rows;
     for (const layer of this.layers) {
