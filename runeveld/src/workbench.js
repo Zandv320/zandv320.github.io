@@ -1,5 +1,5 @@
-/* Eldoria – the workbench window, opened at a crafting station: the recipes of the station's profession, and at an
-   enchanting altar also refining, enchanting and disenchanting. Every action first plays the station's animation
+/* Eldoria – the workbench window, opened at a crafting station: the recipes of the station's profession, and for
+   enchanting (at an altar, or anywhere: the ✨ in the inventory, or K) also refining, enchanting and disenchanting. Every action first plays the station's animation
    (hammering, brewing, cooking, enchanting) and then goes through gathering.perform(), so the server rolls the
    dice. */
 import { ITEMS, EQUIPMENT_SLOTS } from "./data.js";
@@ -53,7 +53,7 @@ export function createWorkbench(player, deps) {
     const isMax = level >= MAX_PROFESSION_LEVEL;
     const needed = professionExpForLevel(level);
     $("#workbench-title").innerHTML =
-      `${icon("prof_" + id, station.emoji)} ${UI.escapeHtml(station.name)}`;
+      `${icon("prof_" + id, station.emoji)} ${UI.escapeHtml(place.isAnywhere ? PROFESSIONS[id].name : station.name)}`;
     $("#workbench-level").innerHTML =
       `${UI.escapeHtml(PROFESSIONS[id].name)} <b>${level}</b> · ` +
       (isMax ? "max" : `${exp} / ${needed} exp`) +

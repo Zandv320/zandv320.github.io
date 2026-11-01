@@ -12,6 +12,7 @@ import { stormStrength, setStormOverride } from "./rules/weather.js";
 import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
 import { CAMP_WAKE, MOUNT_KHAROS, EMBER_LANDS } from "./rules/ember.js";
 import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
+import { PROFESSIONS, MAX_PROFESSION_LEVEL, professionLevel } from "./rules/professions.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -23,7 +24,7 @@ const ZONE_COLORS = { rabbit: 0x9fe3b0, fox: 0xffb84d, boar: 0xff6b6b };
 
 /**
  * @param {object} ctx {player, monsters, peers, cameraState, camera, scene, renderer, ADMIN, setZoom, network(),
- *   isHost(), addToBag, setLevel, setJobLevel, respec, teleport, spawnMonster, killMonster, killAll, respawnAll,
+ *   isHost(), addToBag, setLevel, setJobLevel, setProfessions, respec, teleport, spawnMonster, killMonster, killAll, respawnAll,
  *   refreshAppearance, save, restore, exportSave, importSave, resetSave, derived, obstacles, render, timeOfDay(),
  *   setTimeOverride}
  */
@@ -227,6 +228,27 @@ export function createAdminPanel(ctx) {
       1,
       (value) => value + "×",
     );
+
+    /* ---------- professions ---------- */
+    group = section("Professions");
+    const professionInputs = {};
+    for (const [id, profession] of Object.entries(PROFESSIONS)) {
+      professionInputs[id] = numberField(
+        group,
+        `${profession.emoji} ${profession.name}`,
+        () => professionLevel(player, id),
+        (value) => ctx.setProfessions({ [id]: value }),
+        1,
+        MAX_PROFESSION_LEVEL,
+      );
+    }
+    const allProfessions = (level) =>
+      ctx.setProfessions(Object.fromEntries(Object.keys(PROFESSIONS).map((id) => [id, level])));
+    buttons(group, [
+      [`All ${MAX_PROFESSION_LEVEL}`, () => allProfessions(MAX_PROFESSION_LEVEL)],
+      ["All 25", () => allProfessions(25)],
+      ["All 1", () => allProfessions(1), "danger"],
+    ]);
 
     /* ---------- items ---------- */
     group = section("Items");
@@ -527,6 +549,11 @@ export function createAdminPanel(ctx) {
     ]);
 
     refreshValues = () => {
+      for (const [id, input] of Object.entries(professionInputs)) {
+        if (document.activeElement !== input) {
+          input.value = professionLevel(player, id);
+        }
+      }
       levelInput.value = player.level;
       jobLevelInput.value = player.jobLevel;
       hostNote.textContent = ctx.isHost()

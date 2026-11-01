@@ -55,7 +55,7 @@ export const GUIDE_TOPICS = {
     body: [
       "Next to fighting, every hero has eight professions, each with its own level from 1 to 50.",
       "<b>Gathering:</b> mining, woodcutting, herbalism and fishing. You need a tool for each (pickaxe, hatchet, herb knife, fishing rod); Merchant Bram sells them. Tools work from your bag.",
-      "<b>Crafting:</b> smithing at a forge, alchemy at an alchemy table, cooking at a campfire and enchanting at an altar. The stations are marked on the map.",
+      "<b>Crafting:</b> smithing at a forge, alchemy at an alchemy table and cooking at a campfire; the stations are marked on the map. Enchanting you can do anywhere.",
       "Your progress is on the <b>Crafts</b> tab of your character sheet. Higher levels open better ore, herbs, fish and recipes.",
     ],
   },
@@ -81,7 +81,7 @@ export const GUIDE_TOPICS = {
     title: "Enchanting",
     icons: ["prof_enchanting", "arcane_dust", "rune_of_sharpness", "ench_flame"],
     body: [
-      "An <b>enchanting altar</b> has four tabs. <b>Disenchant</b> breaks old gear into arcane dust. <b>Runes</b> turns dust and materials into runes.",
+      "Enchant <b>anywhere</b>: <b>✨ Enchant</b> in your inventory (or <kbd>K</kbd>) opens it where you stand. It has four tabs. <b>Disenchant</b> breaks old gear into arcane dust. <b>Runes</b> turns dust and materials into runes.",
       "<b>Refine</b> uses runes to make a weapon or armor stronger, up to +10. Up to +4 never fails; from +5 a failure costs a level, but nothing is ever destroyed.",
       "<b>Enchant</b> gives a weapon an element: flame, frost, storms or arcane, each with its own effect in battle.",
     ],

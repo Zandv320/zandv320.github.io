@@ -1327,7 +1327,7 @@ export const ITEMS = {
     price: 60,
     icon: "🔺",
     stack: 99,
-    description: "Refines a weapon at the enchanting altar.",
+    description: "Refines a weapon (Enchant, in the inventory).",
   },
   rune_of_warding: {
     name: "Rune of Warding",
@@ -1335,7 +1335,7 @@ export const ITEMS = {
     price: 60,
     icon: "🔷",
     stack: 99,
-    description: "Refines armor at the enchanting altar.",
+    description: "Refines armor (Enchant, in the inventory).",
   },
   rune_of_flame: {
     name: "Rune of Flame",

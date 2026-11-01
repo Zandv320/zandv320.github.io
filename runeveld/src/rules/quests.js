@@ -19,7 +19,7 @@
               'buy'         buy `item` from a shop                     } counted as it happens
               'gather'      gather `count` of `item`                   } (recordQuestEvent), so what the
               'craft'       make `count` of `item`                     } hero did before accepting does
-              'disenchant'  break down `count` items at an altar       } not count
+              'disenchant'  break down `count` items (enchanting)      } not count
               'refine'      refine an item `count` times               }
    A reward item can differ per class: {id, count, mage: id-for-mages}; `reward.rune` binds a rune (rules/runes.js). A quest can require a minimum level
    (`level`) and a preceding quest (`after`). Other fields:
@@ -411,12 +411,12 @@ export const QUESTS = {
     level: 8,
     after: "mette_altar",
     intro:
-      "The altar still hums, you say? Then the old enchanters' magic lives on. Enchanting starts with breaking: take something old you no longer need and break it down at an altar into arcane dust. Here is a pinch to start you off.",
+      "The altar still hums, you say? Then the old enchanters' magic lives on. Enchanting starts with breaking: take something old you no longer need and break it down into arcane dust. You need no altar for it: the old magic goes with whoever has touched it. Here is a pinch to start you off.",
     progressText:
-      "At an enchanting altar, open the Disenchant tab and break down a piece of old gear.",
+      "Open your inventory, press ✨ Enchant (or K), open the Disenchant tab and break down a piece of old gear.",
     completeText: "Dust, and a little glow in your fingers. Now let us put it to use.",
-    hint: "Tap the old altar in Whisperwood (or the one by the temple in Aurelia), open Disenchant, pick an item you no longer need and confirm. You get arcane dust.",
-    where: { station: "enchanting_altar" },
+    hint: "Enchanting works anywhere: open your inventory and press ✨ Enchant (or K). Open Disenchant, pick an item you no longer need and confirm. You get arcane dust.",
+    ui: "inventory",
     tutorial: "enchanting",
     gives: [{ id: "arcane_dust", count: 1 }],
     goal: { type: "disenchant", count: 1 },

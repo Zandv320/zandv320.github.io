@@ -9,6 +9,7 @@ import { DurableObject } from "cloudflare:workers";
 import * as progression from "../../runeveld/src/rules/progression.js";
 import * as crafting from "../../runeveld/src/rules/crafting.js";
 import { migrateHero } from "../../runeveld/src/rules/legacy.js";
+import { setProfessionLevels } from "../../runeveld/src/rules/professions.js";
 import { ITEMS } from "../../runeveld/src/data.js";
 
 const MAX_HEROES = 6;
@@ -109,6 +110,20 @@ export class HeroStore extends DurableObject {
     const roster = await this.#getRoster(token);
     const hero = this.#findHero(roster, name);
     if (!hero || !progression.startStoryAt(hero, String(questId))) {
+      return null;
+    }
+    await this.#persist(token, roster);
+    return hero;
+  }
+
+  /**
+   * Admin: sets this hero's profession levels ({id: level}, professions.setProfessionLevels). The World has checked
+   * that the account is an admin. Returns the hero, or null.
+   */
+  async setProfessions(token, name, levels) {
+    const roster = await this.#getRoster(token);
+    const hero = this.#findHero(roster, name);
+    if (!hero || !setProfessionLevels(hero, levels)) {
       return null;
     }
     await this.#persist(token, roster);

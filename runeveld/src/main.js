@@ -82,6 +82,7 @@ import {
 } from "./rune-powers.js";
 import { RUNES } from "./rules/runes.js";
 import { startStoryAt } from "./rules/progression.js";
+import { setProfessionLevels } from "./rules/professions.js";
 import { QUESTS } from "./rules/quests.js";
 import {
   buildCrypt,
@@ -677,6 +678,7 @@ function createPanels(name) {
     respec,
     teleport,
     startStory,
+    setProfessions,
     spawnMonster,
     killMonster,
     killAll,
@@ -1055,6 +1057,29 @@ async function startStory(questId) {
     } else {
       UI.systemMessage(
         "The server did not allow it: only admin accounts can change their story there.",
+      );
+    }
+  }
+  saveProgress();
+}
+
+/* Admin: set profession levels ({id: level}); on the server too, which only allows it for admin accounts. */
+async function setProfessions(levels) {
+  if (!setProfessionLevels(player, levels)) {
+    return;
+  }
+  game.characterSheet.render();
+  if (game.workbench.isOpen()) {
+    game.workbench.render();
+  }
+  const network = game.network;
+  if (network.usesServer()) {
+    const response = await network.request({ kind: "admin_professions", levels });
+    if (response && response.hero) {
+      applyHeroRecord(response.hero);
+    } else {
+      UI.systemMessage(
+        "The server did not allow it: only admin accounts can change their professions there.",
       );
     }
   }
@@ -1645,6 +1670,19 @@ function toggleQuestTab() {
   }
 }
 
+/** Enchanting needs no altar: its workbench opens where the hero stands (and closes when they walk away). */
+function toggleEnchanting() {
+  if (game.workbench.isOpen() && game.workbench.place().kind === "enchanting_altar") {
+    game.workbench.close();
+    return;
+  }
+  if (player.isDead || player.ship) {
+    return;
+  }
+  game.gathering.cancel();
+  game.workbench.open({ kind: "enchanting_altar", x: player.x, z: player.z, isAnywhere: true });
+}
+
 function isAnyPanelOpen() {
   return (
     game.characterSheet.isOpen() ||
@@ -1834,6 +1872,8 @@ function setupKeyboardInput() {
       game.settings.toggle();
     } else if (event.code === "KeyU") {
       game.runeCodex.toggle();
+    } else if (event.code === "KeyK") {
+      toggleEnchanting();
     } else if (event.code === "KeyA" && event.ctrlKey && event.shiftKey) {
       event.preventDefault();
       game.adminPanel.toggle();
@@ -1891,6 +1931,7 @@ function setupButtons() {
 
   $("#settings-button").onclick = () => game.settings.toggle();
   $("#runes-button").onclick = () => game.runeCodex.toggle();
+  $("#inventory-enchant").onclick = () => toggleEnchanting();
 
   /* fixed icons in the HTML (buttons, potion, sit, zeny) */
   document.querySelectorAll("[data-icon]").forEach((element) => {

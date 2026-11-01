@@ -62,7 +62,7 @@ export const PROFESSIONS = {
     emoji: "✨",
     description:
       "Make runes, refine equipment up to +10, enchant weapons with the elements and disenchant gear into dust, " +
-      "at an enchanting altar.",
+      "anywhere you stand.",
   },
 };
 
@@ -75,6 +75,28 @@ export function professionOf(hero, id) {
 }
 
 export const professionLevel = (hero, id) => professionOf(hero, id).level;
+
+/** Admin: sets the levels of professions ({id: level}) with no exp towards the next; false when nothing valid. */
+export function setProfessionLevels(hero, levels) {
+  if (!levels || typeof levels !== "object") {
+    return false;
+  }
+  let changed = false;
+  for (const [id, wanted] of Object.entries(levels)) {
+    if (!PROFESSIONS[id] || !Number.isFinite(+wanted)) {
+      continue;
+    }
+    const level = Math.max(1, Math.min(MAX_PROFESSION_LEVEL, Math.floor(+wanted)));
+    hero.professions = hero.professions || {};
+    if (level > 1) {
+      hero.professions[id] = { level, exp: 0 };
+    } else {
+      delete hero.professions[id];
+    }
+    changed = true;
+  }
+  return changed;
+}
 
 /** Add profession exp; returns the number of levels gained. */
 export function grantProfessionExp(hero, id, exp) {
@@ -222,7 +244,13 @@ export const STATIONS = {
   forge: { name: "Forge", profession: "smithing", emoji: "⚒️" },
   alchemy_table: { name: "Alchemy table", profession: "alchemy", emoji: "⚗️" },
   campfire: { name: "Campfire", profession: "cooking", emoji: "🔥" },
-  enchanting_altar: { name: "Enchanting altar", profession: "enchanting", emoji: "✨" },
+  /* enchanting needs no altar (`anywhere`): the altars still work, but the hero can enchant wherever they stand */
+  enchanting_altar: {
+    name: "Enchanting altar",
+    profession: "enchanting",
+    emoji: "✨",
+    anywhere: true,
+  },
 };
 
 /* Where the stations stand: two of each, one in Runeveld (or the Whisperwood) and one in Aurelia. */
@@ -238,8 +266,12 @@ export const STATION_PLACES = [
   { id: "altar_aurelia", kind: "enchanting_altar", x: -155, z: 22.5 },
 ];
 
-/** The station of this kind the hero stands next to, or null. */
+/** The station of this kind the hero stands next to (for a station that works anywhere: a place where they
+    stand), or null. */
 export function stationNear(kind, x, z) {
+  if (STATIONS[kind]?.anywhere) {
+    return { id: "anywhere", kind, x, z };
+  }
   return (
     STATION_PLACES.find(
       (place) => place.kind === kind && Math.hypot(place.x - x, place.z - z) <= USE_DISTANCE + 1,
