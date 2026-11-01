@@ -631,18 +631,20 @@ const SEA_FRAGMENT = /* glsl */ `
     float cloud = noise(p * 0.025 + vec2(t * 0.004, t * 0.006)) * 0.6 + noise(p * 0.07 - vec2(t * 0.01, 0.0)) * 0.4;
     color = mix(color, uShadow, smoothstep(0.38, 0.75, cloud) * 0.85);
     color = mix(color, uShallow, smoothstep(0.0, 1.0, shallow));
-    /* the net of light, its threads wavering */
-    vec2 warp = vec2(noise(p * 0.4 + t * 0.15), noise(p * 0.4 + 5.2 - t * 0.12)) - 0.5;
-    float thread = 1.0 - smoothstep(0.015, 0.05, cellEdge(p * 0.62 + warp * 0.7, t * 0.7));
-    /* a second, finer and fainter net drifting through the first */
-    float fine = 1.0 - smoothstep(0.01, 0.04, cellEdge(p * 1.1 - warp * 0.5 + 3.7, t * 0.9));
-    /* the light comes and goes in patches, so the net is never whole */
-    float patches = smoothstep(0.3, 0.7, noise(p * 0.18 + vec2(-t * 0.05, t * 0.07)));
-    float strength = mix(0.09, 0.6, shallow) * (1.0 - cloud * 0.6);
-    color = mix(color, uLight, max(thread * patches, fine * mix(0.15, 0.4, shallow) * (1.0 - patches * 0.5)) * strength);
-    /* white glints where the sun catches it, coming and going */
-    float sparkle = step(0.82, noise(p * 2.6 + vec2(t * 0.4, -t * 0.3))) * thread * patches;
-    color = mix(color, uGlint, sparkle * mix(0.55, 0.9, shallow));
+    /* the net of light, its threads wavering; everywhere on the water, but broken into short pieces that come
+       and go, each with a soft glow round it */
+    vec2 warp = vec2(noise(p * 0.5 + t * 0.15), noise(p * 0.5 + 5.2 - t * 0.12)) - 0.5;
+    vec2 wobble = vec2(noise(p * 1.8 - t * 0.3), noise(p * 1.8 + 2.9 + t * 0.25)) - 0.5;
+    float edge = cellEdge(p * 0.55 + warp * 0.6 + wobble * 0.18, t * 0.7);
+    float pieces = smoothstep(0.48, 0.62, noise(p * 2.4 + vec2(t * 0.2, -t * 0.15)));
+    float core = (1.0 - smoothstep(0.012, 0.035, edge)) * pieces;
+    float glow = (1.0 - smoothstep(0.02, 0.09, edge)) * mix(0.15, 1.0, pieces);
+    float strength = mix(0.55, 0.8, shallow) * (1.0 - cloud * 0.25);
+    color = mix(color, uLight, glow * 0.3 * strength);
+    color = mix(color, uLight, core * strength);
+    /* bright where the sun catches a thread, coming and going */
+    float sparkle = step(0.78, noise(p * 2.6 + vec2(t * 0.4, -t * 0.3))) * core;
+    color = mix(color, uGlint, sparkle * mix(0.5, 0.85, shallow));
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
   }
@@ -659,7 +661,7 @@ function buildSea(scene) {
       uShallows: { value: SHALLOWS.map(([x, z, radius]) => new THREE.Vector3(x, z, radius)) },
       uShallow: { value: new THREE.Color(0x2b9be0) },
       uMiddle: { value: new THREE.Color(0x1a5fae) },
-      uDeep: { value: new THREE.Color(0x10377a) },
+      uDeep: { value: new THREE.Color(0x15408a) },
       uShadow: { value: new THREE.Color(0x0b2556) },
       uLight: { value: new THREE.Color(0x7fd2ff) },
       uGlint: { value: new THREE.Color(0xf4fbff) },
