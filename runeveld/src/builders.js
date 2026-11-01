@@ -1580,10 +1580,56 @@ function hullPart(shape, height, bottom, partMaterial) {
   return outline(new THREE.Mesh(geometry, partMaterial), 40);
 }
 
+/** A ship's wheel on a post: eight spokes and a rim (userData.wheel is the part that turns). */
+export function helmWheel() {
+  const group = new THREE.Group();
+  const wood = material("wood_dark", 0.3, 1);
+  const post = box(0.24, 1, 0.24, wood);
+  group.add(post);
+  const wheel = new THREE.Group();
+  wheel.position.set(0, 1.05, 0.15);
+  wheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.05, 4, 16), wood));
+  for (let i = 0; i < 8; i++) {
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.15, 0.05), wood);
+    spoke.rotation.z = (i / 8) * Math.PI;
+    wheel.add(spoke);
+  }
+  const hub = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.09, 0.09, 0.12, 8).rotateX(Math.PI / 2),
+    glowMaterial(0xd8a94a),
+  );
+  wheel.add(hub);
+  group.add(wheel);
+  group.userData.wheel = wheel;
+  return group;
+}
+
+/* a small anchor hanging from the bow: shank, stock and curved arms */
+function shipAnchor() {
+  const group = new THREE.Group();
+  const iron = new THREE.MeshLambertMaterial({ color: 0x2e3038 });
+  group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6), iron));
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), iron);
+  stock.position.y = 0.5;
+  group.add(stock);
+  const arms = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.06, 4, 10, Math.PI), iron);
+  arms.rotation.z = Math.PI;
+  arms.position.y = -0.45;
+  group.add(arms);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 4, 8), iron);
+  ring.position.y = 0.68;
+  group.add(ring);
+  return group;
+}
+
 /**
  * A sailing ship lying in the water: the hull reaches `draft` below y = 0 (the waterline) and its deck stands at
- * `deckHeight`. The bow points to -z. `sail` is a cloth texture name or null for plain canvas; userData.deck is the
- * deck's height, for whoever stands on it.
+ * `deckHeight`. The bow points to -z. Planked hull with gun ports and a figurehead, a raised quarterdeck at the stern
+ * with the wheel on it (the captain's cabin under it, windows and lanterns at the stern), masts with yards and sails,
+ * a jib, shrouds with ratlines, a crow's nest, cargo, a hatch and a capstan on the deck, an anchor at the bow.
+ * `sail` is a cloth texture name or null for plain canvas. userData: deck (the deck's height), helm ({z, y}: where
+ * whoever steers stands, behind the wheel), wheel (the turning part), sails (the canvas, which sailing.js fades
+ * when it hides the one at the helm).
  */
 export function ship({
   length = 14,
@@ -1595,21 +1641,41 @@ export function ship({
   hullColor = 0x5a3a2a,
 } = {}) {
   const group = new THREE.Group();
+  /* box() and block() stand on y = 0: this puts one with its foot at (x, y, z) */
+  const standAt = (mesh, x, y, z) => {
+    mesh.position.set(x, y + mesh.position.y, z);
+    return mesh;
+  };
   const hullMaterial = new THREE.MeshLambertMaterial({
     map: texture("wood_dark", 0.5, 0.5),
     color: new THREE.Color(hullColor).multiplyScalar(2.2),
   });
-  /* below the waterline narrower and darker, above it the full hull, then a painted band under the rail */
-  const lower = hullPart(hullShape(beam * 0.8, length * 0.92), draft, -draft, hullMaterial);
-  group.add(lower);
+  const darkWood = new THREE.MeshLambertMaterial({
+    color: new THREE.Color(hullColor).multiplyScalar(1.1),
+  });
+  /* below the waterline narrower, above it the full hull; strakes along it, a painted band under the rail */
+  group.add(hullPart(hullShape(beam * 0.8, length * 0.92), draft, -draft, hullMaterial));
   group.add(hullPart(hullShape(beam, length), deckHeight, 0, hullMaterial));
-  const band = hullPart(
-    hullShape(beam + 0.06, length + 0.06),
-    0.25,
-    deckHeight - 0.45,
-    new THREE.MeshLambertMaterial({ color: 0xd8c8a0 }),
+  for (const y of [0.3, 0.65]) {
+    group.add(hullPart(hullShape(beam + 0.04, length + 0.04), 0.07, y, darkWood));
+  }
+  group.add(
+    hullPart(
+      hullShape(beam + 0.06, length + 0.06),
+      0.25,
+      deckHeight - 0.45,
+      new THREE.MeshLambertMaterial({ color: 0xd8c8a0 }),
+    ),
   );
-  group.add(band);
+  /* gun ports along both sides, closed, under the band */
+  const port = new THREE.MeshLambertMaterial({ color: 0x2a1c16 });
+  for (let z = -length * 0.22; z < length * 0.2; z += 1.7) {
+    for (const side of [-1, 1]) {
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.32, 0.42), port);
+      lid.position.set(side * (beam / 2 + 0.01), deckHeight - 0.85, z);
+      group.add(lid);
+    }
+  }
   /* the deck, and a rail all round it */
   const deck = new THREE.Mesh(
     new THREE.ShapeGeometry(hullShape(beam, length, 0.2)).rotateX(-Math.PI / 2),
@@ -1620,35 +1686,118 @@ export function ship({
   const railShape = hullShape(beam, length);
   railShape.holes.push(hullShape(beam, length, 0.18));
   group.add(hullPart(railShape, 0.45, deckHeight, hullMaterial));
-  /* the captain's cabin at the stern */
-  const cabin = block(beam * 0.55, 1.2, length * 0.16, "wood", 0.85);
-  cabin.position.set(0, deckHeight, length * 0.36);
+
+  /* ----- the quarterdeck over the captain's cabin, the wheel on it ----- */
+  const quarterHeight = 1.1;
+  const quarterFront = length * 0.29;
+  const quarterDepth = length * 0.2;
+  const quarterWidth = beam * 0.74;
+  const quarterZ = quarterFront + quarterDepth / 2;
+  const cabin = block(quarterWidth, quarterHeight, quarterDepth, "wood", 0.85);
+  standAt(cabin, 0, deckHeight, quarterZ);
   group.add(cabin);
-  const cabinRoof = block(beam * 0.62, 0.15, length * 0.18, "wood_dark", 0.9);
-  cabinRoof.position.set(0, deckHeight + 1.2, length * 0.36);
-  group.add(cabinRoof);
-  /* masts with a yard and a sail each, the tallest in the middle; a pennant on the main mast */
+  const quarterdeck = block(quarterWidth + 0.2, 0.12, quarterDepth + 0.2, "wood", 1);
+  standAt(quarterdeck, 0, deckHeight + quarterHeight - 0.06, quarterZ);
+  group.add(quarterdeck);
+  /* the cabin's door and windows forward, windows across the stern */
+  const glass = material("glass", 0.4, 0.4);
+  const door = box(0.6, 0.85, 0.06, material("wood_dark", 0.6, 0.85));
+  standAt(door, 0, deckHeight, quarterFront - 0.03);
+  group.add(door);
+  for (const x of [-quarterWidth * 0.3, quarterWidth * 0.3]) {
+    const pane = box(0.36, 0.32, 0.06, glass);
+    pane.position.set(x, deckHeight + 0.45, quarterFront - 0.03);
+    group.add(pane);
+  }
+  for (const x of [-quarterWidth * 0.28, 0, quarterWidth * 0.28]) {
+    const pane = box(0.36, 0.4, 0.06, glass);
+    pane.position.set(x, deckHeight + 0.4, quarterFront + quarterDepth + 0.03);
+    group.add(pane);
+  }
+  /* a rail round the quarterdeck, open at the head of the steps */
+  const railTop = deckHeight + quarterHeight + 0.62;
+  const railWood = material("wood_dark", 0.2, 0.6);
+  for (const side of [-1, 1]) {
+    const sideRail = box(0.08, 0.08, quarterDepth, railWood);
+    sideRail.position.set((side * quarterWidth) / 2, railTop - 0.04, quarterZ);
+    group.add(sideRail);
+    const frontRail = box(quarterWidth * 0.32, 0.08, 0.08, railWood);
+    frontRail.position.set(side * quarterWidth * 0.34, railTop - 0.04, quarterFront);
+    group.add(frontRail);
+    for (let k = 0; k <= 3; k++) {
+      const post = box(0.08, 0.55, 0.08, railWood);
+      standAt(
+        post,
+        (side * quarterWidth) / 2,
+        deckHeight + quarterHeight + 0.06,
+        quarterFront + (k / 3) * quarterDepth,
+      );
+      group.add(post);
+    }
+  }
+  const backRail = box(quarterWidth, 0.08, 0.08, railWood);
+  backRail.position.set(0, railTop - 0.04, quarterFront + quarterDepth);
+  group.add(backRail);
+  /* steps up from the main deck */
+  for (let k = 0; k < 3; k++) {
+    const step = block(0.9, 0.36 * (k + 1), 0.32, "wood_dark", 0.9);
+    standAt(step, 0, deckHeight, quarterFront - 0.96 + k * 0.32);
+    group.add(step);
+  }
+  /* the wheel, at the front of the quarterdeck; whoever steers stands just behind it */
+  const wheel = helmWheel();
+  wheel.position.set(0, deckHeight + quarterHeight + 0.06, quarterFront + 0.9);
+  group.add(wheel);
+  /* lanterns at the stern corners */
+  for (const side of [-1, 1]) {
+    const pole = box(0.08, 0.9, 0.08, railWood);
+    standAt(
+      pole,
+      side * (quarterWidth / 2 - 0.1),
+      deckHeight + quarterHeight + 0.06,
+      quarterFront + quarterDepth,
+    );
+    group.add(pole);
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.3, 0.24), glowMaterial(0xffcf6a));
+    lamp.position.set(
+      side * (quarterWidth / 2 - 0.1),
+      deckHeight + quarterHeight + 1.05,
+      quarterFront + quarterDepth,
+    );
+    group.add(lamp);
+  }
+
+  /* ----- masts with yards and sails, a jib, shrouds with ratlines, a crow's nest ----- */
   const sailMaterial = sail
     ? material(sail, beam, 4)
-    : new THREE.MeshLambertMaterial({ color: 0xefe6cf, side: THREE.DoubleSide });
+    : new THREE.MeshLambertMaterial({ color: 0xefe6cf });
   sailMaterial.side = THREE.DoubleSide;
-  const mastSpots = masts === 1 ? [0] : [-length * 0.18, length * 0.12];
+  sailMaterial.transparent = true;
+  const sails = [];
+  const mastSpots = masts === 1 ? [0] : [-length * 0.2, length * 0.08];
   const rigging = [];
   const rope = (a, b) => rigging.push(new THREE.Vector3(...a), new THREE.Vector3(...b));
   mastSpots.forEach((z, i) => {
     const height = i === 0 && masts > 1 ? 7.5 : 9;
     const top = deckHeight + height;
-    /* shrouds down to both sides of the deck, stays to the bow and the stern */
+    /* shrouds down to both sides of the deck, with ratlines across them to climb by */
     for (const side of [-1, 1]) {
+      const footX = side * beam * 0.46;
       for (const dz of [-0.5, 0.5]) {
-        rope([0, top - 0.8, z], [side * beam * 0.46, deckHeight + 0.45, z + dz]);
+        rope([0, top - 0.8, z], [footX, deckHeight + 0.45, z + dz]);
+      }
+      for (let k = 1; k < 9; k++) {
+        const t = k / 9;
+        const y = deckHeight + 0.45 + (top - 0.8 - deckHeight - 0.45) * t;
+        const x = footX * (1 - t);
+        rope([x, y, z - 0.5 * (1 - t)], [x, y, z + 0.5 * (1 - t)]);
       }
     }
     if (i === 0) {
       rope([0, top, z], [0, deckHeight + 1.2, -length / 2 - 2.1]);
     }
     if (i === mastSpots.length - 1) {
-      rope([0, top, z], [0, deckHeight + 1.25, length / 2 - 0.4]);
+      rope([0, top, z], [0, deckHeight + quarterHeight + 0.6, length / 2 - 0.3]);
       /* the crow's nest on the tallest mast */
       const nest = outline(
         new THREE.Mesh(
@@ -1660,6 +1809,13 @@ export function ship({
       nest.material.side = THREE.DoubleSide;
       nest.position.set(0, top - 1.6, z);
       group.add(nest);
+      const pennant = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.4, 0.4).translate(0.7, 0, 0),
+        material("cloth_red", 1.4, 0.4),
+      );
+      pennant.material.side = THREE.DoubleSide;
+      pennant.position.set(0.1, top + 0.1, z);
+      group.add(pennant);
     }
     if (i > 0) {
       rope([0, top - 0.2, z], [0, deckHeight + 7.3, mastSpots[i - 1]]);
@@ -1689,36 +1845,100 @@ export function ship({
     const sailMesh = new THREE.Mesh(sailGeometry, sailMaterial);
     sailMesh.position.set(0, deckHeight + height - 0.75 - sailHeight / 2, z - 0.1);
     group.add(sailMesh);
-    if (i === mastSpots.length - 1) {
-      const pennant = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.4, 0.4).translate(0.7, 0, 0),
-        material("cloth_red", 1.4, 0.4),
-      );
-      pennant.material.side = THREE.DoubleSide;
-      pennant.position.set(0.1, deckHeight + height + 0.1, z);
-      group.add(pennant);
-    }
+    sails.push(sailMesh);
   });
+  /* the jib, from the bowsprit to the foremast */
+  const foreZ = mastSpots[0];
+  const jibGeometry = new THREE.BufferGeometry();
+  jibGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(
+      [
+        0,
+        deckHeight + 1.45,
+        -length / 2 - 2.3,
+        0,
+        deckHeight + 6.2,
+        foreZ - 0.25,
+        0,
+        deckHeight + 1.5,
+        foreZ - 1.6,
+      ],
+      3,
+    ),
+  );
+  jibGeometry.computeVertexNormals();
+  const jib = new THREE.Mesh(
+    jibGeometry,
+    new THREE.MeshLambertMaterial({ color: 0xefe6cf, side: THREE.DoubleSide, transparent: true }),
+  );
+  group.add(jib);
+  sails.push(jib);
+  rope([0, deckHeight + 6.2, foreZ - 0.25], [0, deckHeight + 1.45, -length / 2 - 2.3]);
   group.add(
     new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints(rigging),
       new THREE.LineBasicMaterial({ color: 0x3a2a20 }),
     ),
   );
-  /* a flag on a staff over the stern */
-  const staff = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.04, 1.8, 5),
-    material("wood_dark", 0.1, 1.8),
+
+  /* ----- on deck: a hatch, a capstan, barrels, crates and coils of rope ----- */
+  const hatch = block(1.5, 0.14, 1.3, "wood_dark", 0.8);
+  standAt(hatch, 0, deckHeight, (foreZ + mastSpots[mastSpots.length - 1]) / 2);
+  group.add(hatch);
+  const capstan = outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28, 0.36, 0.7, 10).translate(0, 0.35, 0),
+      material("wood_dark", 1.8, 0.7),
+    ),
+    40,
   );
-  staff.position.set(0, deckHeight + 1.2 + 0.9, length / 2 - 0.25);
-  const ensign = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.9, 0.55).rotateY(Math.PI / 2).translate(0, 0, 0.45),
-    material(sail === "cloth_red" ? "cloth_red" : "cloth_green", 0.9, 0.55),
-  );
-  ensign.material.side = THREE.DoubleSide;
-  ensign.position.set(0, deckHeight + 2.75, length / 2 - 0.25);
-  group.add(staff, ensign);
-  /* the bowsprit */
+  capstan.position.set(0, deckHeight, foreZ - 1.6);
+  group.add(capstan);
+  for (let k = 0; k < 2; k++) {
+    const bar = box(1.4, 0.06, 0.06, material("wood", 1.4, 0.1));
+    bar.position.set(0, deckHeight + 0.55, foreZ - 1.6);
+    bar.rotation.y = (k * Math.PI) / 2 + 0.3;
+    group.add(bar);
+  }
+  const barrelMaterial = material("wood", 1, 0.6, 0.9);
+  for (const [x, z] of [
+    [beam * 0.28, mastSpots[mastSpots.length - 1] + 1.2],
+    [beam * 0.28 - 0.5, mastSpots[mastSpots.length - 1] + 1.5],
+    [-beam * 0.3, foreZ + 1.4],
+  ]) {
+    const barrel = outline(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.24, 0.24, 0.6, 10).translate(0, 0.3, 0),
+        barrelMaterial,
+      ),
+      40,
+    );
+    barrel.position.set(x, deckHeight, z);
+    group.add(barrel);
+  }
+  for (const [x, z, size] of [
+    [-beam * 0.28, mastSpots[mastSpots.length - 1] + 1.3, 0.55],
+    [-beam * 0.26, mastSpots[mastSpots.length - 1] + 1.95, 0.42],
+  ]) {
+    const crate = block(size, size, size, "wood", 0.95);
+    standAt(crate, x, deckHeight, z);
+    group.add(crate);
+  }
+  const ropeMaterial = new THREE.MeshLambertMaterial({ color: 0xc8b48a });
+  for (const [x, z] of [
+    [beam * 0.25, foreZ + 0.9],
+    [-beam * 0.22, quarterFront - 1],
+  ]) {
+    const coil = new THREE.Mesh(
+      new THREE.TorusGeometry(0.22, 0.07, 4, 12).rotateX(Math.PI / 2),
+      ropeMaterial,
+    );
+    coil.position.set(x, deckHeight + 0.07, z);
+    group.add(coil);
+  }
+
+  /* ----- the bow: bowsprit, figurehead, the anchor on its cathead ----- */
   const bowsprit = outline(
     new THREE.Mesh(
       new THREE.CylinderGeometry(0.08, 0.12, 3, 6).rotateX(Math.PI / 2 - 0.3),
@@ -1728,7 +1948,39 @@ export function ship({
   );
   bowsprit.position.set(0, deckHeight + 0.6, -length / 2 - 0.8);
   group.add(bowsprit);
+  const gilt = glowMaterial(0xd8a94a);
+  const figure = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1, 6).rotateX(-Math.PI / 2 - 0.4), gilt);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), gilt);
+  head.position.set(0, 0.3, -0.45);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(1, 0.05, 0.3), gilt);
+  wing.position.set(0, 0.1, -0.05);
+  wing.rotation.x = -0.4;
+  figure.add(body, head, wing);
+  figure.position.set(0, deckHeight - 0.15, -length / 2 - 0.3);
+  group.add(figure);
+  const anchor = shipAnchor();
+  anchor.position.set(beam * 0.36, deckHeight - 0.75, -length * 0.36);
+  group.add(anchor);
+
+  /* a flag on a staff over the stern */
+  const staff = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 1.8, 5),
+    material("wood_dark", 0.1, 1.8),
+  );
+  staff.position.set(0, deckHeight + quarterHeight + 0.9, length / 2 - 0.25);
+  const ensign = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.9, 0.55).rotateY(Math.PI / 2).translate(0, 0, 0.45),
+    material(sail === "cloth_red" ? "cloth_red" : "cloth_green", 0.9, 0.55),
+  );
+  ensign.material.side = THREE.DoubleSide;
+  ensign.position.set(0, deckHeight + quarterHeight + 1.55, length / 2 - 0.25);
+  group.add(staff, ensign);
+
   group.userData.deck = deckHeight;
+  group.userData.helm = { z: quarterFront + 1.55, y: deckHeight + quarterHeight + 0.12 };
+  group.userData.wheel = wheel.userData.wheel;
+  group.userData.sails = sails;
   group.userData.mapKind = "ship";
   return group;
 }

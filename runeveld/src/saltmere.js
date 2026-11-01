@@ -21,6 +21,7 @@ const QUAY_DEPTH = 1.8;
 /* everything riding the swell (ships, boats, buoys): {group, y, rotation, phase, roll} */
 const ships = [];
 let seaTexture = null;
+let seaGloss = null;
 let lighthouseBeam = null;
 let lighthouseLamp = null;
 /* the Gull's Promise at her berth, and what a click on her catches */
@@ -574,6 +575,22 @@ function buildSea(scene) {
   sea.rotation.x = -Math.PI / 2;
   sea.position.set((SEA.x0 + SEA.x1) / 2, WATER_Y, (SEA.z0 + SEA.z1) / 2);
   scene.add(sea);
+  /* a second layer of the same water, finer and drifting the other way: where the two cross, the sea glints */
+  seaGloss = builders.texture("water", width / 1.31, depth / 1.29);
+  const gloss = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, depth),
+    new THREE.MeshBasicMaterial({
+      map: seaGloss,
+      color: 0xd8ecf4,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+  );
+  gloss.rotation.x = -Math.PI / 2;
+  gloss.position.set((SEA.x0 + SEA.x1) / 2, WATER_Y + 0.01, (SEA.z0 + SEA.z1) / 2);
+  scene.add(gloss);
   /* the quay wall, along the whole shore */
   const wallWidth = 200;
   const wall = new THREE.Mesh(
@@ -738,6 +755,7 @@ export function updateSaltmere(dt, time) {
     return;
   }
   seaTexture.offset.set((time * 0.02) % 1, (time * 0.035) % 1);
+  seaGloss.offset.set((-time * 0.03) % 1, (time * 0.012) % 1);
   for (const ship of ships) {
     const wave = time * 1.1 + ship.phase;
     ship.group.position.y = ship.y + Math.sin(wave) * 0.07;

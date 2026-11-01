@@ -18,38 +18,45 @@ import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { player, peers, now } from "./game-state.js";
 import { keyDirection } from "./player.js";
 import { setMooredGullVisible } from "./saltmere.js";
-import { helmWheel } from "./sea.js";
+import { createWake } from "./sea.js";
 import { burst } from "./particles.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
 
-/* where the helm stands on the ship: this far towards the stern from the middle */
-const HELM_AFT = HULL.length * 0.27;
 /* brought this close to the berth and this slow, the ship moors */
 const MOOR_DISTANCE = 6;
 const MOOR_SPEED = 2.6;
 /* a click on the water: sail there, and stop this close */
 const ARRIVE_DISTANCE = 4;
 
-/* the hero's own ship (built the first time they take the helm) */
+/* the hero's own ship (built the first time they take the helm) and her wake */
 let ship = null;
+let wake = null;
 let wakeTimer = 0;
 let bumpedAt = 0;
 let toldIsles = false;
 
+/* the Gull's Promise as she sails: the same build as at her berth */
+const gullsPromise = () =>
+  builders.ship({ length: HULL.length, beam: HULL.beam, sail: "cloth_red", hullColor: 0x3e4a5a });
+
 function buildShip() {
-  const group = builders.ship({
-    length: HULL.length,
-    beam: HULL.beam,
-    sail: "cloth_red",
-    hullColor: 0x3e4a5a,
-  });
-  const wheel = helmWheel();
-  wheel.position.set(0, group.userData.deck + 0.05, HELM_AFT - 0.6);
-  group.add(wheel);
-  group.userData.wheel = wheel.userData.wheel;
+  const group = gullsPromise();
   scene.add(group);
+  wake = createWake();
   return group;
+}
+
+/* The sails between the camera and the helm turn see-through, so the one steering stays in sight: how much depends
+   on how far the stern (where the helm is) points away from the camera. */
+function fadeSails(group, heading) {
+  const yaw = cameraState.yaw;
+  const sternAway = -Math.cos(heading - yaw);
+  const opacity = 1 - 0.6 * Math.max(0, Math.min(1, sternAway * 1.6 + 0.3));
+  for (const sail of group.userData.sails) {
+    sail.material.opacity = opacity;
+    sail.material.depthWrite = opacity > 0.99;
+  }
 }
 
 /** The hero takes the helm of the Gull's Promise at her berth in Saltmere. */
@@ -88,6 +95,7 @@ function leaveShip(landX, landZ) {
   player.z = landZ;
   player.destination = null;
   ship.visible = false;
+  wake.hide();
   setMooredGullVisible(true);
   cameraState.target.set(player.x, 0, player.z);
 }
@@ -97,6 +105,7 @@ export function resetSailing() {
   player.ship = null;
   if (ship) {
     ship.visible = false;
+    wake.hide();
   }
   setMooredGullVisible(true);
 }
@@ -147,6 +156,7 @@ export function updateSailing(dt) {
     if (canSail(state.x, state.z, state.heading + step)) {
       state.heading += step;
     }
+    state.turning = Math.sign(turn) * Math.min(1, Math.abs(turn));
     /* the sails fill more the closer the bow is to the course */
     const along = Math.max(0, Math.cos(turn));
     state.speed = Math.max(
@@ -158,6 +168,7 @@ export function updateSailing(dt) {
     }
   } else {
     state.speed = Math.max(0, state.speed - SAILING.slowdown * dt);
+    state.turning = 0;
   }
   const [forwardX, forwardZ] = forwardOf(state.heading);
   const nextX = state.x + forwardX * state.speed * dt;
@@ -214,43 +225,40 @@ export function updateSailing(dt) {
   const swell = Math.sin(time * 1.3) * 0.08;
   ship.position.set(state.x, WATER_Y + swell, state.z);
   ship.rotation.set(Math.sin(time * 0.9) * 0.025, state.heading, Math.sin(time * 1.1) * 0.03);
-  if (ship.userData.wheel) {
-    ship.userData.wheel.rotation.z = state.speed * 0.05 * Math.sin(time * 0.5);
-  }
-  const helmX = state.x - forwardX * HELM_AFT;
-  const helmZ = state.z - forwardZ * HELM_AFT;
+  wake.update(state.x, state.z, state.heading, state.speed, dt);
+  /* the wheel turns with the helm put over */
+  state.wheel = (state.wheel || 0) * Math.exp(-dt * 1.5) + (state.turning || 0) * dt * 6;
+  ship.userData.wheel.rotation.z = state.wheel;
+  fadeSails(ship, state.heading);
+  /* the hero stands on the quarterdeck, behind the wheel, facing the bow */
+  const helm = ship.userData.helm;
+  const helmX = state.x - forwardX * helm.z;
+  const helmZ = state.z - forwardZ * helm.z;
   player.x = helmX;
   player.z = helmZ;
   player.sprite.face(forwardX, forwardZ);
   player.sprite.play("idle");
-  player.sprite.group.position.set(helmX, WATER_Y + ship.userData.deck + swell, helmZ);
+  player.sprite.group.position.set(helmX, WATER_Y + helm.y + swell, helmZ);
   player.sprite.update(dt, cameraState);
   UI.positionLabel(
     player.label,
     helmX,
-    WATER_Y + ship.userData.deck + player.sprite.height + 0.15,
+    WATER_Y + helm.y + player.sprite.height + 0.15,
     helmZ,
     camera,
   );
 
-  /* the wake: foam at the bow and behind the stern */
+  /* spray thrown up at the bow when she runs fast (the wake itself is sea.js's) */
   wakeTimer -= dt;
-  if (state.speed > 1.5 && wakeTimer <= 0) {
-    wakeTimer = 0.07;
-    const [bow, , stern] = hullPoints(state.x, state.z, state.heading);
-    burst(bow[0] + forwardX * 2, WATER_Y + 0.2, bow[1] + forwardZ * 2, {
+  if (state.speed > 5 && wakeTimer <= 0) {
+    wakeTimer = 0.09;
+    const [bow] = hullPoints(state.x, state.z, state.heading);
+    burst(bow[0] + forwardX * 2.2, WATER_Y + 0.3, bow[1] + forwardZ * 2.2, {
       color: 0xf2f6f8,
       count: 3,
-      speed: 2,
+      speed: 2.2,
       size: 3,
-      life: 0.6,
-    });
-    burst(stern[0] - forwardX * 2.5, WATER_Y + 0.1, stern[1] - forwardZ * 2.5, {
-      color: 0xe8f0f4,
-      count: 2,
-      speed: 1,
-      size: 4,
-      life: 1.2,
+      life: 0.5,
     });
   }
   return true;
@@ -269,25 +277,24 @@ export function updatePeerShips(dt, time) {
     if (!Array.isArray(pose)) {
       if (entry) {
         entry.group.visible = false;
+        entry.wake.hide();
       }
       continue;
     }
     if (!entry) {
-      entry = {
-        group: builders.ship({
-          length: HULL.length,
-          beam: HULL.beam,
-          sail: "cloth_red",
-          hullColor: 0x3e4a5a,
-        }),
-      };
+      entry = { group: gullsPromise(), wake: createWake(), speed: 0 };
       scene.add(entry.group);
       [entry.x, entry.z, entry.heading] = pose;
       peerShips.set(id, entry);
     }
     const follow = 1 - Math.exp(-6 * dt);
-    entry.x += (pose[0] - entry.x) * follow;
-    entry.z += (pose[1] - entry.z) * follow;
+    const stepX = (pose[0] - entry.x) * follow;
+    const stepZ = (pose[1] - entry.z) * follow;
+    entry.x += stepX;
+    entry.z += stepZ;
+    /* her speed, from how far she moved: for the wake */
+    const moved = dt > 0 ? Math.hypot(stepX, stepZ) / dt : 0;
+    entry.speed += (moved - entry.speed) * Math.min(1, dt * 3);
     let turn = pose[2] - entry.heading;
     turn = Math.atan2(Math.sin(turn), Math.cos(turn));
     entry.heading += turn * follow;
@@ -295,11 +302,15 @@ export function updatePeerShips(dt, time) {
     entry.group.position.set(entry.x, WATER_Y + Math.sin(time * 1.3) * 0.08, entry.z);
     entry.group.rotation.set(0, entry.heading, Math.sin(time * 1.1) * 0.03);
     /* their figure on the deck */
-    peer.sprite.group.position.y = WATER_Y + entry.group.userData.deck;
+    entry.wake.update(entry.x, entry.z, entry.heading, entry.speed, dt);
+    /* their figure on the quarterdeck, behind the wheel */
+    peer.sprite.group.position.y = WATER_Y + entry.group.userData.helm.y;
+    fadeSails(entry.group, entry.heading);
   }
   for (const [id, entry] of peerShips) {
     if (!peers.has(id)) {
       scene.remove(entry.group);
+      entry.wake.hide();
       peerShips.delete(id);
     }
   }

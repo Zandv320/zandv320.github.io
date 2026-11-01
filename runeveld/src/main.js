@@ -1446,6 +1446,10 @@ function cursorAt(clientX, clientY) {
   if (!game.isStarted || player.isDead) {
     return "default";
   }
+  /* at the helm every click steers */
+  if (player.ship) {
+    return "steer";
+  }
   const hit = screenRay(clientX, clientY)
     .intersectObjects(clickables, false)
     .find((candidate) => candidate.object.visible && candidate.object.parent.visible);
@@ -1458,6 +1462,9 @@ function cursorAt(clientX, clientY) {
   }
   if (data.villager || data.npc || data.peerId !== undefined) {
     return "talk";
+  }
+  if (data.boardShip) {
+    return "board";
   }
   return data.node ? "gather" : "default";
 }

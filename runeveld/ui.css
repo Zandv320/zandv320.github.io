@@ -3938,6 +3938,12 @@ body.rpg-cursor #game[data-cursor="talk"] {
 body.rpg-cursor #game[data-cursor="gather"] {
   cursor: var(--cursor-gather);
 }
+body.rpg-cursor #game[data-cursor="board"] {
+  cursor: var(--cursor-board);
+}
+body.rpg-cursor #game[data-cursor="steer"] {
+  cursor: var(--cursor-steer);
+}
 
 /* a spell's flash over the whole screen (feel.js screenFlash) */
 .screen-flash {

@@ -1,5 +1,6 @@
 /* Eldoria – RPG cursors for the mouse, in the spirit of the classic MMO gauntlet: a steel glove with gold trim
-   that points, a sword over monsters, a speech bubble over people and a pickaxe over ore, trees and herbs.
+   that points, a sword over monsters, a speech bubble over people, a pickaxe over ore, trees and herbs, an anchor
+   over a ship you can board, and a ship's wheel over the water while you are at the helm.
    They are drawn as shapes on a canvas at the screen's real pixel density (1× and 2× through image-set), so they
    stay sharp on every screen. Touch screens have no cursor, so nothing changes there. */
 
@@ -162,11 +163,79 @@ function drawPickaxe(ctx) {
   shape(ctx, gold(ctx, 15, 5, 21, 11), () => roundRect(ctx, 15, 5.2, 5.6, 5.2, 1.6), 1.1);
 }
 
+/* An anchor, the ring at the top left: ring, stock across, shank, and the curved arms with their flukes. */
+function drawAnchor(ctx) {
+  ctx.translate(4, 3);
+  ctx.rotate(-0.35);
+  /* the ring */
+  ctx.lineWidth = 4.2;
+  ctx.strokeStyle = OUTLINE;
+  ctx.beginPath();
+  ctx.arc(9, 3.5, 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = gold(ctx, 6, 0, 12, 7);
+  ctx.beginPath();
+  ctx.arc(9, 3.5, 3, 0, Math.PI * 2);
+  ctx.stroke();
+  /* stock and shank */
+  shape(ctx, steel(ctx, 3, 7, 15, 10), () => roundRect(ctx, 2.5, 7.4, 13, 2.8, 1.2));
+  shape(ctx, steel(ctx, 7.5, 9, 10.5, 26), () => roundRect(ctx, 7.6, 9.5, 2.8, 16.5, 1.2));
+  /* the arms: a curve from one fluke under the crown to the other */
+  shape(ctx, steel(ctx, 0, 18, 18, 30), () => {
+    ctx.moveTo(0.6, 18.5);
+    ctx.lineTo(3.8, 17.6);
+    ctx.quadraticCurveTo(4.2, 25, 9, 25.4);
+    ctx.quadraticCurveTo(13.8, 25, 14.2, 17.6);
+    ctx.lineTo(17.4, 18.5);
+    ctx.quadraticCurveTo(17, 29.5, 9, 29.8);
+    ctx.quadraticCurveTo(1, 29.5, 0.6, 18.5);
+  });
+  shape(ctx, gold(ctx, 7, 24, 11, 31), () => ctx.arc(9, 28.6, 1.6, 0, Math.PI * 2), 1);
+}
+
+/* A ship's wheel: a rim with eight handles, a gold hub; its top left handle is the point. */
+function drawWheel(ctx) {
+  const cx = 16;
+  const cy = 16;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const x = cx + Math.cos(angle) * 14;
+    const y = cy + Math.sin(angle) * 14;
+    ctx.lineWidth = 4.4;
+    ctx.strokeStyle = OUTLINE;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = "#8a5a2b";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = OUTLINE;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 9.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#a8743c";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 9.5, 0, Math.PI * 2);
+  ctx.stroke();
+  shape(ctx, gold(ctx, cx - 3, cy - 3, cx + 3, cy + 3), () => ctx.arc(cx, cy, 3.2, 0, Math.PI * 2));
+}
+
 const CURSORS = {
   default: { draw: drawGauntlet, hot: [2, 2] },
   attack: { draw: drawSword, hot: [2, 2] },
   talk: { draw: drawBubble, hot: [2, 2] },
   gather: { draw: drawPickaxe, hot: [2, 2] },
+  board: { draw: drawAnchor, hot: [4, 2] },
+  steer: { draw: drawWheel, hot: [16, 16] },
 };
 
 function render(cursor, scale) {
@@ -209,7 +278,7 @@ export function setupCursors() {
   document.body.classList.add("rpg-cursor");
 }
 
-/** The cursor over the game world: 'default', 'attack', 'talk' or 'gather'. */
+/** The cursor over the game world: 'default', 'attack', 'talk', 'gather', 'board' or 'steer'. */
 export function setWorldCursor(canvas, kind) {
   if (canvas.dataset.cursor !== kind) {
     canvas.dataset.cursor = kind;
