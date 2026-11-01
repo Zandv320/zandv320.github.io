@@ -2,23 +2,36 @@
    A walled city of cobbles between the gate in the south and the quay in the north: the Salty Gull and the sailors'
    guild in the west quarter, the harbour square with its market in the middle, the smithy, and in the east the old
    warehouses Maelis has taken. Beyond the quay the sea, below the land: three wooden piers with ships moored along
-   them, and the stone mole out to the lighthouse. The sea moves, the ships ride it, and at night the lighthouse
-   sweeps its beam over the water (updateSaltmere). */
+   them, and the stone mole out to the lighthouse. The sea moves and foams against the quay, ships and buoys ride
+   it, gulls wheel over the harbour and sit on the bollards, and at night the lighthouse sweeps its beam over the
+   water (updateSaltmere). Near the water you hear the waves and the gulls. */
 import * as THREE from "three";
 import * as builders from "./builders.js";
 import { SALTMERE, PIERS, MOLE, LIGHTHOUSE, SALTY_GULL, WATER_Y } from "./rules/saltmere.js";
 import { daylight } from "./daylight.js";
+import { player } from "./game-state.js";
+import { sfx } from "./audio.js";
 
 /* the sea reaches this far, so it fills the view from anywhere in the city however the camera turns */
 const SEA = { x0: -330, x1: 30, z1: SALTMERE.z0, z0: -580 };
 /* the quay wall goes down this far below the land */
 const QUAY_DEPTH = 1.8;
 
-/* the ships riding at anchor: {group, phase, roll} */
+/* everything riding the swell (ships, boats, buoys): {group, y, rotation, phase, roll} */
 const ships = [];
 let seaTexture = null;
 let lighthouseBeam = null;
 let lighthouseLamp = null;
+/* the foam along the quay and around the mole, which breathes with the waves */
+const foam = [];
+/* the gulls: flying ones {group, wings, cx, cz, radius, height, speed, angle}, sitting ones {group, hopAt} */
+const gulls = [];
+const sittingGulls = [];
+/* how long a sitting gull's hop takes */
+const HOP_SECONDS = 0.35;
+/* the next wave and gull cry the hero hears near the water */
+let nextWave = 0;
+let nextGull = 0;
 
 /** Builds Saltmere (world.js calls this with its build context). */
 export function buildSaltmere({ scene, prop, place, pending, seededRandom, obstacles }) {
@@ -150,9 +163,72 @@ export function buildSaltmere({ scene, prop, place, pending, seededRandom, obsta
   forge.userData.mapKind = null;
   place(forge, -134.5, -347, { rotation: Math.PI / 2 });
   pending.push(prop("anvil", -133, -349.6, { radius: 0.4 }));
-  place(builders.house({ w: 5, d: 4.5, h: 3, windows: 1 }), -128, -357, {
+  place(builders.house({ w: 5, d: 4.5, h: 3, windows: 1 }), -130, -357, {
     rotation: -Math.PI / 2,
   });
+
+  /* ----- more of the town: houses along the main street and by the square, trees, flowers, banners, a well ----- */
+  for (const [x, z, w, d, rotation, h] of [
+    [-139, -341, 6, 5, Math.PI, 3.2],
+    [-139, -352.5, 6, 5.5, -Math.PI / 2, 3.6],
+    [-131.5, -371, 5, 4.5, -Math.PI / 2, 3],
+    [-153, -341.5, 5, 4.5, Math.PI, 3.4],
+  ]) {
+    place(builders.house({ w, d, h, windows: 2, roofHeight: 2.3 }), x, z, { rotation });
+  }
+  for (const [x, z] of [
+    [-186.5, -338],
+    [-167.5, -337.5],
+    [-156.5, -362],
+    [-135.5, -374.2],
+    [-188, -361],
+  ]) {
+    pending.push(prop("tree2", x, z, { radius: 0.55, shadow: 1.8, scale: 1.15 }));
+  }
+  for (const [x, z, name] of [
+    [-149.6, -340.5, "flowers"],
+    [-142.4, -346.5, "flowers2"],
+    [-149.6, -357, "flowers2"],
+    [-167.5, -349.5, "flowers"],
+    [-160.2, -369.5, "flowers"],
+    [-136.4, -356.5, "flowers2"],
+    [-182.4, -341, "flowers2"],
+  ]) {
+    pending.push(prop(name, x, z, { scale: 1.3 }));
+  }
+  /* the city's banners along the main street, green and red */
+  for (const [x, z, cloth] of [
+    [-149.4, -344, "cloth_green"],
+    [-142.6, -350, "cloth_red"],
+    [-149.4, -356, "cloth_red"],
+    [-142.6, -360, "cloth_green"],
+  ]) {
+    place(builders.flag(3.4, cloth), x, z, { radius: 0.2 });
+  }
+  place(builders.well(), -164.5, -342.5, { radius: 1.3 });
+  /* washing hung out between the houses, crates and barrels at the back doors */
+  for (const [ax, az, bx, bz] of [
+    [-187, -346.2, -182, -346.2],
+    [-165.5, -357, -165.5, -361.5],
+    [-143.2, -337.2, -136.5, -337.2],
+  ]) {
+    scene.add(clothesline(ax, az, bx, bz, random));
+    obstacles.push({ x: ax, z: az, r: 0.2 }, { x: bx, z: bz, r: 0.2 });
+  }
+  for (const [x, z] of [
+    [-182.2, -357.8],
+    [-168, -364.4],
+    [-141.8, -356.6],
+    [-134, -369],
+  ]) {
+    place(builders.barrel(), x, z, { radius: 0.45 });
+  }
+  for (const [x, z] of [
+    [-188.2, -366],
+    [-155.4, -338.4],
+  ]) {
+    pending.push(prop("crypt_crates", x, z, { radius: 0.7, scale: 0.9 }));
+  }
 
   /* ----- the old warehouses in the east quarter: long, of stone, with crates in the lanes ----- */
   for (const [x, z, w, d] of [
@@ -213,13 +289,30 @@ export function buildSaltmere({ scene, prop, place, pending, seededRandom, obsta
     pending.push(prop("crypt_crates", x, z, { radius: 0.7, scale: 0.9 }));
   }
   pending.push(prop("woodpile", -170, -379, { radius: 0.5 }));
+  /* the harbour crane, swinging a crate out over the water, with cargo waiting beside it */
+  place(builders.harborCrane(), -162, -384.4, { rotation: Math.PI });
+  for (const [x, z] of [
+    [-164.6, -382.4],
+    [-159.4, -382.6],
+  ]) {
+    pending.push(prop("crypt_crates", x, z, { radius: 0.7, scale: 0.9 }));
+  }
+  for (const [x, z] of [
+    [-165.8, -383.9],
+    [-158.2, -384.1],
+  ]) {
+    place(builders.barrel(), x, z, { radius: 0.45 });
+  }
+  /* nets drying at the west end of the quay */
+  place(builders.netRack(3), -187.4, -381.6, { rotation: Math.PI / 2 });
+  place(builders.netRack(2.6), -183.8, -377.6);
 
   /* ----- the sea, the quay wall, the piers, the mole and the lighthouse, the ships ----- */
   buildSea(scene);
   for (const pier of PIERS) {
     buildPier(scene, pier, random);
   }
-  buildMole(scene, place);
+  buildMole(scene, place, obstacles, random);
   /* along the west pier two merchantmen, between the piers fishing boats, by the east pier the Gull's Promise */
   moor(scene, builders.ship({ length: 15, beam: 4.8 }), -180, -396, 0.04);
   moor(scene, builders.ship({ length: 12, beam: 4.2, masts: 1 }), -166.5, -397, -0.03);
@@ -233,11 +326,192 @@ export function buildSaltmere({ scene, prop, place, pending, seededRandom, obsta
     -397,
     0,
   );
+  /* lanterns out on the piers and the mole */
   for (const [x, z] of [
     [-127, -393],
     [-174, -400.5],
+    [-150.7, -403],
+    [-172.6, -390],
+    [-103.8, -392],
+    [-108.2, -401],
   ]) {
     lantern(x, z);
+  }
+  /* buoys marking the way in */
+  for (const [x, z] of [
+    [-160, -413],
+    [-137, -411],
+    [-189, -405],
+    [-115, -424],
+    [-178, -418],
+  ]) {
+    moor(scene, buoy(), x, z, 0);
+  }
+  buildFoam(scene);
+  buildGulls(scene);
+}
+
+/* A washing line between two posts from (ax, az) to (bx, bz), with shirts and sheets in a few colours on it. */
+function clothesline(ax, az, bx, bz, random) {
+  const group = new THREE.Group();
+  for (const [x, z] of [
+    [ax, az],
+    [bx, bz],
+  ]) {
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.07, 2.2, 5).translate(0, 1.1, 0),
+      builders.material("wood_dark", 0.2, 2.2),
+    );
+    post.position.set(x, 0, z);
+    group.add(post);
+  }
+  const length = Math.hypot(bx - ax, bz - az);
+  const angle = Math.atan2(bx - ax, bz - az);
+  const line = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, length, 3).rotateX(Math.PI / 2),
+    new THREE.MeshLambertMaterial({ color: 0xd8d0b8 }),
+  );
+  line.position.set((ax + bx) / 2, 2.05, (az + bz) / 2);
+  line.rotation.y = angle;
+  group.add(line);
+  const colors = [0xe8e2d0, 0x6a8ac0, 0xc05a4a, 0xe0c060, 0x7aa07a, 0xf0ece4];
+  for (let t = 0.12; t < 0.9; t += 0.16 + random() * 0.06) {
+    const width = 0.5 + random() * 0.4;
+    const height = 0.5 + random() * 0.5;
+    const cloth = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height).translate(0, -height / 2, 0),
+      new THREE.MeshLambertMaterial({
+        color: colors[Math.floor(random() * colors.length)],
+        side: THREE.DoubleSide,
+      }),
+    );
+    cloth.position.set(ax + (bx - ax) * t, 2.04, az + (bz - az) * t);
+    /* the cloth hangs along the line, turned a little by the wind */
+    cloth.rotation.set(0.15, angle + Math.PI / 2, 0);
+    group.add(cloth);
+  }
+  return group;
+}
+
+/* a red buoy with a white band and a cone on top */
+function buoy() {
+  const group = new THREE.Group();
+  const red = new THREE.MeshLambertMaterial({ color: 0xc23a2c });
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.34, 0.7, 10).translate(0, 0.15, 0),
+    red,
+  );
+  const band = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.29, 0.29, 0.14, 10).translate(0, 0.32, 0),
+    new THREE.MeshLambertMaterial({ color: 0xf0eadc }),
+  );
+  const top = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.4, 8).translate(0, 0.7, 0), red);
+  group.add(body, band, top);
+  return group;
+}
+
+/* white foam where the waves meet the quay, the mole and its head */
+function buildFoam(scene) {
+  const material = () =>
+    new THREE.MeshBasicMaterial({
+      color: 0xf2f6f8,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+    });
+  const strip = (width, depth, x, z, rotation = 0) => {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), material());
+    mesh.rotation.set(-Math.PI / 2, 0, rotation);
+    mesh.position.set(x, WATER_Y + 0.02, z);
+    scene.add(mesh);
+    foam.push(mesh);
+  };
+  /* along the quay, broken where the piers stand */
+  let start = SALTMERE.x0 - 40;
+  const gaps = [...PIERS.map((pier) => [pier.x, pier.halfWidth]), [MOLE.x, MOLE.halfWidth]].sort(
+    (a, b) => a[0] - b[0],
+  );
+  for (const [gapX, half] of [...gaps, [SALTMERE.x1 + 40, 0]]) {
+    const end = gapX - half - 0.2;
+    if (end > start) {
+      strip(end - start, 0.55, (start + end) / 2, SALTMERE.z0 - 0.3);
+    }
+    start = gapX + half + 0.2;
+  }
+  const moleLength = SALTMERE.z0 - MOLE.end;
+  for (const side of [-1, 1]) {
+    strip(0.55, moleLength, MOLE.x + side * (MOLE.halfWidth + 0.3), (SALTMERE.z0 + MOLE.end) / 2);
+  }
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(MOLE.headRadius + 0.38, MOLE.headRadius + 1, 40).rotateX(-Math.PI / 2),
+    material(),
+  );
+  ring.position.set(MOLE.head[0], WATER_Y + 0.02, MOLE.head[1]);
+  scene.add(ring);
+  foam.push(ring);
+}
+
+/* a gull: a white body with grey wings that flap (wings[0], wings[1]) */
+function gullMesh() {
+  const group = new THREE.Group();
+  const white = new THREE.MeshLambertMaterial({ color: 0xf4f4f0 });
+  const grey = new THREE.MeshLambertMaterial({ color: 0x9aa2ac, side: THREE.DoubleSide });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.5), white);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 0.14), white);
+  head.position.set(0, 0.06, -0.3);
+  const beak = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05, 0.04, 0.1),
+    new THREE.MeshLambertMaterial({ color: 0xe8b040 }),
+  );
+  beak.position.set(0, 0.05, -0.41);
+  group.add(body, head, beak);
+  const wings = [];
+  for (const side of [-1, 1]) {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, -0.12);
+    shape.lineTo(side * 0.55, 0.05);
+    shape.lineTo(side * 0.5, 0.16);
+    shape.lineTo(0, 0.14);
+    const wing = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2), grey);
+    wing.position.y = 0.04;
+    group.add(wing);
+    wings.push(wing);
+  }
+  group.userData.wings = wings;
+  return group;
+}
+
+/* gulls wheeling over the harbour, and a few resting on the bollards and the pier posts */
+function buildGulls(scene) {
+  for (let k = 0; k < 10; k++) {
+    const group = gullMesh();
+    scene.add(group);
+    gulls.push({
+      group,
+      cx: -185 + Math.random() * 90,
+      cz: -418 + Math.random() * 26,
+      radius: 5 + Math.random() * 10,
+      height: 4.5 + Math.random() * 4,
+      speed: (0.25 + Math.random() * 0.3) * (Math.random() < 0.5 ? -1 : 1),
+      angle: Math.random() * Math.PI * 2,
+      flapPhase: Math.random() * 10,
+    });
+  }
+  for (const [x, y, z] of [
+    [-183.5, 0.78, SALTMERE.z0 + 0.6],
+    [-139.5, 0.78, SALTMERE.z0 + 0.6],
+    [-125.3, 0.3, -401.5],
+    [-175.65, 0.3, -395.2],
+  ]) {
+    const group = gullMesh();
+    group.position.set(x, y, z);
+    for (const wing of group.userData.wings) {
+      wing.rotation.z = 0;
+      wing.scale.set(0.45, 1, 1);
+    }
+    group.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(group);
+    sittingGulls.push({ group, y, hopAt: Math.random() * 8 });
   }
 }
 
@@ -322,7 +596,7 @@ function buildPier(scene, pier, random) {
 }
 
 /* the mole: a causeway of stone out to the lighthouse on its round head */
-function buildMole(scene, place) {
+function buildMole(scene, place, obstacles, random) {
   const length = SALTMERE.z0 - MOLE.end;
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(MOLE.halfWidth * 2, QUAY_DEPTH, length + 1),
@@ -337,21 +611,55 @@ function buildMole(scene, place) {
   );
   head.position.set(headX, -QUAY_DEPTH / 2 + 0.01, headZ);
   scene.add(head);
+  /* breakwater stones heaped along the mole and round its head, in the surf */
+  const rock = builders.material("stone", 2, 2, 0.7);
+  const addRock = (x, z) => {
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + random() * 0.5, 0), rock);
+    stone.position.set(x, WATER_Y + random() * 0.3, z);
+    stone.rotation.set(random() * 3, random() * 3, random() * 3);
+    scene.add(stone);
+  };
+  for (let z = SALTMERE.z0 - 3; z > MOLE.end; z -= 1.6) {
+    addRock(MOLE.x + MOLE.halfWidth + 0.7 + random() * 0.4, z);
+  }
+  for (let k = 0; k < 18; k++) {
+    const angle = -Math.PI * 0.15 + (k / 18) * Math.PI * 1.3;
+    const r = MOLE.headRadius + 0.7 + random() * 0.4;
+    addRock(headX + Math.cos(angle) * r, headZ - Math.sin(angle) * r);
+  }
+  /* the lighthouse is added as it is (not merged into the batches), so its glass stays see-through */
   const [lightX, lightZ] = LIGHTHOUSE;
-  place(builders.tower(1.6, 11), lightX, lightZ, { radius: 2 });
-  /* the lamp at the top, and its beam: drawn over the night haze */
-  lighthouseLamp = new THREE.Mesh(
-    new THREE.SphereGeometry(0.55, 12, 8),
-    new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true }),
+  const tower = builders.lighthouse(10.5);
+  tower.position.set(lightX, 0, lightZ);
+  tower.traverse((object) => {
+    if (object.isMesh) {
+      object.castShadow = true;
+    }
+  });
+  scene.add(tower);
+  obstacles.push({ x: lightX, z: lightZ, r: 2.5 });
+  /* the keeper's cottage at its foot */
+  place(
+    builders.house({ w: 3, d: 2.6, h: 2.1, roofHeight: 1.4, windows: 1 }),
+    headX - 3.4,
+    headZ + 0.6,
+    {
+      rotation: Math.PI / 2,
+    },
   );
-  lighthouseLamp.position.set(lightX, 10.2, lightZ + 1.65);
+  /* the lamp in the lantern room, and its beam: drawn over the night haze */
+  lighthouseLamp = new THREE.Mesh(
+    new THREE.SphereGeometry(0.45, 12, 8),
+    new THREE.MeshBasicMaterial({ color: 0xfff0b0 }),
+  );
+  lighthouseLamp.position.set(lightX, tower.userData.lamp, lightZ);
   lighthouseLamp.renderOrder = 10001;
   scene.add(lighthouseLamp);
   lighthouseBeam = new THREE.Group();
   for (const side of [0, Math.PI]) {
     lighthouseBeam.add(beamFan(side));
   }
-  lighthouseBeam.position.set(lightX, 10.2, lightZ);
+  lighthouseBeam.position.set(lightX, tower.userData.lamp, lightZ);
   scene.add(lighthouseBeam);
 }
 
@@ -420,4 +728,46 @@ export function updateSaltmere(dt, time) {
     beam.material.opacity = 0.35 * Math.max(0, dark - 0.2);
   }
   lighthouseLamp.material.color.setScalar(1).lerp(new THREE.Color(0xffd070), dark);
+  for (let k = 0; k < foam.length; k++) {
+    foam[k].material.opacity = 0.22 + 0.14 * Math.sin(time * 1.3 + k * 0.7);
+  }
+  for (const gull of gulls) {
+    gull.angle += gull.speed * dt;
+    const x = gull.cx + Math.cos(gull.angle) * gull.radius;
+    const z = gull.cz + Math.sin(gull.angle) * gull.radius;
+    const y = gull.height + Math.sin(time * 0.7 + gull.flapPhase) * 0.6;
+    gull.group.position.set(x, y, z);
+    /* the beak (its -z) along the circle, banking into the turn */
+    const heading = Math.atan2(
+      Math.sin(gull.angle) * gull.speed,
+      -Math.cos(gull.angle) * gull.speed,
+    );
+    gull.group.rotation.set(0, heading, Math.sign(gull.speed) * 0.35);
+    /* flapping now and then, gliding in between */
+    const isFlapping = Math.sin(time * 0.5 + gull.flapPhase) > 0.2;
+    const flap = isFlapping ? Math.sin(time * 9 + gull.flapPhase) * 0.6 : 0.08;
+    gull.group.userData.wings[0].rotation.z = flap;
+    gull.group.userData.wings[1].rotation.z = -flap;
+  }
+  for (const gull of sittingGulls) {
+    /* a little hop and a turn now and then */
+    gull.hopAt -= dt;
+    if (gull.hopAt < 0) {
+      gull.hopAt = 4 + Math.random() * 8;
+      gull.hop = HOP_SECONDS;
+      gull.group.rotation.y += (Math.random() - 0.5) * 2;
+    }
+    gull.hop = Math.max(0, (gull.hop || 0) - dt);
+    gull.group.position.y = gull.y + Math.sin((gull.hop / HOP_SECONDS) * Math.PI) * 0.15;
+  }
+  /* the sound of the harbour, for a hero near the water */
+  const nearWater = Math.abs(player.z - SALTMERE.z0) < 16 && player.x > SEA.x0 && player.x < SEA.x1;
+  if (nearWater && time > nextWave) {
+    nextWave = time + 3.5 + Math.random() * 3;
+    sfx.wave();
+  }
+  if (nearWater && time > nextGull) {
+    nextGull = time + 6 + Math.random() * 10;
+    sfx.gull();
+  }
 }

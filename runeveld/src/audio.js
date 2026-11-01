@@ -111,7 +111,7 @@ function tone(type, startFrequency, endFrequency, duration, volume = 0.3, delay 
 function noise(
   duration,
   volume = 0.3,
-  { f0 = 1200, f1 = 300, type = "bandpass", q = 1, delay = 0 } = {},
+  { f0 = 1200, f1 = 300, type = "bandpass", q = 1, delay = 0, attack = 0.005 } = {},
 ) {
   const t = audioContext.currentTime + delay;
   const source = audioContext.createBufferSource();
@@ -125,7 +125,7 @@ function noise(
     filter.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + duration);
   }
   gain.gain.setValueAtTime(0, t);
-  gain.gain.linearRampToValueAtTime(volume, t + 0.005);
+  gain.gain.linearRampToValueAtTime(volume, t + attack);
   gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
   source.connect(filter);
   filter.connect(gain);
@@ -286,6 +286,18 @@ export const sfx = {
   sizzle() {
     if (!canPlay()) return;
     noise(0.5, 0.1, { f0: 6000, f1: 4000, type: "highpass", q: 0.5 });
+  },
+  /* a wave rolling in against the quay: a slow swell of low noise that washes out */
+  wave() {
+    if (!canPlay()) return;
+    noise(2.2, 0.07, { f0: 500, f1: 180, type: "lowpass", q: 0.4, attack: 0.9 });
+    noise(1.2, 0.025, { f0: 2400, f1: 900, q: 0.5, attack: 0.6, delay: 0.7 });
+  },
+  /* a gull's cry: two falling squeals */
+  gull() {
+    if (!canPlay()) return;
+    tone("triangle", 1500, 950, 0.22, 0.035);
+    tone("triangle", 1400, 880, 0.26, 0.03, 0.28);
   },
   chime() {
     if (!canPlay()) return;

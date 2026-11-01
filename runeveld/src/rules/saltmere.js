@@ -28,8 +28,8 @@ export const PIERS = [
 ];
 
 /* the stone mole out to the lighthouse, with a round head */
-export const MOLE = { x: -106, halfWidth: 2.5, end: -408, head: [-106, -412], headRadius: 4.5 };
-export const LIGHTHOUSE = [-106, -413.5];
+export const MOLE = { x: -106, halfWidth: 2.5, end: -408, head: [-106, -413], headRadius: 5 };
+export const LIGHTHOUSE = [-106, -415];
 /* the sea's surface, below the quay */
 export const WATER_Y = -0.9;
 

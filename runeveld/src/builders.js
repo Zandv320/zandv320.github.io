@@ -1633,8 +1633,37 @@ export function ship({
     : new THREE.MeshLambertMaterial({ color: 0xefe6cf, side: THREE.DoubleSide });
   sailMaterial.side = THREE.DoubleSide;
   const mastSpots = masts === 1 ? [0] : [-length * 0.18, length * 0.12];
+  const rigging = [];
+  const rope = (a, b) => rigging.push(new THREE.Vector3(...a), new THREE.Vector3(...b));
   mastSpots.forEach((z, i) => {
     const height = i === 0 && masts > 1 ? 7.5 : 9;
+    const top = deckHeight + height;
+    /* shrouds down to both sides of the deck, stays to the bow and the stern */
+    for (const side of [-1, 1]) {
+      for (const dz of [-0.5, 0.5]) {
+        rope([0, top - 0.8, z], [side * beam * 0.46, deckHeight + 0.45, z + dz]);
+      }
+    }
+    if (i === 0) {
+      rope([0, top, z], [0, deckHeight + 1.2, -length / 2 - 2.1]);
+    }
+    if (i === mastSpots.length - 1) {
+      rope([0, top, z], [0, deckHeight + 1.25, length / 2 - 0.4]);
+      /* the crow's nest on the tallest mast */
+      const nest = outline(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.42, 0.34, 0.4, 10, 1, true),
+          material("wood_dark", 2.6, 0.4),
+        ),
+        40,
+      );
+      nest.material.side = THREE.DoubleSide;
+      nest.position.set(0, top - 1.6, z);
+      group.add(nest);
+    }
+    if (i > 0) {
+      rope([0, top - 0.2, z], [0, deckHeight + 7.3, mastSpots[i - 1]]);
+    }
     const mast = outline(
       new THREE.Mesh(
         new THREE.CylinderGeometry(0.12, 0.17, height, 8),
@@ -1670,6 +1699,25 @@ export function ship({
       group.add(pennant);
     }
   });
+  group.add(
+    new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(rigging),
+      new THREE.LineBasicMaterial({ color: 0x3a2a20 }),
+    ),
+  );
+  /* a flag on a staff over the stern */
+  const staff = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 1.8, 5),
+    material("wood_dark", 0.1, 1.8),
+  );
+  staff.position.set(0, deckHeight + 1.2 + 0.9, length / 2 - 0.25);
+  const ensign = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.9, 0.55).rotateY(Math.PI / 2).translate(0, 0, 0.45),
+    material(sail === "cloth_red" ? "cloth_red" : "cloth_green", 0.9, 0.55),
+  );
+  ensign.material.side = THREE.DoubleSide;
+  ensign.position.set(0, deckHeight + 2.75, length / 2 - 0.25);
+  group.add(staff, ensign);
   /* the bowsprit */
   const bowsprit = outline(
     new THREE.Mesh(
@@ -1685,25 +1733,243 @@ export function ship({
   return group;
 }
 
-/** A rowing boat on the water, the bow towards -z. */
+/** A rowing boat afloat: its keel just under the waterline at y = 0, a dry floor inside, two oars; bow to -z. */
 export function rowingBoat(length = 3.2, beam = 1.3) {
   const group = new THREE.Group();
-  const hullMaterial = new THREE.MeshLambertMaterial({
+  const planks = new THREE.MeshLambertMaterial({
     map: texture("wood", 0.5, 0.5),
     color: 0xb08a6a,
   });
-  const shape = hullShape(beam, length);
-  shape.holes.push(hullShape(beam, length, 0.12));
-  group.add(hullPart(shape, 0.55, -0.25, hullMaterial));
+  const tarred = new THREE.MeshLambertMaterial({
+    map: texture("wood_dark", 0.5, 0.5),
+    color: 0x9a7a66,
+  });
+  /* the bottom is solid, so no water shows inside; the sides rise above it */
+  group.add(hullPart(hullShape(beam * 0.82, length * 0.92), 0.38, -0.22, tarred));
+  const sides = hullShape(beam, length);
+  sides.holes.push(hullShape(beam, length, 0.1));
+  group.add(hullPart(sides, 0.42, 0.05, planks));
   const floor = new THREE.Mesh(
     new THREE.ShapeGeometry(hullShape(beam, length, 0.1)).rotateX(-Math.PI / 2),
-    hullMaterial,
+    planks,
   );
-  floor.position.y = -0.1;
+  floor.position.y = 0.17;
   group.add(floor);
-  const bench = box(beam * 0.9, 0.08, 0.3, material("wood_dark", beam, 0.3));
-  bench.position.set(0, 0.12, 0.2);
-  group.add(bench);
+  for (const z of [-length * 0.12, length * 0.22]) {
+    const bench = box(beam * 0.9, 0.07, 0.26, material("wood_dark", beam, 0.3));
+    bench.position.set(0, 0.32, z);
+    group.add(bench);
+  }
+  /* the oars, shipped along the sides */
+  for (const side of [-1, 1]) {
+    const oar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, length * 0.85, 5).rotateX(Math.PI / 2),
+      material("wood", 0.1, 2),
+    );
+    oar.position.set(side * beam * 0.32, 0.4, 0.1);
+    oar.rotation.y = side * 0.06;
+    const blade = box(0.14, 0.03, 0.42, material("wood", 0.2, 0.4));
+    blade.position.set(side * beam * 0.34, 0.39, -length * 0.42);
+    group.add(oar, blade);
+  }
   group.userData.mapKind = "ship";
+  return group;
+}
+
+/** A lighthouse: a tapering tower in red and white bands on a stone plinth, a gallery with a rail, the glass lantern
+    room and a dome with a weather vane. userData.lamp is the height of the light (saltmere.js lights it). */
+export function lighthouse(h = 11) {
+  const group = new THREE.Group();
+  const plinth = outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(2.3, 2.5, 0.9, 8).translate(0, 0.45, 0),
+      material("stone", 14, 0.9, 0.85),
+    ),
+    30,
+  );
+  group.add(plinth);
+  /* the tower in five bands, wider at the foot */
+  const bottomRadius = 1.75;
+  const topRadius = 1.15;
+  const bands = 5;
+  const red = new THREE.MeshLambertMaterial({ color: 0xb8392c });
+  const white = material("wall", 8, h / bands, 1.05);
+  for (let i = 0; i < bands; i++) {
+    const y0 = 0.9 + (i * (h - 0.9)) / bands;
+    const y1 = 0.9 + ((i + 1) * (h - 0.9)) / bands;
+    const r0 = bottomRadius + ((topRadius - bottomRadius) * i) / bands;
+    const r1 = bottomRadius + ((topRadius - bottomRadius) * (i + 1)) / bands;
+    const band = new THREE.Mesh(
+      new THREE.CylinderGeometry(r1, r0, y1 - y0, 20).translate(0, (y0 + y1) / 2, 0),
+      i % 2 ? red : white,
+    );
+    group.add(band);
+  }
+  /* a door at the foot, small windows up the front, staggered */
+  const door = box(0.75, 1.5, 0.12, material("wood_dark", 0.8, 1.5));
+  door.position.set(0, 0.9 + 0.75, bottomRadius - 0.02);
+  group.add(door);
+  for (let i = 0; i < 4; i++) {
+    const y = 3 + i * 1.9;
+    const radius = bottomRadius + ((topRadius - bottomRadius) * (y - 0.9)) / (h - 0.9);
+    const angle = (i % 2 ? 0.5 : -0.5) + Math.PI / 2;
+    const pane = box(0.32, 0.55, 0.1, material("glass", 0.4, 0.6));
+    pane.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+    pane.rotation.y = Math.PI / 2 - angle;
+    group.add(pane);
+  }
+  /* the gallery: a stone ring with a rail on posts */
+  const gallery = outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(1.75, 1.55, 0.3, 20).translate(0, h + 0.15, 0),
+      material("stone", 10, 0.3, 0.9),
+    ),
+    30,
+  );
+  group.add(gallery);
+  const iron = new THREE.MeshLambertMaterial({ color: 0x2a2c34 });
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * Math.PI * 2;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05), iron);
+    post.position.set(Math.cos(angle) * 1.65, h + 0.6, Math.sin(angle) * 1.65);
+    group.add(post);
+  }
+  const rail = new THREE.Mesh(
+    new THREE.TorusGeometry(1.65, 0.035, 4, 32).rotateX(Math.PI / 2),
+    iron,
+  );
+  rail.position.y = h + 0.9;
+  group.add(rail);
+  /* the lantern room: panes of glass between dark frames */
+  const lanternHeight = 1.4;
+  const glass = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.95, 0.95, lanternHeight, 8).translate(
+      0,
+      h + 0.3 + lanternHeight / 2,
+      0,
+    ),
+    new THREE.MeshLambertMaterial({ color: 0xbfe0e8, emissive: 0x3a4a40 }),
+  );
+  group.add(glass);
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.08, lanternHeight, 0.08), iron);
+    frame.position.set(Math.cos(angle) * 0.97, h + 0.3 + lanternHeight / 2, Math.sin(angle) * 0.97);
+    group.add(frame);
+  }
+  /* the dome, verdigris copper, with a ball and a vane on top */
+  const dome = outline(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(1.08, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshLambertMaterial({ color: 0x4e8a78 }),
+    ),
+    40,
+  );
+  dome.position.y = h + 0.3 + lanternHeight;
+  group.add(dome);
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), iron);
+  ball.position.y = h + 0.3 + lanternHeight + 1.15;
+  group.add(ball);
+  const vane = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.03), iron);
+  vane.position.set(0.2, h + 0.3 + lanternHeight + 1.45, 0);
+  group.add(vane);
+  const spike = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.8, 4), iron);
+  spike.position.y = h + 0.3 + lanternHeight + 1.4;
+  group.add(spike);
+  group.userData.lamp = h + 0.3 + lanternHeight / 2;
+  group.userData.mapKind = "tower";
+  return group;
+}
+
+/** A wooden harbour crane: a post on a stone footing, a jib out over the water (+z) with a rope and a hook. */
+export function harborCrane() {
+  const group = new THREE.Group();
+  group.add(block(1.4, 0.5, 1.4, "stone", 0.85));
+  const post = box(0.4, 5, 0.4, material("wood_dark", 0.4, 5));
+  post.position.y = 0.5 + 2.5;
+  group.add(post);
+  const jib = outline(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.3, 4.6).translate(0, 0, 2),
+      material("wood_dark", 0.3, 4.6),
+    ),
+    40,
+  );
+  jib.position.y = 5.1;
+  jib.rotation.x = -0.18;
+  group.add(jib);
+  const brace = outline(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.2, 2.6).translate(0, 0, 1.3),
+      material("wood", 0.2, 2.6),
+    ),
+    40,
+  );
+  brace.position.y = 3.4;
+  brace.rotation.x = -0.75;
+  group.add(brace);
+  const rope = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 2.6, 4),
+    new THREE.MeshLambertMaterial({ color: 0xd8c8a0 }),
+  );
+  rope.position.set(0, 4.6, 4.3);
+  group.add(rope);
+  const hook = box(0.3, 0.3, 0.3, new THREE.MeshLambertMaterial({ color: 0x3a3c44 }));
+  hook.position.set(0, 3.15, 4.3);
+  group.add(hook);
+  /* a crate hanging from it */
+  const crate = block(0.8, 0.7, 0.8, "wood", 0.9);
+  crate.position.set(0, 2.4, 4.3);
+  group.add(crate);
+  group.userData.mapKind = "crane";
+  return group;
+}
+
+/** Fishing nets hung out to dry: two posts and a net between them, sagging a little (`length` along x). */
+export function netRack(length = 3) {
+  const group = new THREE.Group();
+  for (const side of [-1, 1]) {
+    const post = box(0.16, 1.9, 0.16, material("wood_dark", 0.2, 1.9));
+    post.position.x = (side * length) / 2;
+    group.add(post);
+  }
+  const bar = box(length + 0.2, 0.1, 0.1, material("wood", length, 0.1));
+  bar.position.y = 1.8;
+  group.add(bar);
+  /* the net: a dark mesh of lines, sagging in the middle */
+  const points = [];
+  const rows = 6;
+  const columns = 10;
+  const at = (i, j) => {
+    const u = i / columns - 0.5;
+    const sag = (1 - 4 * u * u) * 0.25 * (j / rows);
+    return new THREE.Vector3(u * length, 1.75 - (j / rows) * 1.3 - sag, 0.02);
+  };
+  for (let j = 0; j <= rows; j++) {
+    for (let i = 0; i < columns; i++) {
+      points.push(at(i, j), at(i + 1, j));
+    }
+  }
+  for (let i = 0; i <= columns; i++) {
+    for (let j = 0; j < rows; j++) {
+      points.push(at(i, j), at(i, j + 1));
+    }
+  }
+  group.add(
+    new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: 0x4a5a5a }),
+    ),
+  );
+  /* a float or two of cork */
+  for (const x of [-length * 0.25, length * 0.2]) {
+    const float = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 6, 4),
+      new THREE.MeshLambertMaterial({ color: 0xc89a5a }),
+    );
+    float.position.set(x, 0.75, 0.04);
+    group.add(float);
+  }
+  group.userData.mapKind = null;
   return group;
 }
