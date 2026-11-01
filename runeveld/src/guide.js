@@ -383,7 +383,7 @@ export function createGuide(deps) {
     },
     onTurnedIn(id) {
       if (QUESTS[id] && QUESTS[id].final) {
-        teach("saga_end");
+        teach(QUESTS[id].ending || "saga_end");
       }
     },
     /** For the world map and the minimap: the current target. */

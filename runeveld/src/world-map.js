@@ -3,6 +3,7 @@
    live layer (player, other players, monsters, npcs with quest markers) is redrawn every frame while the map is open. */
 import * as THREE from "three";
 import { CRYPT_ROOMS, cryptFloorCells, inCrypt, CRYPT_EXIT } from "./rules/crypt.js";
+import { FORGE_ROOMS, forgeFloorCells, inForge, FORGE_EXIT } from "./rules/forge.js";
 import {
   FOREST,
   inForest,
@@ -540,45 +541,59 @@ export function createWorldMap(deps) {
     return layer;
   }
 
-  /* The crypt is far from everything else: a small map of its own, floor and walls, for the minimap down there. */
-  let cryptLayer = null;
-  const cryptBounds = Object.values(CRYPT_ROOMS).reduce(
-    ([x0, z0, x1, z1], { rect }) => [
-      Math.min(x0, rect[0] - 2),
-      Math.min(z0, rect[1] - 2),
-      Math.max(x1, rect[2] + 2),
-      Math.max(z1, rect[3] + 2),
-    ],
-    [Infinity, Infinity, -Infinity, -Infinity],
-  );
-  function ensureCryptLayer(scale) {
-    if (cryptLayer && cryptLayer.scale === scale) {
-      return cryptLayer;
+  /* The crypt and the forge are far from everything else: a small map of their own each, floor and walls, for
+     the minimap down there. */
+  const undergroundLayers = new Map();
+  const UNDERGROUND = {
+    crypt: { rooms: CRYPT_ROOMS, cells: cryptFloorCells, exit: CRYPT_EXIT, inside: inCrypt },
+    forge: {
+      rooms: FORGE_ROOMS,
+      cells: forgeFloorCells,
+      exit: FORGE_EXIT,
+      inside: inForge,
+      wall: "#3a221c",
+      floor: "#6a4636",
+    },
+  };
+  function ensureUndergroundLayer(key, scale) {
+    const cached = undergroundLayers.get(key);
+    if (cached && cached.scale === scale) {
+      return cached;
     }
-    const [x0, z0, x1, z1] = cryptBounds;
+    const place = UNDERGROUND[key];
+    const [x0, z0, x1, z1] = Object.values(place.rooms).reduce(
+      ([ax0, az0, ax1, az1], { rect }) => [
+        Math.min(ax0, rect[0] - 2),
+        Math.min(az0, rect[1] - 2),
+        Math.max(ax1, rect[2] + 2),
+        Math.max(az1, rect[3] + 2),
+      ],
+      [Infinity, Infinity, -Infinity, -Infinity],
+    );
     const canvas = document.createElement("canvas");
     canvas.width = Math.ceil((x1 - x0) * scale);
     canvas.height = Math.ceil((z1 - z0) * scale);
     const g = canvas.getContext("2d");
-    const floor = cryptFloorCells();
+    const floor = place.cells();
     /* walls first, a cell wider than the floor all round, then the floor over them */
-    g.fillStyle = COLORS.cryptWall;
-    for (const key of floor) {
-      const [x, z] = key.split(",").map(Number);
+    g.fillStyle = place.wall || COLORS.cryptWall;
+    for (const cell of floor) {
+      const [x, z] = cell.split(",").map(Number);
       g.fillRect((x - 1 - x0) * scale, (z - 1 - z0) * scale, 3 * scale, 3 * scale);
     }
-    g.fillStyle = COLORS.cryptFloor;
-    for (const key of floor) {
-      const [x, z] = key.split(",").map(Number);
+    g.fillStyle = place.floor || COLORS.cryptFloor;
+    for (const cell of floor) {
+      const [x, z] = cell.split(",").map(Number);
       g.fillRect((x - x0) * scale, (z - z0) * scale, scale + 0.5, scale + 0.5);
     }
     /* the stairs up */
     g.font = `${Math.round(scale * 2.2)}px system-ui`;
     g.textAlign = "center";
     g.textBaseline = "middle";
-    g.fillText("🪜", (CRYPT_EXIT[0] - x0) * scale, (CRYPT_EXIT[1] - z0) * scale);
-    cryptLayer = { canvas, scale, x0, z0 };
-    return cryptLayer;
+    g.fillText("🪜", (place.exit[0] - x0) * scale, (place.exit[1] - z0) * scale);
+    const layer = { canvas, scale, x0, z0 };
+    undergroundLayers.set(key, layer);
+    return layer;
   }
 
   function ensureStaticLayer(scale) {
@@ -1101,9 +1116,12 @@ export function createWorldMap(deps) {
     }
     const scale = MINIMAP_SCALE * ratio;
     const layerScale = STATIC_SCALE * ratio;
-    /* down in the crypt its own map, with its own corner */
-    const isBelow = inCrypt(deps.player.x, deps.player.z);
-    const crypt = isBelow ? ensureCryptLayer(layerScale) : null;
+    /* down in the crypt or the forge its own map, with its own corner */
+    const below = Object.keys(UNDERGROUND).find((key) =>
+      UNDERGROUND[key].inside(deps.player.x, deps.player.z),
+    );
+    const isBelow = !!below;
+    const crypt = isBelow ? ensureUndergroundLayer(below, layerScale) : null;
     const layer = crypt ? crypt.canvas : ensureStaticLayer(layerScale);
     const layerX0 = crypt ? crypt.x0 : X0;
     const layerZ0 = crypt ? crypt.z0 : Z0;

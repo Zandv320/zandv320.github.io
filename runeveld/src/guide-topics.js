@@ -122,6 +122,14 @@ export const GUIDE_TOPICS = {
       "The story goes on at once in <b>Saga II: The Shattered Runes</b>. Captain Aldric has a message for you: the court archmage wants to see you.",
     ],
   },
+  saga2_end: {
+    title: "The First Flame is gone",
+    icons: ["wardens_heart", "ui_quests"],
+    body: [
+      "The Ember Warden is cold and the fire seal holds, but Maelis was there first: he carries the First Flame. That is the end of the chapters of <b>Saga II: The Shattered Runes</b> for now.",
+      "Two runes are bound to you. Open the <b>rune overview</b> (the rune button in the menu, or <kbd>U</kbd>) to see what they give you. Five seals are still out there: their runes show as question marks until you find them.",
+    ],
+  },
 };
 
 /* The order in which the guide book lists them. */

@@ -29,9 +29,12 @@
      where     where the guide points: {monster} (the nearest one alive), {npc}, {station} (the nearest of that kind)
      ui        which panel the guide highlights: 'inventory' or 'character'
      tutorial  the guide card shown on accepting it (guide.js)
-     final     the last quest of a saga */
+     final     the last quest of a saga (or of its chapters so far); `ending` names its guide card */
 
 import { EMBER_LANDS } from "./ember.js";
+import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
+
+const BELLOWS_HALL = forgePoint(24, 18);
 
 /* The sagas, with the first chapter of each. */
 export const SAGAS = [
@@ -61,6 +64,7 @@ export const CHAPTERS = {
   8: "Saltmere",
   9: "Across the Grey Sea",
   10: "The Ember Isles",
+  11: "The Forge of the First Flame",
 };
 
 export const QUESTS = {
@@ -1096,6 +1100,139 @@ export const QUESTS = {
       label: "the Gate of Kharos",
     },
     reward: { exp: 6000, zeny: 4000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  /* ---- chapter 11: the Forge of the First Flame, inside Mount Kharos, level 33 to 35 ---- */
+  edda_forge: {
+    giver: "Scholar Edda",
+    turnIn: "Smith-Mage Orven",
+    hint: "Walk to the Gate of Kharos on the mountain's north side and click the door to go in. Follow the Lava Run north to the passage before the sealed gate.",
+    chapter: 11,
+    main: true,
+    title: "Into the mountain",
+    level: 33,
+    after: "edda_gate",
+    intro:
+      "Someone is hammering in there. Someone, or something. The old books speak of a smith-mage who would not leave his forge when the others sealed the mountain. That was three hundred years ago. Go in, and find out who keeps the fire.",
+    progressText:
+      "Go through the Gate of Kharos and follow the Lava Run north. Whoever is hammering is somewhere in the forge.",
+    completeText:
+      "A visitor. After three hundred years, a visitor, and they come with a sword in hand. Well. Sit, if you can stand the heat. I am Orven, and this was my forge.",
+    goal: { type: "visit", npc: "Smith-Mage Orven" },
+    reward: { exp: 3200, zeny: 1800 },
+  },
+  orven_bellows: {
+    giver: "Smith-Mage Orven",
+    where: { monster: "forge_imp" },
+    hint: "The Hall of Bellows lies east of the Lava Run. Stand on each of its three stone plates for a moment. The imps there will not make it easy.",
+    chapter: 11,
+    main: true,
+    title: "Breath for the forge",
+    level: 33,
+    after: "edda_forge",
+    intro:
+      "The First Forge went cold the night a boy in a grey cloak came through here. Pale, quick, with eyes like a frozen lake. He took something, and the imps came in behind him. The forge cannot burn without breath. East of the Lava Run stand the great bellows: three plates on the floor work them. Step on all three.",
+    progressText:
+      "In the Hall of Bellows, east of the Lava Run, stand on all three plates until the bellows heave.",
+    completeText:
+      "There! You hear her drawing breath? Now the forge itself. I am too old to lift the bar, and too dead, some days.",
+    goal: {
+      type: "ritual",
+      seal: "bellows",
+      x: BELLOWS_HALL[0],
+      z: BELLOWS_HALL[1],
+      r: 14,
+      label: "the three bellows plates",
+    },
+    reward: { exp: 6800, zeny: 4200, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  orven_forge: {
+    giver: "Smith-Mage Orven",
+    where: { monster: "forge_golem" },
+    hint: "The First Forge stands against the north wall of the hall west of the Lava Run. Click the great hearth to light it. The golems that guard it are slow, but they hit hard.",
+    chapter: 11,
+    main: true,
+    title: "The First Flame",
+    level: 34,
+    after: "orven_bellows",
+    intro:
+      "West of the Lava Run is the First Forge. Where the old mages forged the seals, and where the gate to the Heart of Kharos takes its fire from. Light her, and the gate will rise. The golems we made to tend her have forgotten who made them. Remind them.",
+    progressText: "Light the great hearth of the First Forge, in the hall west of the Lava Run.",
+    completeText:
+      "The gate is open. Listen to her roar! I have not heard that sound in three hundred years. And now, the Heart. Be ready: something waits there that I am sorry I made.",
+    goal: {
+      type: "ritual",
+      seal: "forge",
+      x: GREAT_FORGE[0],
+      z: GREAT_FORGE[1],
+      r: 6,
+      label: "the First Forge",
+    },
+    reward: { exp: 7600, zeny: 4800, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  orven_warden: {
+    giver: "Smith-Mage Orven",
+    where: { monster: "ember_warden" },
+    hint: "The Ember Warden waits in the Heart of Kharos, past the gate. Hide behind the pillars from its blast; step out of the burning circles; the slimes it calls burn too.",
+    chapter: 11,
+    main: true,
+    title: "The Ember Warden",
+    level: 35,
+    after: "orven_forge",
+    intro:
+      "We made the Warden to guard the fire seal against anyone who would take it. It was the best thing we ever made. When the boy came, it let him pass, as if it knew him, and since then it has let nobody near. Its breath runs in a straight line: put stone between you and it.",
+    progressText:
+      "Defeat the Ember Warden in the Heart of Kharos. Hide behind the pillars from its blast.",
+    completeText:
+      "It is cold. After all this time. Thank you, and forgive me for asking it of you. Now the seal. Go and see what he left of it.",
+    goal: { type: "kill", monster: "ember_warden", count: 1 },
+    reward: { exp: 12000, zeny: 9000, items: [{ id: "grand_potion", count: 8 }] },
+  },
+  orven_seal: {
+    giver: "Smith-Mage Orven",
+    hint: "The fire seal stands at the north end of the Heart of Kharos: an altar between four stones carved with flames. Click the altar.",
+    chapter: 11,
+    main: true,
+    title: "The fire seal",
+    level: 35,
+    after: "orven_warden",
+    intro:
+      "Lay your hand on the seal, at the far end of the Heart. If the fire in it still knows the hands that made it, it will bind its rune to you, as the moon did at your altar. And then we will know what the boy took.",
+    progressText: "Click the altar of the fire seal at the north end of the Heart of Kharos.",
+    completeText:
+      "The Ember Rune, bound to you. Feel it? Breathe out (Q), and the First Flame breathes with you. But the seal is hollow. The heart of the fire is gone. He took it. Your Maelis took the First Flame.",
+    goal: {
+      type: "ritual",
+      seal: "ember",
+      x: FIRE_SEAL[0],
+      z: FIRE_SEAL[1],
+      r: 4,
+      label: "the fire seal",
+    },
+    reward: {
+      exp: 9000,
+      zeny: 5000,
+      rune: "ember",
+      items: [{ id: "grand_potion", count: 5 }],
+    },
+  },
+  orven_edda: {
+    giver: "Smith-Mage Orven",
+    turnIn: "Scholar Edda",
+    final: true,
+    ending: "saga2_end",
+    hint: "Leave the forge by the stairs in the Gate Hall, and go back round the mountain to the camp in Cinder Cove.",
+    chapter: 11,
+    main: true,
+    title: "What the boy took",
+    level: 35,
+    after: "orven_seal",
+    intro:
+      "Go back to your scholar. Tell her the moon seal and the fire seal hold, and that five more still stand somewhere in the world. Tell her what the boy carries. If he can steal fire from a seal, he is not stealing for himself.",
+    progressText: "Go back to Scholar Edda in the camp at Cinder Cove.",
+    completeText:
+      "The First Flame. Gone with him. Then he was never fleeing from us: he was racing us, seal by seal. Two runes are yours, and five seals remain. Rest tonight. Tomorrow we find out where the third one lies.",
+    goal: { type: "visit", npc: "Scholar Edda" },
+    reward: { exp: 8000, zeny: 6000, items: [{ id: "obsidian_ring", count: 1 }] },
   },
   tamsin_nets: {
     giver: "Fisherman Tamsin",

@@ -49,6 +49,7 @@ import {
   SALTMERE,
   inSaltmere,
   inEmberIsles,
+  inForge,
 } from "./regions.js";
 import { inWarehouses, WAREHOUSES } from "./rules/saltmere.js";
 import { buildSaltmere, updateSaltmere } from "./saltmere.js";
@@ -60,6 +61,14 @@ import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from ".
 import { BERTHS, BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
 import { CINDER_CAMP, MOUNT_KHAROS, onCoveJetty, inCamp, emberLandAt } from "./rules/ember.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
+import { FORGE_ROOMS, forgeRoomAt } from "./rules/forge.js";
+import {
+  buildForge,
+  forgeClickables,
+  clickForgeObject,
+  updateForge,
+  isHeroInForge,
+} from "./forge.js";
 import { buildSeals, sealClickables, clickSeal, isRitualWaiting } from "./seals.js";
 import { buildNorthroad, updateNorthroad } from "./northroad.js";
 import { createStorm, updateStorm } from "./storm.js";
@@ -105,6 +114,7 @@ import { throwSpear, updateMissiles } from "./missiles.js";
 import { bossCameraFocus, updateBossPresentation } from "./boss-presentation.js";
 import { packObstacle } from "./rules/collision.js";
 import { createSettings } from "./settings.js";
+import { createRuneCodex } from "./rune-codex.js";
 import { setupCursors, setWorldCursor } from "./cursors.js";
 import { createEffects } from "./effects.js";
 import { unlockAudio, sfx } from "./audio.js";
@@ -236,8 +246,9 @@ const ZONES = {
   saltmere: [SALTMERE.name, "The great harbor of the realm. Ships leave for the edge of the map."],
   sea: ["The Grey Sea", "Open water, and no chart past the lighthouse."],
   ember: [EMBER_ISLES.name, "Ash, black rock and the smoking mountain. Something waits under it."],
-  /* the stairs announce the crypt themselves (crypt.js) */
+  /* the stairs announce the crypt themselves (crypt.js), the Gate of Kharos the forge (forge.js) */
   crypt: null,
+  forge: null,
 };
 
 /* the normal camera zoom and tilt; the character select screen uses its own until Enter World */
@@ -259,8 +270,9 @@ async function init() {
     buildSaltmere,
     buildSea,
     buildEmberIsles,
+    buildForge,
   ]);
-  clickables.push(...cryptClickables(), ...sealClickables());
+  clickables.push(...cryptClickables(), ...sealClickables(), ...forgeClickables());
   createMerchant();
   createVillagers(scene, clickables);
   showNpcs(false);
@@ -632,6 +644,7 @@ function createPanels(name) {
     showGuide: (topicId) => game.guide.showCard(topicId),
   });
   game.settings = createSettings();
+  game.runeCodex = createRuneCodex();
   game.inventory = createInventory(player, {
     equip,
     use: (id) => {
@@ -1558,6 +1571,11 @@ function handleClick(clientX, clientY, mode = "select") {
       clickCryptObject(data.cryptObject);
       return;
     }
+    if (data.forgeObject) {
+      clearTarget();
+      clickForgeObject(data.forgeObject);
+      return;
+    }
     if (data.sealObject) {
       clearTarget();
       clickSeal(data.sealObject);
@@ -1635,7 +1653,8 @@ function isAnyPanelOpen() {
     game.dialogue.isOpen() ||
     game.worldMap.isOpen() ||
     game.workbench.isOpen() ||
-    game.settings.isOpen()
+    game.settings.isOpen() ||
+    game.runeCodex.isOpen()
   );
 }
 
@@ -1647,6 +1666,7 @@ function closeAllPanels() {
   game.worldMap.close();
   game.workbench.close();
   game.settings.close();
+  game.runeCodex.close();
 }
 
 /* Mouse and touch on the game canvas: click or tap to walk, target or talk; drag to walk along; right drag to
@@ -1812,6 +1832,8 @@ function setupKeyboardInput() {
       game.worldMap.toggle();
     } else if (event.code === "KeyO") {
       game.settings.toggle();
+    } else if (event.code === "KeyU") {
+      game.runeCodex.toggle();
     } else if (event.code === "KeyA" && event.ctrlKey && event.shiftKey) {
       event.preventDefault();
       game.adminPanel.toggle();
@@ -1868,6 +1890,7 @@ function setupButtons() {
   };
 
   $("#settings-button").onclick = () => game.settings.toggle();
+  $("#runes-button").onclick = () => game.runeCodex.toggle();
 
   /* fixed icons in the HTML (buttons, potion, sit, zeny) */
   document.querySelectorAll("[data-icon]").forEach((element) => {
@@ -1937,6 +1960,9 @@ const portraitContext = $("#hud-portrait").getContext("2d");
 function zoneAt(x, z) {
   if (inCrypt(x, z)) {
     return "crypt";
+  }
+  if (inForge(x, z)) {
+    return "forge";
   }
   if (inSaltmere(x, z, -1)) {
     return "saltmere";
@@ -2014,6 +2040,10 @@ function zoneLabel(zone, x, z) {
     const room = CRYPT_ROOMS[cryptRoomAt(x, z)];
     return (room && room.name) || "The Sunken Crypt";
   }
+  if (zone === "forge") {
+    const room = FORGE_ROOMS[forgeRoomAt(x, z)];
+    return (room && room.name) || "The Forge of the First Flame";
+  }
   if (zone === "capital") {
     return inCastle(x, z) ? "Aurelia Castle" : CAPITAL.name;
   }
@@ -2050,6 +2080,7 @@ function updateHotbar(time) {
 function stepWorld(dt, time) {
   updatePlayer(dt);
   updateCrypt(dt);
+  updateForge(dt);
   updateRunePowers();
   updateStorm(dt, time);
   updateNorthroad(dt, time);
@@ -2156,7 +2187,15 @@ function step(dt) {
   if (game.ambience) {
     /* dust behind everyone walking near the camera; villagers too, they make the streets feel alive */
     const movers = game.isStarted ? [player, ...peers.values(), ...villagers()] : [];
-    game.ambience.update(dt, time, cameraState, renderer, movers, 1 - daylight(), isHeroInCrypt());
+    game.ambience.update(
+      dt,
+      time,
+      cameraState,
+      renderer,
+      movers,
+      1 - daylight(),
+      isHeroInCrypt() || isHeroInForge(),
+    );
   }
   if (game.effects) {
     game.effects.update(dt, cameraState);
@@ -2171,7 +2210,7 @@ function step(dt) {
       color: [255, 240, 220],
       strength: 0.4,
     };
-    heroLightIn(isHeroInCrypt(), heroLight);
+    heroLightIn(isHeroInCrypt() || isHeroInForge(), heroLight);
     game.daylight.update(cameraState, game.isStarted && !player.isDead ? [heroLight] : []);
   }
   clockTimer += dt;

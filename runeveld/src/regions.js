@@ -17,6 +17,7 @@ import {
 
 import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/saltmere.js";
 import { inEmberIsles, inCinderCamp, emberSpotFor } from "./rules/ember.js";
+import { inForge, forgeSpotFor } from "./rules/forge.js";
 
 export {
   inCrypt,
@@ -28,6 +29,7 @@ export {
   isSaltmereSafe,
   inEmberIsles,
   inCinderCamp,
+  inForge,
 };
 
 /* Half width of the ground map around the village. */
@@ -239,9 +241,14 @@ export const isNorthroadHome = ([north, south], x, z) =>
   inNorthroad(x, z, 2) && z > north - 12 && z < south + 12;
 
 /** The fixed spot of a monster that keeps watch in one place (the crypt's, Northwatch's goblins, the bridge troll,
-    Saltmere's constructs, the monsters of the Ember Isles), or null for one that roams. */
+    Saltmere's constructs, the monsters of the Ember Isles and of the forge in their mountain), or null for one
+    that roams. */
 export const fixedSpot = (key, id) =>
-  spotFor(key, id) || northSpotFor(key, id) || saltmereSpotFor(key, id) || emberSpotFor(key, id);
+  spotFor(key, id) ||
+  northSpotFor(key, id) ||
+  saltmereSpotFor(key, id) ||
+  emberSpotFor(key, id) ||
+  forgeSpotFor(key, id);
 
 /** Does this monster go back to its own spot after a fight (and give up on anyone who leads it too far)? */
 export const keepsHome = (spec) =>
@@ -249,10 +256,11 @@ export const keepsHome = (spec) =>
   spec.area === "northwatch" ||
   spec.area === "bridge" ||
   spec.area === "saltmere" ||
-  spec.area === "ember";
+  spec.area === "ember" ||
+  spec.area === "forge";
 
-/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere, the Ember Isles or the
-    crypt), with a margin to the edge? The crypt needs none: its walls are obstacles. */
+/** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere, the Ember Isles, the
+    crypt or the forge), with a margin to the edge? The crypt and the forge need none: their walls are obstacles. */
 export function insideWorld(x, z, margin = 1.5) {
   return (
     inFields(x, z, margin) ||
@@ -261,7 +269,8 @@ export function insideWorld(x, z, margin = 1.5) {
     inNorthroad(x, z, margin) ||
     inSaltmere(x, z, margin) ||
     inEmberIsles(x, z, margin) ||
-    inCrypt(x, z)
+    inCrypt(x, z) ||
+    inForge(x, z)
   );
 }
 

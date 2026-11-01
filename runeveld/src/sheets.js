@@ -187,6 +187,8 @@ export const SHEETS = {
   }),
   fire_imp: cryptSheet("fire_imp", GOBLIN_FRAMES),
   ash_golem: cryptSheet("ash_golem", GOBLIN_FRAMES),
+  /* the Forge of the First Flame's guardian: the goblin chief as charred stone and fire */
+  ember_warden: cryptSheet("ember_warden", { ...GOBLIN_FRAMES, height: 32 }),
 };
 
 /**

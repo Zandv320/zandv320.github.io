@@ -542,6 +542,51 @@ export const ITEMS = {
     icon: "💍",
     description: "A band of black glass from the Obsidian Steps, so smooth it seems wet.",
   },
+  /* Saga II: the Forge of the First Flame and its Warden */
+  wardens_heart: {
+    name: "Warden's heart",
+    slot: "necklace",
+    hp: 160,
+    def: 6,
+    bonus: { vit: 3 },
+    price: 6200,
+    icon: "🧡",
+    description: "A shard of the Warden's molten core, cooled into a pendant. It beats, slowly.",
+  },
+  firstflame_blade: {
+    name: "Firstflame blade",
+    slot: "weapon",
+    layer: "sword3",
+    atk: 48,
+    bonus: { str: 3, agi: 1 },
+    price: 7600,
+    icon: "⚔️",
+    forClass: "swordsman",
+    description: "Forged at the First Forge before anyone alive was born. It remembers the fire.",
+  },
+  flamecaller_staff: {
+    name: "Flamecaller staff",
+    slot: "weapon",
+    layer: "staff3",
+    atk: 12,
+    matk: 66,
+    bonus: { int: 3 },
+    price: 7600,
+    icon: "🪄",
+    forClass: "mage",
+    description:
+      "The old smith-mages tended the forge's fire with it. It still answers when you call.",
+  },
+  molten_mantle: {
+    name: "Molten mantle",
+    slot: "cloak",
+    layer: "cloak3",
+    def: 13,
+    hp: 140,
+    price: 6800,
+    icon: "🧥",
+    description: "Layers of the Warden's shell, thin as cloth and glowing at the seams.",
+  },
   saltmere_cutlass: {
     name: "Saltmere cutlass",
     slot: "weapon",
@@ -1987,6 +2032,94 @@ export const EMBER_MONSTERS = {
 };
 Object.assign(MONSTERS, EMBER_MONSTERS);
 
+/* The Forge of the First Flame inside Mount Kharos (rules/forge.js): its keepers, stronger than those outside, each
+   on its own spot (area 'forge'), and the Ember Warden, a golem of molten stone, guarding the fire seal
+   (rules/bosses.js). */
+export const FORGE_MONSTERS = {
+  molten_slime: {
+    name: "Molten Slime",
+    level: 33,
+    hp: 4400,
+    atk: 150,
+    exp: 820,
+    zeny: [90, 170],
+    speed: 2.4,
+    aggressive: true,
+    range: 1.5,
+    aggroRange: 6,
+    sheet: "magma_slime",
+    scale: 1.25,
+    area: "forge",
+    respawn: [40, 60],
+    burns: true,
+    materials: { arcane_dust: 0.3 },
+    loot: { grand_potion: 0.12 },
+  },
+  forge_imp: {
+    name: "Forge Imp",
+    level: 33,
+    hp: 3600,
+    atk: 156,
+    exp: 820,
+    zeny: [100, 180],
+    speed: 3.5,
+    aggressive: true,
+    range: 5.5,
+    aggroRange: 8,
+    projectile: 0xffa040,
+    sheet: "fire_imp",
+    scale: 0.95,
+    area: "forge",
+    respawn: [40, 60],
+    materials: { imp_horn: 0.5 },
+    loot: { grand_potion: 0.12, ashwood_staff: 0.015 },
+  },
+  forge_golem: {
+    name: "Forge Golem",
+    level: 34,
+    hp: 8200,
+    atk: 182,
+    exp: 1400,
+    zeny: [150, 280],
+    speed: 2.1,
+    aggressive: true,
+    range: 2,
+    aggroRange: 6.5,
+    sheet: "ash_golem",
+    scale: 1.6,
+    area: "forge",
+    respawn: [50, 80],
+    materials: { golem_core: 0.5 },
+    loot: { grand_potion: 0.15, ashen_cloak: 0.02, obsidian_ring: 0.02 },
+  },
+  ember_warden: {
+    name: "The Ember Warden",
+    title: "Keeper of the First Flame",
+    level: 35,
+    hp: 24000,
+    atk: 196,
+    exp: 7200,
+    zeny: [1200, 2200],
+    speed: 2.3,
+    aggressive: true,
+    range: 2.4,
+    aggroRange: 10,
+    scale: 2.4,
+    lines: { summon: "Feed the flame!", enrage: "THE SHELL BREAKS. THE FIRE IS FREE." },
+    area: "forge",
+    respawn: [150, 210],
+    materials: { golem_core: 1 },
+    loot: {
+      wardens_heart: 0.25,
+      firstflame_blade: 0.22,
+      flamecaller_staff: 0.22,
+      molten_mantle: 0.25,
+      grand_potion: 0.8,
+    },
+  },
+};
+Object.assign(MONSTERS, FORGE_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -2105,6 +2238,11 @@ export const SPAWNS = [
   { monster: "magma_slime", count: 12 },
   { monster: "fire_imp", count: 12 },
   { monster: "ash_golem", count: 9 },
+  /* the Forge of the First Flame: one per spot in rules/forge.js */
+  { monster: "molten_slime", count: 4 },
+  { monster: "forge_imp", count: 4 },
+  { monster: "forge_golem", count: 3 },
+  { monster: "ember_warden", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

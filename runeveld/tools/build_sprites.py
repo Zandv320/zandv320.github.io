@@ -2106,6 +2106,9 @@ GOBLINS = {
     # lava an ash golem
     "fire_imp": (1, "imp"),
     "ash_golem": (2, "ash"),
+    # the Ember Warden, who guards the fire seal: the chief, his skin turned to charred stone and his red cape and
+    # crest to living fire (much larger in the game)
+    "ember_warden": (3, "warden"),
 }
 ORC_ANIMATIONS = ("idle", "walk", "attack", "hurt", "death")
 
@@ -2138,6 +2141,15 @@ def ash_stone(h, s, v):
     return 0.05, s * 0.12 + 0.04, v * 0.72
 
 
+def warden_molten(h, s, v):
+    """Green skin -> charred black stone with a warm glint; red (cape, crest) -> bright molten orange."""
+    if 0.14 < h < 0.42 and s > 0.25:
+        return 0.04, 0.45, v * 0.42 + 0.06
+    if (h < 0.06 or h > 0.92) and s > 0.35:
+        return 0.09, 1, min(1, v * 1.6 + 0.3)
+    return 0.05, s * 0.2, v * 0.5
+
+
 def build_goblins(packs_dir, out_dir):
     """The goblins of Northwatch and Grumm the bridge troll; returns the names of the sprite files written."""
     written = []
@@ -2158,6 +2170,8 @@ def build_goblins(packs_dir, out_dir):
             stacked = hsv_layer(stacked, imp_fire)
         elif colour == "ash":
             stacked = hsv_layer(stacked, ash_stone)
+        elif colour == "warden":
+            stacked = hsv_layer(stacked, warden_molten)
         stacked.save(out_dir / f"{name}.png")
         written.append(name)
         print(name, [frames_in_row(sheet, 64, 64, 0) for sheet in sheets])

@@ -56,7 +56,7 @@ function bossById(id) {
 /** boss_telegraph: a red lane (charge) or circle (cleave) on the ground that fills up until the blow lands. */
 export function bossTelegraph(data) {
   /* the troll's planks show as a lane too, on the stretch of the bridge that is going to break */
-  const isLane = data.kind === "charge" || data.kind === "planks";
+  const isLane = data.kind === "charge" || data.kind === "planks" || data.kind === "blast";
   const group = new THREE.Group();
   const area = warningMesh(isLane ? laneGeometry : discGeometry, 0.16);
   const fill = warningMesh(isLane ? laneGeometry : discGeometry, 0.32);
@@ -302,7 +302,7 @@ export function updateBossEffects(dt) {
     const { data, area, fill, edges } = warning;
     warning.time += dt;
     const progress = Math.min(1, warning.time / data.duration);
-    if (data.kind === "charge" || data.kind === "planks") {
+    if (data.kind === "charge" || data.kind === "planks" || data.kind === "blast") {
       fill.scale.set(data.width, 1, area.scale.z * progress);
     } else {
       fill.scale.setScalar(data.radius * progress);
@@ -322,6 +322,22 @@ export function updateBossEffects(dt) {
         if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
           sfx.bossSlam();
           shakeCamera(0.2, 0.2);
+        }
+      } else if (data.kind === "blast") {
+        /* fire roars down the lane, as far as the first pillar */
+        const length = Math.hypot(data.x1 - data.x0, data.z1 - data.z0);
+        for (let step = 0; step <= length; step += 1.2) {
+          const t = length ? step / length : 0;
+          burst(data.x0 + (data.x1 - data.x0) * t, 0.6, data.z0 + (data.z1 - data.z0) * t, {
+            color: 0xff8a2a,
+            count: 6,
+            speed: 3,
+            size: 3,
+          });
+        }
+        if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
+          sfx.bossSlam();
+          shakeCamera(0.3, 0.3);
         }
       } else if (data.kind === "planks") {
         /* the club comes down: splinters fly, whether the planks hold or not */

@@ -7,6 +7,7 @@ import { Sprite2D } from "./sprites.js";
 import * as UI from "./ui.js";
 import { isNight } from "./daylight.js";
 import { inCamp } from "./rules/ember.js";
+import { forgePoint } from "./rules/forge.js";
 import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } from "./appearance.js";
 
 /* The villagers: looks, route (list of points; a single point = standing still) and lines.
@@ -17,6 +18,9 @@ import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } fro
    smith, fish, harvest, brew, cook, chop) played while standing at a route point, facing workFacing,
    shop: SHOPS key, night: extra lines after dark, after: {questId: lines} that join once the player has finished
    that quest, so the world talks about what the player did. */
+/* Orven keeps his place in the passage before the Heart of Kharos, beside its gate */
+const FORGE_ORVEN = forgePoint(-1.8, 6.5);
+
 const VILLAGERS = [
   {
     name: "Guard Rolf",
@@ -1295,6 +1299,28 @@ const VILLAGERS = [
     night: ["Hear that rumble? That is the mountain. Or my stomach."],
     after: {
       tamsin_nets: ["Not one imp on the beach last night. Grandmother was right after all."],
+    },
+  },
+  /* ---- deep in Mount Kharos, in the passage before the Heart ---- */
+  {
+    name: "Smith-Mage Orven",
+    hair: "silver",
+    outfit: "armor1",
+    tunicColor: "red",
+    route: [FORGE_ORVEN],
+    facing: [0.4, 1],
+    lines: [
+      "Three hundred years I have kept this forge. The fire kept me. I stopped asking which of us was the smith.",
+      "Mind the channels in the Lava Run. They breathe, and when they breathe out, they burn.",
+      "The Warden was the best thing we ever made. That is the trouble with the best things.",
+    ],
+    night: ["Night? Down here it is always the hour of the hammer."],
+    after: {
+      orven_forge: ["Hear her? The First Forge, roaring again. I had forgotten how loud she was."],
+      orven_warden: ["Quiet in the Heart now. Quieter than it has been for three hundred years."],
+      orven_seal: [
+        "Gone. The flame is gone, and the boy who took it walks out into the world with it.",
+      ],
     },
   },
 ];

@@ -426,8 +426,8 @@ function finishChunk(job) {
 /* ---------- lava: from the crater down the mountain, across the land in rivers and pools, down the beaches into
    the sea; it glows by day and night ---------- */
 
-/* Lava in pixel art, 64 px square (4 units) and tileable: plates of red-hot crust with bright cracks between them. */
-function lavaTexture() {
+/** Lava in pixel art, 64 px square (4 units) and tileable: plates of red-hot crust with bright cracks between them. */
+export function lavaTexture() {
   const SIZE = 64;
   const canvas = document.createElement("canvas");
   canvas.width = SIZE;

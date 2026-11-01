@@ -15,8 +15,62 @@ export const RUNES = {
     duration: 10,
     /* the shell holds this share of the hero's HP */
     absorb: 0.25,
+    /* what the rune gives while it is bound, worn like an item (rules/stats.js) */
+    bonus: { hp: 150, def: 4, bonus: { vit: 2, int: 2 } },
+    color: "#c8b0ff",
+  },
+  ember: {
+    name: "Ember Rune",
+    power: "Emberbreath",
+    icon: "🔥",
+    quest: "orven_seal",
+    description:
+      "You breathe the First Flame: a cone of fire before you burns every monster in it for eight times your ATK or MATK, whichever is higher.",
+    cooldown: 40,
+    /* the cone: this long, this wide (radians, all of it), the damage as a multiple of the hero's best attack */
+    range: 7,
+    angle: 1.4,
+    mult: 8,
+    bonus: { atkPct: 0.05, matkPct: 0.05, bonus: { str: 2, dex: 2 } },
+    color: "#ff9a40",
   },
 };
+
+/** How many runes there are in all: one for each of the seven seals, most of them not yet found. */
+export const RUNE_SLOTS = 7;
+
+/** The bonuses of a rune in words, for the rune overview. */
+export function runeBonusLines(id) {
+  const bonus = RUNES[id]?.bonus || {};
+  const lines = [];
+  for (const [key, value] of Object.entries(bonus.bonus || {})) {
+    lines.push(`+${value} ${key.toUpperCase()}`);
+  }
+  for (const [key, label] of [
+    ["hp", "Max HP"],
+    ["sp", "Max SP"],
+    ["atk", "ATK"],
+    ["matk", "MATK"],
+    ["def", "DEF"],
+  ]) {
+    if (bonus[key]) {
+      lines.push(`+${bonus[key]} ${label}`);
+    }
+  }
+  for (const [key, label] of [
+    ["atkPct", "ATK"],
+    ["matkPct", "MATK"],
+  ]) {
+    if (bonus[key]) {
+      lines.push(`+${Math.round(bonus[key] * 100)}% ${label}`);
+    }
+  }
+  return lines;
+}
+
+/** What a hero's bound runes give, as items for deriveStats. */
+export const runeItems = (runes) =>
+  (Array.isArray(runes) ? runes : []).filter((id) => RUNES[id]?.bonus).map((id) => RUNES[id].bonus);
 
 export const RUNE_IDS = Object.keys(RUNES);
 

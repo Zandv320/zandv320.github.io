@@ -10,7 +10,8 @@ import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
 import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests.js";
 import { stormStrength, setStormOverride } from "./rules/weather.js";
 import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
-import { CAMP_WAKE, MOUNT_KHAROS } from "./rules/ember.js";
+import { CAMP_WAKE, MOUNT_KHAROS, EMBER_LANDS } from "./rules/ember.js";
+import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -317,6 +318,12 @@ export function createAdminPanel(ctx) {
       ["Quay", () => ctx.teleport(SALTMERE.square[0], SALTMERE.z0 + 3)],
       ["Cinder Cove", () => ctx.teleport(...CAMP_WAKE)],
       ["Kharos foot", () => ctx.teleport(MOUNT_KHAROS.x, MOUNT_KHAROS.z + MOUNT_KHAROS.radius + 4)],
+      [
+        "Kharos gate",
+        () => ctx.teleport(EMBER_LANDS.gate.center[0], EMBER_LANDS.gate.center[1] - 4),
+      ],
+      ["Forge", () => ctx.teleport(...FORGE_ENTRY)],
+      ["Heart of Kharos", () => ctx.teleport(...forgePoint(0, -2))],
     ]);
 
     /* ---------- monsters ---------- */

@@ -19,6 +19,8 @@
      boss_planks   {x0, z0, x1, z1}    a stretch of the bridge's deck falls into the gorge (rules/gorge.js)
      boss_boulder  {x0, z0, x1, z1, duration}  a rock thrown from (x0, z0) lands on (x1, z1)
      boss_reset    {}                  nobody left to fight: it heals and starts over (a broken bridge is mended)
+   A telegraph of kind 'blast' is a lane like 'charge', but the boss stays where it is and breathes fire along it;
+   the lane stops at the first wall or pillar, so whoever stands behind one is safe.
    Damage goes out as the usual monster_attack {id, target, damage}, per player that is hit. */
 
 import { GORGE, onBridge, plankStretch, breakPlanks, mendBridge, BRIDGE } from "./gorge.js";
@@ -69,6 +71,15 @@ export const BOSSES = {
     },
     enrage: { below: 0.25, cooldownFactor: 0.75, damageFactor: 1.2 },
   },
+  /* the Forge of the First Flame (rules/forge.js): pools of lava burst under whoever stands still, a blast of fire
+     runs down a lane until a pillar stops it, and below 30 % his shell of cooled stone breaks: faster, harder */
+  ember_warden: {
+    cleave: { every: [6, 8], windup: 1, radius: 3.4, damage: 1.8 },
+    lavaPools: { every: [6.5, 8.5], windup: 1.5, radius: 2, damage: 1.5, range: 16 },
+    blast: { every: [9, 12], windup: 1.9, length: 22, width: 3.4, damage: 2.8 },
+    summon: { below: 0.6, helper: "molten_slime", count: 2 },
+    enrage: { below: 0.3, cooldownFactor: 0.6, damageFactor: 1.3 },
+  },
 };
 /* a boss with nobody to fight for this long heals and starts over */
 const RESET_SECONDS = 8;
@@ -108,6 +119,7 @@ function brain(monster, now) {
       nextRunes: now + 4,
       nextPlanks: now + 2.5,
       nextDive: now + 7,
+      nextBlast: now + 5,
       idleFor: 0,
       hasSummoned: false,
       isEnraged: false,
@@ -243,6 +255,19 @@ export function bossTick(monster, target, dt, ctx) {
       }
       return true;
     }
+    if (move.kind === "blast-windup") {
+      if (now >= move.until) {
+        const blast = rules.blast;
+        strike(
+          monster,
+          playersOnLine(ctx.players, move.x0, move.z0, move.x1, move.z1, blast.width),
+          blast.damage,
+          ctx,
+        );
+        state.move = null;
+      }
+      return true;
+    }
     if (move.kind === "volley-windup") {
       if (now >= move.until) {
         const volley = rules[move.volley];
@@ -350,6 +375,38 @@ export function bossTick(monster, target, dt, ctx) {
     }
   }
 
+  /* the blast: a lane of fire straight at the target, shown on the ground first; it stops at the first wall or
+     pillar in its way, so stepping behind one is the way out */
+  if (rules.blast && now >= state.nextBlast && distance <= rules.blast.length) {
+    const blast = rules.blast;
+    state.nextBlast =
+      now + blast.windup + randomBetween(blast.every) * rageFactors(monster).cooldown;
+    const ux = dx / distance;
+    const uz = dz / distance;
+    const lane = freeRun(monster.x, monster.z, ux, uz, blast.length, ctx);
+    monster.faceX = ux;
+    monster.faceZ = uz;
+    state.move = {
+      kind: "blast-windup",
+      until: now + blast.windup,
+      x0: monster.x,
+      z0: monster.z,
+      x1: lane.x1,
+      z1: lane.z1,
+    };
+    ctx.emit("boss_telegraph", {
+      id: monster.id,
+      kind: "blast",
+      x0: +monster.x.toFixed(2),
+      z0: +monster.z.toFixed(2),
+      x1: +lane.x1.toFixed(2),
+      z1: +lane.z1.toFixed(2),
+      width: blast.width,
+      duration: blast.windup,
+    });
+    return true;
+  }
+
   /* the planks: with the target on the bridge, a stretch of the deck under it shows red, then breaks */
   const isOverGorge =
     onBridge(target.x, target.z) && target.z < GORGE.south && target.z > GORGE.north;
@@ -388,10 +445,11 @@ export function bossTick(monster, target, dt, ctx) {
     return true;
   }
 
-  /* a volley: blood runes (from the start) or boulders (when low on health), a circle under every player nearby
-     that bursts a moment later; boulders fly there from the boss's hands */
+  /* a volley: blood runes or pools of lava (from the start) or boulders (when low on health), a circle under every
+     player nearby that bursts a moment later; boulders fly there from the boss's hands */
   const volleyName =
     (rules.bloodRunes && "bloodRunes") ||
+    (rules.lavaPools && "lavaPools") ||
     (rules.boulders && health <= rules.boulders.below && "boulders");
   if (volleyName && now >= state.nextRunes) {
     const volley = rules[volleyName];

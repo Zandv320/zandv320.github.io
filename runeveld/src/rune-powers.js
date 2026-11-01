@@ -1,10 +1,13 @@
 /* Eldoria – the rune powers (rules/runes.js) in play: the rune slot on the hotbar (Q), calling the power, and what
-   it does. For now there is one: the Moon Rune's Moonward, a shell of moonlight that takes the blows for a while. */
+   it does: the Moon Rune's Moonward, a shell of moonlight that takes the blows for a while, and the Ember Rune's
+   Emberbreath, a cone of the First Flame before the hero. */
 import { RUNES, activeRune } from "./rules/runes.js";
-import { player, now, hpMax, playEffect } from "./game-state.js";
-import { camera } from "./world.js";
+import { player, monsters, now, hpMax, derived, playEffect } from "./game-state.js";
+import { spellHit } from "./rules/combat.js";
+import { hitMonster, playOnce } from "./player.js";
+import { camera, shakeCamera } from "./world.js";
 import { groundRing } from "./skill-effects.js";
-import { burst } from "./particles.js";
+import { burst, trail } from "./particles.js";
 import { screenFlash } from "./feel.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
@@ -34,12 +37,14 @@ export function bindRune(id) {
   }
   player.runes = [...player.runes, id];
   refreshRuneSlot();
+  /* a new stone in the rune codex: a mark on its button until it is opened */
+  document.querySelector("#runes-button")?.classList.add("attention");
   const rune = RUNES[id];
   setTimeout(() => {
     UI.announce(rune.name, `${rune.power} is yours. Press Q to call it.`);
     screenFlash("200, 176, 255");
     sfx.levelUp();
-    groundRing(player.x, player.z, MOON_COLOR, 0.4, 3, 0.8, 0.9);
+    groundRing(player.x, player.z, parseInt(rune.color.slice(1), 16), 0.4, 3, 0.8, 0.9);
   }, 2800);
   UI.logMessage(
     `<span class="level-msg">The ${UI.escapeHtml(rune.name)} is bound to you: ${UI.escapeHtml(rune.power)} (Q). ${UI.escapeHtml(rune.description)}</span>`,
@@ -60,7 +65,71 @@ export function useRunePower() {
   player.cooldowns.rune = time + rune.cooldown;
   if (id === "moon") {
     moonward(rune, time);
+  } else if (id === "ember") {
+    emberbreath(rune);
   }
+}
+
+const EMBER_COLOR = 0xff8a2a;
+
+/* Emberbreath: fire in a cone before the hero (towards their target, else the way they face) */
+function emberbreath(rune) {
+  const target = player.target && !player.target.isDead ? player.target : null;
+  let [dx, dz] = target
+    ? [target.x - player.x, target.z - player.z]
+    : [player.sprite.facing.x, player.sprite.facing.y];
+  const length = Math.hypot(dx, dz) || 1;
+  dx /= length;
+  dz /= length;
+  player.sprite.face(dx, dz);
+  playOnce("attack", 0.6);
+  sfx.bossSlam();
+  shakeCamera(0.2, 0.3);
+  screenFlash("255, 150, 60");
+  /* the flames roll out along the cone, the far ones a moment later */
+  for (let step = 1; step <= 5; step++) {
+    const reach = (step / 5) * rune.range;
+    const spread = Math.tan(rune.angle / 2) * reach;
+    for (const side of step < 3 ? [0] : [-0.6, 0, 0.6]) {
+      const x = player.x + dx * reach - dz * spread * side;
+      const z = player.z + dz * reach + dx * spread * side;
+      setTimeout(() => {
+        playEffect("fire", x, z, { size: 1 + step * 0.25, grounded: true });
+        trail(x, 0.8, z, EMBER_COLOR);
+      }, step * 60);
+    }
+  }
+  burst(player.x + dx, 1, player.z + dz, { color: EMBER_COLOR, count: 24, speed: 5, size: 3 });
+  const stats = derived();
+  setTimeout(() => {
+    let isAnyHit = false;
+    for (const monster of monsters.values()) {
+      if (monster.isDead || !monster.sprite.group.visible) {
+        continue;
+      }
+      const mx = monster.x - player.x;
+      const mz = monster.z - player.z;
+      const along = mx * dx + mz * dz;
+      const distance = Math.hypot(mx, mz);
+      if (distance > rune.range + 0.5 || along <= 0) {
+        continue;
+      }
+      if (distance > 1 && along / distance < Math.cos(rune.angle / 2)) {
+        continue;
+      }
+      isAnyHit = true;
+      hitMonster(
+        monster,
+        spellHit({ matk: Math.max(stats.atk, stats.matk), mult: rune.mult }),
+        "emberbreath",
+      );
+      playEffect("fire", monster.x, monster.z, { size: 1.4, y: monster.sprite.height * 0.4 });
+    }
+    if (!isAnyHit) {
+      UI.systemMessage(`${rune.power} hit nothing.`);
+    }
+  }, 200);
+  UI.floatingText(player.x, player.sprite.height + 0.4, player.z, camera, "Emberbreath", "skill");
 }
 
 /* Moonward: a shell that absorbs damage worth a share of the hero's HP until it is spent or its time is up */

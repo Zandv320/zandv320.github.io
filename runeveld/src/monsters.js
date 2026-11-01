@@ -23,6 +23,7 @@ import {
   isSaltmereSafe,
   inCinderCamp,
   inEmberIsles,
+  inForge,
 } from "./regions.js";
 import { isStorm } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
@@ -284,6 +285,9 @@ function isHuntingGround(spec, x, z) {
   }
   if (spec.area === "ember") {
     return inEmberIsles(x, z);
+  }
+  if (spec.area === "forge") {
+    return inForge(x, z);
   }
   return true;
 }

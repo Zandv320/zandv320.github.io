@@ -1276,11 +1276,11 @@ export function enchantingAltar() {
 
 /** A crypt wall of w × h × d: dark bricks on the sides, the top almost black (you look onto the thick wall). Every
     wall has a material of its own, so crypt.js can fade the ones in front of the hero. */
-export function cryptWall(w, h, d) {
+export function cryptWall(w, h, d, textureName = "crypt_wall") {
   const geometry = new THREE.BoxGeometry(w, h, d);
   const uv = geometry.attributes.uv;
-  const tw = tileWidth("crypt_wall");
-  const th = tileHeight("crypt_wall");
+  const tw = tileWidth(textureName);
+  const th = tileHeight(textureName);
   /* face order of BoxGeometry: +x −x +y −y +z −z */
   const faceSizes = [
     [d, h],
@@ -1301,7 +1301,7 @@ export function cryptWall(w, h, d) {
   }
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   const wallMaterial = new THREE.MeshLambertMaterial({
-    map: texture("crypt_wall", 1, 1),
+    map: texture(textureName, 1, 1),
     vertexColors: true,
     polygonOffset: true,
     polygonOffsetFactor: 1,
@@ -1570,6 +1570,33 @@ export function pressurePlate(size = 1.1) {
   group.add(plate);
   group.userData.plate = plate;
   group.userData.solids = [];
+  return group;
+}
+
+/** A great pair of bellows on a stone block: two boards with leather between them, the iron nozzle towards +z. */
+export function bellows() {
+  const group = new THREE.Group();
+  group.add(block(1.3, 0.35, 1.7, "stone", 0.55));
+  const boardMaterial = material("wood_dark", 1.1, 1.5);
+  for (const y of [0.42, 0.95]) {
+    const board = box(1.1, 0.1, 1.5, boardMaterial);
+    board.position.y = y;
+    group.add(board);
+  }
+  const leather = box(0.95, 0.42, 1.25, material("carpet", 0.95, 0.42, 0.45));
+  leather.position.set(0, 0.52, -0.05);
+  group.add(leather);
+  const nozzle = outline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.16, 0.7, 6), material("iron", 0.3, 0.7)),
+    40,
+  );
+  nozzle.rotation.x = Math.PI / 2;
+  nozzle.position.set(0, 0.7, 1.05);
+  group.add(nozzle);
+  const handle = box(0.12, 0.5, 0.12, material("wood_dark", 0.12, 0.5));
+  handle.position.set(0, 1, -0.7);
+  group.add(handle);
+  group.userData.mapKind = "bellows";
   return group;
 }
 

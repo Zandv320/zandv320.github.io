@@ -115,9 +115,9 @@ function addFire(x, z, { y = 1.1, size = 1, radius = 5, room = null } = {}) {
   return addLight(x, z, { y, radius, room });
 }
 
-/* The floor cells that are walls: every cell next to the floor (also diagonally) that is not floor itself, joined
-   into as few rectangles as possible (rows first, then equal rows on top of each other). */
-function wallRectangles(floor) {
+/** The floor cells that are walls: every cell next to the floor (also diagonally) that is not floor itself, joined
+    into as few rectangles as possible (rows first, then equal rows on top of each other). The forge's walls too. */
+export function wallRectangles(floor) {
   const isWall = (x, z) => !floor.has(`${x},${z}`);
   const walls = new Set();
   for (const key of floor) {
@@ -536,8 +536,8 @@ function useObject(object) {
   }
 }
 
-/* black for a moment, then somewhere else */
-function travel([x, z], title, subtitle) {
+/** Black for a moment, then somewhere else (the crypt's stairs, the forge's gate). */
+export function travel([x, z], title, subtitle) {
   if (state.isTraveling) {
     return;
   }
