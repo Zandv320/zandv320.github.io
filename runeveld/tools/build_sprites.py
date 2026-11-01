@@ -175,9 +175,52 @@ def build_hero_layers(swordsman_dir, out_dir):
     # clothing as the difference with the bare body; sword in front and behind
     for i, level in enumerate((1, 2, 3)):
         layer_difference(stacked[2 + 3 * i], body).save(out_dir / f"armor{level}.png")
-        stacked[3 + 3 * i].save(out_dir / f"sword{level}.png")
-        stacked[4 + 3 * i].save(out_dir / f"sword{level}_back.png")
+        # the saved swords are held up at rest; the stacked ones (that staffs and tools follow) stay as they are
+        front, back = raise_idle_swords(stacked[3 + 3 * i], stacked[4 + 3 * i], body, stacked[1])
+        front.save(out_dir / f"sword{level}.png")
+        back.save(out_dir / f"sword{level}_back.png")
     return stacked, body
+
+
+def raise_idle_swords(front, back, body, head, fw=64, fh=64):
+    """At rest (the idle rows) the pack holds the sword point down, and its point sinks into the ground below the
+    feet. Turn it over the hand in every idle frame where it points down, so the blade rises from the hand: either
+    mirrored up (same angle, the same side) or turned half round (up on the other side), whichever crosses the
+    face least (seen from the side the pack holds it backwards, and mirrored up it would cut across the face).
+    Returns new front and back sheets."""
+    front, back = front.copy(), back.copy()
+    grips = weapon_grips(front, back, body, fw, fh, rows=4)
+    head_px = head.load()
+    for (r, c), frame in grips.items():
+        grip = frame["grip"]
+        if r >= 4 or not grip or grip[3] <= 0:
+            continue
+        gx, gy = grip[0] - c * fw, grip[1] - r * fh
+        cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
+        cells = [sheet.crop(cell) for sheet in (front, back)]
+
+        def turned(pixels, mirror_x):
+            out = Image.new("RGBA", (fw, fh), TRANSPARENT)
+            src, dst = pixels.load(), out.load()
+            for y in range(fh):
+                for x in range(fw):
+                    if src[x, y][3] == 0:
+                        continue
+                    nx, ny = (2 * gx - x if mirror_x else x), 2 * gy - y
+                    if 0 <= nx < fw and 0 <= ny < fh:
+                        dst[nx, ny] = src[x, y]
+            return out
+
+        def over_face(sheets):
+            # only the front half is drawn over the head
+            px = sheets[0].load()
+            return sum(1 for y in range(fh) for x in range(fw) if px[x, y][3] and head_px[c * fw + x, r * fh + y][3])
+
+        options = [[turned(pixels, mirror_x) for pixels in cells] for mirror_x in (False, True)]
+        best = min(options, key=over_face)
+        for sheet, pixels in zip((front, back), best, strict=True):
+            sheet.paste(pixels, cell[:2])
+    return front, back
 
 
 # ---------- headgear: hand-drawn pixel art, placed on the head per frame ----------
@@ -2257,12 +2300,16 @@ def main():
     # `python3 -I` leaves the script directory off sys.path; build_effects.py lives next to this file
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-    # `--only crypt`, `--only shields` or `--only goblins`: just those sprites (and their smooth versions)
+    # `--only crypt`, `--only shields`, `--only goblins`, `--only ember` or `--only swords`: just those sprites
+    # (and their smooth versions)
     if "--only" in sys.argv:
         part = sys.argv[sys.argv.index("--only") + 1]
         smooth_dir = out_dir / "smooth"
         smooth_dir.mkdir(exist_ok=True)
+        swordsman_dir = packs_dir / "free-swordsman-1-3-level-pixel-top-down-sprite-character/PNG"
         builders = {
+            "swords": lambda: build_hero_layers(swordsman_dir, out_dir)
+            and [f"sword{level}{part}" for level in (1, 2, 3) for part in ("", "_back")],
             "crypt": lambda: build_crypt(packs_dir, out_dir),
             "shields": lambda: build_shields(out_dir),
             "goblins": lambda: build_goblins(packs_dir, out_dir),
