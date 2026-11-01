@@ -187,6 +187,9 @@ def build_hero_layers(swordsman_dir, out_dir):
 # (idle row → 1 to the right, -1 to the left), seen from the front or back to whichever side the pack holds its point
 IDLE_SWORD_DROP = 25
 IDLE_SWORD_SIDE = {1: -1, 2: 1}
+# facing right the pack holds the sword in the hand at the back of the body, so pointed forwards it would run
+# straight through the hero: there it is carried forwards to the front of the body, with a hand on its grip
+IDLE_SWORD_TO_FRONT = {2}
 
 
 def idle_sword_ends(cells):
@@ -274,6 +277,20 @@ def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
         opaque = [im.width * im.height - im.getchannel("A").histogram()[0] for im in turned]
         is_front = opaque[0] >= opaque[1]
         grip = grips[(r, 0)]["grip"]
+        shift, hand = 0, []
+        if r in IDLE_SWORD_TO_FRONT and grip:
+            gx, gy = grip[0], grip[1] - r * fh
+            body_cell = body.crop(first)
+            body_px = body_cell.load()
+            row_xs = [x for x in range(fw) if body_px[x, gy][3]]
+            shift = max(0, max(row_xs) - 1 - gx) if row_xs else 0
+            # the hand that will hold it there: the skin round the old grip
+            hand = [
+                (x - gx, y - gy, body_px[x, y])
+                for y in range(gy - 1, gy + 2)
+                for x in range(gx - 1, gx + 2)
+                if body_px[x, y][3] and body_px[x, y][:3] in SKIN
+            ]
         anchor = sword_middle([front.crop(first), back.crop(first)])
         for c in range(front.width // fw):
             cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
@@ -283,9 +300,15 @@ def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
             dx, dy = round(middle[0] - anchor[0]), round(middle[1] - anchor[1])
             for sheet, im in zip((front, back), turned, strict=True):
                 moved = Image.new("RGBA", (fw, fh), TRANSPARENT)
-                moved.paste(im, (dx, dy))
+                moved.paste(im, (dx + shift, dy))
                 sheet.paste(moved, cell[:2])
-            if grip and is_front:
+            if hand:
+                layer = (front if is_front else back).load()
+                for ox, oy, color in hand:
+                    x, y = grip[0] + shift + ox + dx, grip[1] + oy + dy
+                    if layer[c * fw + x, y][3]:
+                        layer[c * fw + x, y] = color
+            elif grip and is_front:
                 gx, gy = grip[0] + c * fw + dx, grip[1] + dy
                 hand_over(PixelCanvas(front), front.copy(), body, gx, gy, fw, fh, r, c)
     return front, back
