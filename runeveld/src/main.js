@@ -1932,6 +1932,7 @@ function setupButtons() {
   $("#settings-button").onclick = () => game.settings.toggle();
   $("#runes-button").onclick = () => game.runeCodex.toggle();
   $("#inventory-enchant").onclick = () => toggleEnchanting();
+  $("#enchant-button").onclick = () => toggleEnchanting();
 
   /* fixed icons in the HTML (buttons, potion, sit, zeny) */
   document.querySelectorAll("[data-icon]").forEach((element) => {
