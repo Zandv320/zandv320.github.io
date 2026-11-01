@@ -209,13 +209,45 @@ export function distanceToLine(x, z, line) {
   return best;
 }
 
+/* The pieces of some lines, sorted into squares of the land, so the distance to the nearest is quick to find: only
+   the pieces near a spot are looked at. A spot further than `reach` from all of them is `reach` away (or more). */
+function lineIndex(lines, reach) {
+  const SIZE = 10;
+  const buckets = new Map();
+  const key = (i, j) => i * 4096 + j;
+  for (const line of lines) {
+    for (let k = 0; k < line.length - 1; k++) {
+      const [ax, az] = line[k];
+      const [bx, bz] = line[k + 1];
+      for (
+        let i = Math.floor((Math.min(ax, bx) - reach) / SIZE);
+        i <= Math.floor((Math.max(ax, bx) + reach) / SIZE);
+        i++
+      ) {
+        for (
+          let j = Math.floor((Math.min(az, bz) - reach) / SIZE);
+          j <= Math.floor((Math.max(az, bz) + reach) / SIZE);
+          j++
+        ) {
+          const bucket = buckets.get(key(i, j)) || [];
+          bucket.push([line[k], line[k + 1]]);
+          buckets.set(key(i, j), bucket);
+        }
+      }
+    }
+  }
+  return (x, z) => {
+    const bucket = buckets.get(key(Math.floor(x / SIZE), Math.floor(z / SIZE)));
+    return bucket ? Math.min(reach, ...bucket.map((piece) => distanceToLine(x, z, piece))) : reach;
+  };
+}
+
 /** How far (x, z) lies from the nearest road of the isles. */
-export const roadDistance = (x, z) =>
-  Math.min(...EMBER_ROADS.map((road) => distanceToLine(x, z, road)));
+export const roadDistance = (x, z) => nearestRoad(x, z);
 
 /** How far (x, z) lies from the nearest river of lava, crossings and all: below 0 over it. */
 export function riverDistance(x, z) {
-  return Math.min(...LAVA_FLOWS.map((flow) => distanceToLine(x, z, flow))) - LAVA_WIDTH;
+  return nearestFlow(x, z) - LAVA_WIDTH;
 }
 
 /* The rivers as they burn: each cut where it has crusted over, so the crust between the pieces is free to walk on.
@@ -239,22 +271,30 @@ const LAVA_RUNS = LAVA_FLOWS.flatMap((flow) => {
         }
         run = [];
       } else {
-        run.push([x, z]);
+        run.push({ x, z, isBend: step === 0 || step === steps });
       }
     }
   }
   if (run.length > 1) {
     runs.push(run);
   }
-  return runs;
+  /* in between the bends a piece runs straight: only its ends and its bends are kept, so that measuring a
+     distance to it stays quick */
+  return runs.map((points) =>
+    points
+      .filter((point, k) => k === 0 || k === points.length - 1 || point.isBend)
+      .map(({ x, z }) => [x, z]),
+  );
 });
+
+/* the roads, the rivers and the rivers as they burn, each indexed for quick distances */
+const nearestRoad = lineIndex(EMBER_ROADS, 16);
+const nearestFlow = lineIndex(LAVA_FLOWS, 16);
+const nearestRun = lineIndex(LAVA_RUNS, 16);
 
 /** How far (x, z) lies from the nearest lava, river or pool: below 0 inside it (the crust of a crossing is not lava). */
 export function lavaDistance(x, z) {
-  let best = Infinity;
-  for (const run of LAVA_RUNS) {
-    best = Math.min(best, distanceToLine(x, z, run) - LAVA_WIDTH);
-  }
+  let best = nearestRun(x, z) - LAVA_WIDTH;
   for (const pool of LAVA_POOLS) {
     best = Math.min(best, Math.hypot(x - pool.x, z - pool.z) - pool.r);
   }

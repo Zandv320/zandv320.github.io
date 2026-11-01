@@ -118,9 +118,11 @@ const CHUNK = 40;
 const CHUNK_PIXELS = CHUNK * PX;
 const CELLS = CHUNK_PIXELS / CELL;
 const CELL_UNITS = CELL / PX;
-/* how near the hero (or their ship) a chunk is painted, and how long a frame may spend on it (ms) */
+/* how near the hero (or their ship) a chunk is painted, and how long a frame may spend on it (ms): more while the
+   hero stands on ground not painted yet */
 const PAINT_REACH = 240;
-const PAINT_BUDGET = 5;
+const PAINT_BUDGET = 7;
+const URGENT_BUDGET = 30;
 
 /* the painter: the tiles and the sand patches as pixels, the chunks of land still to paint, the one being painted */
 let painter = null;
@@ -208,7 +210,16 @@ function paintGround() {
     return;
   }
   const started = performance.now();
-  while (performance.now() - started < PAINT_BUDGET) {
+  const underfoot = painter.chunks.find(
+    (chunk) =>
+      player.x >= chunk.x0 - 8 &&
+      player.x < chunk.x0 + CHUNK + 8 &&
+      player.z >= chunk.z0 - 8 &&
+      player.z < chunk.z0 + CHUNK + 8 &&
+      !chunk.isPainted,
+  );
+  const budget = underfoot ? URGENT_BUDGET : PAINT_BUDGET;
+  while (performance.now() - started < budget) {
     if (!painter.job) {
       let best = null;
       let bestDistance = PAINT_REACH;
