@@ -177,14 +177,16 @@ def build_hero_layers(swordsman_dir, out_dir):
     for i, level in enumerate((1, 2, 3)):
         layer_difference(stacked[2 + 3 * i], body).save(out_dir / f"armor{level}.png")
         # the saved swords point forwards at rest; the stacked ones (that staffs and tools follow) stay as they are
-        front, back = hold_idle_swords_forward(stacked[3 + 3 * i], stacked[4 + 3 * i])
+        front, back = hold_idle_swords_forward(stacked[3 + 3 * i], stacked[4 + 3 * i], body)
         front.save(out_dir / f"sword{level}.png")
         back.save(out_dir / f"sword{level}_back.png")
     return stacked, body
 
 
-# at rest the sword points forwards, this many degrees below level, to whichever side the pack holds its point
+# at rest the sword points forwards, this many degrees below level: seen from the side the way the hero faces
+# (idle row → 1 to the right, -1 to the left), seen from the front or back to whichever side the pack holds its point
 IDLE_SWORD_DROP = 25
+IDLE_SWORD_SIDE = {1: -1, 2: 1}
 
 
 def idle_sword_ends(cells):
@@ -227,12 +229,35 @@ def sword_middle(cells):
     return sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points)
 
 
-def hold_idle_swords_forward(front, back, fw=64, fh=64):
+def close_grip_gap(im, hx, hy, angle, reach=12):
+    """The pack leaves a gap in the sword where the hand grips it, for the hand in the body layer to show through.
+    Turned, the gap no longer lies over the hand and the body behind shows through it instead, as if the blade ran
+    behind the legs. Fill it along the blade's axis from the hilt (angle: the blade's direction, counter-clockwise
+    from right), with the colour before the gap."""
+    px = im.load()
+    along = []
+    for i in range(reach):
+        x, y = round(hx + i * math.cos(angle)), round(hy - i * math.sin(angle))
+        if 0 <= x < im.width and 0 <= y < im.height:
+            along.append((x, y))
+    filled = [i for i, (x, y) in enumerate(along) if px[x, y][3]]
+    if len(filled) < 2:
+        return
+    for i in range(filled[0] + 1, filled[-1]):
+        x, y = along[i]
+        if not px[x, y][3]:
+            px[x, y] = px[along[i - 1]]
+
+
+def hold_idle_swords_forward(front, back, body, fw=64, fh=64):
     """At rest (the idle rows) the pack lets the sword hang point down, and the point sinks into the ground below
-    the feet. Turn it round its hilt so it points forwards, a little below level, to the side the pack holds its
-    point. It is turned once per direction (in the row's first frame) and in the other frames only moved along
-    with the hand, so it never jumps. Front and back halves turn alike and stay in their own layer (the hand that
-    holds it stays the same). Returns new sheets."""
+    the feet. Turn it round its hilt so it points forwards, a little below level: seen from the side the way the
+    hero faces (facing right the pack lets it hang backwards, across the legs), seen from the front or back to the
+    side the pack holds its point. It is turned once per direction (in the row's first frame) and in the other
+    frames only moved along with the hand, so it never jumps. Front and back halves turn alike and stay in their
+    own layer (the hand that holds it stays the same). The gap the pack leaves for the hand is closed, so the sword
+    is whole in front of the body, and the hand is drawn over its grip again. Returns new sheets."""
+    grips = weapon_grips(front, back, body, fw, fh, rows=4)
     front, back = front.copy(), back.copy()
     for r in range(4):
         first = (0, r * fh, fw, (r + 1) * fh)
@@ -241,8 +266,14 @@ def hold_idle_swords_forward(front, back, fw=64, fh=64):
             continue
         (hx, hy), (tx, ty) = ends
         current = math.atan2(hy - ty, tx - hx)
-        wanted = math.radians(-IDLE_SWORD_DROP if tx >= hx else 180 + IDLE_SWORD_DROP)
+        side = IDLE_SWORD_SIDE.get(r, 1 if tx >= hx else -1)
+        wanted = math.radians(-IDLE_SWORD_DROP if side > 0 else 180 + IDLE_SWORD_DROP)
         turned = [turn_round(sheet.crop(first), hx, hy, wanted - current) for sheet in (front, back)]
+        for im in turned:
+            close_grip_gap(im, hx, hy, wanted)
+        opaque = [im.width * im.height - im.getchannel("A").histogram()[0] for im in turned]
+        is_front = opaque[0] >= opaque[1]
+        grip = grips[(r, 0)]["grip"]
         anchor = sword_middle([front.crop(first), back.crop(first)])
         for c in range(front.width // fw):
             cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
@@ -254,6 +285,9 @@ def hold_idle_swords_forward(front, back, fw=64, fh=64):
                 moved = Image.new("RGBA", (fw, fh), TRANSPARENT)
                 moved.paste(im, (dx, dy))
                 sheet.paste(moved, cell[:2])
+            if grip and is_front:
+                gx, gy = grip[0] + c * fw + dx, grip[1] + dy
+                hand_over(PixelCanvas(front), front.copy(), body, gx, gy, fw, fh, r, c)
     return front, back
 
 
