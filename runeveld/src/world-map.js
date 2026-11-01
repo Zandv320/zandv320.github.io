@@ -36,7 +36,7 @@ import {
   MOOR_DISTANCE,
   isletReach,
 } from "./rules/sea.js";
-import { emberShore, MOUNT_KHAROS, CINDER_CAMP, COVE_JETTY } from "./rules/ember.js";
+import { emberShore, MOUNT_KHAROS, CINDER_CAMP, COVE_JETTY, EMBER_REACH } from "./rules/ember.js";
 import {
   WORLD,
   ZOOM_REGIONS,
@@ -122,6 +122,29 @@ const COLORS = {
 };
 
 /* Map kinds drawn as ellipses instead of boxes. */
+/* the Ember Isles' props on the map, by the word after "ember_": [radius, colour, highlight] */
+const EMBER_PROPS = {
+  rock: [1, "#3a3436", "rgba(255, 255, 255, 0.22)"],
+  boulder: [1.4, "#332e30", "rgba(255, 255, 255, 0.2)"],
+  mound: [1.8, "#463e40", "rgba(255, 255, 255, 0.16)"],
+  tree: [1.5, "#3a2418", "rgba(255, 130, 60, 0.55)"],
+  stump: [0.8, "#4a3020", "rgba(255, 150, 80, 0.4)"],
+  bush: [0.9, "#5a3826", "rgba(255, 150, 70, 0.45)"],
+  skull: [0.6, "#e8e0cc", null],
+  ram: [0.65, "#e8e0cc", null],
+  ribs: [0.7, "#ddd4be", null],
+};
+
+/* The Ember Isles' layer for the minimap: the isles as the world map paints them, with their features on top. */
+const EMBER_BOUNDS = [
+  EMBER_ISLES.x - EMBER_REACH - 24,
+  EMBER_ISLES.z - EMBER_REACH - 24,
+  EMBER_ISLES.x + EMBER_REACH + 24,
+  EMBER_ISLES.z + EMBER_REACH + 24,
+];
+/* at most this many pixels a side, so it stays light on phones */
+const EMBER_LAYER_MAX = 2048;
+
 const ROUND_KINDS = new Set(["pond", "well", "altar", "menhir", "tower", "fountain", "statue"]);
 
 /* The world: Kingsvale in the west, the fields, the forest above them, the Northroad up north of Aurelia. */
@@ -202,121 +225,22 @@ export function createWorldMap(deps) {
     }
   }
 
-  function drawStaticLayer(scale) {
+  /* Buildings, trees, rocks and the like from the world, inside `bounds` [x0, z0, x1, z1] (the mainland's static
+     layer, the Ember Isles' layer). */
+  function drawFeatures(g, px, pz, scale, [boundX0, boundZ0, boundX1, boundZ1]) {
     if (!features) {
       collectFeatures();
     }
-    const layer = document.createElement("canvas");
-    layer.width = Math.ceil((X1 - X0) * scale);
-    layer.height = Math.ceil((Z1 - Z0) * scale);
-    const g = layer.getContext("2d");
-    const px = (x) => (x - X0) * scale;
-    const pz = (z) => (z - Z0) * scale;
-    const villageHalf = deps.VILLAGE_HALF_SIZE;
-    /* a fixed pseudo-random number per spot, so the map looks the same every time */
-    const hash = (x, z) => {
-      const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
-      return n - Math.floor(n);
-    };
+    const isInBounds = (x, z) => x >= boundX0 && x <= boundX1 && z >= boundZ0 && z <= boundZ1;
     /* everything that stands casts a short shadow to the bottom right, like the sun in the world */
     const SHADOW = "rgba(20, 30, 10, 0.32)";
     const shadowOffset = scale * 0.35;
-
-    /* ---- ground: fields, forest, meadows, the city, the village; outside the world it stays clear, for the
-       wild lands and the sea of the world map (world-chart.js) to show through ---- */
-    const step = 0.5;
-    const regionAt = (x, z) => {
-      if (inFields(x, z)) {
-        return Math.abs(x) <= villageHalf && Math.abs(z) <= villageHalf ? "village" : "grass";
-      }
-      if (inForest(x, z)) {
-        return "forest";
-      }
-      if (inVale(x, z)) {
-        if (inCapital(x, z)) {
-          return inCastle(x, z) ? "castleGround" : "capital";
-        }
-        return "meadow";
-      }
-      /* Saltmere: the city like Aurelia, its piers like the bridge, and the sea beyond the quay */
-      if (onPier(x, z)) {
-        return "bridge";
-      }
-      if (inSaltmere(x, z)) {
-        return "capital";
-      }
-      /* Greyfall Gorge cuts across the Northroad's land; the bridge is the only way over */
-      if (inGorge(x, z) && distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z)) {
-        return onBridge(x, z) ? "bridge" : "gorge";
-      }
-      if (inNorthroad(x, z)) {
-        const isFarm = NORTH_FARMS.some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
-        return isFarm ? "barley" : "meadow";
-      }
-      return null;
-    };
-    for (let z = Z0; z < Z1; z += step) {
-      for (let x = X0; x < X1; x += step) {
-        const region = regionAt(x + step / 2, z + step / 2);
-        if (!region) {
-          continue;
-        }
-        g.fillStyle = COLORS[region];
-        g.fillRect(px(x), pz(z), step * scale + 0.5, step * scale + 0.5);
-        /* speckles: a lighter or darker fleck now and then, so the ground is not flat */
-        const fleck = hash(x, z);
-        if (fleck < 0.16) {
-          g.fillStyle = fleck < 0.08 ? "rgba(255, 255, 220, 0.10)" : "rgba(0, 30, 0, 0.12)";
-          g.fillRect(px(x), pz(z), step * scale * 0.6, step * scale * 0.6);
-        }
-        /* a darker rim where one region meets another (or the edge of the world) */
-        const above = regionAt(x + step / 2, z - step / 2);
-        const left = regionAt(x - step / 2, z + step / 2);
-        if (above !== region || left !== region) {
-          g.fillStyle = "rgba(20, 35, 10, 0.28)";
-          g.fillRect(px(x), pz(z), step * scale + 0.5, step * scale + 0.5);
-        }
-      }
-    }
-
-    /* ---- ground planes: roads and streets with a darker edge, the plaza and clearings ---- */
-    const planeRect = (plane, grow, color) => {
-      g.save();
-      g.translate(px(plane.x), pz(plane.z));
-      g.rotate(-plane.rotation);
-      g.fillStyle = color;
-      g.fillRect(
-        (-plane.w / 2 - grow) * scale,
-        (-plane.l / 2 - grow) * scale,
-        (plane.w + grow * 2) * scale,
-        (plane.l + grow * 2) * scale,
-      );
-      g.restore();
-    };
-    const roads = features.planes.filter(
-      (plane) => plane.kind === "path" || plane.kind === "street",
-    );
-    for (const plane of roads) {
-      planeRect(plane, 0.35, plane.kind === "path" ? "#9c7448" : "#7c7062");
-    }
-    for (const plane of features.planes) {
-      if (plane.kind === "path" || plane.kind === "street") {
-        planeRect(plane, 0, COLORS[plane.kind]);
-      } else {
-        g.fillStyle = plane.kind === "plaza" ? "#b87447" : "#6f6e68";
-        g.beginPath();
-        g.arc(px(plane.x), pz(plane.z), (plane.r + 0.35) * scale, 0, Math.PI * 2);
-        g.fill();
-        g.fillStyle = COLORS[plane.kind] || COLORS.plaza;
-        g.beginPath();
-        g.arc(px(plane.x), pz(plane.z), plane.r * scale, 0, Math.PI * 2);
-        g.fill();
-      }
-    }
-
     /* ---- built objects ---- */
     const outlineWidth = Math.max(1, scale * 0.18);
     for (const building of features.buildings) {
+      if (!isInBounds(building.x, building.z)) {
+        continue;
+      }
       const width = (building.x1 - building.x0) * scale;
       const height = (building.z1 - building.z0) * scale;
       const x = px(building.x0);
@@ -448,6 +372,18 @@ export function createWorldMap(deps) {
       }
     };
     for (const prop of features.props) {
+      if (!isInBounds(prop.x, prop.z)) {
+        continue;
+      }
+      /* the Ember Isles: black rock, charred trees, bleached bones */
+      const ember = /^ember_([a-z]+)/.exec(prop.kind);
+      if (ember) {
+        const look = EMBER_PROPS[ember[1]];
+        if (look) {
+          blob(prop.x, prop.z, look[0], look[1], look[2]);
+        }
+        continue;
+      }
       const kind = prop.kind.replace(/\d$/, "").replace(/_.*$/, "");
       if (kind === "tree") {
         blob(prop.x, prop.z, (0.95 * prop.scale) / 1.3, COLORS.tree, "rgba(190, 230, 110, 0.45)");
@@ -469,6 +405,117 @@ export function createWorldMap(deps) {
         g.fillRect(px(prop.x) - scale * 0.2, pz(prop.z) - scale * 0.2, scale * 0.4, scale * 0.4);
       }
     }
+  }
+
+  function drawStaticLayer(scale) {
+    if (!features) {
+      collectFeatures();
+    }
+    const layer = document.createElement("canvas");
+    layer.width = Math.ceil((X1 - X0) * scale);
+    layer.height = Math.ceil((Z1 - Z0) * scale);
+    const g = layer.getContext("2d");
+    const px = (x) => (x - X0) * scale;
+    const pz = (z) => (z - Z0) * scale;
+    const villageHalf = deps.VILLAGE_HALF_SIZE;
+    /* a fixed pseudo-random number per spot, so the map looks the same every time */
+    const hash = (x, z) => {
+      const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+      return n - Math.floor(n);
+    };
+    /* ---- ground: fields, forest, meadows, the city, the village; outside the world it stays clear, for the
+       wild lands and the sea of the world map (world-chart.js) to show through ---- */
+    const step = 0.5;
+    const regionAt = (x, z) => {
+      if (inFields(x, z)) {
+        return Math.abs(x) <= villageHalf && Math.abs(z) <= villageHalf ? "village" : "grass";
+      }
+      if (inForest(x, z)) {
+        return "forest";
+      }
+      if (inVale(x, z)) {
+        if (inCapital(x, z)) {
+          return inCastle(x, z) ? "castleGround" : "capital";
+        }
+        return "meadow";
+      }
+      /* Saltmere: the city like Aurelia, its piers like the bridge, and the sea beyond the quay */
+      if (onPier(x, z)) {
+        return "bridge";
+      }
+      if (inSaltmere(x, z)) {
+        return "capital";
+      }
+      /* Greyfall Gorge cuts across the Northroad's land; the bridge is the only way over */
+      if (inGorge(x, z) && distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z)) {
+        return onBridge(x, z) ? "bridge" : "gorge";
+      }
+      if (inNorthroad(x, z)) {
+        const isFarm = NORTH_FARMS.some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
+        return isFarm ? "barley" : "meadow";
+      }
+      return null;
+    };
+    for (let z = Z0; z < Z1; z += step) {
+      for (let x = X0; x < X1; x += step) {
+        const region = regionAt(x + step / 2, z + step / 2);
+        if (!region) {
+          continue;
+        }
+        g.fillStyle = COLORS[region];
+        g.fillRect(px(x), pz(z), step * scale + 0.5, step * scale + 0.5);
+        /* speckles: a lighter or darker fleck now and then, so the ground is not flat */
+        const fleck = hash(x, z);
+        if (fleck < 0.16) {
+          g.fillStyle = fleck < 0.08 ? "rgba(255, 255, 220, 0.10)" : "rgba(0, 30, 0, 0.12)";
+          g.fillRect(px(x), pz(z), step * scale * 0.6, step * scale * 0.6);
+        }
+        /* a darker rim where one region meets another (or the edge of the world) */
+        const above = regionAt(x + step / 2, z - step / 2);
+        const left = regionAt(x - step / 2, z + step / 2);
+        if (above !== region || left !== region) {
+          g.fillStyle = "rgba(20, 35, 10, 0.28)";
+          g.fillRect(px(x), pz(z), step * scale + 0.5, step * scale + 0.5);
+        }
+      }
+    }
+
+    /* ---- ground planes: roads and streets with a darker edge, the plaza and clearings ---- */
+    const planeRect = (plane, grow, color) => {
+      g.save();
+      g.translate(px(plane.x), pz(plane.z));
+      g.rotate(-plane.rotation);
+      g.fillStyle = color;
+      g.fillRect(
+        (-plane.w / 2 - grow) * scale,
+        (-plane.l / 2 - grow) * scale,
+        (plane.w + grow * 2) * scale,
+        (plane.l + grow * 2) * scale,
+      );
+      g.restore();
+    };
+    const roads = features.planes.filter(
+      (plane) => plane.kind === "path" || plane.kind === "street",
+    );
+    for (const plane of roads) {
+      planeRect(plane, 0.35, plane.kind === "path" ? "#9c7448" : "#7c7062");
+    }
+    for (const plane of features.planes) {
+      if (plane.kind === "path" || plane.kind === "street") {
+        planeRect(plane, 0, COLORS[plane.kind]);
+      } else {
+        g.fillStyle = plane.kind === "plaza" ? "#b87447" : "#6f6e68";
+        g.beginPath();
+        g.arc(px(plane.x), pz(plane.z), (plane.r + 0.35) * scale, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = COLORS[plane.kind] || COLORS.plaza;
+        g.beginPath();
+        g.arc(px(plane.x), pz(plane.z), plane.r * scale, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+
+    drawFeatures(g, px, pz, scale, [X0, Z0, X1, Z1]);
 
     /* the minimap draws this layer small: names and the compass only on the big map */
     if (scale < 6) {
@@ -595,6 +642,31 @@ export function createWorldMap(deps) {
     undergroundLayers.set(key, layer);
     return layer;
   }
+
+  let emberLayer = null;
+  function ensureEmberLayer(wanted) {
+    const [x0, z0, x1, z1] = EMBER_BOUNDS;
+    const scale = Math.min(wanted, EMBER_LAYER_MAX / (x1 - x0));
+    if (emberLayer && emberLayer.scale === scale) {
+      return emberLayer;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil((x1 - x0) * scale);
+    canvas.height = Math.ceil((z1 - z0) * scale);
+    const g = canvas.getContext("2d");
+    drawWorldBase(g, scale, x0, z0, minimapPixelRatio || 1);
+    drawFeatures(
+      g,
+      (x) => (x - x0) * scale,
+      (z) => (z - z0) * scale,
+      scale,
+      EMBER_BOUNDS,
+    );
+    emberLayer = { canvas, scale, x0, z0 };
+    return emberLayer;
+  }
+  const inEmberBounds = (x, z) =>
+    x > EMBER_BOUNDS[0] && x < EMBER_BOUNDS[2] && z > EMBER_BOUNDS[1] && z < EMBER_BOUNDS[3];
 
   function ensureStaticLayer(scale) {
     if (!staticLayer || cachedScale !== scale) {
@@ -1121,10 +1193,17 @@ export function createWorldMap(deps) {
       UNDERGROUND[key].inside(deps.player.x, deps.player.z),
     );
     const isBelow = !!below;
-    const crypt = isBelow ? ensureUndergroundLayer(below, layerScale) : null;
-    const layer = crypt ? crypt.canvas : ensureStaticLayer(layerScale);
-    const layerX0 = crypt ? crypt.x0 : X0;
-    const layerZ0 = crypt ? crypt.z0 : Z0;
+    /* on the Ember Isles (or the sea right round them) their own detailed layer */
+    const isEmber = !isBelow && inEmberBounds(deps.player.x, deps.player.z);
+    const own = isBelow
+      ? ensureUndergroundLayer(below, layerScale)
+      : isEmber
+        ? ensureEmberLayer(scale)
+        : null;
+    const layer = own ? own.canvas : ensureStaticLayer(layerScale);
+    const layerX0 = own ? own.x0 : X0;
+    const layerZ0 = own ? own.z0 : Z0;
+    const sourceScale = isEmber ? own.scale : layerScale;
     const width = minimap.width;
     const height = minimap.height;
     const worldX0 = deps.player.x - width / 2 / scale;
@@ -1149,16 +1228,16 @@ export function createWorldMap(deps) {
     minimapContext.imageSmoothingEnabled = true;
     minimapContext.drawImage(
       layer,
-      (worldX0 - layerX0) * layerScale,
-      (worldZ0 - layerZ0) * layerScale,
-      (width / scale) * layerScale,
-      (height / scale) * layerScale,
+      (worldX0 - layerX0) * sourceScale,
+      (worldZ0 - layerZ0) * sourceScale,
+      (width / scale) * sourceScale,
+      (height / scale) * sourceScale,
       0,
       0,
       width,
       height,
     );
-    if (isAtSea) {
+    if (isAtSea && !isEmber) {
       drawSea(minimapContext, scale, worldX0, worldZ0, ratio);
     }
     drawLiveLayer(minimapContext, scale, (worldX0 - X0) * scale, (worldZ0 - Z0) * scale, ratio);
@@ -1222,6 +1301,7 @@ export function createWorldMap(deps) {
     invalidate() {
       features = null;
       staticLayer = null;
+      emberLayer = null;
     },
   };
 }

@@ -30,7 +30,7 @@ function runeStone(id, index) {
 function detail(id) {
   if (!id) {
     return (
-      '<div class="rune-detail unknown"><h4>An unknown rune</h4>' +
+      '<div class="rune-detail unknown" data-detail=""><h4>An unknown rune</h4>' +
       "<p>Its seal still stands somewhere in the world, waiting for a hand that knows it.</p></div>"
     );
   }
@@ -41,7 +41,7 @@ function detail(id) {
   const onQ =
     id === activeRune(player.runes) ? '<span class="rune-key">On <kbd>Q</kbd></span>' : "";
   return (
-    `<div class="rune-detail" style="--rune:${rune.color}">` +
+    `<div class="rune-detail" data-detail="${id}" style="--rune:${rune.color}">` +
     `<div class="rune-detail-head"><svg viewBox="0 0 40 40" aria-hidden="true">${GLYPHS[id] || ""}</svg>` +
     `<h4>${escapeHtml(rune.name)}</h4></div>` +
     `<div class="rune-power"><b>${escapeHtml(rune.power)}</b>${onQ}<small>Cooldown ${rune.cooldown} s</small></div>` +
@@ -79,9 +79,18 @@ export function createRuneCodex() {
       "</svg>" +
       list.map((id, index) => runeStone(id, index)).join("") +
       "</div>" +
-      `<div id="rune-detail-box">${detail(list[0])}</div>`;
+      /* every rune's card (and the unknown one) in the same place, only the chosen one showing: the window
+         keeps the size of the longest, whichever rune is chosen and however many are bound */
+      `<div id="rune-detail-box">${[null, ...RUNE_IDS].map(detail).join("")}</div>`;
     const first = body.querySelector(".rune-stone");
     first?.classList.add("selected");
+    showDetail(list[0]);
+  }
+
+  function showDetail(id) {
+    body.querySelectorAll(".rune-detail").forEach((card) => {
+      card.classList.toggle("shown", card.dataset.detail === (id || ""));
+    });
   }
 
   /* hovering or tapping a stone shows what it is */
@@ -93,7 +102,7 @@ export function createRuneCodex() {
       .querySelectorAll(".rune-stone.selected")
       .forEach((other) => other.classList.remove("selected"));
     stone.classList.add("selected");
-    document.querySelector("#rune-detail-box").innerHTML = detail(stone.dataset.rune || null);
+    showDetail(stone.dataset.rune || null);
   }
   body.addEventListener("pointerover", (event) => select(event.target.closest(".rune-stone")));
   body.addEventListener("click", (event) => {

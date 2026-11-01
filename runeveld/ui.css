@@ -4431,13 +4431,18 @@ body.rpg-cursor #game[data-cursor="steer"] {
   }
 }
 #rune-detail-box {
-  min-height: 150px;
+  display: grid;
 }
 .rune-detail {
+  grid-area: 1 / 1;
+  visibility: hidden;
   padding: 10px 12px;
   border-radius: 4px;
   border: 1px solid color-mix(in srgb, var(--rune, #6a6478) 50%, transparent);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.2));
+}
+.rune-detail.shown {
+  visibility: visible;
   animation: panel-in 0.18s ease-out;
 }
 .rune-detail h4 {
