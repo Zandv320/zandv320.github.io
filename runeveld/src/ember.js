@@ -33,7 +33,7 @@ import { HULL } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { addShadowCatcher, applyGroundFilter, cameraState } from "./world.js";
 import { clickables, player } from "./game-state.js";
-import { loadTexture } from "./sprites.js";
+import { loadTexture, IS_PHONE } from "./sprites.js";
 
 /* the mountain's shape: height, and the crater's mouth at the top */
 const KHAROS_HEIGHT = MOUNT_KHAROS.height;
@@ -67,6 +67,7 @@ export function buildEmberIsles({ scene, prop, place, pending, seededRandom, obs
   buildJetty(scene, random);
   buildCamp({ scene, prop, place, pending, obstacles });
   buildScenery({ scene, prop, place, pending, random });
+  buildSteamCloud(scene);
   /* smoke and steam at their places from the start (they are moved only while a hero is in the world) */
   updateEmberIsles(0, 0);
 }
@@ -119,10 +120,10 @@ const CHUNK_PIXELS = CHUNK * PX;
 const CELLS = CHUNK_PIXELS / CELL;
 const CELL_UNITS = CELL / PX;
 /* how near the hero (or their ship) a chunk is painted, and how long a frame may spend on it (ms): more while the
-   hero stands on ground not painted yet */
+   hero stands on ground not painted yet; a phone gives it less, to keep its frames smooth */
 const PAINT_REACH = 240;
-const PAINT_BUDGET = 7;
-const URGENT_BUDGET = 30;
+const PAINT_BUDGET = IS_PHONE ? 4 : 7;
+const URGENT_BUDGET = IS_PHONE ? 20 : 30;
 
 /* the painter: the tiles and the sand patches as pixels, the chunks of land still to paint, the one being painted */
 let painter = null;
@@ -696,12 +697,16 @@ function buildLava(scene, random) {
       new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2).translate(pool.x, 0.038, pool.z),
     );
   }
-  for (const geometry of cover) {
-    /* drawn over the night haze, so it glows in the dark */
-    const mesh = new THREE.Mesh(geometry, lavaMaterial);
-    mesh.renderOrder = 10002;
-    scene.add(mesh);
-  }
+  /* all in one mesh, drawn over the night haze, so it glows in the dark */
+  const positions = cover.flatMap((geometry) => [
+    ...geometry.toNonIndexed().attributes.position.array,
+  ]);
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  merged.computeBoundingSphere();
+  const lava = new THREE.Mesh(merged, lavaMaterial);
+  lava.renderOrder = 10002;
+  scene.add(lava);
   buildStreams(scene, mouths);
   /* light: along the rivers, at the pools, at every fall */
   for (const line of lines) {
@@ -1018,37 +1023,45 @@ function buildCoast(scene, random) {
     new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
   );
   scene.add(beach);
-  /* boulders: along the coast in the surf, but not in the cove's mouth where the ship comes in */
-  const boulder = builders.material("basalt", 1.2, 1.2, 1.25);
+  /* boulders: along the coast in the surf (but not in the cove's mouth where the ship comes in), and a few small
+     ones along the cove's sides; all of them one instanced mesh, one draw call */
+  const stones = [];
   for (let k = 0; k < 170; k++) {
     const angle = random() * Math.PI * 2;
     const distance = emberShore(angle) + 0.4 + random() * 2.2;
     const x = EMBER_ISLES.x + Math.sin(angle) * distance;
     const z = EMBER_ISLES.z + Math.cos(angle) * distance;
-    if (Math.hypot(x - CINDER_COVE.x, z - CINDER_COVE.z) < CINDER_COVE.radius + 4) {
-      continue;
+    const size = 0.3 + random() * random() * 0.8;
+    const y = WATER_Y + random() * 0.6;
+    if (Math.hypot(x - CINDER_COVE.x, z - CINDER_COVE.z) >= CINDER_COVE.radius + 4) {
+      stones.push({ x, y, z, size });
     }
-    const stone = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.3 + random() * random() * 0.8, 0),
-      boulder,
-    );
-    stone.position.set(x, WATER_Y + random() * 0.6, z);
-    stone.rotation.set(random() * 3, random() * 3, random() * 3);
-    scene.add(stone);
   }
-  /* inside the cove only a few small ones, along its sides */
   for (let k = 0; k < 16; k++) {
     const angle = Math.PI * (0.35 + random() * 1.3);
     const x = CINDER_COVE.x + Math.sin(angle) * (CINDER_COVE.radius - 0.6);
     const z = CINDER_COVE.z + Math.cos(angle) * (CINDER_COVE.radius - 0.6);
-    if (x > COVE_JETTY.x - 3) {
-      continue;
+    const size = 0.3 + random() * 0.4;
+    const y = WATER_Y + random() * 0.3;
+    if (x <= COVE_JETTY.x - 3) {
+      stones.push({ x, y, z, size });
     }
-    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + random() * 0.4, 0), boulder);
-    stone.position.set(x, WATER_Y + random() * 0.3, z);
-    stone.rotation.set(random() * 3, random() * 3, random() * 3);
-    scene.add(stone);
   }
+  const boulders = new THREE.InstancedMesh(
+    new THREE.DodecahedronGeometry(1, 0),
+    builders.material("basalt", 1.2, 1.2, 1.25),
+    stones.length,
+  );
+  const placing = new THREE.Object3D();
+  stones.forEach((stone, k) => {
+    placing.position.set(stone.x, stone.y, stone.z);
+    placing.rotation.set(random() * 3, random() * 3, random() * 3);
+    placing.scale.setScalar(stone.size);
+    placing.updateMatrix();
+    boulders.setMatrixAt(k, placing.matrix);
+  });
+  boulders.computeBoundingSphere();
+  scene.add(boulders);
 }
 
 /* ---------- Mount Kharos: a rugged cone of basalt, ridges and gullies down its sides, grey with ash towards the
@@ -1440,24 +1453,46 @@ function buildRuins({ prop, place, pending, taken, random, isClear }) {
   }
 }
 
-/* a thread of steam rising from (x, z): `size` the puffs, from height `y`, rising `height` */
+/* a thread of steam rising from (x, z): `size` the puffs, from height `y`, rising `height` (drawn by steamCloud) */
 function addVent(scene, x, z, random, { size = 0.6, y = 0.9, height = 4 } = {}) {
-  const vent = { x, z, y, height, puffs: [] };
-  for (let p = 0; p < 4; p++) {
-    const puff = new THREE.Mesh(
-      new THREE.SphereGeometry(size, 8, 6),
-      new THREE.MeshLambertMaterial({
-        color: 0xd8d4d0,
-        transparent: true,
-        opacity: 0.4,
-        depthWrite: false,
-      }),
-    );
-    puff.userData.phase = p / 4 + random() * 0.1;
-    scene.add(puff);
-    vent.puffs.push(puff);
+  const phases = [0, 1, 2, 3].map((p) => p / 4 + random() * 0.1);
+  steamVents.push({ x, z, y, height, size, phases });
+}
+
+/* All the steam of the isles as one instanced mesh of soft spheres (one draw call): each puff grows as it rises,
+   and shrinks away at the top instead of fading, which instances cannot do one by one. */
+let steamCloud = null;
+const steamPlacing = new THREE.Object3D();
+
+function buildSteamCloud(scene) {
+  steamCloud = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(1, 8, 6),
+    new THREE.MeshLambertMaterial({
+      color: 0xd8d4d0,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+    }),
+    steamVents.length * 4,
+  );
+  /* the puffs move every frame: never culled as a whole */
+  steamCloud.frustumCulled = false;
+  scene.add(steamCloud);
+}
+
+function updateSteam(time) {
+  let k = 0;
+  for (const vent of steamVents) {
+    for (const phase of vent.phases) {
+      const t = (time * 0.18 + phase) % 1;
+      const grow = 0.5 + t * 1.6;
+      steamPlacing.position.set(vent.x + t * 1.2, vent.y + t * vent.height, vent.z);
+      steamPlacing.scale.setScalar(vent.size * grow * Math.min(1, (1 - t) * 3));
+      steamPlacing.updateMatrix();
+      steamCloud.setMatrixAt(k++, steamPlacing.matrix);
+    }
   }
-  steamVents.push(vent);
+  steamCloud.instanceMatrix.needsUpdate = true;
 }
 
 /* the sparks rise, drift and go out; a spent one starts again somewhere over the lava */
@@ -1569,14 +1604,7 @@ export function updateEmberIsles(dt, time) {
   for (const stream of lavaStreams) {
     stream.map.offset.set(0, (-time * 0.25) % 1);
   }
-  for (const vent of steamVents) {
-    for (const puff of vent.puffs) {
-      const t = (time * 0.18 + puff.userData.phase) % 1;
-      puff.position.set(vent.x + t * 1.2, vent.y + t * vent.height, vent.z);
-      puff.scale.setScalar(0.5 + t * 1.6);
-      puff.material.opacity = 0.4 * (1 - t);
-    }
-  }
+  updateSteam(time);
   paintGround();
   updateSparks(dt);
   updateMountainFade(dt);

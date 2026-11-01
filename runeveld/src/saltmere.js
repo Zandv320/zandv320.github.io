@@ -13,6 +13,7 @@ import { player, clickables } from "./game-state.js";
 import { BERTH, HULL, ROCKS, ISLETS, EMBER_ISLES, isletReach } from "./rules/sea.js";
 import { emberShore } from "./rules/ember.js";
 import { sfx } from "./audio.js";
+import { IS_PHONE } from "./sprites.js";
 
 /* the sea reaches this far: past the Grey Sea's edges (rules/sea.js), so it fills the view wherever a ship sails */
 const SEA = { x0: -560, x1: 260, z1: SALTMERE.z0, z0: -1500 };
@@ -563,13 +564,13 @@ function coastCircles(x, z, reach, count, radius) {
   });
 }
 
-/* everything standing in the sea that has shallows round it: [x, z, radius] for the shader */
+/* everything standing in the sea that has shallows round it: [x, z, radius] (shallowMap) */
 const SHALLOWS = [
   ...ROCKS,
   ...ISLETS.flatMap((islet) =>
-    coastCircles(islet.x, islet.z, (angle) => isletReach(islet, angle), 7, islet.radius * 0.6),
+    coastCircles(islet.x, islet.z, (angle) => isletReach(islet, angle), 16, islet.radius * 0.6),
   ),
-  ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 44, 14),
+  ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 96, 14),
 ];
 
 /* The water of the sea, drawn on the GPU in the game's pixels: clear turquoise over the shallows along the quay and
@@ -584,10 +585,11 @@ const SEA_VERTEX = /* glsl */ `
   }
 `;
 const SEA_FRAGMENT = /* glsl */ `
-  #define SHALLOWS ${SHALLOWS.length}
+  ${IS_PHONE ? "#define SIMPLE" : ""}
   uniform float uTime;
   uniform float uShore;
-  uniform vec3 uShallows[SHALLOWS];
+  uniform sampler2D uShallowMap;
+  uniform vec4 uShallowBounds;
   uniform vec3 uShallow;
   uniform vec3 uMiddle;
   uniform vec3 uDeep;
@@ -632,24 +634,28 @@ const SEA_FRAGMENT = /* glsl */ `
     /* one game pixel is a sixteenth of a unit: the water is drawn in those */
     vec2 p = floor(vWorld * 16.0) / 16.0;
     float t = uTime;
-    /* how shallow: along the quay, and round everything standing in the sea */
-    float shallow = exp(-(uShore - p.y) / 16.0);
-    for (int k = 0; k < SHALLOWS; k++) {
-      vec3 rock = uShallows[k];
-      float d = max(0.0, length(p - rock.xy) - rock.z);
-      shallow = max(shallow, exp(-d / (5.0 + rock.z * 0.15)));
-    }
+    /* how shallow: along the quay, and round everything standing in the sea (worked out once, shallowMap) */
+    float shallow = texture2D(uShallowMap, (p - uShallowBounds.xy) / uShallowBounds.zw).r;
     /* deeper the further out to sea, under slow shadows of cloud and depth */
     float far = clamp((uShore - p.y) / 240.0, 0.0, 1.0);
     vec3 color = mix(uMiddle, uDeep, far);
+    #ifdef SIMPLE
+    float cloud = noise(p * 0.035 + vec2(t * 0.004, t * 0.006));
+    #else
     float cloud = noise(p * 0.025 + vec2(t * 0.004, t * 0.006)) * 0.6 + noise(p * 0.07 - vec2(t * 0.01, 0.0)) * 0.4;
+    #endif
     color = mix(color, uShadow, smoothstep(0.38, 0.75, cloud) * 0.85);
     color = mix(color, uShallow, smoothstep(0.0, 1.0, shallow));
     /* the net of light, its threads wavering; everywhere on the water, but broken into short pieces that come
        and go, each with a soft glow round it */
     vec2 warp = vec2(noise(p * 0.5 + t * 0.15), noise(p * 0.5 + 5.2 - t * 0.12)) - 0.5;
+    /* on a phone the threads waver less: two noises fewer for every pixel of the sea */
+    #ifdef SIMPLE
+    float edge = cellEdge(p * 0.55 + warp * 0.7, t * 0.7);
+    #else
     vec2 wobble = vec2(noise(p * 1.8 - t * 0.3), noise(p * 1.8 + 2.9 + t * 0.25)) - 0.5;
     float edge = cellEdge(p * 0.55 + warp * 0.6 + wobble * 0.18, t * 0.7);
+    #endif
     float pieces = smoothstep(0.48, 0.62, noise(p * 2.4 + vec2(t * 0.2, -t * 0.15)));
     float core = (1.0 - smoothstep(0.012, 0.035, edge)) * pieces;
     float glow = (1.0 - smoothstep(0.02, 0.09, edge)) * mix(0.15, 1.0, pieces);
@@ -664,6 +670,54 @@ const SEA_FRAGMENT = /* glsl */ `
   }
 `;
 
+/* How shallow the sea is everywhere, worked out once on a grid of two units (the shader reads it, smoothly between
+   the points): along the quay, and round everything standing in the sea, each only as far as its shallows reach. */
+const SHALLOW_STEP = 2;
+function shallowMap() {
+  const columns = Math.ceil((SEA.x1 - SEA.x0) / SHALLOW_STEP);
+  const rows = Math.ceil((SEA.z1 - SEA.z0) / SHALLOW_STEP);
+  const values = new Float32Array(columns * rows);
+  for (let j = 0; j < rows; j++) {
+    const z = SEA.z0 + (j + 0.5) * SHALLOW_STEP;
+    const quay = Math.exp(-(SEA.z1 - z) / 16);
+    for (let i = 0; i < columns; i++) {
+      values[j * columns + i] = quay;
+    }
+  }
+  for (const [cx, cz, radius] of SHALLOWS) {
+    const falloff = 5 + radius * 0.15;
+    const reach = radius + falloff * 6;
+    const i0 = Math.max(0, Math.floor((cx - reach - SEA.x0) / SHALLOW_STEP));
+    const i1 = Math.min(columns - 1, Math.ceil((cx + reach - SEA.x0) / SHALLOW_STEP));
+    const j0 = Math.max(0, Math.floor((cz - reach - SEA.z0) / SHALLOW_STEP));
+    const j1 = Math.min(rows - 1, Math.ceil((cz + reach - SEA.z0) / SHALLOW_STEP));
+    for (let j = j0; j <= j1; j++) {
+      const z = SEA.z0 + (j + 0.5) * SHALLOW_STEP;
+      for (let i = i0; i <= i1; i++) {
+        const x = SEA.x0 + (i + 0.5) * SHALLOW_STEP;
+        const d = Math.max(0, Math.hypot(x - cx, z - cz) - radius);
+        const k = j * columns + i;
+        values[k] = Math.max(values[k], Math.exp(-d / falloff));
+      }
+    }
+  }
+  const data = new Uint8Array(columns * rows);
+  for (let k = 0; k < data.length; k++) {
+    data[k] = Math.round(values[k] * 255);
+  }
+  const texture = new THREE.DataTexture(
+    data,
+    columns,
+    rows,
+    THREE.RedFormat,
+    THREE.UnsignedByteType,
+  );
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 /* The sea below the land, darker further out, its water moving; and the wall of the quay down to it. */
 function buildSea(scene) {
   const width = SEA.x1 - SEA.x0;
@@ -672,7 +726,10 @@ function buildSea(scene) {
     uniforms: {
       uTime: { value: 0 },
       uShore: { value: SEA.z1 },
-      uShallows: { value: SHALLOWS.map(([x, z, radius]) => new THREE.Vector3(x, z, radius)) },
+      uShallowMap: { value: shallowMap() },
+      uShallowBounds: {
+        value: new THREE.Vector4(SEA.x0, SEA.z0, SEA.x1 - SEA.x0, SEA.z1 - SEA.z0),
+      },
       uShallow: { value: new THREE.Color(0x2b9be0) },
       uMiddle: { value: new THREE.Color(0x1a5fae) },
       uDeep: { value: new THREE.Color(0x15408a) },

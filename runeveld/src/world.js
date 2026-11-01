@@ -903,17 +903,25 @@ function addSolids(group, x, z, rotation) {
 }
 
 /* The static billboards in batches: one InstancedMesh per picture and size, one for all their blob shadows. */
+/* the billboards are batched per picture and per area this many units square, so the camera skips what is out of
+   view */
+const BATCH_AREA = 64;
+
 function buildBillboardBatches() {
   const groups = new Map();
-  const shadows = [];
+  const shadows = new Map();
   for (const item of staticBillboards) {
-    const key = `${item.texture.uuid}|${item.width.toFixed(4)}|${item.height.toFixed(4)}`;
+    const area = `${Math.floor(item.x / BATCH_AREA)},${Math.floor(item.z / BATCH_AREA)}`;
+    const key = `${item.texture.uuid}|${item.width.toFixed(4)}|${item.height.toFixed(4)}|${area}`;
     if (!groups.has(key)) {
       groups.set(key, { ...item, positions: [] });
     }
     groups.get(key).positions.push({ x: item.x, z: item.z });
     if (item.shadow > 0) {
-      shadows.push({ x: item.x, z: item.z, diameter: item.shadow });
+      if (!shadows.has(area)) {
+        shadows.set(area, []);
+      }
+      shadows.get(area).push({ x: item.x, z: item.z, diameter: item.shadow });
     }
   }
   for (const group of groups.values()) {
@@ -921,9 +929,9 @@ function buildBillboardBatches() {
     geometry.translate(0, group.height / 2, 0);
     scene.add(createBillboardBatch(group.texture, geometry, group.positions, cameraState.yaw));
   }
-  if (shadows.length) {
+  for (const areaShadows of shadows.values()) {
     scene.add(
-      createShadowBatch(BLOB_SHADOW.geometry, BLOB_SHADOW.material, shadows, BLOB_SHADOW.y),
+      createShadowBatch(BLOB_SHADOW.geometry, BLOB_SHADOW.material, areaShadows, BLOB_SHADOW.y),
     );
   }
   staticBillboards.length = 0;

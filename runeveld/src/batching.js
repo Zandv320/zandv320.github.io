@@ -2,9 +2,10 @@
    The world holds thousands of static things: trees, rocks, bushes and props (flat sprites that turn to the
    camera), each with a blob shadow, and pixel-3D buildings made of many small boxes with outlines. Drawn one by
    one that is well over a thousand draw calls a frame, too many for most phones. This module draws them in bulk:
-   - static billboards of the same picture become one InstancedMesh; turning to the camera, leaning back and
-     snapping to the pixel grid happen in the vertex shader, exactly as Billboard.update() does it per object
-   - their blob shadows become one InstancedMesh
+   - static billboards of the same picture in the same area become one InstancedMesh; turning to the camera,
+     leaning back and snapping to the pixel grid happen in the vertex shader, exactly as Billboard.update() does it
+     per object; a batch out of view is skipped
+   - their blob shadows become one InstancedMesh per area
    - the meshes and outlines of the pixel-3D builds are merged per material and per area of the world (so the
      camera can still skip areas out of view), with the texture repeat baked into the uvs
    The result looks identical; only the number of draw calls and objects drops. */
@@ -94,10 +95,18 @@ export function createBillboardBatch(texture, geometry, positions, yaw = 0) {
     mesh.setMatrixAt(i, matrix.makeTranslation(position.x, 0, position.z));
   });
   mesh.instanceMatrix.needsUpdate = true;
-  /* the shader moves the vertices, so the bounding volume three.js computes does not fit: never cull */
-  mesh.frustumCulled = false;
+  /* the shader turns and leans the picture: the bounds round its instances grow by its size, so it is culled only
+     when wholly out of view */
+  fitBounds(mesh, Math.max(geometry.parameters.width, geometry.parameters.height) + 1);
   mesh.matrixAutoUpdate = false;
   return mesh;
+}
+
+/* the bounding sphere round all of a batch's instances, grown by `margin`, for the camera to cull the batch by */
+function fitBounds(mesh, margin) {
+  mesh.computeBoundingSphere();
+  mesh.boundingSphere.radius += margin;
+  mesh.frustumCulled = true;
 }
 
 /**
@@ -118,7 +127,7 @@ export function createShadowBatch(geometry, material, shadows, y) {
     mesh.setMatrixAt(i, matrix.makeTranslation(shadow.x, 0, shadow.z).multiply(scale));
   });
   mesh.instanceMatrix.needsUpdate = true;
-  mesh.frustumCulled = false;
+  fitBounds(mesh, 2);
   mesh.matrixAutoUpdate = false;
   mesh.renderOrder = 2;
   return mesh;
