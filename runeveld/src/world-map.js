@@ -36,6 +36,14 @@ import {
   isletReach,
 } from "./rules/sea.js";
 import { emberShore, MOUNT_KHAROS, CINDER_CAMP, COVE_JETTY } from "./rules/ember.js";
+import {
+  WORLD,
+  ZOOM_REGIONS,
+  mainlandCoast,
+  drawWorldBase,
+  drawNames,
+  drawMapFurniture,
+} from "./world-chart.js";
 
 /* Traces a coast round (cx, cz) that reaches `reach(angle)` (plus `grow`) as a path on `g`, through `px`/`pz`. */
 function traceCoast(g, px, pz, cx, cz, reach, grow = 0) {
@@ -53,7 +61,6 @@ function traceCoast(g, px, pz, cx, cz, reach, grow = 0) {
   }
   g.closePath();
 }
-import { PIERS, MOLE, LIGHTHOUSE } from "./rules/saltmere.js";
 
 /* Colours per terrain, per map kind (userData.mapKind, ground plane kind, billboard name) and per live marker. */
 const COLORS = {
@@ -121,15 +128,6 @@ const X0 = VALE.x0 - 4;
 const X1 = 70;
 const Z0 = SALTMERE.mapZ0 - 4;
 const Z1 = 70;
-
-/* The sea chart: the Grey Sea from Saltmere's quay to past the Ember Isles, drawn fresh each time it is shown. */
-const SEA_CHART = {
-  x0: GREY_SEA.x0 - 10,
-  x1: GREY_SEA.x1 + 10,
-  z0: GREY_SEA.z0 - 10,
-  z1: SALTMERE.z1 + 6,
-};
-const LAND_MAP = { x0: X0, x1: X1, z0: Z0, z1: Z1 };
 
 /* The static layer is rendered at 8 px per unit (× device pixel ratio): the whole world in one canvas that phones
    can still hold. */
@@ -223,9 +221,8 @@ export function createWorldMap(deps) {
     const SHADOW = "rgba(20, 30, 10, 0.32)";
     const shadowOffset = scale * 0.35;
 
-    /* ---- ground: outside the world, fields, forest, meadows, the city, the village ---- */
-    g.fillStyle = COLORS.outside;
-    g.fillRect(0, 0, layer.width, layer.height);
+    /* ---- ground: fields, forest, meadows, the city, the village; outside the world it stays clear, for the
+       wild lands and the sea of the world map (world-chart.js) to show through ---- */
     const step = 0.5;
     const regionAt = (x, z) => {
       if (inFields(x, z)) {
@@ -246,9 +243,6 @@ export function createWorldMap(deps) {
       }
       if (inSaltmere(x, z)) {
         return "capital";
-      }
-      if (z < SALTMERE.z0 && x > SALTMERE.x0 - 40 && x < SALTMERE.x1 + 40) {
-        return "sea";
       }
       /* Greyfall Gorge cuts across the Northroad's land; the bridge is the only way over */
       if (inGorge(x, z) && distanceToPath(x, z, NORTH_ROAD) < northroadWidth(z)) {
@@ -677,19 +671,14 @@ export function createWorldMap(deps) {
     g.restore();
   }
 
-  /* ---- the map panel: at zoom 1 the whole world fits; zoom in up to 4× beyond what fills the panel with the
-     wheel, a pinch or the + and − buttons; drag to pan, click or tap to walk there. The sea chart, and on a phone
-     (or a short screen) the land map too, fills the screen and opens zoomed in on the player. ---- */
+  /* ---- the map panel: one map of the whole world, filling the screen. It opens on the whole world; a click on
+     a land (the mainland, the Ember Isles) flies in to it; closer in, a click walks there (or, at the helm, sails
+     there). The wheel, a pinch or the + and − buttons zoom; drag to pan; 🌍 flies back out to the whole world. ---- */
 
-  /* the land map or the sea chart (the ⚓ button switches; it opens on the sea chart out at sea) */
-  let isSeaChart = false;
-  let bounds = LAND_MAP;
+  const bounds = WORLD;
   const worldWidth = () => bounds.x1 - bounds.x0;
   const worldHeight = () => bounds.z1 - bounds.z0;
   const viewport = $("#world-map-viewport");
-  /* the sea chart always fills the screen (there is a lot of sea); the land map on a phone or a short screen */
-  const fillsScreen = () =>
-    isSeaChart || matchMedia("(max-width: 700px), (max-height: 520px)").matches;
   let zoom = 1;
   let centerX = (bounds.x0 + bounds.x1) / 2;
   let centerZ = (bounds.z0 + bounds.z1) / 2;
@@ -699,22 +688,14 @@ export function createWorldMap(deps) {
   /* pointers on the canvas (two of them pinch) */
   const pointers = new Map();
   let pinch = null;
+  /* a flight in progress: from and to {zoom, centerX, centerZ}, and when it began */
+  let flight = null;
 
   function resizeCanvas() {
     pixelRatio = Math.min(2, devicePixelRatio || 1);
-    let width;
-    let height;
-    if (fillsScreen()) {
-      width = Math.max(120, viewport.clientWidth);
-      height = Math.max(120, viewport.clientHeight);
-      fitScale = Math.min(width / worldWidth(), height / worldHeight());
-    } else {
-      const maxWidth = Math.min(innerWidth - 48, 960);
-      const maxHeight = innerHeight - 150;
-      fitScale = Math.max(1, Math.min(maxWidth / worldWidth(), maxHeight / worldHeight()));
-      width = Math.round(worldWidth() * fitScale);
-      height = Math.round(worldHeight() * fitScale);
-    }
+    const width = Math.max(120, viewport.clientWidth);
+    const height = Math.max(120, viewport.clientHeight);
+    fitScale = Math.min(width / worldWidth(), height / worldHeight());
     if (canvas.style.width !== width + "px" || canvas.style.height !== height + "px") {
       canvas.style.width = width + "px";
       canvas.style.height = height + "px";
@@ -723,27 +704,58 @@ export function createWorldMap(deps) {
     }
   }
 
-  /* the zoom at which the map fills the whole canvas (no bands around the world) */
-  const coverZoom = () => {
-    const width = canvas.width / pixelRatio;
-    const height = canvas.height / pixelRatio;
-    return Math.max(width / worldWidth(), height / worldHeight()) / fitScale;
-  };
-  const maxZoom = () => coverZoom() * 4;
+  /* close in, a land is drawn at up to twenty screen pixels a unit */
+  const maxZoom = () => 20 / fitScale;
+  /* far out, the whole world (or most of it) in view: a click picks a land to fly to */
+  const isFarOut = () => fitScale * zoom < 2.5;
 
   /** Zoom by `factor`, keeping the world point under (clientX, clientY) in place. */
   function zoomAt(factor, clientX, clientY) {
+    flight = null;
     const rect = canvas.getBoundingClientRect();
     const [x, z] = toWorld({
       clientX: clientX ?? rect.left + rect.width / 2,
       clientY: clientY ?? rect.top + rect.height / 2,
     });
-    const previousZoom = zoom;
-    zoom = Math.max(1, Math.min(maxZoom(), zoom * factor));
-    const shift = 1 - previousZoom / zoom;
+    const newZoom = Math.max(1, Math.min(maxZoom(), zoom * factor));
+    const shift = 1 - zoom / newZoom;
+    zoom = newZoom;
     centerX += (x - centerX) * shift;
     centerZ += (z - centerZ) * shift;
     render();
+  }
+
+  /* Fly smoothly to show `region` ({x0, x1, z0, z1}) as large as the screen allows. */
+  function flyTo(region) {
+    const cssWidth = canvas.width / pixelRatio;
+    const cssHeight = canvas.height / pixelRatio;
+    const fit = Math.min(cssWidth / (region.x1 - region.x0), cssHeight / (region.z1 - region.z0));
+    flight = {
+      from: { zoom, centerX, centerZ },
+      to: {
+        zoom: Math.max(1, Math.min(maxZoom(), fit / fitScale)),
+        centerX: (region.x0 + region.x1) / 2,
+        centerZ: (region.z0 + region.z1) / 2,
+      },
+      start: performance.now(),
+    };
+    render();
+  }
+
+  /* one step of a flight: ease in and out, the zoom on a log scale so it feels even */
+  function stepFlight() {
+    if (!flight) {
+      return;
+    }
+    const t = Math.min(1, (performance.now() - flight.start) / 550);
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const { from, to } = flight;
+    zoom = Math.exp(Math.log(from.zoom) + (Math.log(to.zoom) - Math.log(from.zoom)) * ease);
+    centerX = from.centerX + (to.centerX - from.centerX) * ease;
+    centerZ = from.centerZ + (to.centerZ - from.centerZ) * ease;
+    if (t >= 1) {
+      flight = null;
+    }
   }
 
   /* Scale in canvas pixels per unit, and the top-left corner of the view in world coordinates. */
@@ -770,29 +782,33 @@ export function createWorldMap(deps) {
     };
   }
 
-  function render() {
-    if (!isOpenNow) {
-      return;
+  /* The painted world for the current view, kept until the view changes (the markers are drawn fresh every
+     frame): the ocean and the islands, the lands in detail from the static layer, the names, the mooring circles,
+     the compass and the scale. */
+  let base = null;
+  let baseKey = "";
+  function ensureBase({ scale, worldX0, worldZ0, viewWidth, viewHeight }) {
+    const key = [canvas.width, canvas.height, scale, worldX0, worldZ0]
+      .map((n) => n.toFixed(3))
+      .join("|");
+    if (base && key === baseKey) {
+      return base;
     }
-    resizeCanvas();
-    if (isSeaChart) {
-      const { scale, worldX0, worldZ0 } = view();
-      drawSeaChart(context, scale, worldX0, worldZ0, pixelRatio);
-      return;
-    }
-    const layer = ensureStaticLayer(STATIC_SCALE * pixelRatio);
-    const { scale, worldX0, worldZ0, viewWidth, viewHeight } = view();
+    base = base || document.createElement("canvas");
+    base.width = canvas.width;
+    base.height = canvas.height;
+    const g = base.getContext("2d");
+    drawWorldBase(g, scale, worldX0, worldZ0, pixelRatio);
+    /* the lands in detail: the part of the static layer in view */
     const layerScale = STATIC_SCALE * pixelRatio;
-    context.imageSmoothingEnabled = true;
-    context.fillStyle = COLORS.outside;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    /* the part of the world in view (the view may reach past the world's edges) */
+    const layer = ensureStaticLayer(layerScale);
     const fromX = Math.max(X0, worldX0);
     const fromZ = Math.max(Z0, worldZ0);
     const toX = Math.min(X1, worldX0 + viewWidth);
     const toZ = Math.min(Z1, worldZ0 + viewHeight);
     if (toX > fromX && toZ > fromZ) {
-      context.drawImage(
+      g.imageSmoothingEnabled = true;
+      g.drawImage(
         layer,
         (fromX - X0) * layerScale,
         (fromZ - Z0) * layerScale,
@@ -804,7 +820,77 @@ export function createWorldMap(deps) {
         (toZ - fromZ) * scale,
       );
     }
-    drawLiveLayer(context, scale, (worldX0 - X0) * scale, (worldZ0 - Z0) * scale, pixelRatio);
+    drawNames(g, scale, worldX0, worldZ0, pixelRatio);
+    /* the golden circles where the Gull's Promise moors: sail into one */
+    g.strokeStyle = "rgba(255, 208, 96, 0.95)";
+    g.lineWidth = Math.max(2 * pixelRatio, scale * 0.6);
+    for (const berth of BERTHS) {
+      g.beginPath();
+      g.arc(
+        (berth.x - worldX0) * scale,
+        (berth.z - worldZ0) * scale,
+        Math.max(5 * pixelRatio, MOOR_DISTANCE * scale),
+        0,
+        Math.PI * 2,
+      );
+      g.stroke();
+    }
+    drawMapFurniture(g, scale, pixelRatio);
+    baseKey = key;
+    return base;
+  }
+
+  function render() {
+    if (!isOpenNow) {
+      return;
+    }
+    resizeCanvas();
+    stepFlight();
+    const v = view();
+    context.drawImage(ensureBase(v), 0, 0);
+    drawLiveLayer(
+      context,
+      v.scale,
+      (v.worldX0 - X0) * v.scale,
+      (v.worldZ0 - Z0) * v.scale,
+      pixelRatio,
+    );
+    drawVoyages(context, v.scale, v.worldX0, v.worldZ0, pixelRatio);
+  }
+
+  /* The ships at sea (the hero's with the course ahead), and far out a ring that breathes round the hero, so they
+     can be found on the whole world. */
+  function drawVoyages(g, scale, worldX0, worldZ0, ratio) {
+    const px = (x) => (x - worldX0) * scale;
+    const pz = (z) => (z - worldZ0) * scale;
+    for (const peer of deps.peers.values()) {
+      const pose = peer.presence && peer.presence.ship;
+      if (Array.isArray(pose)) {
+        drawShip(g, px(pose[0]), pz(pose[1]), pose[2], COLORS.otherPlayer, ratio);
+      }
+    }
+    const ship = deps.player.ship;
+    if (ship) {
+      if (ship.destination) {
+        g.setLineDash([6 * ratio, 5 * ratio]);
+        g.strokeStyle = "rgba(255, 233, 168, 0.8)";
+        g.lineWidth = 1.5 * ratio;
+        g.beginPath();
+        g.moveTo(px(ship.x), pz(ship.z));
+        g.lineTo(px(ship.destination[0]), pz(ship.destination[1]));
+        g.stroke();
+        g.setLineDash([]);
+      }
+      drawShip(g, px(ship.x), pz(ship.z), ship.heading, COLORS.player, ratio);
+    }
+    if (isFarOut()) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.005);
+      g.strokeStyle = `rgba(255, 255, 255, ${0.45 + 0.45 * pulse})`;
+      g.lineWidth = 2 * ratio;
+      g.beginPath();
+      g.arc(px(deps.player.x), pz(deps.player.z), (9 + pulse * 5) * ratio, 0, Math.PI * 2);
+      g.stroke();
+    }
   }
 
   const toWorld = (event) => {
@@ -816,19 +902,41 @@ export function createWorldMap(deps) {
     ];
   };
 
+  /* the land a click flies in to from far out: the mainland (not the sea before it) or the Ember Isles */
+  const regionToZoom = (x, z) =>
+    ZOOM_REGIONS.find(
+      (region, k) =>
+        x > region.x0 &&
+        x < region.x1 &&
+        z > region.z0 &&
+        z < region.z1 &&
+        (k > 0 || z > mainlandCoast(x) - 6),
+    );
+
   const regionNameAt = (x, z) => {
-    if (isSeaChart) {
-      const islet = ISLETS.find((isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius + 6);
+    if (z < mainlandCoast(x)) {
+      const islet = ISLETS.find(
+        (isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius * 1.5 + 4,
+      );
       if (islet) {
         return islet.name;
       }
       if (Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < 18) {
         return CINDER_CAMP.name;
       }
-      if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius + 10) {
+      if (Math.hypot(x - MOUNT_KHAROS.x, z - MOUNT_KHAROS.z) < MOUNT_KHAROS.radius) {
+        return MOUNT_KHAROS.name;
+      }
+      if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius * 1.3) {
         return EMBER_ISLES.name;
       }
-      return z > SALTMERE.z0 ? SALTMERE.name : GREY_SEA.name;
+      return GREY_SEA.name;
+    }
+    if (inSaltmere(x, z, -2)) {
+      return SALTMERE.name;
+    }
+    if (inNorthroad(x, z)) {
+      return NORTHROAD.name;
     }
     if (inCapital(x, z)) {
       return CAPITAL.name;
@@ -839,7 +947,10 @@ export function createWorldMap(deps) {
     if (inVale(x, z) && !inFields(x, z)) {
       return VALE.name;
     }
-    return deps.inVillage(x, z) ? "Runeveld village" : "Runeveld fields";
+    if (inFields(x, z)) {
+      return deps.inVillage(x, z) ? "Runeveld village" : "Runeveld fields";
+    }
+    return "The wild lands";
   };
 
   canvas.addEventListener(
@@ -852,6 +963,7 @@ export function createWorldMap(deps) {
     { passive: false },
   );
   canvas.addEventListener("pointerdown", (event) => {
+    flight = null;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     canvas.setPointerCapture(event.pointerId);
     if (pointers.size === 2) {
@@ -868,7 +980,6 @@ export function createWorldMap(deps) {
       centerZ,
       hasMoved: false,
     };
-    canvas.setPointerCapture(event.pointerId);
   });
   canvas.addEventListener("pointermove", (event) => {
     if (pointers.has(event.pointerId)) {
@@ -916,7 +1027,13 @@ export function createWorldMap(deps) {
       return;
     }
     const [x, z] = toWorld(event);
-    /* at the helm a click on the chart (or the map) sets the course; ashore it is a walk */
+    /* far out a click on a land flies in to it */
+    const region = isFarOut() && regionToZoom(x, z);
+    if (region) {
+      flyTo(region);
+      return;
+    }
+    /* at the helm a click sets the course; ashore it is a walk */
     if ((deps.sailTo && deps.sailTo(x, z)) || deps.walkTo(x, z)) {
       close();
     }
@@ -927,220 +1044,26 @@ export function createWorldMap(deps) {
     drag = null;
   });
   $("#world-map-close").onclick = () => close();
-  $("#world-map-sea").onclick = () => setSeaChart(!isSeaChart);
+  $("#world-map-world").onclick = () => flyTo(WORLD);
   $("#world-map-zoom-in").onclick = () => zoomAt(1.5);
   $("#world-map-zoom-out").onclick = () => zoomAt(1 / 1.5);
   addEventListener("resize", () => render());
 
-  /* the land map or the sea chart, fresh at zoom 1 (or around the hero on a phone) */
-  function setSeaChart(isSea) {
-    isSeaChart = isSea;
-    bounds = isSea ? SEA_CHART : LAND_MAP;
-    $("#world-map-title").textContent = isSea ? "Sea chart" : "World map";
-    $("#world-map-sea").textContent = isSea ? "🗺️" : "⚓";
-    $("#world-map-sea").title = isSea ? "World map" : "Sea chart";
-    panel.classList.toggle("sea-chart", isSea);
-    zoom = 1;
-    centerX = (bounds.x0 + bounds.x1) / 2;
-    centerZ = (bounds.z0 + bounds.z1) / 2;
-    if (isOpenNow) {
-      resizeCanvas();
-      if (fillsScreen()) {
-        zoom = Math.min(maxZoom(), Math.max(1, coverZoom()));
-        centerX = deps.player.x;
-        centerZ = deps.player.z;
-      }
-      render();
-    }
-  }
-
+  /* it opens on the whole world */
   function show() {
     isOpenNow = true;
     panel.hidden = false;
-    /* out at sea the sea chart, ashore the map of the land */
-    const isAtSea = deps.player.z < SALTMERE.z0 - 2;
-    if (isAtSea !== isSeaChart) {
-      setSeaChart(isAtSea);
-    }
+    flight = null;
     resizeCanvas();
-    if (fillsScreen()) {
-      /* a phone: fill the screen, centred on the player */
-      zoom = Math.min(maxZoom(), Math.max(1, coverZoom()));
-      centerX = deps.player.x;
-      centerZ = deps.player.z;
-    } else if (zoom === 1) {
-      centerX = (bounds.x0 + bounds.x1) / 2;
-      centerZ = (bounds.z0 + bounds.z1) / 2;
-    }
+    zoom = 1;
+    centerX = (bounds.x0 + bounds.x1) / 2;
+    centerZ = (bounds.z0 + bounds.z1) / 2;
     render();
   }
 
   function close() {
     isOpenNow = false;
     panel.hidden = true;
-  }
-
-  /* ---- the sea chart: the Grey Sea as a sailor's chart, with the ships on it ---- */
-
-  function drawSeaChart(g, scale, worldX0, worldZ0, ratio) {
-    const px = (x) => (x - worldX0) * scale;
-    const pz = (z) => (z - worldZ0) * scale;
-    const { width, height } = g.canvas;
-    /* the water, a little lighter near the coast; a grid of fifty units */
-    const water = g.createLinearGradient(0, pz(SEA_CHART.z0), 0, pz(SALTMERE.z0));
-    water.addColorStop(0, "#26475e");
-    water.addColorStop(1, "#3c6a88");
-    g.fillStyle = water;
-    g.fillRect(0, 0, width, height);
-    g.strokeStyle = "rgba(220, 235, 245, 0.08)";
-    g.lineWidth = 1;
-    for (let x = Math.ceil(SEA_CHART.x0 / 50) * 50; x < SEA_CHART.x1; x += 50) {
-      g.beginPath();
-      g.moveTo(px(x), pz(SEA_CHART.z0));
-      g.lineTo(px(x), pz(SALTMERE.z0));
-      g.stroke();
-    }
-    for (let z = Math.ceil(SEA_CHART.z0 / 50) * 50; z < SALTMERE.z0; z += 50) {
-      g.beginPath();
-      g.moveTo(px(SEA_CHART.x0), pz(z));
-      g.lineTo(px(SEA_CHART.x1), pz(z));
-      g.stroke();
-    }
-    /* the coast of the land and Saltmere on it: its walls, piers, the mole and the lighthouse */
-    g.fillStyle = COLORS.meadow;
-    g.fillRect(0, pz(SALTMERE.z0), width, height);
-    g.fillStyle = COLORS.capital;
-    g.fillRect(
-      px(SALTMERE.x0),
-      pz(SALTMERE.z0),
-      (SALTMERE.x1 - SALTMERE.x0) * scale,
-      (SALTMERE.z1 - SALTMERE.z0) * scale,
-    );
-    g.fillStyle = COLORS.bridge;
-    for (const pier of PIERS) {
-      g.fillRect(
-        px(pier.x - pier.halfWidth),
-        pz(pier.end),
-        pier.halfWidth * 2 * scale,
-        (SALTMERE.z0 - pier.end) * scale,
-      );
-    }
-    g.fillStyle = "#9a948a";
-    g.fillRect(
-      px(MOLE.x - MOLE.halfWidth),
-      pz(MOLE.end),
-      MOLE.halfWidth * 2 * scale,
-      (SALTMERE.z0 - MOLE.end) * scale,
-    );
-    const circle = (x, z, radius, fill, minimum = 1.5) => {
-      g.fillStyle = fill;
-      g.beginPath();
-      g.arc(px(x), pz(z), Math.max(radius * scale, minimum * ratio), 0, Math.PI * 2);
-      g.fill();
-    };
-    circle(MOLE.head[0], MOLE.head[1], MOLE.headRadius, "#9a948a");
-    circle(LIGHTHOUSE[0], LIGHTHOUSE[1], 1.8, "#e05a48", 2.5);
-    /* sea stacks, islets and their names */
-    for (const [x, z, radius] of ROCKS) {
-      circle(x, z, radius * 1.5, "rgba(240, 246, 250, 0.25)");
-      circle(x, z, radius, "#5a5658", 2);
-    }
-    const name = (text, x, z, size, isRegion = false) => {
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.font = isRegion
-        ? `italic 700 ${size}px Cinzel, Rubik, serif`
-        : `600 ${size}px Rubik, sans-serif`;
-      g.lineWidth = Math.max(2, size * 0.22);
-      g.strokeStyle = "rgba(10, 16, 24, 0.75)";
-      g.strokeText(text, px(x), pz(z));
-      g.fillStyle = isRegion ? "rgba(220, 235, 245, 0.55)" : "rgba(255, 244, 214, 0.95)";
-      g.fillText(text, px(x), pz(z));
-    };
-    const placeSize = Math.max(11 * ratio, scale * 6);
-    for (const islet of ISLETS) {
-      const reach = (angle) => isletReach(islet, angle);
-      g.fillStyle = "#d8c08a";
-      traceCoast(g, px, pz, islet.x, islet.z, reach, 1.2);
-      g.fill();
-      g.fillStyle = "#6a9a4a";
-      traceCoast(g, px, pz, islet.x, islet.z, (angle) => reach(angle) * 0.85);
-      g.fill();
-      name(islet.name, islet.x, islet.z + islet.radius * 1.5 + 8, placeSize);
-    }
-    /* the Ember Isles: black rock round Cinder Cove, the mountain and its glow, the camp */
-    g.fillStyle = "#3a3436";
-    traceCoast(g, px, pz, EMBER_ISLES.x, EMBER_ISLES.z, emberShore);
-    g.fill();
-    circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, MOUNT_KHAROS.radius * 0.7, "#4a4244");
-    circle(MOUNT_KHAROS.x, MOUNT_KHAROS.z, 5, "#ff7a2a", 3);
-    g.fillStyle = "#8a6a42";
-    g.fillRect(
-      px(COVE_JETTY.x - COVE_JETTY.halfWidth),
-      pz(COVE_JETTY.north),
-      Math.max(2 * ratio, COVE_JETTY.halfWidth * 2 * scale),
-      (COVE_JETTY.south - COVE_JETTY.north) * scale,
-    );
-    circle(CINDER_CAMP.x, CINDER_CAMP.z, 2.5, "#ffb04a", 3);
-    name(EMBER_ISLES.name, EMBER_ISLES.x, EMBER_ISLES.z + EMBER_ISLES.radius + 14, placeSize * 1.2);
-    name(CINDER_CAMP.name, CINDER_CAMP.x, CINDER_CAMP.z - 7, placeSize);
-    /* the golden circles where the Gull's Promise moors: sail into one */
-    for (const berth of BERTHS) {
-      g.strokeStyle = "rgba(255, 208, 96, 0.95)";
-      g.lineWidth = Math.max(2 * ratio, scale * 0.6);
-      g.beginPath();
-      g.arc(px(berth.x), pz(berth.z), Math.max(6 * ratio, MOOR_DISTANCE * scale), 0, Math.PI * 2);
-      g.stroke();
-    }
-    name(SALTMERE.name, SALTMERE.gate[0], SALTMERE.z1 - 2, placeSize * 1.2);
-    name(GREY_SEA.name, -150, -600, placeSize * 2.2, true);
-    name("Uncharted waters", -150, SEA_CHART.z0 + 18, placeSize * 1.1, true);
-    /* a compass in the corner */
-    const compassX = 34 * ratio;
-    const compassY = 40 * ratio;
-    g.fillStyle = "rgba(255, 233, 168, 0.85)";
-    g.beginPath();
-    g.moveTo(compassX, compassY - 18 * ratio);
-    g.lineTo(compassX + 6 * ratio, compassY);
-    g.lineTo(compassX - 6 * ratio, compassY);
-    g.closePath();
-    g.fill();
-    g.fillStyle = "rgba(255, 233, 168, 0.4)";
-    g.beginPath();
-    g.moveTo(compassX, compassY + 18 * ratio);
-    g.lineTo(compassX + 6 * ratio, compassY);
-    g.lineTo(compassX - 6 * ratio, compassY);
-    g.closePath();
-    g.fill();
-    g.font = `700 ${11 * ratio}px Cinzel, Rubik, serif`;
-    g.fillStyle = "#ffe9a8";
-    g.fillText("N", compassX, compassY - 26 * ratio);
-    /* the other players' ships, and the hero: a ship under sail with the course ahead, or a dot ashore */
-    for (const peer of deps.peers.values()) {
-      const pose = peer.presence && peer.presence.ship;
-      if (Array.isArray(pose)) {
-        drawShip(g, px(pose[0]), pz(pose[1]), pose[2], COLORS.otherPlayer, ratio);
-      } else {
-        drawDot(g, px(peer.x), pz(peer.z), 3 * ratio, COLORS.otherPlayer, "#000");
-      }
-    }
-    const ship = deps.player.ship;
-    if (ship) {
-      if (ship.destination) {
-        g.setLineDash([6 * ratio, 5 * ratio]);
-        g.strokeStyle = "rgba(255, 233, 168, 0.8)";
-        g.lineWidth = 1.5 * ratio;
-        g.beginPath();
-        g.moveTo(px(ship.x), pz(ship.z));
-        g.lineTo(px(ship.destination[0]), pz(ship.destination[1]));
-        g.stroke();
-        g.setLineDash([]);
-        circle(ship.destination[0], ship.destination[1], 0, "rgba(255, 233, 168, 0.8)", 3);
-      }
-      drawShip(g, px(ship.x), pz(ship.z), ship.heading, COLORS.player, ratio);
-    } else {
-      drawDot(g, px(deps.player.x), pz(deps.player.z), 4 * ratio, COLORS.player, "#000");
-    }
   }
 
   /* a little ship on the chart, its bow along `heading` (to (-sin, -cos)) */

@@ -2099,21 +2099,17 @@ body.touch #world-map .hint-mouse {
 body.touch #world-map .hint-touch {
   display: inline;
 }
-/* the sea chart fills the screen (world-map.js sizes the canvas to the viewport) */
-#world-map.sea-chart {
+/* the world map fills the screen (world-map.js sizes the canvas to the viewport) */
+#world-map {
   width: calc(100vw - 32px);
   height: calc(100vh - 32px);
   height: calc(100dvh - 32px);
   max-height: none;
 }
-#world-map.sea-chart .map-viewport {
+#world-map .map-viewport {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-}
-/* the sea chart has no monsters or villagers to explain */
-#world-map.sea-chart .legend {
-  display: none;
 }
 #world-map-canvas {
   display: block;

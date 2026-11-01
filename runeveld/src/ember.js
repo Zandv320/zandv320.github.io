@@ -141,6 +141,29 @@ function buildGround(scene, tilesImage, patchesImage) {
   const pixels = image.data;
   const cells = canvas.width / CELL;
   const cellUnits = CELL / PX;
+  /* the ash's broad lighter and darker patches, at every cell corner; each pixel blends the four round it, so
+     their edges run smooth */
+  const corners = cells + 1;
+  const patchGrid = new Float32Array(corners * corners);
+  for (let j = 0; j < corners; j++) {
+    for (let i = 0; i < corners; i++) {
+      const x = x0 + i * cellUnits;
+      const z = z0 + j * cellUnits;
+      patchGrid[j * corners + i] = noise(x * 0.07, z * 0.07) * 0.6 + noise(x * 0.3, z * 0.3) * 0.4;
+    }
+  }
+  const patchAt = (gx, gy) => {
+    const fx = gx / CELL;
+    const fy = gy / CELL;
+    const i = Math.min(cells - 1, Math.floor(fx));
+    const j = Math.min(cells - 1, Math.floor(fy));
+    const tx = fx - i;
+    const ty = fy - j;
+    const top = patchGrid[j * corners + i] * (1 - tx) + patchGrid[j * corners + i + 1] * tx;
+    const bottom =
+      patchGrid[(j + 1) * corners + i] * (1 - tx) + patchGrid[(j + 1) * corners + i + 1] * tx;
+    return top * (1 - ty) + bottom * ty;
+  };
   for (let j = 0; j < cells; j++) {
     for (let i = 0; i < cells; i++) {
       const x = x0 + (i + 0.5) * cellUnits;
@@ -148,20 +171,42 @@ function buildGround(scene, tilesImage, patchesImage) {
       const dx = x - EMBER_ISLES.x;
       const dz = z - EMBER_ISLES.z;
       /* how far inland: along the bearing from the isles' middle */
-      const inland = emberShore(Math.atan2(dx, dz)) - Math.hypot(dx, dz);
-      if (inland < 0) {
+      const cellInland = emberShore(Math.atan2(dx, dz)) - Math.hypot(dx, dz);
+      if (cellInland < -0.3) {
         continue;
       }
-      const fromMountain = outsideKharos(x, z);
-      const fromLava = lavaDistance(x, z);
-      const isTrodden =
-        distanceToPath(x, z, CAMP_PATH) < 1.1 + noise(x * 0.9, z * 0.9) * 0.6 ||
-        Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < 6.5 + noise(x * 0.3, z * 0.3) * 2.5;
+      /* near an edge (the path, the camp, the lava, the mountain) every pixel looks for itself; elsewhere the
+         cell's answer holds for all of it */
+      const cellMountain = outsideKharos(x, z);
+      const cellLava = lavaDistance(x, z);
+      const cellRiver = riverDistance(x, z);
+      const isNearPath =
+        distanceToPath(x, z, CAMP_PATH) < 2.6 ||
+        Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < 10.5;
+      const isTroddenAt = (wx, wz) =>
+        distanceToPath(wx, wz, CAMP_PATH) < 1.1 + noise(wx * 0.9, wz * 0.9) * 0.6 ||
+        Math.hypot(wx - CINDER_CAMP.x, wz - CINDER_CAMP.z) < 6.5 + noise(wx * 0.3, wz * 0.3) * 2.5;
       const beachWidth = 3 + noise(x * 0.2, z * 0.2) * 3;
+      /* along the shore every pixel looks for itself, so the coast runs smooth instead of in steps */
+      const isShore = cellInland < beachWidth + 0.6;
       for (let py = 0; py < CELL; py++) {
         for (let px = 0; px < CELL; px++) {
           const gx = i * CELL + px;
           const gy = j * CELL + py;
+          const wx = x0 + (gx + 0.5) / PX;
+          const wz = z0 + (gy + 0.5) / PX;
+          let inland = cellInland;
+          if (isShore) {
+            const pdx = wx - EMBER_ISLES.x;
+            const pdz = wz - EMBER_ISLES.z;
+            inland = emberShore(Math.atan2(pdx, pdz)) - Math.hypot(pdx, pdz);
+            if (inland < 0) {
+              continue;
+            }
+          }
+          const fromLava = cellLava < 2.4 ? lavaDistance(wx, wz) : cellLava;
+          const fromMountain = cellMountain < 7 ? outsideKharos(wx, wz) : cellMountain;
+          const isTrodden = isNearPath && isTroddenAt(wx, wz);
           const grain = hash(gx * 0.37, gy * 0.71);
           /* the ground: the ash in broad patches a shade lighter or darker, with specks or pebbles strewn in
              here and there */
@@ -169,12 +214,9 @@ function buildGround(scene, tilesImage, patchesImage) {
           const groundTile =
             variant < 0.5 ? TILE.ground : variant < 0.85 ? TILE.specks : TILE.pebbles;
           let [r, g, b] = tilePixel(groundTile, gx, gy);
-          const patch = noise(x * 0.07, z * 0.07) * 0.6 + noise(x * 0.3, z * 0.3) * 0.4;
+          const patch = patchAt(gx, gy);
           let shade = isAsh(r, g, b) ? (patch < 0.38 ? 0.88 : patch > 0.64 ? 1.08 : 1) : 1;
-          if (inland < 0.12) {
-            /* the dark lip of the low cliff */
-            [r, g, b] = [30, 27, 29];
-          } else if (inland < beachWidth && grain < (beachWidth - inland) / 1.4) {
+          if (inland < beachWidth && grain < (beachWidth - inland) / 1.4) {
             /* sand along the shore, wet and darker at the water, frayed where it meets the ash */
             [r, g, b] = tilePixel(TILE.sand, gx, gy);
             shade = inland < 0.6 ? 0.62 : 0.92;
@@ -186,9 +228,10 @@ function buildGround(scene, tilesImage, patchesImage) {
             }
           }
           const isCrust =
-            riverDistance(x, z) < 0.35 &&
+            cellRiver < 1.5 &&
+            riverDistance(wx, wz) < 0.35 &&
             LAVA_CROSSINGS.some(
-              (crossing) => Math.hypot(x - crossing.x, z - crossing.z) < CROSSING_REACH + 0.6,
+              (crossing) => Math.hypot(wx - crossing.x, wz - crossing.z) < CROSSING_REACH + 0.6,
             );
           if (isCrust) {
             /* a crossing: the lava crusted over, black basalt with a glow in its cracks */
@@ -265,7 +308,7 @@ function buildGround(scene, tilesImage, patchesImage) {
   addShadowCatcher(size, size, x0 + size / 2, 0.029, z0 + size / 2);
 }
 
-/* ---------- lava: from the crater down the mountain, across the land in rivers and pools, over the cliffs into
+/* ---------- lava: from the crater down the mountain, across the land in rivers and pools, down the beaches into
    the sea; it glows by day and night ---------- */
 
 /* Lava in pixel art, 64 px square (4 units) and tileable: plates of red-hot crust with bright cracks between them. */
@@ -593,8 +636,8 @@ function buildLava(scene, random) {
   ash = buildAsh(scene);
 }
 
-/* Lava as a strip that moves along its length: down the mountain's slopes from the crater, and over the cliffs
-   into the sea. `points` along the middle, `widths` at each point, `across` the direction across it there. */
+/* Lava as a strip that moves along its length: down the mountain's slopes from the crater, and down the
+   beaches into the sea. `points` along the middle, `widths` at each point, `across` the direction across it there. */
 function streamGeometry(points, widths, acrossAt) {
   const positions = [];
   const uvs = [];
@@ -660,19 +703,15 @@ function buildStreams(scene, mouths) {
     stream.renderOrder = 10002;
     scene.add(stream);
   }
-  /* over the cliff into the sea, where each river ends */
+  /* down the beach into the sea, where each river ends */
   for (const mouth of mouths) {
     const width = LAVA_WIDTH * 0.85;
     const points = [];
+    /* down the beach, just above the sand, into the water */
     for (let k = 0; k <= 4; k++) {
-      const out = 0.3 + k * 0.12;
-      points.push(
-        new THREE.Vector3(
-          mouth.x + mouth.dirX * out,
-          0.04 - (k / 4) * (0.04 - (WATER_Y - 0.1)),
-          mouth.z + mouth.dirZ * out,
-        ),
-      );
+      const out = (k / 4) * BEACH_RUN * 0.6;
+      const y = Math.max(WATER_Y - 0.05, 0.06 + (WATER_Y * out) / (BEACH_RUN * 0.55));
+      points.push(new THREE.Vector3(mouth.x + mouth.dirX * out, y, mouth.z + mouth.dirZ * out));
     }
     const across = () => [-mouth.dirZ, mouth.dirX];
     const fall = new THREE.Mesh(
@@ -796,7 +835,8 @@ function buildSurf(scene) {
           EMBER_ISLES.z + Math.cos(angle) * r,
         ];
       };
-      const quad = [at(a, 0.3), at(a, 1.6), at(b, 0.3), at(b, 1.6)];
+      /* where the beach runs into the water, and a little beyond */
+      const quad = [at(a, 1.2), at(a, 2.6), at(b, 1.2), at(b, 2.6)];
       for (const index of [0, 1, 2, 2, 1, 3]) {
         positions.push(...quad[index]);
       }
@@ -818,65 +858,52 @@ function buildSurf(scene) {
   }
 }
 
-/* ---------- the coast: low cliffs of basalt down to the water, with boulders in the surf ---------- */
+/* ---------- the coast: the beach sloping down into the water, with boulders in the surf ---------- */
+
+/* how far out from the shore the beach runs down to the bottom, and how deep */
+const BEACH_RUN = 2.4;
+const BEACH_FOOT = WATER_Y - 0.6;
 
 function buildCoast(scene, random) {
-  const SEGMENTS = 360;
+  const SEGMENTS = 720;
   const positions = [];
   const colors = [];
-  const uvs = [];
-  const top = new THREE.Color();
-  const foot = new THREE.Color();
-  const depth = -(WATER_Y - 0.6);
-  let along = 0;
+  const DRY = new THREE.Color(0xa08662);
+  const WET = new THREE.Color(0x6e5c46);
+  const DEEP = new THREE.Color(0x3a3a3c);
   for (let k = 0; k < SEGMENTS; k++) {
     const a = (k / SEGMENTS) * Math.PI * 2;
     const b = ((k + 1) / SEGMENTS) * Math.PI * 2;
-    const ra = emberShore(a);
-    const rb = emberShore(b);
-    const point = (angle, radius, y) => [
-      EMBER_ISLES.x + Math.sin(angle) * radius,
-      y,
-      EMBER_ISLES.z + Math.cos(angle) * radius,
+    const point = (angle, out, y) => {
+      const r = emberShore(angle) + out;
+      return [EMBER_ISLES.x + Math.sin(angle) * r, y, EMBER_ISLES.z + Math.cos(angle) * r];
+    };
+    /* three bands: dry sand at the top, wet sand at the waterline, dark below it */
+    const rows = [
+      [0, 0.002, DRY],
+      [BEACH_RUN * 0.55, WATER_Y + 0.05, WET],
+      [BEACH_RUN, BEACH_FOOT, DEEP],
     ];
-    const quad = [
-      point(a, ra, 0),
-      point(a, ra + 0.35, WATER_Y - 0.6),
-      point(b, rb, 0),
-      point(b, rb + 0.35, WATER_Y - 0.6),
-    ];
-    const step = Math.hypot(quad[2][0] - quad[0][0], quad[2][2] - quad[0][2]);
-    const quadUvs = [
-      [along / 2, 0],
-      [along / 2, depth / 2],
-      [(along + step) / 2, 0],
-      [(along + step) / 2, depth / 2],
-    ];
-    along += step;
-    const tint = 0.8 + random() * 0.25;
-    top.setRGB(tint, tint, tint, THREE.SRGBColorSpace);
-    foot.setRGB(0.45, 0.43, 0.45, THREE.SRGBColorSpace);
-    for (const index of [0, 1, 2, 2, 1, 3]) {
-      positions.push(...quad[index]);
-      uvs.push(...quadUvs[index]);
-      const color = index === 0 || index === 2 ? top : foot;
-      colors.push(color.r, color.g, color.b);
+    for (let row = 0; row < rows.length - 1; row++) {
+      const [outA, yA, colorA] = rows[row];
+      const [outB, yB, colorB] = rows[row + 1];
+      const quad = [point(a, outA, yA), point(a, outB, yB), point(b, outA, yA), point(b, outB, yB)];
+      const quadColors = [colorA, colorB, colorA, colorB];
+      for (const index of [0, 1, 2, 2, 1, 3]) {
+        positions.push(...quad[index]);
+        colors.push(quadColors[index].r, quadColors[index].g, quadColors[index].b);
+      }
     }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
-  const cliff = new THREE.Mesh(
+  const beach = new THREE.Mesh(
     geometry,
-    new THREE.MeshLambertMaterial({
-      map: builders.texture("basalt", 1, 1),
-      vertexColors: true,
-      side: THREE.DoubleSide,
-    }),
+    new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
   );
-  scene.add(cliff);
+  scene.add(beach);
   /* boulders: along the coast in the surf, but not in the cove's mouth where the ship comes in */
   const boulder = builders.material("basalt", 1.2, 1.2, 1.25);
   for (let k = 0; k < 170; k++) {
@@ -1318,7 +1345,7 @@ export function updateEmberIsles(dt, time) {
     0.1,
     THREE.SRGBColorSpace,
   );
-  /* the lava creeps; the streams run down the mountain and over the cliffs */
+  /* the lava creeps; the streams run down the mountain and down the beaches into the sea */
   lavaMaterial.uniforms.uTime.value = time;
   for (const stream of lavaStreams) {
     stream.map.offset.set(0, (-time * 0.25) % 1);
