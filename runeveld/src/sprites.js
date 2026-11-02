@@ -189,24 +189,40 @@ function figureGeometry(width, height, feet, hip) {
   geometry.computeBoundingSphere();
   /* some room for the lean, squash and crouch, so the camera only skips figures that are truly out of view */
   geometry.boundingSphere.radius *= 1.25;
-  geometry.userData = { hip, top, feet, foldTilt: null };
+  geometry.userData = { hip, top, feet, foldTilt: null, feetZ: 0, bottomZ: 0 };
   return geometry;
 }
 
 /* The figure faces the camera (LEAN 1), so moving a vertex along its own z moves it along the line of sight: the
-   same place on screen, only nearer. The bottom edge, `feet` below the ground, comes up to the ground when it moves
-   feet / tan(tilt) towards the camera; the strip between it and the feet follows. */
+   same place on screen, only nearer. The strip below the feet is tipped so it lies a little above the ground
+   (FOLD_HEIGHT), clear of it and of whatever lies flat on it: the feet row comes FOLD_HEIGHT / sin(tilt) towards the
+   camera, the bottom edge (`feet` below the ground) further, by feet / tan(tilt) more. */
+const FOLD_HEIGHT = 0.08;
+
 function foldBelowFeet(geometry, tilt) {
   const { feet } = geometry.userData;
   if (geometry.userData.foldTilt === tilt || !feet) {
     return;
   }
-  geometry.userData.foldTilt = tilt;
-  const lift = feet / Math.tan(Math.max(0.2, tilt)) + 0.02;
+  const sin = Math.sin(Math.max(0.2, tilt));
+  const feetZ = FOLD_HEIGHT / sin;
+  const bottomZ = feetZ + feet / Math.tan(Math.max(0.2, tilt));
+  Object.assign(geometry.userData, { foldTilt: tilt, feetZ, bottomZ });
   const position = geometry.attributes.position;
-  position.setZ(0, lift);
-  position.setZ(1, lift);
+  position.setZ(0, bottomZ);
+  position.setZ(1, bottomZ);
+  position.setZ(2, feetZ);
+  position.setZ(3, feetZ);
   position.needsUpdate = true;
+}
+
+/** How far a point `y` above the feet comes towards the camera in the folded geometry (foldBelowFeet). */
+function foldedZ(geometry, y, hip) {
+  const { feet, feetZ = 0, bottomZ = 0 } = geometry.userData;
+  if (y < 0) {
+    return feetZ + (bottomZ - feetZ) * Math.min(1, -y / feet);
+  }
+  return y < hip ? feetZ * (1 - y / hip) : 0;
 }
 
 export class Sprite2D {
@@ -444,7 +460,8 @@ export class Sprite2D {
     y = y < hip ? y * (1 - this.crouch * (y > 0 ? 1 : 0)) : y - hip * this.crouch;
     const mesh = this.layers.length ? this.layers[0].mesh : this.mesh;
     mesh.updateWorldMatrix(true, false);
-    return mesh.localToWorld(target.set((u - 0.5) * width, y, 0));
+    const z = foldedZ(this.geometry, y, hip * (1 - this.crouch));
+    return mesh.localToWorld(target.set((u - 0.5) * width, y, z));
   }
 
   duration(name) {
