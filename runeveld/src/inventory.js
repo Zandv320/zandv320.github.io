@@ -4,7 +4,7 @@ import { icon } from "./icons.js";
 import { escapeHtml, rarityClass } from "./ui.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
 import { effectLines } from "./rules/item-effects.js";
-import { itemStatText, modsText, modsBadge, compareHtml } from "./character-sheet.js";
+import { itemStatText, modsText, modsBadge, compareHtml, setText } from "./character-sheet.js";
 import { sellPrice } from "./rules/progression.js";
 import { displayName, applyMods, modsOf } from "./rules/item-mods.js";
 
@@ -119,7 +119,7 @@ export function createInventory(player, deps) {
 
     const countText = entry.count > 1 ? ` <small>×${entry.count}</small>` : "";
     const stats = itemStatText(applyMods(item, entry));
-    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}${uniqueText(entry.id)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
+    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}${uniqueText(entry.id)}${setText(player, entry.id)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
   }
 
   function render() {

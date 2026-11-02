@@ -46,6 +46,7 @@ import { migrateHero } from "./legacy.js";
 import { applyMods, modsOf, validModsFor, priceFactor } from "./item-mods.js";
 import { sanitizeProfessions } from "./professions.js";
 import { sanitizeRunes, runeItems } from "./runes.js";
+import { setItems } from "./sets.js";
 
 const MAGE_CLASSES = ["mage", "wizard", "sage"];
 
@@ -115,7 +116,12 @@ export const derivedStatsOf = (hero) =>
   deriveStats({
     level: hero.level,
     stats: hero.stats,
-    items: [...equippedItems(hero), ...buffItems(hero), ...runeItems(hero.runes)],
+    items: [
+      ...equippedItems(hero),
+      ...buffItems(hero),
+      ...runeItems(hero.runes),
+      ...setItems(hero),
+    ],
     skills: hero.skills,
     heroClass: classOf(hero),
   });

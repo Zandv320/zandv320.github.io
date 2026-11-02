@@ -23,6 +23,7 @@ import {
   professionExpForLevel,
 } from "./rules/professions.js";
 import { classOf, slotFor } from "./rules/progression.js";
+import { SETS, piecesWorn, bonusText, setOf } from "./rules/sets.js";
 
 const TABS = ["equipment", "stats", "skills", "quests", "professions"];
 
@@ -123,6 +124,23 @@ export function modsBadge(source) {
   const fallback = mods.enchant ? ITEMS[ENCHANTMENTS[mods.enchant].rune]?.icon || "" : "";
   const element = mods.enchant ? icon("ench_" + mods.enchant, fallback, "tiny") : "";
   return `<span class="mods-badge ${mods.enchant || ""}">${label}${element}</span>`;
+}
+
+/** The set an item belongs to, as HTML: its name, the pieces the hero wears, and each bonus (lit when earned). */
+export function setText(hero, id) {
+  const key = setOf(id);
+  if (!key) {
+    return "";
+  }
+  const set = SETS[key];
+  const worn = piecesWorn(hero, key);
+  const bonuses = Object.entries(set.bonuses)
+    .map(
+      ([needed, bonus]) =>
+        `<span class="${worn >= +needed ? "on" : ""}">${needed} pieces: ${escapeHtml(bonusText(bonus))}</span>`,
+    )
+    .join("<br>");
+  return `<p class="item-set"><b>${escapeHtml(set.name)}</b> <small>${worn} / ${set.pieces.length}</small><br>${bonuses}</p>`;
 }
 
 /** Lines that explain the refine and enchantment of an item, as HTML (empty without modifiers). */
@@ -294,6 +312,15 @@ export function createCharacterSheet(player, deps) {
         return `<button class="equip-slot ${rarityClass(itemId)} ${modsOf(mods) ? "modded" : ""}" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} <span class="rname ${rarityClass(itemId)}">${escapeHtml(name)}</span></b><i>${itemStatText(applyMods(item, mods))}</i></button>`;
       })
       .join("");
+    /* the sets the hero wears pieces of, under the slots */
+    const sets = Object.keys(SETS).filter((key) => piecesWorn(player, key) > 0);
+    if (sets.length) {
+      const firstPiece = (key) =>
+        Object.values(player.equipment).find((id) => id && setOf(id) === key);
+      $("#sheet-slots").innerHTML += `<div class="sheet-sets">${sets
+        .map((key) => setText(player, firstPiece(key)))
+        .join("")}</div>`;
+    }
 
     const itemCount = player.bag.reduce((total, entry) => total + entry.count, 0);
     const bagText = itemCount
