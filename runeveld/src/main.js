@@ -61,6 +61,8 @@ import { buildNature, updateNature } from "./nature.js";
 import { createWildlife, updateWildlife } from "./wildlife.js";
 import { setMusicArea, updateSoundscape } from "./music.js";
 import { loadingStep, loadingDone } from "./loading.js";
+import { createTooltips } from "./tooltips.js";
+import { CHAPTERS } from "./rules/quests.js";
 import { buildLandmarks, updateLandmarks, LANDMARK_CANDLES, LANDMARK_LIGHTS } from "./landmarks.js";
 import {
   buildLoginScene,
@@ -383,6 +385,7 @@ async function init() {
     reload: () => location.reload(),
   });
   setupInput();
+  createTooltips();
   loop();
   game.characterSelect.show();
   loadingDone();
@@ -667,6 +670,16 @@ async function start(index) {
     );
   }
   game.isStarted = true;
+  /* as the picture comes up: a new hero's story begins with its first chapter, a returning one sees where they are */
+  const arrivalZone = zoneAt(player.x, player.z);
+  setTimeout(() => {
+    if (!hero.level) {
+      UI.announce("Chapter 1", CHAPTERS[1]);
+    } else if (ZONES[arrivalZone]) {
+      UI.announce(ZONES[arrivalZone][0], ZONES[arrivalZone][1]);
+    }
+  }, 900);
+  currentZone = arrivalZone;
   /* a new hero: how to play, and where the story starts */
   if (!Object.keys(player.quests || {}).length) {
     game.guide.teach("welcome");

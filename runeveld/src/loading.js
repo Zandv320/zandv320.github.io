@@ -24,6 +24,13 @@ let shown = 0;
 let frame = 0;
 let tipTimer = 0;
 
+function showFill() {
+  const fill = $("#loading-fill");
+  if (fill) {
+    fill.style.transform = `scaleX(${shown.toFixed(4)})`;
+  }
+}
+
 function paint() {
   /* within a step the bar follows the pictures that step asked for, and creeps on while it builds */
   const asked = textureLoads.requested - texturesAtStart;
@@ -31,10 +38,7 @@ function paint() {
   const within = asked > 0 ? arrived / asked : 0.5;
   const target = from + (to - from) * Math.min(1, within);
   shown += (target - shown) * 0.15;
-  const fill = $("#loading-fill");
-  if (fill) {
-    fill.style.transform = `scaleX(${shown.toFixed(4)})`;
-  }
+  showFill();
   frame = requestAnimationFrame(paint);
 }
 
@@ -44,6 +48,9 @@ export function loadingStep(label, upTo) {
   from = to;
   to = upTo;
   texturesAtStart = textureLoads.done;
+  /* the bar is at least where the steps before brought it, also when no frame is drawn in between */
+  shown = Math.max(shown, from);
+  showFill();
   const text = $("#loading-step");
   if (text) {
     text.textContent = label;
@@ -69,7 +76,8 @@ function showTip() {
 export function loadingDone() {
   performance.mark("eldoria:ready");
   from = to = 1;
-  shown = Math.max(shown, 0.98);
+  shown = 1;
+  showFill();
   clearTimeout(tipTimer);
   setTimeout(() => {
     cancelAnimationFrame(frame);
