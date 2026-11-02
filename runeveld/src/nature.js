@@ -301,7 +301,7 @@ const SHADOW_VERTEX = /* glsl */ `
 
 let shadows = null;
 let pollen = null;
-const POLLEN = 46;
+const POLLEN = 26;
 const pollenData = [];
 
 function buildSky(scene) {
@@ -323,7 +323,7 @@ function buildSky(scene) {
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(POLLEN * 3), 3));
   pollen = new THREE.Points(
     geometry,
-    glowPointsMaterial({ color: 0xfff4c8, size: 3, opacity: 0.8 }),
+    glowPointsMaterial({ color: 0xfff0b8, size: 3, opacity: 0.6 }),
   );
   pollen.frustumCulled = false;
   pollen.renderOrder = 10001;
@@ -381,5 +381,5 @@ export function updateNature(dt, time) {
     position.setXYZ(k, x + mote.x, mote.y, z + mote.z + Math.sin(time * 0.7 + mote.phase) * 0.4);
   });
   position.needsUpdate = true;
-  pollen.material.size = (cameraState.px / 16) * 1.6;
+  pollen.material.size = (cameraState.px / 16) * 0.9;
 }

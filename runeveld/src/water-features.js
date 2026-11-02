@@ -485,7 +485,7 @@ function pondLife(scene, x, z, r, random) {
 }
 
 /* a ring spreading on the water where a fish broke the surface */
-function ripple(scene, x, z) {
+export function ripple(scene, x, z) {
   const mesh = new THREE.Mesh(
     ringGeometry,
     new THREE.MeshBasicMaterial({

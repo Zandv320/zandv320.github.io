@@ -58,6 +58,7 @@ import { buildSea, updateSea } from "./sea.js";
 import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
 import { buildWaterFeatures, updateWaterFeatures } from "./water-features.js";
 import { buildNature, updateNature } from "./nature.js";
+import { createWildlife, updateWildlife } from "./wildlife.js";
 import {
   buildLoginScene,
   updateLoginScene,
@@ -320,6 +321,7 @@ async function init() {
     lights: createWorldLights(),
   });
   game.ambience = createAmbience(scene, { smokeSources, waterSpots, spinners });
+  createWildlife(scene);
   initParticles(scene);
   warmUpGpu();
   $("#loading").classList.add("away");
@@ -2225,6 +2227,7 @@ function stepWorld(dt, time) {
   updateSaltmere(dt, time);
   updateSea(dt, time);
   updateEmberIsles(dt, time);
+  updateWildlife(dt, time);
   updateChase(dt);
   if (game.host) {
     hostTick(dt);
