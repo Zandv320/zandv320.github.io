@@ -24,6 +24,7 @@ import {
 } from "./rules/professions.js";
 import { classOf, slotFor } from "./rules/progression.js";
 import { SETS, piecesWorn, bonusText, setOf } from "./rules/sets.js";
+import { itemLevel, isLevelFor } from "./rules/item-level.js";
 
 const TABS = ["equipment", "stats", "skills", "quests", "professions"];
 
@@ -79,6 +80,9 @@ export function compareHtml(hero, id, source = null) {
   if (item.forClass && item.forClass !== hero.classId && item.forClass !== classOf(hero).base) {
     return `<span class="compare locked">${CLASSES[item.forClass].name} only</span>`;
   }
+  if (!isLevelFor(hero, id)) {
+    return `<span class="compare locked">Requires level ${itemLevel(id)}</span>`;
+  }
   const slot = slotFor(hero, item);
   const wornId = hero.equipment[slot];
   if (!wornId) {
@@ -107,6 +111,15 @@ export function compareHtml(hero, id, source = null) {
         : `<b class="down">▼ ${label} −${-delta}${unit}</b>`,
     );
   const wornName = escapeHtml(displayName(wornId, (hero.equipmentMods || {})[slot]));
+  /* a set it would complete, or one it would break */
+  const setNow = setOf(id);
+  const setWorn = setOf(wornId);
+  if (setNow && setNow !== setWorn) {
+    changes.push(`<b class="up">▲ ${escapeHtml(SETS[setNow].name)} piece</b>`);
+  }
+  if (setWorn && setWorn !== setNow) {
+    changes.push(`<b class="down">▼ ${escapeHtml(SETS[setWorn].name)} piece</b>`);
+  }
   if (!changes.length) {
     return `<span class="compare same">The same as your ${wornName}</span>`;
   }

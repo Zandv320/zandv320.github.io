@@ -47,6 +47,7 @@ import { applyMods, modsOf, validModsFor, priceFactor } from "./item-mods.js";
 import { sanitizeProfessions } from "./professions.js";
 import { sanitizeRunes, runeItems } from "./runes.js";
 import { setItems } from "./sets.js";
+import { isLevelFor } from "./item-level.js";
 
 const MAGE_CLASSES = ["mage", "wizard", "sage"];
 
@@ -334,6 +335,10 @@ export function equip(hero, id, index) {
   }
   /* class items fit their own class and the second classes built on it */
   if (item.forClass && item.forClass !== hero.classId && item.forClass !== classOf(hero).base) {
+    return false;
+  }
+  /* not before the level it asks for (rules/item-level.js) */
+  if (!isLevelFor(hero, id)) {
     return false;
   }
   const mods = takeFromBag(hero, id, index);

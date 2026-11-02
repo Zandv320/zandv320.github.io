@@ -4598,3 +4598,7 @@ body.rpg-cursor #game[data-cursor="steer"] {
 .sheet-sets {
   grid-column: 1 / -1;
 }
+.item-level {
+  display: block;
+  color: var(--dim);
+}

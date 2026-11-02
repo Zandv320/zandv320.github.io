@@ -7,6 +7,7 @@ import { CLASSES, ITEMS } from "./data.js";
 import * as progression from "./rules/progression.js";
 import { displayName, modsOf } from "./rules/item-mods.js";
 import { heroLayers } from "./appearance.js";
+import { itemLevel, isLevelFor } from "./rules/item-level.js";
 import * as UI from "./ui.js";
 import { player, game, heroClass, hpMax } from "./game-state.js";
 
@@ -57,6 +58,10 @@ export function equip(id, index) {
     UI.systemMessage(
       `Only ${UI.itemNoun(CLASSES[item.forClass].name, true)} can use the ${UI.itemNoun(item.name)}.`,
     );
+    return;
+  }
+  if (!isLevelFor(player, id)) {
+    UI.systemMessage(`You need level ${itemLevel(id)} to use the ${UI.itemNoun(item.name)}.`);
     return;
   }
   const at = indexOf(id, index);

@@ -4,6 +4,7 @@ import { icon } from "./icons.js";
 import { escapeHtml, rarityClass } from "./ui.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
 import { effectLines } from "./rules/item-effects.js";
+import { itemLevel, isLevelFor } from "./rules/item-level.js";
 import { itemStatText, modsText, modsBadge, compareHtml, setText } from "./character-sheet.js";
 import { sellPrice } from "./rules/progression.js";
 import { displayName, applyMods, modsOf } from "./rules/item-mods.js";
@@ -69,6 +70,14 @@ export function createInventory(player, deps) {
     pending && pending.action === action && pending.index === selectedIndex;
 
   /* what kind of thing an item is, for the line under its name */
+  /* the level an item asks for, once the hero has it (below it, the comparison says so in red) */
+  function levelText(id) {
+    const level = itemLevel(id);
+    return level > 1 && isLevelFor(player, id)
+      ? `<small class="item-level">Requires level ${level}</small>`
+      : "";
+  }
+
   /* what a unique item does, in its own colour */
   function uniqueText(id) {
     const lines = effectLines(id);
@@ -97,7 +106,9 @@ export function createInventory(player, deps) {
 
     const buttons = [];
     if (item.slot) {
-      buttons.push('<button class="btn" data-action="equip">Equip</button>');
+      buttons.push(
+        `<button class="btn" data-action="equip" ${isLevelFor(player, entry.id) ? "" : "disabled"}>Equip</button>`,
+      );
     }
     if (item.use) {
       buttons.push('<button class="btn" data-action="use">Use</button>');
@@ -119,7 +130,7 @@ export function createInventory(player, deps) {
 
     const countText = entry.count > 1 ? ` <small>×${entry.count}</small>` : "";
     const stats = itemStatText(applyMods(item, entry));
-    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}${uniqueText(entry.id)}${setText(player, entry.id)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
+    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${levelText(entry.id)}${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}${uniqueText(entry.id)}${setText(player, entry.id)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
   }
 
   function render() {
