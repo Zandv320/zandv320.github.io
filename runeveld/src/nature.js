@@ -27,6 +27,15 @@ import {
   ALTAR_CLEARING,
   GORGE,
 } from "./regions.js";
+import {
+  TIDECROWN,
+  TIDECROWN_REACH,
+  tidecrownCoast,
+  CROWNMERE,
+  TIDE_CAMP,
+  tidePathDistance,
+  onTidecrownLand,
+} from "./rules/tidecrown.js";
 
 /* the plants are drawn at the game's 16 pixels to a unit */
 const PPU = 16;
@@ -277,7 +286,60 @@ export function buildNature({ scene, isFree, seededRandom }) {
     }
   }
 
-  const { texture, tiles } = atlasOf([...grasses, ...flowers, ...ferns, ...mushrooms]);
+  /* Tidecrown: grass grey-green with salt, sea pinks and campion in patches, and pale marram on the beach */
+  const saltGreens = ["#2c4f3e", "#3d6a50", "#5a8a66", "#8ab090"];
+  const saltGrasses = [31, 32].map((seed) => grassPicture(seed, { greens: saltGreens }));
+  const seaFlowers = [
+    grassPicture(33, { blades: 6, height: 6, heads: ["#f28ab8", "#b0386a"], greens: saltGreens }),
+    grassPicture(34, { blades: 6, height: 7, heads: ["#f6f2ea", "#e8c860"], greens: saltGreens }),
+  ];
+  const marram = [
+    grassPicture(35, {
+      blades: 10,
+      height: 10,
+      greens: ["#7a6a3e", "#a8935a", "#c8b47a", "#e4d6a8"],
+    }),
+  ];
+  for (let k = 0; k < 10000; k++) {
+    const x = TIDECROWN.x + (random() * 2 - 1) * TIDECROWN_REACH;
+    const z = TIDECROWN.z + (random() * 2 - 1) * TIDECROWN_REACH;
+    if (!onTidecrownLand(x, z, 0.8) || !isFree(x, z, 0.6)) {
+      continue;
+    }
+    const dx = x - TIDECROWN.x;
+    const dz = z - TIDECROWN.z;
+    const inland = tidecrownCoast(Math.atan2(dx, dz)) - Math.hypot(dx, dz);
+    const fromLake = Math.hypot(x - CROWNMERE.x, z - CROWNMERE.z) - CROWNMERE.radius;
+    if (
+      fromLake < 2.4 ||
+      tidePathDistance(x, z) < 1.8 ||
+      Math.hypot(x - TIDE_CAMP.x, z - TIDE_CAMP.z) < TIDE_CAMP.radius - 1
+    ) {
+      continue;
+    }
+    if (inland < 5.5) {
+      /* the dunes: marram in tufts, thinning towards the water */
+      if (inland > 1.5 && random() < (inland - 1.5) / 5) {
+        plant(marram[0], x, z);
+      }
+      continue;
+    }
+    if (bloom(x, z) > 0.6 && random() < 0.7) {
+      plant(seaFlowers[bloom(x * 0.4, z * 0.4) > 0 ? 0 : 1], x, z);
+    } else {
+      plant(saltGrasses[Math.floor(random() * saltGrasses.length)], x, z);
+    }
+  }
+
+  const { texture, tiles } = atlasOf([
+    ...grasses,
+    ...flowers,
+    ...ferns,
+    ...mushrooms,
+    ...saltGrasses,
+    ...seaFlowers,
+    ...marram,
+  ]);
   for (const plants of beds.values()) {
     const items = plants.map(({ picture, x, z }) => ({
       x,

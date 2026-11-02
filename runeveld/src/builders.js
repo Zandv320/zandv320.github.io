@@ -104,7 +104,7 @@ const groundMaterial = (name, w, h) =>
   new THREE.MeshLambertMaterial({ map: texture(name, w / tileWidth(name), h / tileHeight(name)) });
 
 /* dark outline along sharp edges, like the outline of the sprites */
-function outline(mesh, thresholdAngle = 35) {
+export function outline(mesh, thresholdAngle = 35) {
   mesh.add(
     new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, thresholdAngle), outlineMaterial),
   );
@@ -136,7 +136,7 @@ function blockMaterial(name) {
   return result;
 }
 
-function block(w, h, d, name, tint = 1) {
+export function block(w, h, d, name, tint = 1) {
   const geometry = new THREE.BoxGeometry(w, h, d);
   const uv = geometry.attributes.uv;
   const tw = tileWidth(name);

@@ -201,7 +201,7 @@ function fallGeometry(top, bottom, width) {
   return geometry;
 }
 
-function waterfall(scene, top, bottom, width) {
+export function waterfall(scene, top, bottom, width) {
   const height = top[1] - bottom[1];
   const mesh = new THREE.Mesh(
     fallGeometry(top, bottom, width),
@@ -225,7 +225,7 @@ function stream(scene, points, widths, speed = 1.4) {
   return mesh;
 }
 
-function foamPool(scene, x, y, z, radius) {
+export function foamPool(scene, x, y, z, radius) {
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(radius * 2, radius * 2).rotateX(-Math.PI / 2),
     waterMaterial(POOL_FRAGMENT, { uRadius: { value: radius } }),
@@ -235,7 +235,7 @@ function foamPool(scene, x, y, z, radius) {
 }
 
 /* a rough stone: a few of them make the spring, the banks and the heap the cascade falls over */
-function rock(scene, x, y, z, size, random, materials) {
+export function rock(scene, x, y, z, size, random, materials) {
   const geometry = new THREE.DodecahedronGeometry(size, 0);
   geometry.scale(1, 0.7 + random() * 0.4, 1);
   const mesh = new THREE.Mesh(geometry, materials.stone);
@@ -432,16 +432,36 @@ const cascades = [];
 const ripples = [];
 const ringGeometry = new THREE.RingGeometry(0.8, 1, 24).rotateX(-Math.PI / 2);
 
-function pondLife(scene, x, z, r, random) {
+/**
+ * Lilies, reeds and a leaping fish for a round pond at (x, z), `r` across, its water at `y`. Lilies lie between
+ * `lilyReach` (shares of r) from its middle, reeds stand round `reedArc` of its edge (radians round the far side;
+ * Math.PI * 2 for all of it), a fish leaps between `fishReach`; a wide lake can have more of each.
+ */
+export function pondLife(
+  scene,
+  x,
+  z,
+  r,
+  random,
+  {
+    y = POND_WATER_Y,
+    lilyCount = 7,
+    lilyReach = [0.25, 0.85],
+    reedCount = 5,
+    reedArc = Math.PI * 1.3,
+    fishCount = 1,
+    fishReach = [0, 0.4],
+  } = {},
+) {
   if (!lilyTextures.length) {
     lilyTextures.push(pixelTexture(LILY, LILY_COLORS), pixelTexture(LILY_FLOWER, LILY_COLORS));
     reedTexture = pixelTexture(REEDS, REED_COLORS);
     fishTexture = pixelTexture(FISH, FISH_COLORS);
   }
   /* lilies on the water, a few in flower */
-  for (let k = 0; k < 7; k++) {
+  for (let k = 0; k < lilyCount; k++) {
     const angle = random() * Math.PI * 2;
-    const distance = r * (0.25 + random() * 0.6);
+    const distance = r * (lilyReach[0] + random() * (lilyReach[1] - lilyReach[0]));
     const size = 0.55 + random() * 0.3;
     const lily = new THREE.Mesh(
       new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2),
@@ -451,18 +471,14 @@ function pondLife(scene, x, z, r, random) {
         alphaTest: 0.5,
       }),
     );
-    lily.position.set(
-      x + Math.cos(angle) * distance,
-      POND_WATER_Y + 0.01,
-      z + Math.sin(angle) * distance,
-    );
+    lily.position.set(x + Math.cos(angle) * distance, y + 0.01, z + Math.sin(angle) * distance);
     lily.rotation.y = random() * Math.PI * 2;
     scene.add(lily);
-    lilies.push({ mesh: lily, phase: random() * 6 });
+    lilies.push({ mesh: lily, y, phase: random() * 6 });
   }
   /* reeds in clumps along the far edge, swaying */
-  for (let k = 0; k < 5; k++) {
-    const angle = Math.PI + (random() - 0.5) * Math.PI * 1.3;
+  for (let k = 0; k < reedCount; k++) {
+    const angle = Math.PI + (random() - 0.5) * reedArc;
     const distance = r - 0.3;
     const reed = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: reedTexture, transparent: true, alphaTest: 0.5 }),
@@ -470,22 +486,29 @@ function pondLife(scene, x, z, r, random) {
     const size = 1.1 + random() * 0.4;
     reed.scale.set(size, size, 1);
     reed.center.set(0.5, 0);
-    reed.position.set(x + Math.sin(angle) * distance, POND_WATER_Y, z + Math.cos(angle) * distance);
+    reed.position.set(x + Math.sin(angle) * distance, y, z + Math.cos(angle) * distance);
     scene.add(reed);
     reeds.push({ sprite: reed, phase: random() * 6 });
   }
-  /* a fish that leaps now and then */
-  const fish = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: fishTexture, transparent: true, alphaTest: 0.5 }),
-  );
-  fish.scale.set(0.6, 0.35, 1);
-  fish.visible = false;
-  scene.add(fish);
-  ponds.push({ x, z, r, fish, leap: null, next: 3 + random() * 5 });
+  /* fish that leap now and then */
+  for (let k = 0; k < fishCount; k++) {
+    const fish = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: fishTexture.clone(), transparent: true, alphaTest: 0.5 }),
+    );
+    fish.scale.set(0.6, 0.35, 1);
+    fish.visible = false;
+    scene.add(fish);
+    ponds.push({ x, z, r, y, fishReach, fish, leap: null, next: 3 + random() * 5 });
+  }
+}
+
+/** Droplets thrown up now and then where a fall meets the water at (x, y, z). */
+export function addCascade(x, y, z) {
+  cascades.push({ x, y, z, next: 0 });
 }
 
 /* a ring spreading on the water where a fish broke the surface */
-export function ripple(scene, x, z) {
+export function ripple(scene, x, z, y = POND_WATER_Y) {
   const mesh = new THREE.Mesh(
     ringGeometry,
     new THREE.MeshBasicMaterial({
@@ -495,7 +518,7 @@ export function ripple(scene, x, z) {
       depthWrite: false,
     }),
   );
-  mesh.position.set(x, POND_WATER_Y + 0.02, z);
+  mesh.position.set(x, y + 0.02, z);
   scene.add(mesh);
   ripples.push({ mesh, age: 0 });
 }
@@ -508,8 +531,8 @@ export function updateWaterFeatures(dt, time, scene) {
   for (const material of animated) {
     material.uniforms.uTime.value = time;
   }
-  for (const { mesh, phase } of lilies) {
-    mesh.position.y = POND_WATER_Y + 0.01 + Math.sin(time * 1.3 + phase) * 0.008;
+  for (const { mesh, y, phase } of lilies) {
+    mesh.position.y = y + 0.01 + Math.sin(time * 1.3 + phase) * 0.008;
     mesh.rotation.y += Math.sin(time * 0.4 + phase) * dt * 0.05;
   }
   for (const { sprite, phase } of reeds) {
@@ -525,15 +548,15 @@ export function updateWaterFeatures(dt, time, scene) {
       const t = Math.min(1, leap.t);
       pond.fish.position.set(
         leap.x0 + (leap.x1 - leap.x0) * t,
-        POND_WATER_Y + Math.sin(Math.PI * t) * 0.9,
+        pond.y + Math.sin(Math.PI * t) * 0.9,
         leap.z0 + (leap.z1 - leap.z0) * t,
       );
       pond.fish.material.rotation = (0.5 - t) * 2 * (leap.x1 > leap.x0 ? 1 : -1);
       if (t >= 1) {
         pond.fish.visible = false;
         pond.leap = null;
-        ripple(scene, leap.x1, leap.z1);
-        burst(leap.x1, POND_WATER_Y + 0.1, leap.z1, {
+        ripple(scene, leap.x1, leap.z1, pond.y);
+        burst(leap.x1, pond.y + 0.1, leap.z1, {
           color: 0xd8f0ff,
           count: 6,
           speed: 1.4,
@@ -546,7 +569,8 @@ export function updateWaterFeatures(dt, time, scene) {
     if (pond.next <= 0) {
       pond.next = 4 + Math.random() * 7;
       const angle = Math.random() * Math.PI * 2;
-      const distance = pond.r * 0.4 * Math.random();
+      const [from, to] = pond.fishReach;
+      const distance = pond.r * (from + (to - from) * Math.random());
       const x0 = pond.x + Math.cos(angle) * distance;
       const z0 = pond.z + Math.sin(angle) * distance;
       const way = Math.random() < 0.5 ? 1 : -1;
@@ -554,7 +578,7 @@ export function updateWaterFeatures(dt, time, scene) {
       pond.fish.material.map.repeat.x = way;
       pond.fish.material.map.offset.x = way < 0 ? 1 : 0;
       pond.fish.visible = true;
-      ripple(scene, x0, z0);
+      ripple(scene, x0, z0, pond.y);
     }
   }
   for (let k = ripples.length - 1; k >= 0; k--) {

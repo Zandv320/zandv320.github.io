@@ -76,6 +76,31 @@ export const TIDE_LANDING = [TIDE_PIER.x + 0.4, SOUTH_COAST + 8];
 export const TIDE_CAMP = { name: "Tidecrown", x: TIDECROWN.x + 4, z: SOUTH_COAST - 9, radius: 7 };
 export const TIDE_WAKE = [TIDE_CAMP.x + 2, TIDE_CAMP.z + 1.5];
 
+/* the path from the pier past the camp up to the causeway, and how far (x, z) lies from it */
+export const TIDE_PATH = [
+  [TIDE_PIER.x, TIDE_PIER.north + 1],
+  [TIDE_CAMP.x - 1, TIDE_CAMP.z + 3],
+  [TIDE_CAMP.x - 3, TIDE_CAMP.z - 10],
+  [CAUSEWAY.x + 1, CAUSEWAY.south + 4],
+  [CAUSEWAY.x, CAUSEWAY.south],
+];
+export function tidePathDistance(x, z) {
+  let best = Infinity;
+  for (let k = 0; k < TIDE_PATH.length - 1; k++) {
+    const [ax, az] = TIDE_PATH[k];
+    const [bx, bz] = TIDE_PATH[k + 1];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+  }
+  return best;
+}
+
+/* the ruins of the keepers' hall on the ring east of the path, and of a watch post on the west side */
+export const KEEPERS_HALL = { x: TIDECROWN.x + 26, z: TIDECROWN.z + 24, w: 10, d: 7 };
+export const WEST_RUIN = { x: TIDECROWN.x - 36, z: TIDECROWN.z + 6 };
+
 /* where the Leviathan waits in the deep middle of the lake, before anyone comes */
 export const LEVIATHAN_HOME = [CROWNMERE.x + 9, CROWNMERE.z - 6];
 
@@ -202,6 +227,8 @@ function ringSpots(count, seed) {
       !inTideCamp(x, z) &&
       Math.hypot(x - TIDE_CAMP.x, z - TIDE_CAMP.z) > 14 &&
       Math.abs(x - CAUSEWAY.x) > 5 &&
+      Math.hypot(x - KEEPERS_HALL.x, z - KEEPERS_HALL.z) > 10 &&
+      Math.hypot(x - WEST_RUIN.x, z - WEST_RUIN.z) > 8 &&
       spots.every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 6);
     if (isOpen) {
       spots.push([x, z]);

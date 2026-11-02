@@ -21,12 +21,18 @@ import {
   TIDE_PIER,
   TIDE_BERTH,
   TIDE_CAMP,
+  TIDE_PATH,
+  tidePathDistance,
+  KEEPERS_HALL,
+  WEST_RUIN,
 } from "./rules/tidecrown.js";
 import { QUESTS } from "./rules/quests.js";
 import { HULL } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { SEA_VERTEX, SEA_FRAGMENT } from "./saltmere.js";
-import { coastSlab, addSurf } from "./sea.js";
+import { addSurf } from "./sea.js";
+import { waterfall, foamPool, rock, pondLife, addCascade } from "./water-features.js";
+import { addFxPlace } from "./weapon-fx.js";
 import { maelisFigure } from "./maelis.js";
 import {
   addShadowCatcher,
@@ -73,19 +79,24 @@ const state = {
 export function buildTidecrown({ prop, place, pending, seededRandom, obstacles }) {
   const random = seededRandom(4242);
   pending.push(
-    Promise.all([
-      loadTexture("sprites/ground.png", { raw: true }),
-      loadTexture("sprites/ember_ground.png", { raw: true }),
-    ]).then(([grass, ember]) => prepareGround(grass.image, ember.image)),
+    loadTexture("sprites/ground.png", { raw: true }).then((grass) => prepareGround(grass.image)),
   );
+  const materials = {
+    stone: builders.material("stone", 2, 2, 0.6),
+    edge: new THREE.LineBasicMaterial({ color: 0x0c0f2a }),
+  };
   buildCoast();
-  buildLake(obstacles);
-  buildCrown(random, obstacles);
+  buildLake(random, materials, obstacles);
+  buildCrown(random, materials, obstacles);
+  buildIslet(obstacles);
+  buildRuins({ place, random });
   buildLanding({ prop, place, pending, obstacles });
+  buildBeach({ random, materials, obstacles });
   buildScenery({ prop, place, pending, random, obstacles });
 }
 
-/* ---------- the ground: grass worn by salt, sand along the coast, pebbles round the lake, a path ---------- */
+/* ---------- the ground: grass worn by salt, sand with shells along the coast, shingle round the lake, a path of
+   trodden earth; painted pixel by pixel in the game's own sixteen to a unit ---------- */
 
 function hash(x, z) {
   const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
@@ -126,54 +137,33 @@ const PAINT_REACH = 200;
 const PAINT_BUDGET = IS_PHONE ? 4 : 7;
 const URGENT_BUDGET = IS_PHONE ? 20 : 30;
 
-/* the path from the pier past the camp up to the causeway */
-const PATH = [
-  [TIDE_PIER.x, TIDE_PIER.north + 1],
-  [TIDE_CAMP.x - 1, TIDE_CAMP.z + 3],
-  [TIDE_CAMP.x - 3, TIDE_CAMP.z - 10],
-  [CAUSEWAY.x + 1, CAUSEWAY.south + 4],
-  [CAUSEWAY.x, CAUSEWAY.south],
+/* the colours of what is not grass: sand (dry, light, wet), shingle, earth */
+const SAND = [
+  [218, 198, 148],
+  [204, 182, 130],
+  [230, 214, 170],
 ];
-function pathDistance(x, z) {
-  let best = Infinity;
-  for (let k = 0; k < PATH.length - 1; k++) {
-    const [ax, az] = PATH[k];
-    const [bx, bz] = PATH[k + 1];
-    const dx = bx - ax;
-    const dz = bz - az;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
-    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
-  }
-  return best;
-}
+const SHINGLE = [
+  [146, 150, 150],
+  [112, 118, 124],
+  [168, 160, 142],
+  [92, 98, 106],
+];
+const EARTH = [
+  [140, 108, 72],
+  [118, 90, 60],
+  [166, 134, 94],
+  [98, 74, 50],
+];
 
 let painter = null;
 
-function prepareGround(grassImage, emberImage) {
-  const grass = pixelsOf(grassImage);
-  const ember = pixelsOf(emberImage);
-  /* the colour of pixel (gx, gy) of a 32 px tile of an atlas, the tiles repeating */
-  const tilePixel = (atlas, tile, gx, gy) => {
-    const k = ((gy & 31) * atlas.width + tile * 32 + (gx & 31)) * 4;
-    return [atlas.data[k], atlas.data[k + 1], atlas.data[k + 2]];
-  };
-  const x0 = TIDECROWN.x - TIDECROWN_REACH;
-  const z0 = TIDECROWN.z - TIDECROWN_REACH;
-  const count = Math.ceil((TIDECROWN_REACH * 2) / CHUNK);
-  const chunks = [];
-  for (let j = 0; j < count; j++) {
-    for (let i = 0; i < count; i++) {
-      chunks.push({ x0: x0 + i * CHUNK, z0: z0 + j * CHUNK });
-    }
-  }
-  painter = { grass, ember, tilePixel, chunks, job: null };
-  const size = TIDECROWN_REACH * 2;
-  addShadowCatcher(size, size, TIDECROWN.x, 0.029, TIDECROWN.z);
-  /* under the chunks a plain floor in the coast's shape with the lake cut out, so an unpainted chunk is no hole */
+/* the island's outline (its coast plus `grow`) with the lake cut out, as a flat shape (y towards -z once laid) */
+function islandShape(grow, lakeGrow) {
   const shape = new THREE.Shape();
   for (let k = 0; k <= 180; k++) {
     const angle = (k / 180) * Math.PI * 2;
-    const r = tidecrownCoast(angle);
+    const r = tidecrownCoast(angle) + grow;
     const point = [Math.sin(angle) * r, -Math.cos(angle) * r];
     if (k === 0) {
       shape.moveTo(...point);
@@ -185,23 +175,41 @@ function prepareGround(grassImage, emberImage) {
   lake.absarc(
     CROWNMERE.x - TIDECROWN.x,
     -(CROWNMERE.z - TIDECROWN.z),
-    CROWNMERE.radius,
+    CROWNMERE.radius + lakeGrow,
     0,
     Math.PI * 2,
     true,
   );
   shape.holes.push(lake);
+  return shape;
+}
+
+function prepareGround(grassImage) {
+  const grass = pixelsOf(grassImage);
+  const x0 = TIDECROWN.x - TIDECROWN_REACH;
+  const z0 = TIDECROWN.z - TIDECROWN_REACH;
+  const count = Math.ceil((TIDECROWN_REACH * 2) / CHUNK);
+  const chunks = [];
+  for (let j = 0; j < count; j++) {
+    for (let i = 0; i < count; i++) {
+      chunks.push({ x0: x0 + i * CHUNK, z0: z0 + j * CHUNK });
+    }
+  }
+  painter = { grass, chunks, job: null };
+  const size = TIDECROWN_REACH * 2;
+  addShadowCatcher(size, size, TIDECROWN.x, 0.029, TIDECROWN.z);
+  /* under the chunks a plain floor in the island's shape, so an unpainted chunk is no hole */
   const floor = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape, 24).rotateX(-Math.PI / 2),
+    new THREE.ShapeGeometry(islandShape(0, 0), 24).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({
-      color: new THREE.Color().setRGB(96 / 255, 132 / 255, 92 / 255, THREE.SRGBColorSpace),
+      color: new THREE.Color().setRGB(110 / 255, 140 / 255, 96 / 255, THREE.SRGBColorSpace),
     }),
   );
   floor.position.set(TIDECROWN.x, 0.001, TIDECROWN.z);
   scene.add(floor);
 }
 
-/* what lies at (x, z): null for water, else [atlas, tile, r, g, b] (a tint, multiplied in) */
+/* what lies at (x, z): null for water, else {kind, ...} */
 function groundAt(x, z) {
   const dx = x - TIDECROWN.x;
   const dz = z - TIDECROWN.z;
@@ -213,26 +221,96 @@ function groundAt(x, z) {
   if (fromLake < 0) {
     return null;
   }
-  const { grass, ember } = painter;
   const wobble = noise(x * 0.25, z * 0.25);
   if (inland < 3.5 + wobble * 3) {
-    /* wet sand at the water's edge, dry above it */
-    const wet = inland < 1.1 + wobble * 0.6 ? 0.8 : 1;
-    return [ember, 3, wet, wet, wet * 1.04];
+    return {
+      kind: "sand",
+      wet: inland < 1.1 + wobble * 0.7,
+      wrack: inland > 1.4 + wobble * 0.7 && inland < 2 + wobble * 0.8,
+    };
   }
-  if (fromLake < 1.6 + wobble * 1.6) {
-    return [ember, 2, 0.86, 0.94, 0.98];
+  if (fromLake < 1.4 + wobble * 1.4) {
+    return { kind: "shingle" };
   }
-  if (pathDistance(x, z) < 1 + noise(x * 0.9, z * 0.9) * 0.5) {
-    return [grass, 5, 0.9, 0.92, 0.92];
+  /* near the path every pixel looks for itself, so its edges run ragged instead of in steps */
+  const nearPath = tidePathDistance(x, z) < 1.8;
+  /* the grass: darker and wetter inside the crown, grey-green with salt near the beach, in patches */
+  const patch = noise(x * 0.07, z * 0.07);
+  const crown = Math.max(0, 1 - fromLake / 8);
+  const salt = Math.max(0, 1 - (inland - 4) / 8);
+  const r = 0.86 + patch * 0.12 - crown * 0.14 - salt * 0.06;
+  const g = 0.94 + patch * 0.06 - crown * 0.08;
+  const b = 0.86 + patch * 0.08 - crown * 0.02 + salt * 0.06;
+  return {
+    kind: "grass",
+    tile: hash(Math.floor(x / 2), Math.floor(z / 2)) < 0.14 ? 2 : 0,
+    r,
+    g,
+    b,
+    nearPath,
+  };
+}
+
+const pick = (colors, value) =>
+  colors[Math.min(colors.length - 1, Math.floor(value * colors.length))];
+
+/* the colour of one pixel of the ground: [r, g, b] */
+function pixelColor(ground, gx, gy) {
+  const wx = gx / PX;
+  const wz = gy / PX;
+  const speck = hash(gx * 0.37, gy * 0.71);
+  switch (ground.kind) {
+    case "sand": {
+      /* smooth patches of lighter and darker sand, and a grain */
+      const shade = noise(wx * 0.35, wz * 0.35) * 0.7 + speck * 0.3;
+      const [a, b] = shade < 0.5 ? [SAND[1], SAND[0]] : [SAND[0], SAND[2]];
+      const t = shade < 0.5 ? shade * 2 : shade * 2 - 1;
+      let color = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      if (speck < 0.004) {
+        color = [244, 236, 222];
+      } else if (speck < 0.008) {
+        color = [236, 170, 162];
+      } else if (speck < 0.03) {
+        color = [186, 164, 118];
+      }
+      if (ground.wrack && noise(wx * 2.2, wz * 2.2) > 0.55) {
+        /* a line of dried seaweed where the high tide leaves it */
+        color = speck < 0.5 ? [58, 84, 56] : [44, 62, 44];
+      }
+      return ground.wet ? [color[0] * 0.8, color[1] * 0.84, color[2] * 0.9] : color;
+    }
+    case "shingle": {
+      /* pebbles three pixels across, each its own colour, darker at their edges */
+      const pebble = hash(Math.floor(gx / 3) * 1.3, Math.floor(gy / 3) * 0.7);
+      const color = pick(SHINGLE, pebble * 0.999);
+      const isEdge = gx % 3 === 0 || gy % 3 === 0;
+      return isEdge ? [color[0] * 0.78, color[1] * 0.78, color[2] * 0.8] : color;
+    }
+    case "earth": {
+      if (speck < 0.05) {
+        return EARTH[2];
+      }
+      if (speck < 0.1) {
+        return EARTH[3];
+      }
+      return noise(wx * 1.4, wz * 1.4) > 0.5 ? EARTH[0] : EARTH[1];
+    }
+    default: {
+      const { grass } = painter;
+      const k = ((gy & 31) * grass.width + ground.tile * 32 + (gx & 31)) * 4;
+      if (ground.nearPath) {
+        const trodden = tidePathDistance(wx, wz);
+        if (trodden < 0.7 + noise(wx * 1.1, wz * 1.1) * 0.45) {
+          return pixelColor({ kind: "earth" }, gx, gy);
+        }
+        /* worn grass along its sides */
+        if (trodden < 1.2 && noise(wx * 3, wz * 3) > 0.55) {
+          return EARTH[1];
+        }
+      }
+      return [grass.data[k] * ground.r, grass.data[k + 1] * ground.g, grass.data[k + 2] * ground.b];
+    }
   }
-  /* inside the crown the grass is darker, wet with spray; elsewhere grey-green with salt */
-  const tile = hash(Math.floor(x / 2), Math.floor(z / 2)) < 0.12 ? 2 : 0;
-  const isCrown = fromLake < 7 + wobble * 2;
-  const patch = noise(x * 0.08, z * 0.08);
-  return isCrown
-    ? [grass, tile, 0.7, 0.82, 0.84]
-    : [grass, tile, 0.84 + patch * 0.08, 0.93, 0.86 + patch * 0.06];
 }
 
 function paintGround() {
@@ -281,7 +359,6 @@ function paintGround() {
 }
 
 function paintRow({ chunk, pixels }, j) {
-  const { tilePixel } = painter;
   const originX = Math.round(chunk.x0 * PX);
   const originY = Math.round(chunk.z0 * PX);
   for (let i = 0; i < CELLS; i++) {
@@ -289,16 +366,15 @@ function paintRow({ chunk, pixels }, j) {
     if (!ground) {
       continue;
     }
-    const [atlas, tile, tr, tg, tb] = ground;
     for (let py = 0; py < CELL; py++) {
       for (let px = 0; px < CELL; px++) {
         const lx = i * CELL + px;
         const ly = j * CELL + py;
-        const [r, g, b] = tilePixel(atlas, tile, originX + lx, originY + ly);
+        const [r, g, b] = pixelColor(ground, originX + lx, originY + ly);
         const k = (ly * CHUNK_PIXELS + lx) * 4;
-        pixels[k] = r * tr;
-        pixels[k + 1] = g * tg;
-        pixels[k + 2] = b * tb;
+        pixels[k] = r;
+        pixels[k + 1] = g;
+        pixels[k + 2] = b;
         pixels[k + 3] = 255;
       }
     }
@@ -324,17 +400,29 @@ function finishChunk({ chunk, pixels }) {
 /* ---------- the coast: the land's sandy flank down into the sea, and the surf ---------- */
 
 function buildCoast() {
-  const reach = (angle) => tidecrownCoast(angle);
+  /* a slab in the island's shape under the ground, its rounded edge showing only where the land meets the sea;
+     the lake's hole is wider, so the slab never reaches over the crater's wall */
+  const depth = 1.6;
+  const bevel = 0.8;
+  const geometry = new THREE.ExtrudeGeometry(islandShape(0.3, 1.2), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: bevel * 0.4,
+    bevelSize: bevel,
+    bevelSegments: 2,
+    /* the lake's hole is an arc: enough segments to stay round */
+    curveSegments: 48,
+  }).rotateX(-Math.PI / 2);
   const sand = new THREE.Mesh(
-    coastSlab(reach, 1, 0.3, 1.5, 0.8),
+    geometry,
     new THREE.MeshLambertMaterial({ color: 0xcdb98a, flatShading: true }),
   );
-  sand.position.set(TIDECROWN.x, WATER_Y - 0.62, TIDECROWN.z);
+  sand.position.set(TIDECROWN.x, -depth - bevel * 0.4 - 0.02, TIDECROWN.z);
   scene.add(sand);
-  addSurf(scene, TIDECROWN.x, TIDECROWN.z, 1.2, 2.6, reach);
+  addSurf(scene, TIDECROWN.x, TIDECROWN.z, 1.2, 2.6, (angle) => tidecrownCoast(angle));
 }
 
-/* ---------- the Crownmere: sunk in the crater, its islet and the causeway out to it ---------- */
+/* ---------- the Crownmere: sunk in the crater, boulders and reeds along its edge, lilies, fish ---------- */
 
 /* the wave of the tide stones, in sixteen pixels */
 function waveGlyph() {
@@ -402,18 +490,10 @@ function lakeShallows() {
   return texture;
 }
 
-function buildLake(obstacles) {
+/* the grey-green water of the Leviathan's lake (and of the rock pools on the beach): the sea's own shader */
+function lakeMaterial() {
   const { x, z, radius } = CROWNMERE;
-  /* the crater's wall from the land down into the water, seen from the inside */
-  const wall = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius, radius - 0.4, 2, 72, 1, true),
-    builders.material("basalt", radius * 2 * Math.PI, 2, 0.8),
-  );
-  wall.material.side = THREE.BackSide;
-  wall.position.set(x, -1, z);
-  scene.add(wall);
-  /* the water: the sea's own shader, in the grey-greens of the Leviathan's lake */
-  const material = new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
       uShore: { value: z + 110 },
@@ -429,49 +509,212 @@ function buildLake(obstacles) {
     vertexShader: SEA_VERTEX,
     fragmentShader: SEA_FRAGMENT,
   });
+}
+
+function buildLake(random, materials, obstacles) {
+  const { x, z, radius } = CROWNMERE;
+  /* the crater's wall from the land down into the water, seen from the inside */
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius - 0.5, 2.2, 72, 1, true),
+    builders.material("stone", radius * 2 * Math.PI, 2.2, 0.62),
+  );
+  wall.material.side = THREE.BackSide;
+  wall.position.set(x, -1.1, z);
+  scene.add(wall);
+  state.lake = lakeMaterial();
   const water = new THREE.Mesh(
-    new THREE.CircleGeometry(radius, 72).rotateX(-Math.PI / 2),
-    material,
+    new THREE.CircleGeometry(radius - 0.2, 72).rotateX(-Math.PI / 2),
+    state.lake,
   );
   water.position.set(x, LAKE_Y, z);
   scene.add(water);
-  state.lake = material;
-  /* the islet: a drum of old stone rising out of the water, paved on top */
-  const islet = new THREE.Mesh(
-    new THREE.CylinderGeometry(SEAL_ISLET.radius, SEAL_ISLET.radius + 0.5, 2, 32),
-    builders.material("stone", SEAL_ISLET.radius * 2 * Math.PI, 2, 0.7),
-  );
-  islet.position.set(SEAL_ISLET.x, -0.98, SEAL_ISLET.z);
-  scene.add(islet);
-  const paving = builders.plaza(SEAL_ISLET.radius - 0.05, "cobbles2", 0.85);
-  paving.position.set(SEAL_ISLET.x, 0.02, SEAL_ISLET.z);
-  scene.add(paving);
-  /* the causeway: a dyke of the same stone, a little lower at the edges */
+  /* boulders half in the water all round its edge, but where the causeway runs out */
+  for (let k = 0; k < 34; k++) {
+    const angle = (k / 34) * Math.PI * 2 + (random() - 0.5) * 0.12;
+    if (Math.abs(Math.sin(angle) * radius) < 3 && Math.cos(angle) > 0) {
+      continue;
+    }
+    const distance = radius - 0.3 - random() * 0.6;
+    rock(
+      scene,
+      x + Math.sin(angle) * distance,
+      LAKE_Y + 0.15,
+      z + Math.cos(angle) * distance,
+      0.45 + random() * 0.55,
+      random,
+      materials,
+    );
+  }
+  /* reeds in clumps all round, lilies near the shore, and fish */
+  pondLife(scene, x, z, radius, random, {
+    y: LAKE_Y,
+    lilyCount: 34,
+    lilyReach: [0.62, 0.9],
+    reedCount: 40,
+    reedArc: Math.PI * 2,
+    fishCount: 3,
+    fishReach: [0.4, 0.85],
+  });
+  /* the causeway: a dyke of old stone, broken columns along its edges */
   const length = CAUSEWAY.south - CAUSEWAY.north;
   const dyke = new THREE.Mesh(
-    new THREE.BoxGeometry(CAUSEWAY.halfWidth * 2, 2, length),
-    builders.material("stone", CAUSEWAY.halfWidth * 2, 2, 0.72),
+    new THREE.BoxGeometry(CAUSEWAY.halfWidth * 2, 2.2, length),
+    builders.material("stone", CAUSEWAY.halfWidth * 2, 2.2, 0.66),
   );
-  dyke.position.set(CAUSEWAY.x, -0.98, (CAUSEWAY.north + CAUSEWAY.south) / 2);
+  dyke.position.set(CAUSEWAY.x, -1.08, (CAUSEWAY.north + CAUSEWAY.south) / 2);
   scene.add(dyke);
   const top = new THREE.Mesh(
     new THREE.PlaneGeometry(CAUSEWAY.halfWidth * 2, length).rotateX(-Math.PI / 2),
-    builders.material("cobbles2", CAUSEWAY.halfWidth * 2, length, 0.82),
+    builders.material("stone", CAUSEWAY.halfWidth * 2, length, 0.92),
   );
   top.position.set(CAUSEWAY.x, 0.025, (CAUSEWAY.north + CAUSEWAY.south) / 2);
   scene.add(top);
-  /* broken posts along both edges */
-  for (let pz = CAUSEWAY.north + 2; pz < CAUSEWAY.south - 2; pz += 3.2) {
-    for (const side of [-1, 1]) {
-      const height = 0.5 + hash(pz, side) * 0.7;
-      const post = new THREE.Mesh(
-        new THREE.BoxGeometry(0.32, height, 0.32),
-        builders.material("stone", 0.32, height, 0.66),
-      );
-      post.position.set(CAUSEWAY.x + side * (CAUSEWAY.halfWidth - 0.1), height / 2, pz);
-      post.rotation.z = (hash(side, pz) - 0.5) * 0.3;
-      scene.add(post);
+  for (let pz = CAUSEWAY.north + 2.5, k = 0; pz < CAUSEWAY.south - 3; pz += 3.4, k++) {
+    const side = k % 2 ? 1 : -1;
+    const height = 0.6 + hash(pz, side) * 1.6;
+    const column = builders.outline(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.28, 0.32, height, 8),
+        builders.material("stone", 1.8, height, 0.8),
+      ),
+      40,
+    );
+    column.position.set(CAUSEWAY.x + side * (CAUSEWAY.halfWidth - 0.15), height / 2, pz);
+    scene.add(column);
+  }
+}
+
+/* ---------- the crown: clusters of basalt columns round the lake, moss on their tops; on the north side the
+   tallest of them, with a fall of water down into the lake ---------- */
+
+const BASALT = new THREE.MeshLambertMaterial({ color: 0x59606e, flatShading: true });
+const BASALT_LIGHT = new THREE.MeshLambertMaterial({ color: 0x737a88, flatShading: true });
+const MOSS = new THREE.MeshLambertMaterial({ color: 0x55804a, flatShading: true });
+
+/* a cluster of six-sided columns round (0, 0), `radius` wide, the tallest `height` */
+function basaltCluster(radius, height, random) {
+  const group = new THREE.Group();
+  const count = 4 + Math.floor(random() * 3);
+  for (let k = 0; k < count; k++) {
+    const isMiddle = k === 0;
+    const angle = (k / count) * Math.PI * 2 + random();
+    const distance = isMiddle ? 0 : radius * (0.45 + random() * 0.3);
+    const r = radius * (isMiddle ? 0.42 : 0.26 + random() * 0.12);
+    const h = height * (isMiddle ? 1 : 0.35 + random() * 0.5);
+    const column = builders.outline(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(r, r * 1.08, h, 6),
+        k % 3 === 1 ? BASALT_LIGHT : BASALT,
+      ),
+      30,
+    );
+    column.position.set(Math.sin(angle) * distance, h / 2, Math.cos(angle) * distance);
+    column.rotation.y = random() * Math.PI;
+    group.add(column);
+    /* moss on the lower tops */
+    if (h < height * 0.8 || random() < 0.4) {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.96, r, 0.12, 6), MOSS);
+      cap.position.set(column.position.x, h + 0.04, column.position.z);
+      cap.rotation.y = column.rotation.y;
+      group.add(cap);
     }
+  }
+  return group;
+}
+
+function buildCrown(random, materials, obstacles) {
+  for (const tooth of CROWN_TEETH) {
+    const isFalls = tooth.z < CROWNMERE.z && Math.abs(tooth.x - CROWNMERE.x) < 0.01;
+    const cluster = basaltCluster(
+      tooth.radius * (isFalls ? 2.2 : 1.5),
+      isFalls ? 7.5 : tooth.height,
+      random,
+    );
+    cluster.position.set(tooth.x, 0, tooth.z);
+    cluster.userData.mapKind = "rock";
+    scene.add(cluster);
+    obstacles.push({ x: tooth.x, z: tooth.z, r: tooth.radius * (isFalls ? 1.6 : 1.1) });
+    if (isFalls) {
+      /* the falls: from a notch high in the columns down to the lake, a pool of foam where they land */
+      const lipZ = tooth.z + tooth.radius * 1.2;
+      const footZ = CROWNMERE.z - CROWNMERE.radius + 1.6;
+      waterfall(scene, [tooth.x, 6.4, lipZ], [tooth.x + 0.2, LAKE_Y, footZ], 2.2);
+      foamPool(scene, tooth.x + 0.2, LAKE_Y + 0.03, footZ + 0.8, 1.9);
+      addFxPlace({
+        element: "spray",
+        x: tooth.x + 0.2,
+        y: LAKE_Y + 0.3,
+        z: footZ + 0.6,
+        spread: 1,
+        rate: 1.2,
+      });
+      addCascade(tooth.x + 0.2, LAKE_Y + 0.1, footZ + 0.6);
+      for (const [dx, dz, size] of [
+        [-1.6, 0.6, 0.8],
+        [1.7, 0.4, 0.9],
+        [-2.2, 1.8, 0.6],
+        [2.3, 1.6, 0.7],
+      ]) {
+        rock(scene, tooth.x + dx, LAKE_Y + 0.2, footZ + dz, size, random, materials);
+      }
+    }
+  }
+}
+
+/* ---------- the islet: paved, a low ring of posts, braziers with blue fire, the altar and its four stones ---------- */
+
+/* where the blue fires burn on the islet (lit once the effects are loaded, updateTidecrown) */
+const ISLET_FIRES = [Math.PI * 0.75, Math.PI * 1.25, Math.PI * 0.2, -Math.PI * 0.2].map((angle) => [
+  SEAL_ISLET.x + Math.sin(angle) * (SEAL_ISLET.radius - 0.9),
+  SEAL_ISLET.z + Math.cos(angle) * (SEAL_ISLET.radius - 0.9),
+]);
+
+function buildIslet(obstacles) {
+  const islet = new THREE.Mesh(
+    new THREE.CylinderGeometry(SEAL_ISLET.radius, SEAL_ISLET.radius + 0.5, 2.2, 32),
+    builders.material("stone", SEAL_ISLET.radius * 2 * Math.PI, 2.2, 0.66),
+  );
+  islet.position.set(SEAL_ISLET.x, -1.08, SEAL_ISLET.z);
+  scene.add(islet);
+  const paving = builders.plaza(SEAL_ISLET.radius - 0.05, "stone", 0.95);
+  paving.position.set(SEAL_ISLET.x, 0.02, SEAL_ISLET.z);
+  scene.add(paving);
+  /* a ring of low posts round the edge, open to the causeway */
+  for (let k = 0; k < 14; k++) {
+    const angle = (k / 14) * Math.PI * 2;
+    if (Math.cos(angle) > 0.85) {
+      continue;
+    }
+    const height = 0.5 + hash(k, 3) * 0.4;
+    const post = builders.block(0.32, height, 0.32, "stone", 0.86);
+    post.position.set(
+      SEAL_ISLET.x + Math.sin(angle) * (SEAL_ISLET.radius - 0.2),
+      height / 2,
+      SEAL_ISLET.z + Math.cos(angle) * (SEAL_ISLET.radius - 0.2),
+    );
+    scene.add(post);
+  }
+  for (const [fx, fz] of ISLET_FIRES) {
+    const brazier = builders.brazier();
+    /* its coals burn blue-green, like the seal */
+    brazier.traverse((object) => {
+      if (object.isMesh && object.material.isMeshBasicMaterial) {
+        object.material = object.material.clone();
+        object.material.color.set(TIDE_COLOR);
+      }
+    });
+    brazier.position.set(fx, 0.02, fz);
+    addFxPlace({ element: "mana", x: fx, y: 1.2, z: fz, spread: 0.2, rate: 0.7 });
+    scene.add(brazier);
+    obstacles.push({ x: fx, z: fz, r: 0.4 });
+    tidecrownLights.push({
+      x: fx,
+      z: fz,
+      y: 1.3,
+      radius: 4,
+      color: [127, 224, 212],
+      strength: 0.8,
+    });
   }
   /* the altar of the tide seal, and its four stones on the diagonals */
   const altar = builders.altar();
@@ -506,38 +749,116 @@ function buildLake(obstacles) {
 /** The clickable meshes of Tidecrown: the tide seal's altar. */
 export const tidecrownClickables = () => (state.seal ? [state.seal.mesh] : []);
 
-/* ---------- the crown: teeth of dark rock round the lake ---------- */
+/* ---------- the ruins of the keepers: the gate where the causeway leaves the shore, their hall, a watch post ---------- */
 
-function buildCrown(random, obstacles) {
-  const rock = builders.material("basalt", 2, 2, 0.7);
-  for (const tooth of CROWN_TEETH) {
-    const group = new THREE.Group();
-    let y = -0.4;
-    let size = tooth.radius * 1.1;
-    const pieces = Math.max(3, Math.round(tooth.height / 1.4));
-    for (let k = 0; k < pieces; k++) {
-      const piece = new THREE.Mesh(new THREE.DodecahedronGeometry(size, 0), rock);
-      piece.position.set(
-        (random() - 0.5) * size * 0.3,
-        y + size * 0.7,
-        (random() - 0.5) * size * 0.3,
-      );
-      piece.scale.y = 1.4;
-      piece.rotation.set(random() * 3, random() * 3, random() * 3);
-      piece.castShadow = true;
-      group.add(piece);
-      y += size * 1.15;
-      size *= 0.78;
+/* an outlined stone block on the ground, as its own group (so `place` keeps it standing on y = 0) */
+function stoneBlock(w, h, d, tint = 0.84) {
+  const group = new THREE.Group();
+  group.add(builders.block(w, h, d, "stone", tint));
+  return group;
+}
+
+/* a column: whole, or broken off at `height`; `lying` for one that fell */
+function column(height, lying = false) {
+  const group = new THREE.Group();
+  const shaft = builders.outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.34, 0.38, height, 8),
+      builders.material("stone", 2.2, height, 0.86),
+    ),
+    40,
+  );
+  if (lying) {
+    shaft.rotation.z = Math.PI / 2;
+    shaft.position.y = 0.36;
+  } else {
+    shaft.position.y = height / 2 + 0.2;
+    const base = builders.block(0.95, 0.2, 0.95, "stone", 0.8);
+    group.add(base);
+  }
+  group.add(shaft);
+  return group;
+}
+
+function buildRuins({ place, random }) {
+  /* the gate: two pillars where the causeway meets the shore, the lintel broken, half of it on the ground */
+  const gateZ = CROWNMERE.z + CROWNMERE.radius + 4.6;
+  for (const side of [-1, 1]) {
+    const pillar = stoneBlock(1.1, 4.2, 1.1, 0.8);
+    const cap = builders.block(1.45, 0.35, 1.45, "stone", 0.9);
+    cap.position.y = 4.2 + 0.17;
+    pillar.add(cap);
+    place(pillar, CAUSEWAY.x + side * 2.7, gateZ, { radius: 0.8 });
+  }
+  const lintel = builders.block(3.6, 0.6, 1, "stone", 0.88);
+  lintel.position.set(CAUSEWAY.x - 1.5, 4.55 + 0.3, gateZ);
+  lintel.rotation.z = -0.06;
+  scene.add(lintel);
+  const fallen = stoneBlock(3, 0.6, 1, 0.78);
+  place(fallen, CAUSEWAY.x + 4.6, gateZ + 2.2, { rotation: 0.5 });
+
+  /* the keepers' hall: a floor of flagstones, walls broken to different heights, two rows of columns (some
+     fallen), and at its far end the statue of a keeper */
+  const hall = KEEPERS_HALL;
+  const floor = builders.squarePlaza(hall.w + 1, hall.d + 1, "crypt_floor");
+  floor.position.set(hall.x, 0.015, hall.z);
+  scene.add(floor);
+  const wall = (x, z, w, d) => {
+    const height = 0.6 + random() * 1.8;
+    place(stoneBlock(w, height, d, 0.76 + random() * 0.12), hall.x + x, hall.z + z);
+  };
+  const halfW = hall.w / 2;
+  const halfD = hall.d / 2;
+  /* the long walls in pieces, the south wall with its doorway */
+  for (let k = 0; k < 4; k++) {
+    const x = -halfW + 1.25 + k * 2.5;
+    if (random() < 0.8) {
+      wall(x, -halfD, 2.3, 0.6);
     }
-    /* leaning a little out from the lake, like the points of a crown */
-    const outX = tooth.x - CROWNMERE.x;
-    const outZ = tooth.z - CROWNMERE.z;
-    const length = Math.hypot(outX, outZ) || 1;
-    group.rotation.set((outZ / length) * 0.14, 0, (-outX / length) * 0.14);
-    group.position.set(tooth.x, 0, tooth.z);
-    group.userData.mapKind = "rock";
-    scene.add(group);
-    obstacles.push({ x: tooth.x, z: tooth.z, r: tooth.radius });
+    if (Math.abs(x) > 1.5 && random() < 0.8) {
+      wall(x, halfD, 2.3, 0.6);
+    }
+  }
+  for (const side of [-1, 1]) {
+    wall(side * halfW, -1.2, 0.6, 2.2);
+    if (random() < 0.7) {
+      wall(side * halfW, 1.4, 0.6, 2);
+    }
+  }
+  for (const [x, z, height, lying] of [
+    [-2.6, -1, 3.2, false],
+    [2.6, -1, 2.1, false],
+    [-2.6, 1.6, 1.2, false],
+    [2.4, 1.8, 3.2, true],
+  ]) {
+    place(column(height, lying), hall.x + x, hall.z + z, {
+      rotation: lying ? 0.4 : 0,
+      radius: lying ? 0 : 0.45,
+    });
+  }
+  const keeper = builders.statue();
+  place(keeper, hall.x, hall.z - halfD + 1.4, { radius: 1 });
+
+  /* the watch post on the west side: a broken tower's stump and a few stones */
+  const post = WEST_RUIN;
+  const stump = new THREE.Group();
+  const ring = builders.outline(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(2.2, 2.4, 2.6, 12, 1, true),
+      builders.material("stone", 14, 2.6, 0.8),
+    ),
+    40,
+  );
+  ring.material.side = THREE.DoubleSide;
+  ring.position.y = 1.3;
+  stump.add(ring);
+  place(stump, post.x, post.z, { radius: 2.4 });
+  for (const [dx, dz, w, rot] of [
+    [3.4, 1.2, 1.2, 0.3],
+    [-2.8, 3, 0.9, 1.1],
+    [1.5, -3.4, 1, 2],
+  ]) {
+    place(stoneBlock(w, 0.6, w * 0.7, 0.8), post.x + dx, post.z + dz, { rotation: rot });
   }
 }
 
@@ -586,17 +907,23 @@ function buildLanding({ prop, place, pending, obstacles }) {
   clickables.push(boardHit);
   gull.userData.boardHit = boardHit;
   state.gull = gull;
-  /* the camp: a tent, a fire (main.js lights it), what was brought ashore */
+  /* the camp: a tent, a fire (main.js lights it), what was brought ashore, a line of lanterns up the path */
   const inCamp = (dx, dz) => [TIDE_CAMP.x + dx, TIDE_CAMP.z + dz];
   place(builders.campfire(), ...inCamp(0, 0), { radius: 0.9 });
   place(builders.tent(3, 3.2, "cloth_green"), ...inCamp(-4.6, -2.6), {
     rotation: 0.4,
     radius: 1.7,
   });
+  place(builders.writingDesk(), ...inCamp(-2.4, 1.2), { rotation: -0.3, radius: 0.8 });
   pending.push(prop("crypt_crates", ...inCamp(3.6, -3), { radius: 0.7, scale: 0.9 }));
   place(builders.barrel(), ...inCamp(4.4, -1.6), { radius: 0.45 });
-  pending.push(prop("lantern", ...inCamp(-2, 3), { radius: 0.25 }));
+  place(builders.barrel(), ...inCamp(4.9, -0.6), { radius: 0.45 });
+  place(builders.netRack(2.4), ...inCamp(5.6, 2.6), { rotation: -0.6 });
+  place(builders.flag(2.6, "cloth_green"), ...inCamp(1.8, 4.6), { radius: 0.2 });
   pending.push(prop("lantern", x - 1.6, north + 0.5, { radius: 0.25 }));
+  for (const [px, pz] of TIDE_PATH.slice(1, -1)) {
+    pending.push(prop("lantern", px + 1.6, pz, { radius: 0.25 }));
+  }
   const boat = builders.rowingBoat(3.6, 1.5);
   const [boatX, boatZ] = inCamp(7.5, 5.5);
   boat.position.set(boatX, 0.05, boatZ);
@@ -613,75 +940,85 @@ export function setTideGullVisible(isVisible) {
   }
 }
 
-/* ---------- what stands about: pines and wind-bent trees, rocks, a wreck, bones by the lake ---------- */
+/* ---------- the beach: driftwood, rock pools, wrecked boats and the wreck of a ship ---------- */
 
-function buildScenery({ prop, place, pending, random, obstacles }) {
-  /* a spot on the ring of land, `inner` to `outer` of the way from the crown to the coast, clear of the path,
-     the camp and what stands there already */
-  const taken = [];
-  const spotOnRing = (inner, outer, room) => {
-    for (let tries = 0; tries < 40; tries++) {
-      const angle = random() * Math.PI * 2;
-      const crown = CROWNMERE.radius + 6;
-      const coast = tidecrownCoast(angle) - 4;
-      const distance = crown + (coast - crown) * (inner + random() * (outer - inner));
-      const x = TIDECROWN.x + Math.sin(angle) * distance;
-      const z = TIDECROWN.z + Math.cos(angle) * distance;
-      const isClear =
-        pathDistance(x, z) > 2.5 &&
-        Math.hypot(x - TIDE_CAMP.x, z - TIDE_CAMP.z) > TIDE_CAMP.radius + 2 &&
-        taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + room);
-      if (isClear) {
-        taken.push([x, z, room]);
-        return [x, z];
-      }
+/* a spot on the beach along this bearing, `inland` units up from the water */
+function onBeach(angle, inland) {
+  const distance = tidecrownCoast(angle) - inland;
+  return [TIDECROWN.x + Math.sin(angle) * distance, TIDECROWN.z + Math.cos(angle) * distance];
+}
+
+const DRIFTWOOD = new THREE.MeshLambertMaterial({ color: 0x9a8a74, flatShading: true });
+
+function buildBeach({ random, materials, obstacles }) {
+  /* driftwood, bleached grey, lying where the tide left it (not by the landing) */
+  for (let k = 0; k < 16; k++) {
+    const angle = random() * Math.PI * 2;
+    if (Math.abs(angle - Math.PI * 2) < 0.5 || angle < 0.5) {
+      continue;
     }
-    return null;
-  };
-  const scatter = (
-    names,
-    count,
-    inner,
-    outer,
-    { radius = 0, shadow = 0.8, scale = 0.65, room = 1 },
-  ) => {
-    for (let k = 0; k < count; k++) {
-      const spot = spotOnRing(inner, outer, room);
-      if (spot) {
-        pending.push(prop(names[k % names.length], ...spot, { radius, shadow, scale }));
-      }
-    }
-  };
-  scatter(["pine", "pine2"], 46, 0.15, 0.85, { radius: 0.45, shadow: 1.6, scale: 1.1, room: 2.2 });
-  scatter(["tree", "tree2"], 14, 0.2, 0.7, { radius: 0.45, shadow: 1.6, scale: 1, room: 2.4 });
-  scatter(["bush", "grass_tuft"], 70, 0, 1, { shadow: 0.7, room: 0.8 });
-  scatter(["rock", "rock2"], 40, 0, 1, { radius: 0.3, shadow: 0.6, room: 1 });
-  scatter(["ember_rock4", "ember_boulder"], 10, 0.1, 0.9, {
-    radius: 0.7,
-    shadow: 1.2,
-    scale: 0.75,
-    room: 2,
-  });
-  /* bones of what the Leviathan took, on the shore inside the crown */
-  for (let k = 0; k < 9; k++) {
-    const angle = 0.5 + (k / 9) * Math.PI * 1.9 + random() * 0.2;
-    const distance = CROWNMERE.radius + 1.6 + random() * 2;
-    const bx = CROWNMERE.x + Math.sin(angle) * distance;
-    const bz = CROWNMERE.z + Math.cos(angle) * distance;
-    pending.push(
-      prop(["ember_ribs", "ember_skull", "ember_ram_skull"][k % 3], bx, bz, {
-        shadow: 0.5,
-        scale: 0.6,
-      }),
+    const [x, z] = onBeach(angle, 1.8 + random() * 2);
+    const length = 1.4 + random() * 2.2;
+    const log = builders.outline(
+      new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, length, 6), DRIFTWOOD),
+      40,
     );
+    log.rotation.set(0, 0, Math.PI / 2);
+    const holder = new THREE.Group();
+    holder.add(log);
+    if (random() < 0.5) {
+      const branch = builders.outline(
+        new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.9, 5), DRIFTWOOD),
+        40,
+      );
+      branch.position.set(length * 0.2, 0.35, 0);
+      branch.rotation.z = -0.7;
+      holder.add(branch);
+    }
+    holder.position.set(x, 0.18, z);
+    holder.rotation.y = random() * Math.PI;
+    scene.add(holder);
+  }
+  /* rock pools on the east and north beaches: a ring of stones round a little of the lake's water */
+  for (const angle of [1.2, 1.9, 2.7, 3.6, -1.6]) {
+    const [x, z] = onBeach(angle, 3.2);
+    const radius = 1 + hash(angle, 1) * 0.6;
+    const pool = new THREE.Mesh(
+      new THREE.CircleGeometry(radius, 20).rotateX(-Math.PI / 2),
+      state.lake,
+    );
+    pool.position.set(x, 0.012, z);
+    scene.add(pool);
+    for (let k = 0; k < 7; k++) {
+      const around = (k / 7) * Math.PI * 2 + random() * 0.4;
+      rock(
+        scene,
+        x + Math.sin(around) * (radius + 0.15),
+        0.08,
+        z + Math.cos(around) * (radius + 0.15),
+        0.28 + random() * 0.25,
+        random,
+        materials,
+      );
+    }
+    obstacles.push({ x, z, r: radius + 0.2 });
+  }
+  /* rowing boats the sea threw up, one on its side */
+  for (const [angle, roll] of [
+    [2.3, 1.2],
+    [-0.9, 0.2],
+  ]) {
+    const [x, z] = onBeach(angle, 2.6);
+    const boat = builders.rowingBoat(3.2, 1.3);
+    boat.position.set(x, roll > 1 ? 0.3 : 0.05, z);
+    boat.rotation.set(0.05, angle + 1.2, roll);
+    scene.add(boat);
+    obstacles.push({ x, z, r: 1.2 });
   }
   /* the wreck of a ship on the west beach, heeled over and half sunk in the sand */
-  const angle = -Math.PI / 2 - 0.35;
-  const distance = tidecrownCoast(angle) - 3;
-  const wreckX = TIDECROWN.x + Math.sin(angle) * distance;
-  const wreckZ = TIDECROWN.z + Math.cos(angle) * distance;
+  const [wreckX, wreckZ] = onBeach(-Math.PI / 2 - 0.35, 3);
   const wreck = builders.ship({ length: 13, beam: 4.4, sail: "cloth_green", hullColor: 0x4a4038 });
-  wreck.position.set(wreckX, -1.3, wreckZ);
+  wreck.position.set(wreckX, -1.75, wreckZ);
   wreck.rotation.set(0.12, 0.9, 0.55);
   /* the sails rotted away long ago */
   for (const sail of wreck.userData.sails || []) {
@@ -691,6 +1028,88 @@ function buildScenery({ prop, place, pending, random, obstacles }) {
   obstacles.push({ x: wreckX, z: wreckZ, r: 3.2 });
   obstacles.push({ x: wreckX + 3.2, z: wreckZ - 2.6, r: 2 });
   obstacles.push({ x: wreckX - 3.2, z: wreckZ + 2.6, r: 2 });
+}
+
+/* ---------- what grows and lies about: groves of pines, single trees, bushes, rocks, standing stones ---------- */
+
+function buildScenery({ prop, place, pending, random }) {
+  /* a spot on the ring of land, `inner` to `outer` of the way from the crown to the dunes, clear of the path,
+     the camp, the ruins and what stands there already */
+  const taken = [];
+  const isClear = (x, z, room) =>
+    tidePathDistance(x, z) > 2.5 &&
+    Math.hypot(x - TIDE_CAMP.x, z - TIDE_CAMP.z) > TIDE_CAMP.radius + 3 &&
+    Math.hypot(x - KEEPERS_HALL.x, z - KEEPERS_HALL.z) > 8 &&
+    Math.hypot(x - WEST_RUIN.x, z - WEST_RUIN.z) > 5 &&
+    CROWN_TEETH.every((tooth) => Math.hypot(x - tooth.x, z - tooth.z) > tooth.radius + 2) &&
+    taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + room);
+  const ringSpot = (angle, share) => {
+    const crown = CROWNMERE.radius + 7;
+    const dunes = tidecrownCoast(angle) - 6;
+    const distance = crown + (dunes - crown) * share;
+    return [TIDECROWN.x + Math.sin(angle) * distance, TIDECROWN.z + Math.cos(angle) * distance];
+  };
+  const put = (name, x, z, options, room) => {
+    if (!isClear(x, z, room)) {
+      return false;
+    }
+    taken.push([x, z, room]);
+    pending.push(prop(name, x, z, options));
+    return true;
+  };
+  /* groves of pines, thick in their middle and thinning out, with meadows between them */
+  for (let grove = 0; grove < 7; grove++) {
+    const angle = (grove / 7) * Math.PI * 2 + 0.35 + random() * 0.4;
+    const [cx, cz] = ringSpot(angle, 0.35 + random() * 0.4);
+    for (let k = 0; k < 14; k++) {
+      const around = random() * Math.PI * 2;
+      const distance = Math.sqrt(random()) * 7;
+      const name = random() < 0.75 ? (random() < 0.5 ? "pine" : "pine2") : "tree2";
+      put(
+        name,
+        cx + Math.sin(around) * distance,
+        cz + Math.cos(around) * distance,
+        { radius: 0.45, shadow: 1.6, scale: 1 + random() * 0.3 },
+        1.7,
+      );
+    }
+  }
+  /* single trees and bushes over the meadows */
+  for (let k = 0; k < 60; k++) {
+    const [x, z] = ringSpot(random() * Math.PI * 2, random());
+    if (k < 14) {
+      put(random() < 0.5 ? "tree" : "tree2", x, z, { radius: 0.45, shadow: 1.6, scale: 1 }, 2.4);
+    } else {
+      put("bush", x, z, { shadow: 0.7, scale: 0.6 + random() * 0.2 }, 1);
+    }
+  }
+  for (let k = 0; k < 34; k++) {
+    const [x, z] = ringSpot(random() * Math.PI * 2, random() * 1.1);
+    put(random() < 0.5 ? "rock" : "rock2", x, z, { radius: 0.3, shadow: 0.6 }, 0.8);
+  }
+  /* standing stones of the keepers, here and there, leaning */
+  for (let k = 0; k < 6; k++) {
+    const [x, z] = ringSpot((k / 6) * Math.PI * 2 + 0.9, 0.5 + random() * 0.3);
+    if (isClear(x, z, 1.5)) {
+      taken.push([x, z, 1.5]);
+      const stone = builders.menhir(1.6 + random() * 1.2);
+      place(stone, x, z, { rotation: random() * Math.PI, radius: 0.5 });
+      stone.rotation.z = (random() - 0.5) * 0.25;
+    }
+  }
+  /* bones of what the Leviathan took, on the shingle inside the crown */
+  for (let k = 0; k < 7; k++) {
+    const angle = 0.7 + (k / 7) * Math.PI * 1.7 + random() * 0.2;
+    const distance = CROWNMERE.radius + 1.8 + random() * 1.5;
+    pending.push(
+      prop(
+        ["ember_ribs", "ember_skull", "ember_ram_skull"][k % 3],
+        CROWNMERE.x + Math.sin(angle) * distance,
+        CROWNMERE.z + Math.cos(angle) * distance,
+        { shadow: 0.5, scale: 0.6 },
+      ),
+    );
+  }
 }
 
 /* ---------- the tide seal: the ritual, and Maelis ---------- */
@@ -857,6 +1276,19 @@ function updateMaelis(dt) {
 /** Per frame: the ground is painted on as a hero comes near, the lake moves, the seal glows, Maelis visits. */
 export function updateTidecrown(dt, time) {
   paintGround();
+  /* the blue fires on the islet, once the effects are there to burn */
+  if (!state.firesLit && game.effects) {
+    state.firesLit = true;
+    for (const [x, z] of ISLET_FIRES) {
+      playEffect("fire", x, z, {
+        size: 0.8,
+        y: 1.06,
+        grounded: true,
+        loop: true,
+        tint: TIDE_COLOR,
+      });
+    }
+  }
   if (state.lake) {
     state.lake.uniforms.uTime.value = time;
   }
