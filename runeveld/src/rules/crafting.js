@@ -147,6 +147,10 @@ export function craftProblem(hero, recipeId, times = 1) {
   if (professionLevel(hero, recipe.profession) < recipe.level) {
     return `Needs ${PROFESSIONS[recipe.profession].name} level ${recipe.level}.`;
   }
+  /* the First Forge works once the bellows have woken it (the quest "orven_forge") */
+  if (recipe.station === "first_forge" && hero.quests?.orven_forge?.state !== "done") {
+    return "The First Forge is cold. Wake it first.";
+  }
   for (const [id, needed] of Object.entries(recipe.inputs)) {
     if (bagCount(hero, id) < needed * times) {
       return `Not enough ${ITEMS[id].name}.`;

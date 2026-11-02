@@ -65,6 +65,7 @@ const GATHER_ANIMS = {
 };
 const STATION_ANIMS = {
   forge: "smith",
+  first_forge: "smith",
   alchemy_table: "brew",
   campfire: "cook",
   enchanting_altar: "enchant",
@@ -72,7 +73,13 @@ const STATION_ANIMS = {
 /* How far from the centre of a node or station the hero stands to work: beside it, so it is seen from the side
    (the clearest view of the swing) and not hidden behind it. */
 const WORK_SIDE = { mining: 1.3, woodcutting: 1.2, herbalism: 0.8 };
-const STATION_SIDE = { forge: 1.9, alchemy_table: 1.6, campfire: 1.2, enchanting_altar: 2.9 };
+const STATION_SIDE = {
+  forge: 1.9,
+  first_forge: 1.4,
+  alchemy_table: 1.6,
+  campfire: 1.2,
+  enchanting_altar: 2.9,
+};
 
 /** A free spot beside (x, z) at `side` units, on the hero's side if possible, a little in front (towards the camera). */
 function spotBeside(x, z, side) {

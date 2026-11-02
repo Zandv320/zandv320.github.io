@@ -98,6 +98,17 @@ const HERO_LAYER_FILES = [
   "cloak6_back",
   "cloak7",
   "cloak7_back",
+  /* more for the mage: robes of other cuts, a wide-brimmed hat, an antler crown, an orb and a tome
+     (tools/build_sprites.py --only mage, shields) */
+  "robe6",
+  "robe7",
+  "robe8",
+  "hat3",
+  "hat4",
+  "shield6",
+  "shield6_back",
+  "shield7",
+  "shield7_back",
 ];
 
 function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {

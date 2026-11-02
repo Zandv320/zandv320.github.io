@@ -40,6 +40,42 @@ export const SETS = {
     ],
     bonuses: { 2: { def: 4 }, 4: { hp: 160, bonus: { vit: 3 } } },
   },
+  /* the gear of other shapes: forged in the village smithies and at the First Forge, or bought */
+  ironwatch: {
+    name: "The Iron Watch",
+    pieces: [["war_hammer", "battle_axe"], ["great_helm", "horned_helm"], "chainmail"],
+    bonuses: { 2: { def: 5 }, 3: { hp: 180, bonus: { vit: 3 } } },
+  },
+  greenwood_ranger: {
+    name: "Greenwood Ranger",
+    pieces: [
+      ["boar_spear", "runecarved_staff"],
+      "rangers_hood",
+      "ranger_leathers",
+      "tattered_cloak",
+    ],
+    bonuses: { 2: { flee: 6 }, 4: { crit: 5, bonus: { agi: 3 } } },
+  },
+  battlemage: {
+    name: "Battlemage",
+    pieces: ["battlemage_robe", "golden_circlet", "arcane_orb"],
+    bonuses: { 2: { def: 4, hp: 60 }, 3: { matkPct: 0.06, hp: 100 } },
+  },
+  thornwarden: {
+    name: "The Thornwarden",
+    pieces: ["thornweave_robe", "antler_crown", "spell_tome", "fur_mantle"],
+    bonuses: { 2: { hp: 90 }, 4: { matkPct: 0.06, bonus: { vit: 2, int: 2 } } },
+  },
+  starweaver: {
+    name: "Starweaver",
+    pieces: [
+      ["moonsilver_staff", "prism_staff"],
+      "wide_brim_hat",
+      "starweave_robe",
+      ["arcane_orb", "spell_tome"],
+    ],
+    bonuses: { 2: { matkPct: 0.05 }, 4: { matkPct: 0.05, bonus: { int: 4 } } },
+  },
 };
 
 const options = (piece) => (Array.isArray(piece) ? piece : [piece]);

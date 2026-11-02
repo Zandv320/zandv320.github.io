@@ -309,9 +309,14 @@ export function createCharacterSheet(player, deps) {
       ["Zeny", player.zeny],
     ]);
 
-    /* the shield slot only for those who can carry one (the crusader), or while something is in it */
+    /* the shield slot only for those who can carry something there (a shield for the crusader, an orb or a tome
+       for the mages), or while something is in it */
+    const fitsHand = (item) =>
+      item.slot === "shield" &&
+      (item.forClass === player.classId || item.forClass === classOf(player).base);
     const slots = EQUIPMENT_SLOTS.filter(
-      ([slot]) => slot !== "shield" || player.classId === "crusader" || player.equipment.shield,
+      ([slot]) =>
+        slot !== "shield" || player.equipment.shield || Object.values(ITEMS).some(fitsHand),
     );
     $("#sheet-slots").innerHTML = slots
       .map(([slot, label]) => {

@@ -24,9 +24,9 @@ import { maxDamage } from "../../runeveld/src/rules/progression.js";
 import {
   RESOURCES,
   RECIPES,
-  PROFESSIONS,
   USE_DISTANCE,
   stationNear,
+  recipeStations,
 } from "../../runeveld/src/rules/professions.js";
 import { GATHER_NODES } from "../../runeveld/src/rules/gather-nodes.js";
 
@@ -533,7 +533,7 @@ export class World extends DurableObject {
     if (!Number.isFinite(x) || !Number.isFinite(z)) {
       return "Where are you?";
     }
-    let stationKind = null;
+    let stationKinds = [];
     if (type === "gather") {
       const node = GATHER_NODES[String(data.node)];
       if (!node) {
@@ -549,16 +549,18 @@ export class World extends DurableObject {
     }
     if (type === "craft") {
       const recipe = RECIPES[String(data.recipe)];
-      stationKind = recipe ? PROFESSIONS[recipe.profession].station : null;
+      stationKinds = recipe ? recipeStations(recipe) : [];
     } else if (type === "refine" || type === "enchant" || type === "disenchant") {
-      stationKind = "enchanting_altar";
+      stationKinds = ["enchanting_altar"];
     } else {
       return "";
     }
-    if (!stationKind) {
+    if (!stationKinds.length) {
       return "Unknown recipe.";
     }
-    return stationNear(stationKind, x, z) ? "" : "You need to stand at the right station.";
+    return stationKinds.some((kind) => stationNear(kind, x, z))
+      ? ""
+      : "You need to stand at the right station.";
   }
 
   async #professionAction(ws, attachment, message, reply) {

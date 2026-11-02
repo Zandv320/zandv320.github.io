@@ -145,6 +145,8 @@ const HAIR_LAYERS = [
   "helm_great",
   "hood1",
   "circlet1",
+  "hat3",
+  "hat4",
 ];
 
 const recolorCache = new Map();

@@ -1473,6 +1473,278 @@ def build_new_armour(stacked, body, out_dir):
     return ["armor6", "armor7", "armor8", "cloak6", "cloak6_back", "cloak7", "cloak7_back"]
 
 
+# ---- more for the mage: robes of other cuts, a wide-brimmed hat and an antler crown ----
+WIDEHAT_FRONT = """
+.............oo.......
+............ohlo......
+...........ohllo......
+..........ohmlo.......
+.........ohmmlo.......
+........ohmmmlo.......
+........ohmmmllo......
+.......ohmmmmmlo......
+.......odmmmmmllo.....
+......odmmmmmmmlo.....
+......ogggggyggggo....
+..oooooooooooooooooo..
+olllmmmmmmmmmmmmmlllo.
+.ooooooooooooooooooo..
+"""
+WIDEHAT_RIGHT = """
+...........oo...
+..........ohlo..
+.........ohllo..
+........ohmlo...
+.......ohmmlo...
+......ohmmmlo...
+......ohmmmllo..
+.....ohmmmmmlo..
+.....odmmmmmllo.
+....odmmmmmmmlo.
+....ogggggggggo.
+.oooooooooooooo.
+ollmmmmmmmmmmllo
+.oooooooooooooo.
+"""
+WIDEHAT_BACK = """
+.......oo.............
+......olho............
+......ollho...........
+.......olmho..........
+.......olmmho.........
+.......olmmmho........
+......ollmmmho........
+......olmmmmmho.......
+.....ollmmmmmdo.......
+.....olmmmmmmmdo......
+....ogggggggggggo.....
+..oooooooooooooooooo..
+olllmmmmmmmmmmmmmlllo.
+.ooooooooooooooooooo..
+"""
+# dark plum felt with a golden band and a buckle
+WITCH_FELT = {
+    "o": (22, 14, 30),
+    "d": (44, 26, 58),
+    "m": (66, 40, 86),
+    "l": (98, 64, 122),
+    "h": (140, 102, 164),
+    "g": (180, 140, 60),
+    "y": (255, 226, 130),
+}
+# the circlet's hair with a band of leaves and antlers rising from its ends
+ANTLER_FRONT = """
+.w..w............w..w.
+.w..w............w..w.
+.w.w..............w.w.
+.wx................xw.
+.wx................xw.
+w.w.....abbba......w.w
+.wx...abccccba.a...xw.
+...w.abcceeccba...w...
+...xabcceffeeccba.x...
+....wbcceffeeccbbw....
+....oooooooooooooo....
+....ogglgrrglgggho....
+....oooooooooooooo....
+"""
+ANTLER_RIGHT = """
+.w..w............
+.w..w............
+.w.w.............
+.wx..............
+.wx..............
+w.w....abbba.....
+.wx..abccccbba...
+...wabcceeeccba..
+...xbcceffeecba..
+...awcceffeeccba.
+...oooooooooooooo
+...oggglggglgrrho
+...oooooooooooooo
+"""
+ANTLER_BACK = """
+.w..w............w..w.
+.w..w............w..w.
+.w.w..............w.w.
+.wx................xw.
+.wx................xw.
+w.w.....abbba......w.w
+.wx...abccccba.....xw.
+...w.abcceeccbba..w...
+...xabcceffeeccba.x...
+....wbcceeeeeccbbw....
+....oooooooooooooo....
+....ogglgglgglgggo....
+....oooooooooooooo....
+"""
+LEAF_BAND = {
+    "o": (28, 44, 22),
+    "g": (70, 120, 52),
+    "l": (124, 176, 84),
+    "h": (190, 220, 140),
+    "r": (210, 70, 60),
+    "w": (232, 222, 196),
+    "x": (150, 128, 96),
+}
+ROBES_EXTRA = {
+    "robe6": [(30, 36, 52), (46, 56, 80), (66, 80, 112), (86, 102, 138), (120, 138, 172)],  # battlemage: slate
+    "robe7": [(10, 12, 40), (18, 22, 66), (30, 36, 98), (44, 52, 128), (70, 84, 168)],  # starweave: night
+    "robe8": [(52, 38, 22), (78, 58, 34), (104, 80, 48), (128, 100, 62), (160, 130, 86)],  # thornweave: bark
+}
+
+
+def robe_rows(layer, fw=64, fh=64):
+    """Per frame: (row, box, top, bottom) of the robe's pixels."""
+    for r, c, box in frame_cells(layer, fw, fh):
+        bbox = layer.crop(box).getbbox()
+        if bbox:
+            yield r, c, box, box[1] + bbox[1], box[1] + bbox[3] - 1
+
+
+def hem(layer, trim, fw=64, fh=64):
+    """A trim along the robe's lower edge: the lowest pixel of each column that reaches the bottom."""
+    out = layer.copy()
+    px = out.load()
+    for _r, _c, box, top, bottom in robe_rows(layer, fw, fh):
+        for x in range(box[0], box[2]):
+            ys = [y for y in range(top, bottom + 1) if px[x, y][3]]
+            if ys and ys[-1] >= bottom - 1:
+                px[x, ys[-1]] = trim + (255,)
+    return out
+
+
+def shoulder_plates(layer, edge, face, fw=64, fh=64):
+    """Steel on the shoulders, inside the robe's outline: the outer three pixels of its three top rows (the near
+    shoulder only in the side views), lit along the top."""
+    out = layer.copy()
+    px = out.load()
+    for r, _c, box, top, _bottom in robe_rows(layer, fw, fh):
+        view = r % 4
+        for dy in range(3):
+            y = top + 1 + dy
+            xs = [x for x in range(box[0], box[2]) if px[x, y][3]]
+            if not xs:
+                continue
+            left, right = min(xs), max(xs)
+            ends = (left, right) if view in (0, 3) else ((right,) if view == 2 else (left,))
+            for end in ends:
+                inward = 1 if end == left else -1
+                for k in range(1, 4):
+                    x = end + inward * k
+                    if px[x, y][3]:
+                        px[x, y] = (edge if dy == 0 else face) + (255,)
+    return out
+
+
+def stars(layer, colors, fw=64, fh=64):
+    """Stars embroidered over the cloth: a sparse, fixed pattern of light pixels (none on the outline)."""
+    out = layer.copy()
+    px = out.load()
+    for _r, _c, box, top, bottom in robe_rows(layer, fw, fh):
+        for y in range(top + 2, bottom - 2):
+            for x in range(box[0], box[2]):
+                p = px[x, y]
+                if p[3] and not is_dark_outline(p[:3]) and (x * 7 + y * 11) % 19 == 0:
+                    px[x, y] = colors[(x + y) % len(colors)] + (255,)
+    return out
+
+
+def waist_belt(layer, color, buckle, fw=64, fh=64):
+    """A belt round the robe a little below the middle, with a buckle in the front view."""
+    out = layer.copy()
+    px = out.load()
+    for r, _c, box, top, bottom in robe_rows(layer, fw, fh):
+        y = top + round((bottom - top) * 0.42)
+        xs = [x for x in range(box[0], box[2]) if px[x, y][3] and not is_dark_outline(px[x, y][:3])]
+        for x in xs:
+            px[x, y] = color + (255,)
+        if xs and r % 4 == 0:
+            px[(min(xs) + max(xs)) // 2, y] = buckle + (255,)
+    return out
+
+
+def leaf_mantle(layer, leaves, fw=64, fh=64):
+    """Leaves over the shoulders: the robe's three top rows in leaf colours, and a leaf sticking out one pixel at
+    every other row end."""
+    out = layer.copy()
+    px = out.load()
+    for _r, _c, box, top, _bottom in robe_rows(layer, fw, fh):
+        for y in range(top, min(top + 3, box[3])):
+            xs = [x for x in range(box[0], box[2]) if px[x, y][3]]
+            for x in xs:
+                if not is_dark_outline(px[x, y][:3]):
+                    px[x, y] = leaves[(x + y) % len(leaves)] + (255,)
+            if xs and (y - top) % 2 == 0:
+                for x in (min(xs) - 1, max(xs) + 1):
+                    if box[0] <= x < box[2]:
+                        px[x, y] = leaves[0] + (255,)
+    return out
+
+
+def long_robe(body, head, palette, fw=64, fh=64):
+    """A robe down to the ankles, with long sleeves: every pixel of the body under the neck (the top of the body
+    under the skull) except the lowest row, the feet, in the palette by the body's own light and shade; the body's
+    outline becomes the robe's darkest colour. The hem flares a pixel outwards on both sides."""
+    out = Image.new("RGBA", body.size, TRANSPARENT)
+    b, o, h = body.load(), out.load(), head.load()
+    for _r, _c, box in frame_cells(body, fw, fh):
+        bbox = body.crop(box).getbbox()
+        head_box = head.crop(box).getbbox()
+        if not bbox or not head_box:
+            continue
+        xc = box[0] + (head_box[0] + head_box[2]) // 2
+        necks = [y for y in range(box[1], box[3]) for x in range(xc - 2, xc + 3) if b[x, y][3] and not h[x, y][3]]
+        if not necks:
+            continue
+        neck, feet = min(necks), box[1] + bbox[3] - 1
+        for y in range(neck, feet):
+            for x in range(box[0], box[2]):
+                p = b[x, y]
+                if not p[3] or h[x, y][3]:
+                    continue
+                if p[:3] in BODY_OUTLINE or is_dark_outline(p[:3]):
+                    o[x, y] = palette[0] + (255,)
+                else:
+                    o[x, y] = palette[min(len(palette) - 1, 1 + int(lightness(p[:3]) * (len(palette) - 1)))] + (255,)
+        for y in (feet - 2, feet - 1):
+            xs = [x for x in range(box[0], box[2]) if o[x, y][3]]
+            if xs:
+                for x in (min(xs) - 1, max(xs) + 1):
+                    if box[0] <= x < box[2] and not o[x, y][3]:
+                        o[x, y] = palette[0] + (255,)
+    return out
+
+
+def build_mage_gear(stacked, body, out_dir):
+    """Three long robes, a wide-brimmed hat and an antler crown, from the hero layers; the orb and the
+    tome are among the SHIELDS."""
+    head = stacked[1]
+    gold = (226, 186, 90)
+    battlemage = long_robe(body, head, ROBES_EXTRA["robe6"])
+    battlemage = waist_belt(battlemage, (60, 40, 30), gold)
+    shoulder_plates(battlemage, (220, 226, 240), (150, 160, 186)).save(out_dir / "robe6.png")
+    starweave = long_robe(body, head, ROBES_EXTRA["robe7"])
+    starweave = stars(starweave, [(255, 236, 160), (210, 220, 255), (255, 255, 255)])
+    hem(starweave, gold).save(out_dir / "robe7.png")
+    thornweave = long_robe(body, head, ROBES_EXTRA["robe8"])
+    thornweave = strap(thornweave, (48, 86, 40), (210, 70, 60))
+    leaf_mantle(thornweave, [(70, 120, 52), (104, 156, 70), (52, 96, 44)]).save(out_dir / "robe8.png")
+    headgear(head, body, WIDEHAT_FRONT, WIDEHAT_RIGHT, WIDEHAT_BACK, WITCH_FELT, brim=13).save(out_dir / "hat3.png")
+    antlers = {**LEAF_BAND, **HAIR_SHADES}
+    headgear(head, body, ANTLER_FRONT, ANTLER_RIGHT, ANTLER_BACK, antlers, brim=12).save(out_dir / "hat4.png")
+    return ["robe6", "robe7", "robe8", "hat3", "hat4"]
+
+
+def build_mage_gear_only(swordsman_dir, out_dir):
+    """Only the new robes and hats (for `--only mage`), from the hero layers built in memory."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        stacked, body = build_hero_layers(swordsman_dir, pathlib.Path(tmp))
+    return build_mage_gear(stacked, body, out_dir)
+
+
 def build_class_gear(stacked, body, out_dir):
     """Headgear, robes, staffs, cloaks and second-class armour, all derived from the hero layers."""
     head = stacked[1]
@@ -1503,6 +1775,7 @@ def build_class_gear(stacked, body, out_dir):
     headgear(head, body, HAT_FRONT, HAT_RIGHT, HAT_BACK, ARCANE, brim=13).save(out_dir / "hat2.png")
     build_new_headgear(head, body, out_dir)
     build_new_armour(stacked, body, out_dir)
+    build_mage_gear(stacked, body, out_dir)
 
 
 # ---------- animals ----------
@@ -2700,6 +2973,61 @@ orrrrrrrrro
 ooooooooooo
 """,
 )
+ORB = (
+    """
+.ooo.
+ohllo
+olmmo
+ommdo
+.ooo.
+""",
+    """
+.ooo.
+ohlmo
+olmdo
+ommdo
+.ooo.
+""",
+    """
+.ooo.
+ollmo
+olmdo
+ommdo
+.ooo.
+""",
+)
+TOME = (
+    """
+.ooooo.
+ogmmmgo
+omgggmo
+omgegmo
+omgggmo
+ogmmmgo
+opppppo
+.ooooo.
+""",
+    """
+.ooo.
+oddmo
+opppo
+opppo
+opppo
+opppo
+oddmo
+.ooo.
+""",
+    """
+.ooooo.
+ogdddgo
+odddddo
+odddddo
+odddddo
+ogdddgo
+opppppo
+.ooooo.
+""",
+)
 SHIELDS.update(
     {
         # an oak buckler with an iron boss
@@ -2731,6 +3059,26 @@ SHIELDS.update(
             "b": (74, 52, 40),
             "art": TOWER,
         },
+        # off-hands for the mage: an orb floating at the free hand, and a spell tome held in it
+        "shield6": {
+            "o": (40, 20, 70),
+            "h": (250, 240, 255),
+            "l": (200, 160, 255),
+            "m": (150, 90, 240),
+            "d": (96, 50, 170),
+            "art": ORB,
+            "offset": (0, 5),
+        },
+        "shield7": {
+            "o": (30, 18, 16),
+            "m": (120, 36, 40),
+            "d": (82, 24, 30),
+            "g": (226, 186, 90),
+            "e": (110, 220, 255),
+            "p": (236, 228, 204),
+            "art": TOME,
+            "offset": (0, 4),
+        },
     }
 )
 
@@ -2750,7 +3098,8 @@ def shield(head, body, colors, fw=64, fh=64):
     """The shield layers (in front of and behind the body) for the whole hero sheet; none in the death frames once
     the hero falls. `colors` may carry an "art" of its own: (front, side, back) drawings."""
     art_front, art_side, art_back = colors.get("art", (SHIELD_FRONT, SHIELD_SIDE, SHIELD_BACK))
-    colors = {key: value for key, value in colors.items() if key != "art"}
+    dx, dy = colors.get("offset", (0, 0))
+    colors = {key: value for key, value in colors.items() if key not in ("art", "offset")}
     side = pixel_drawing(art_side, colors)
     face = pixel_drawing(art_front, colors)
     pieces = {0: face, 1: face, 2: side, 3: pixel_drawing(art_back, colors)}
@@ -2784,7 +3133,8 @@ def shield(head, body, colors, fw=64, fh=64):
             torso = [x for y in range(neck + 1, neck + 7) for x in range(c * fw, (c + 1) * fw) if body_px[x, y][3] > 0]
             left, right = min(torso), max(torso)
             layer = back if view == 3 else front
-            layer.alpha_composite(piece, shield_spot(view, piece, xc, neck, left, right))
+            x, y = shield_spot(view, piece, xc, neck, left, right)
+            layer.alpha_composite(piece, (x + dx, y + dy))
     return front, back
 
 
@@ -3109,6 +3459,7 @@ def main():
             and [f"sword{level}{part}" for level in (1, 2, 3) for part in ("", "_back")],
             "weapons": lambda: build_new_weapons(swordsman_dir, out_dir),
             "armour": lambda: build_new_armour_only(swordsman_dir, out_dir),
+            "mage": lambda: build_mage_gear_only(swordsman_dir, out_dir),
             "headgear": lambda: build_new_headgear(
                 open_rgba(out_dir / "hero_head.png"), open_rgba(out_dir / "hero_body.png"), out_dir
             ),

@@ -284,7 +284,7 @@ export function createAdminPanel(ctx) {
       weapon: "Weapon",
       armor: "Armour",
       cloak: "Cloak",
-      shield: "Shield",
+      shield: "Off-hand",
       jewel: "Jewel",
       use: "Usable",
       rune: "Rune",

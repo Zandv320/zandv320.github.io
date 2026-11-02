@@ -7,6 +7,7 @@ import {
   PROFESSIONS,
   STATIONS,
   RECIPES,
+  recipeStations,
   MAX_PROFESSION_LEVEL,
   professionOf,
   professionExpForLevel,
@@ -85,7 +86,8 @@ export function createWorkbench(player, deps) {
     return recipes
       .map((recipe) => {
         const output = ITEMS[recipe.output];
-        const isLocked = level < recipe.level;
+        const isElsewhere = !recipeStations(recipe).includes(place.kind);
+        const isLocked = level < recipe.level || isElsewhere;
         const inputs = Object.entries(recipe.inputs)
           .map(([inputId, needed]) => {
             const have = bagCount(player, inputId);
@@ -93,12 +95,14 @@ export function createWorkbench(player, deps) {
           })
           .join("");
         const most = isLocked ? 0 : crafting.maxCraftable(player, recipe.output);
-        const buttons = isLocked
-          ? `<span class="locked-text">Level ${recipe.level}</span>`
-          : `<button class="btn small" data-craft="${recipe.output}" data-times="1" ${most ? "" : "disabled"}>Make</button>` +
-            (most > 1
-              ? `<button class="btn small alt" data-craft="${recipe.output}" data-times="${Math.min(most, 50)}">All ×${Math.min(most, 50)}</button>`
-              : "");
+        const buttons = isElsewhere
+          ? `<span class="locked-text">At ${UI.escapeHtml(STATIONS[recipe.station].name)}</span>`
+          : isLocked
+            ? `<span class="locked-text">Level ${recipe.level}</span>`
+            : `<button class="btn small" data-craft="${recipe.output}" data-times="1" ${most ? "" : "disabled"}>Make</button>` +
+              (most > 1
+                ? `<button class="btn small alt" data-craft="${recipe.output}" data-times="${Math.min(most, 50)}">All ×${Math.min(most, 50)}</button>`
+                : "");
         const count = recipe.count > 1 ? ` <small>×${recipe.count}</small>` : "";
         return `<div class="recipe ${isLocked ? "locked" : ""}"><span class="item-icon">${icon(recipe.output, output.icon)}</span><div class="recipe-body"><div class="recipe-name"><b>${UI.escapeHtml(output.name)}</b>${count}<small>Lv ${recipe.level} · ${recipe.exp} exp</small></div><div class="ingredients">${inputs}</div></div><div class="recipe-buttons">${buttons}</div></div>`;
       })

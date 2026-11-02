@@ -777,6 +777,24 @@ def staff_icon(head, colors):
     return add_outline(im)
 
 
+def horned_helm(horn=((150, 128, 96), (232, 222, 196))):
+    """An open iron helm with two ram's horns curling out of its sides."""
+    im = blank()
+    d = ImageDraw.Draw(im)
+    for side in (-1, 1):
+        cx = 16 + side * 9
+        d.line([(cx, 17), (cx + side * 4, 12), (cx + side * 5, 6), (cx + side * 3, 3)], fill=horn[0] + (255,), width=3)
+        d.line([(cx + side * 1, 16), (cx + side * 4, 11), (cx + side * 4, 6)], fill=horn[1] + (255,), width=1)
+    d.chord([7, 7, 25, 27], 180, 360, fill=STEEL[0] + (255,))
+    d.chord([8, 8, 24, 26], 180, 360, fill=STEEL[1] + (255,))
+    d.chord([9, 9, 16, 24], 180, 270, fill=STEEL[2] + (255,))
+    d.rectangle([7, 17, 25, 20], fill=GOLD[1] + (255,))
+    d.rectangle([15, 9, 17, 26], fill=STEEL[0] + (255,))  # the ridge and the nose guard
+    d.rectangle([10, 21, 22, 25], fill=(30, 26, 36, 255))  # the open face
+    d.rectangle([15, 20, 17, 26], fill=STEEL[1] + (255,))
+    return add_outline(im)
+
+
 def great_helm():
     im = blank()
     d = ImageDraw.Draw(im)
@@ -918,6 +936,98 @@ def cloak(ramp, fur=None, torn=False):
     return add_outline(im)
 
 
+ROBE = [(11, 3), (21, 3), (26, 8), (24, 12), (22, 11), (24, 29), (8, 29), (10, 11), (8, 12), (6, 8)]
+
+
+def robe(ramp, trim=None, pauldrons=None, stars=None, leaves=None):
+    """A long robe with sleeves: ramp (dark, mid, light); trim: the hem; pauldrons: steel on the shoulders; stars:
+    colours sprinkled over it; leaves: a mantle of leaves on the shoulders."""
+    im = blank()
+    d = ImageDraw.Draw(im)
+    polygon(d, ROBE, ramp[0])
+    polygon(d, [(12, 4), (16, 4), (16, 28), (9, 28), (11, 12), (9, 11), (7, 8)], ramp[1])
+    polygon(d, [(13, 3), (16, 7), (19, 3)], (24, 22, 30))  # the neck
+    d.line([(12, 8), (10, 27)], fill=ramp[2] + (255,))
+    d.line([(16, 8), (16, 28)], fill=ramp[0] + (255,))
+    if stars:
+        for i, (x, y) in enumerate([(11, 14), (19, 10), (21, 19), (13, 22), (18, 25), (14, 17), (20, 14)]):
+            d.point((x, y), fill=stars[i % len(stars)] + (255,))
+    if trim:
+        d.line([(8, 28), (24, 28)], fill=trim + (255,), width=2)
+        d.line([(16, 7), (16, 27)], fill=trim + (255,))
+    if pauldrons:
+        for box in ([5, 3, 13, 10], [19, 3, 27, 10]):
+            d.ellipse(box, fill=pauldrons[0] + (255,))
+            d.ellipse([box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 2], fill=pauldrons[1] + (255,))
+        d.line([(9, 17), (23, 17)], fill=(60, 40, 30, 255), width=2)  # the belt
+        d.point((16, 17), fill=GOLD[1] + (255,))
+    if leaves:
+        for i, x in enumerate(range(6, 27, 2)):
+            y = 4 + abs(16 - x) // 4
+            d.ellipse([x - 2, y - 1, x + 1, y + 2], fill=leaves[i % len(leaves)] + (255,))
+        d.line([(10, 9), (22, 24)], fill=leaves[0] + (255,), width=2)  # the sash
+    return add_outline(im)
+
+
+def wide_hat(felt, band, buckle):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    polygon(d, [(15, 18), (17, 10), (20, 5), (25, 2), (23, 6), (21, 11), (21, 18)], felt[1])
+    polygon(d, [(11, 18), (14, 10), (17, 10), (15, 18)], felt[2])
+    polygon(d, [(10, 19), (13, 10), (20, 5), (21, 18)], felt[1])
+    polygon(d, [(13, 10), (17, 9), (15, 18), (11, 18)], felt[2])
+    d.rectangle([11, 16, 21, 18], fill=band + (255,))
+    d.rectangle([15, 16, 17, 18], fill=buckle + (255,))
+    d.ellipse([2, 18, 30, 26], fill=felt[0] + (255,))
+    d.ellipse([3, 18, 29, 24], fill=felt[1] + (255,))
+    d.arc([3, 18, 29, 24], 160, 220, fill=felt[2] + (255,))
+    return add_outline(im)
+
+
+def antler_crown(band, antler, gem):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    for side in (-1, 1):
+        cx = 16 + side * 8
+        d.line([(cx, 20), (cx + side * 3, 12), (cx + side * 5, 4)], fill=antler[1] + (255,), width=2)
+        d.line([(cx + side * 3, 12), (cx - side * 1, 6)], fill=antler[1] + (255,), width=2)
+        d.line([(cx + side * 4, 8), (cx + side * 8, 7)], fill=antler[1] + (255,), width=1)
+        d.point((cx + side * 5, 4), fill=antler[0] + (255,))
+    d.ellipse([4, 17, 28, 27], outline=band[0] + (255,), width=3)
+    d.arc([5, 18, 27, 26], 10, 170, fill=band[1] + (255,), width=2)
+    for x in range(7, 26, 4):
+        d.ellipse([x - 1, 23, x + 1, 26], fill=band[1] + (255,))
+    polygon(d, [(16, 22), (18, 24), (16, 27), (14, 24)], gem)
+    return add_outline(im)
+
+
+def orb(ramp):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    d.ellipse([7, 4, 25, 22], fill=ramp[0] + (255,))
+    d.ellipse([8, 5, 23, 20], fill=ramp[1] + (255,))
+    d.ellipse([10, 7, 18, 15], fill=ramp[2] + (255,))
+    d.ellipse([11, 8, 14, 11], fill=(255, 255, 255, 255))
+    d.polygon([(10, 22), (22, 22), (24, 28), (8, 28)], fill=GOLD[0] + (255,))  # the stand
+    d.polygon([(11, 22), (21, 22), (22, 26), (10, 26)], fill=GOLD[1] + (255,))
+    return add_outline(im)
+
+
+def tome(cover, gem):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    d.rectangle([7, 5, 26, 28], fill=(236, 228, 204, 255))  # the pages, behind
+    d.rectangle([5, 3, 24, 26], fill=cover[0] + (255,))
+    d.rectangle([7, 3, 24, 25], fill=cover[1] + (255,))
+    d.line([(6, 3), (6, 26)], fill=cover[0] + (255,), width=2)  # the spine
+    for x, y in ((8, 4), (22, 4), (8, 23), (22, 23)):  # the golden corners
+        d.rectangle([x - 1, y - 1, x + 1, y + 1], fill=GOLD[1] + (255,))
+    d.rectangle([11, 9, 19, 19], outline=GOLD[1] + (255,))
+    polygon(d, [(15, 11), (18, 14), (15, 17), (12, 14)], gem)
+    d.point((14, 13), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
 ITEM_RUNES = {
     "rune_of_radiance": (
         ((200, 150, 40), (255, 244, 200)),
@@ -999,7 +1109,7 @@ def item_icons(sources):
         "prism_staff": staff_icon(
             "crystal", (((44, 20, 38), (70, 34, 60), (140, 76, 120)), ((110, 20, 70), (255, 90, 170), (255, 220, 240)))
         ),
-        "horned_helm": pack("loot40", 40),
+        "horned_helm": horned_helm(),
         "great_helm": great_helm(),
         "rangers_hood": hood(((36, 64, 40), (58, 98, 58), (92, 140, 84))),
         "golden_circlet": circlet(((30, 60, 160), (90, 150, 255))),
@@ -1013,6 +1123,22 @@ def item_icons(sources):
             ((70, 44, 28), (110, 72, 44), (150, 104, 66)), fur=((150, 140, 128), (214, 206, 192), (245, 240, 230))
         ),
         "tattered_cloak": cloak(((34, 36, 40), (58, 62, 66), (92, 98, 104)), torn=True),
+        # more for the mage
+        "battlemage_robe": robe(
+            ((46, 56, 80), (66, 80, 112), (120, 138, 172)), pauldrons=((150, 160, 186), (220, 226, 240))
+        ),
+        "thornweave_robe": robe(
+            ((78, 58, 34), (104, 80, 48), (160, 130, 86)), leaves=((70, 120, 52), (104, 156, 70), (52, 96, 44))
+        ),
+        "starweave_robe": robe(
+            ((18, 22, 66), (30, 36, 98), (70, 84, 168)),
+            trim=GOLD[1],
+            stars=((255, 236, 160), (210, 220, 255), (255, 255, 255)),
+        ),
+        "wide_brim_hat": wide_hat(((44, 26, 58), (66, 40, 86), (110, 74, 136)), GOLD[0], (255, 226, 130)),
+        "antler_crown": antler_crown(((28, 70, 30), (104, 156, 70)), ((150, 128, 96), (232, 222, 196)), (210, 70, 60)),
+        "arcane_orb": orb(((96, 50, 170), (150, 90, 240), (200, 160, 255))),
+        "spell_tome": tome(((82, 24, 30), (120, 36, 40)), (110, 220, 255)),
     }
 
 

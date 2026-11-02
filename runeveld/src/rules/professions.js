@@ -3,6 +3,8 @@
    data and the level maths; the actions themselves are in rules/crafting.js. Gathering nodes are in
    rules/gather-nodes.js. A hero keeps `professions: {id: {level, exp}}`; a missing entry is level 1. */
 
+import { forgePoint } from "./forge.js";
+
 export const MAX_PROFESSION_LEVEL = 50;
 
 /** Exp needed to go from profession level `level` to the next. */
@@ -245,6 +247,8 @@ export const STATIONS = {
   alchemy_table: { name: "Alchemy table", profession: "alchemy", emoji: "⚗️" },
   campfire: { name: "Campfire", profession: "cooking", emoji: "🔥" },
   /* enchanting needs no altar (`anywhere`): the altars still work, but the hero can enchant wherever they stand */
+  /* the great hearth inside Mount Kharos (forge.js): the old smiths' anvil, for what no village forge can make */
+  first_forge: { name: "The First Forge", profession: "smithing", emoji: "🔥" },
   enchanting_altar: {
     name: "Enchanting altar",
     profession: "enchanting",
@@ -252,6 +256,8 @@ export const STATIONS = {
     anywhere: true,
   },
 };
+
+const pointOf = ([x, z]) => ({ x, z });
 
 /* Where the stations stand: two of each, one in Runeveld (or the Whisperwood) and one in Aurelia. */
 export const STATION_PLACES = [
@@ -264,6 +270,8 @@ export const STATION_PLACES = [
   /* the old altar in the Whisperwood clearing (forest.js) doubles as an enchanting altar */
   { id: "altar_whisperwood", kind: "enchanting_altar", x: 0, z: -103, existing: true },
   { id: "altar_aurelia", kind: "enchanting_altar", x: -155, z: 22.5 },
+  /* the eastern anvil before the First Forge (forge.js puts it there) */
+  { id: "first_forge", kind: "first_forge", ...pointOf(forgePoint(-22, 15.5)), existing: true },
 ];
 
 /** The station of this kind the hero stands next to (for a station that works anywhere: a place where they
@@ -284,7 +292,7 @@ export function stationNear(kind, x, z) {
 /* Recipe exp: 8 + 2.5 per level, half again for equipment. */
 const recipeExp = (level, isGear) => Math.round((8 + 2.5 * level) * (isGear ? 1.5 : 1));
 
-/* [output, profession, level, inputs, count made, is equipment] */
+/* [output, profession, level, inputs, count made, is equipment, the only station that can make it] */
 const RECIPE_TABLE = [
   ["copper_bar", "smithing", 1, { copper_ore: 1 }],
   ["iron_bar", "smithing", 10, { iron_ore: 2 }],
@@ -332,15 +340,63 @@ const RECIPE_TABLE = [
   ["rune_of_storms", "enchanting", 20, { arcane_dust: 3, topaz: 1 }],
   ["rune_of_the_arcane", "enchanting", 30, { arcane_dust: 4, arcane_crystal: 1 }],
   ["rune_of_radiance", "enchanting", 25, { arcane_dust: 4, gold_bar: 1 }],
+  /* the weapons, helmets, shields and off-hands of other shapes */
+  ["battle_axe", "smithing", 18, { iron_bar: 4, oak_log: 1 }, 1, true],
+  ["chainmail", "smithing", 20, { iron_bar: 5 }, 1, true],
+  ["horned_helm", "smithing", 20, { iron_bar: 3, stag_antler: 2 }, 1, true],
+  ["runecarved_staff", "smithing", 20, { ash_log: 2, rune_shard: 1 }, 1, true],
+  ["war_hammer", "smithing", 27, { iron_bar: 5, silver_bar: 1, oak_log: 1 }, 1, true],
+  ["golden_circlet", "smithing", 28, { gold_bar: 2, sapphire: 1 }, 1, true],
+  ["arcane_orb", "smithing", 28, { arcane_crystal: 2, silver_bar: 1 }, 1, true],
+  ["moonsilver_staff", "smithing", 30, { silver_bar: 3, ash_log: 2, sapphire: 1 }, 1, true],
+  ["great_helm", "smithing", 31, { iron_bar: 4, silver_bar: 2, gold_bar: 1 }, 1, true],
+  ["kite_shield", "smithing", 32, { iron_bar: 4, silver_bar: 2, oak_log: 1 }, 1, true],
+  /* only at the First Forge, once the bellows have woken it: steel that needs the mountain's own fire */
+  ["claymore", "smithing", 40, { iron_bar: 6, gold_bar: 2, golem_core: 1 }, 1, true, "first_forge"],
+  [
+    "prism_staff",
+    "smithing",
+    40,
+    { elder_log: 2, arcane_crystal: 2, golem_core: 1 },
+    1,
+    true,
+    "first_forge",
+  ],
+  [
+    "tower_shield",
+    "smithing",
+    42,
+    { iron_bar: 8, gold_bar: 2, golem_core: 2 },
+    1,
+    true,
+    "first_forge",
+  ],
+  [
+    "gilded_plate",
+    "smithing",
+    44,
+    { iron_bar: 6, gold_bar: 4, imp_horn: 2 },
+    1,
+    true,
+    "first_forge",
+  ],
 ];
 
 /* Recipes by output id: {output, profession, level, inputs, count, exp}. */
 export const RECIPES = Object.fromEntries(
-  RECIPE_TABLE.map(([output, profession, level, inputs, count = 1, isGear = false]) => [
-    output,
-    { output, profession, level, inputs, count, exp: recipeExp(level, isGear) },
-  ]),
+  RECIPE_TABLE.map(
+    ([output, profession, level, inputs, count = 1, isGear = false, station = null]) => [
+      output,
+      { output, profession, level, inputs, count, exp: recipeExp(level, isGear), station },
+    ],
+  ),
 );
+
+/** The kinds of station a recipe can be made at: its own, or every station of its profession. */
+export const recipeStations = (recipe) =>
+  recipe.station
+    ? [recipe.station]
+    : Object.keys(STATIONS).filter((kind) => STATIONS[kind].profession === recipe.profession);
 
 /* ---- enchanting: refining ---- */
 
