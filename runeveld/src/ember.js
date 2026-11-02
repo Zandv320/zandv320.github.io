@@ -4,6 +4,7 @@
    Gull's Promise lying alongside when a hero has brought her here, and the camp on the beach above. The ground,
    the basalt and the props come from schwarnhild's free volcano pack (tools/build_sprites.py, build_ember). */
 import * as THREE from "three";
+import { addToCell } from "./culling.js";
 import { glowPoints } from "./glow-points.js";
 import * as builders from "./builders.js";
 import {
@@ -422,6 +423,8 @@ function finishChunk(job) {
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(chunk.x0 + CHUNK / 2, 0.004, chunk.z0 + CHUNK / 2);
   painter.scene.add(ground);
+  /* a chunk of ground stands still: into its cell (culling.js) */
+  addToCell(ground);
   chunk.isPainted = true;
 }
 

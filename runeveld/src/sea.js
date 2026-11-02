@@ -148,6 +148,7 @@ export function createWake() {
       transparent: true,
       depthWrite: false,
       side: THREE.DoubleSide,
+      forceSinglePass: true,
     }),
   );
   trailMesh.frustumCulled = false;

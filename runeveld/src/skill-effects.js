@@ -586,6 +586,7 @@ const targetRing = new THREE.Mesh(
     opacity: 0.85,
     depthWrite: false,
     side: THREE.DoubleSide,
+    forceSinglePass: true,
   }),
 );
 targetRing.rotation.x = -Math.PI / 2;

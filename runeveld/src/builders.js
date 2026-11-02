@@ -1874,6 +1874,7 @@ export function ship({
     ? material(sail, sailWidth, 4)
     : new THREE.MeshLambertMaterial({ color: 0xefe6cf });
   sailMaterial.side = THREE.DoubleSide;
+  sailMaterial.forceSinglePass = true;
   sailMaterial.transparent = true;
   const sails = [];
   const mastSpots = masts === 1 ? [0] : [-length * 0.2, length * 0.08];
@@ -1972,7 +1973,12 @@ export function ship({
   jibGeometry.computeVertexNormals();
   const jib = new THREE.Mesh(
     jibGeometry,
-    new THREE.MeshLambertMaterial({ color: 0xefe6cf, side: THREE.DoubleSide, transparent: true }),
+    new THREE.MeshLambertMaterial({
+      color: 0xefe6cf,
+      side: THREE.DoubleSide,
+      transparent: true,
+      forceSinglePass: true,
+    }),
   );
   group.add(jib);
   sails.push(jib);

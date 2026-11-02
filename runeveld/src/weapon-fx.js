@@ -263,6 +263,7 @@ function makeGlow(layer) {
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
+    forceSinglePass: true,
   });
   const mesh = new THREE.Mesh(layer.mesh.geometry, material);
   /* just in front of the weapon it lights, over the night haze */

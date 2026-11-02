@@ -3,6 +3,7 @@
    multiplies with the scene) with warm holes at the lanterns and the altar, and the lamps get a glow in the scene.
    Sun, sky light and sky colour follow along. */
 import * as THREE from "three";
+import { isNearView } from "./culling.js";
 
 export const DAY_MINUTES = 24; /* real minutes per game day */
 
@@ -138,10 +139,14 @@ export function createDaylight({ scene, camera, renderer, sun, hemiLight, lights
       scene.background.copy(skyNightColor).lerp(skyDayColor, light);
     }
     for (const glow of glows) {
-      glow.mesh.material.opacity = night * (glow.light.strength ?? 0.8) * 0.4;
-      glow.mesh.rotation.y = cameraState.yaw;
-      glow.mesh.rotation.x = -cameraState.tilt;
-      glow.mesh.visible = night > 0.02 && !indoor;
+      /* only at night, and only near the view (culling.js) */
+      glow.mesh.visible =
+        night > 0.02 && !indoor && isNearView(glow.light.x, glow.light.z, glow.light.radius);
+      if (glow.mesh.visible) {
+        glow.mesh.material.opacity = night * (glow.light.strength ?? 0.8) * 0.4;
+        glow.mesh.rotation.y = cameraState.yaw;
+        glow.mesh.rotation.x = -cameraState.tilt;
+      }
     }
 
     /* the haze; a storm greys the day as well */

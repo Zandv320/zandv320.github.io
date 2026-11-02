@@ -3,6 +3,7 @@
    colours, so they can walk in all four directions and match the style exactly.
    Purely local and without effect on the game; the server will take this over later. */
 import { SHEETS } from "./sheets.js";
+import { isNearView } from "./culling.js";
 import { Sprite2D } from "./sprites.js";
 import * as UI from "./ui.js";
 import { isNight } from "./daylight.js";
@@ -1530,6 +1531,17 @@ export function updateVillagers(dt, cameraState, camera, player) {
     }
     if (time >= villager.busyUntil) {
       sprite.play(isWalking ? "walk" : "idle");
+    }
+    /* far out of sight: not drawn and not animated (culling.js) */
+    const isNear = isNearView(villager.x, villager.z, 6);
+    if (sprite.group.visible !== isNear) {
+      sprite.group.visible = isNear;
+    }
+    if (!isNear) {
+      if (villager.label.el.style.display !== "none") {
+        villager.label.el.style.display = "none";
+      }
+      continue;
     }
     sprite.group.position.set(villager.x, 0, villager.z);
     sprite.update(dt, cameraState);

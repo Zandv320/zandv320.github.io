@@ -2,6 +2,7 @@
    the host (no server: the player online longest simulates the monsters), applying snapshots from the host or
    server, and drawing them every frame. */
 import { MONSTERS, SPAWNS, RESPAWN_SECONDS } from "./data.js";
+import { isNearView } from "./culling.js";
 import {
   FOREST,
   inForest,
@@ -733,6 +734,25 @@ export function updateMonsters(dt) {
         UI.positionLabel(monster.label, monster.x, labelHeight, monster.z, camera);
       }
       continue;
+    }
+    /* far out of sight: not drawn and not animated, only its place kept (culling.js) */
+    if (!monster.isNew && !isNearView(monster.x, monster.z, 8)) {
+      if (monster.sprite.group.visible) {
+        monster.sprite.group.visible = false;
+        monster.isFar = true;
+      }
+      if (monster.label.el.style.display !== "none") {
+        monster.label.el.style.display = "none";
+      }
+      if (!game.host) {
+        monster.x = monster.targetX;
+        monster.z = monster.targetZ;
+      }
+      continue;
+    }
+    if (monster.isFar) {
+      monster.isFar = false;
+      monster.sprite.group.visible = true;
     }
     /* a charging boss runs its lane (boss-effects.js); the host moves it itself, the others follow the lane
        instead of the snapshots, which are too slow for a rush like that */

@@ -42,6 +42,7 @@ function warningMaterial(opacity) {
     opacity,
     depthWrite: false,
     side: THREE.DoubleSide,
+    forceSinglePass: true,
   });
 }
 

@@ -4,6 +4,7 @@
    (-VILLAGE_HALF_SIZE..VILLAGE_HALF_SIZE) behind a palisade with a gate in the north and the south. Around it lie
    the fields and the forest where the monsters live. */
 import * as THREE from "three";
+import { sortIntoCells } from "./culling.js";
 import {
   loadTexture,
   makeTexture,
@@ -1233,6 +1234,8 @@ export async function buildWorld(extraBuilders = []) {
   buildBillboardBatches();
   mergeStaticGroups(scene, placedGroups);
   placedGroups.length = 0;
+  /* the standing world in cells, so only what is near the camera costs anything per frame (culling.js) */
+  sortIntoCells(scene);
   renderer.shadowMap.needsUpdate = true;
 }
 

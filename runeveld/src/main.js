@@ -5,6 +5,7 @@
    abilities.js (skills), bag.js (bag and equipment), skill-effects.js and storage.js. */
 /* storage.js goes first: it migrates the old save data before other modules read their settings */
 import { readHeroList, writeHeroList } from "./storage.js";
+import { updateCells } from "./culling.js";
 import * as THREE from "three";
 import {
   CLASSES,
@@ -2159,6 +2160,7 @@ function loop() {
 
 let questCheckTimer = 0;
 let currentZone = null;
+let minimapTimer = 0;
 let clockTimer = 2;
 let portraitTimer = 1;
 const portraitContext = $("#hud-portrait").getContext("2d");
@@ -2366,7 +2368,12 @@ function stepWorld(dt, time) {
   game.adminPanel.tick(dt);
   game.party.tick(dt);
   game.worldMap.render();
-  game.worldMap.renderMinimap();
+  /* the minimap thirty times a second is smooth enough, and half the work on a fast screen */
+  minimapTimer -= dt;
+  if (minimapTimer <= 0) {
+    minimapTimer = 1 / 30;
+    game.worldMap.renderMinimap();
+  }
 }
 
 function step(dt) {
@@ -2488,6 +2495,7 @@ function step(dt) {
     $("#hud-clock").innerHTML =
       icon(isDay ? "ui_sun" : "ui_moon", isDay ? "☀️" : "🌙", "small") + " " + clockText();
   }
+  updateCells(camera, cameraState);
   renderer.render(scene, camera);
 }
 

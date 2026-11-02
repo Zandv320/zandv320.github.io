@@ -139,6 +139,9 @@ function addBlobShadow(group, diameter) {
 /* The hit flash: a uniform that turns a figure into its silhouette in the material colour (white unless tinted), in
    the shader. No white copy of every sheet is needed: no extra memory, and no stall to make and upload one on the
    first hit of a fight. */
+/* Every sprite material is see-through and two-sided, which three.js would draw twice (back faces, then front
+   faces), checking its shader again before each pass; a flat picture cut out by alphaTest needs one pass
+   (forceSinglePass on each). */
 function makeFlashable(material) {
   const flash = { value: 0 };
   material.userData.flash = flash;
@@ -340,6 +343,7 @@ export class Sprite2D {
             transparent: true,
             alphaTest: 0.5,
             side: THREE.DoubleSide,
+            forceSinglePass: true,
           }),
         );
         const mesh = new THREE.Mesh(this.geometry, material);
@@ -428,6 +432,7 @@ export class Sprite2D {
               transparent: true,
               alphaTest: 0.5,
               side: THREE.DoubleSide,
+              forceSinglePass: true,
             }),
           );
           mesh.position.z = z;
@@ -710,6 +715,7 @@ export class Billboard {
       transparent: true,
       alphaTest: 0.5,
       side: THREE.DoubleSide,
+      forceSinglePass: true,
     });
     this.mesh = new THREE.Mesh(geometry, this.material);
     this.lean = lean;

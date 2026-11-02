@@ -7,6 +7,7 @@
    Here too the tide seal's ritual ('The tide seal', rules/quests.js goal 'ritual'): the stones wake, and Maelis
    comes over the water for the seal's heart. Only the hero at the altar sees him. */
 import * as THREE from "three";
+import { addToCell } from "./culling.js";
 import * as builders from "./builders.js";
 import {
   TIDECROWN,
@@ -395,6 +396,8 @@ function finishChunk({ chunk, pixels }) {
   );
   mesh.position.set(chunk.x0 + CHUNK / 2, 0.002, chunk.z0 + CHUNK / 2);
   scene.add(mesh);
+  /* a chunk of ground stands still: into its cell (culling.js) */
+  addToCell(mesh);
 }
 
 /* ---------- the coast: the land's sandy flank down into the sea, and the surf ---------- */

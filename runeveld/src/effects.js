@@ -3,6 +3,7 @@
    speed. play() puts an effect at a spot in the world (or lets it follow a figure); update() runs it and cleans
    it up. Effects always draw on top of the scene, so they never disappear behind a sprite. */
 import * as THREE from "three";
+import { isNearView } from "./culling.js";
 import { loadTexture } from "./sprites.js";
 
 /**
@@ -103,6 +104,16 @@ export async function createEffects({ scene }) {
   function update(dt, cameraState) {
     for (let k = active.length - 1; k >= 0; k--) {
       const effect = active[k];
+      /* a fire that burns on in one place, far out of sight: not drawn and not animated (culling.js) */
+      if (effect.loop && !effect.follow) {
+        const isNear = isNearView(effect.group.position.x, effect.group.position.z, 6);
+        if (effect.group.visible !== isNear) {
+          effect.group.visible = isNear;
+        }
+        if (!isNear) {
+          continue;
+        }
+      }
       effect.time += dt;
       if (effect.time >= 0) {
         let frame = Math.floor(effect.time * effect.fps);

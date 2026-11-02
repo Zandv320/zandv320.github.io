@@ -703,8 +703,16 @@ export function createWorldMap(deps) {
   function drawLiveLayer(g, scale, offsetX, offsetZ, pixelRatio) {
     const px = (x) => (x - X0) * scale - offsetX;
     const pz = (z) => (z - Z0) * scale - offsetZ;
+    /* only what lands on the canvas (the minimap shows a small part of the world) */
+    const width = g.canvas.width;
+    const height = g.canvas.height;
+    const isOnCanvas = (x, z) => {
+      const sx = px(x);
+      const sz = pz(z);
+      return sx > -12 && sx < width + 12 && sz > -12 && sz < height + 12;
+    };
     for (const monster of deps.monsters.values()) {
-      if (monster.isDead || !monster.sprite.group.visible) {
+      if (monster.isDead || !isOnCanvas(monster.x, monster.z) || !monster.sprite.group.visible) {
         continue;
       }
       const color = monster.spec.aggressive ? COLORS.monster : COLORS.monsterPassive;
@@ -729,8 +737,15 @@ export function createWorldMap(deps) {
     }
     g.restore();
     for (const npc of deps.npcs()) {
+      if (!isOnCanvas(npc.x, npc.z)) {
+        continue;
+      }
       drawDot(g, px(npc.x), pz(npc.z), 2.6 * pixelRatio, COLORS.npc, "rgba(0,0,0,.6)");
-      const marker = npc.label && npc.label.el.querySelector(".quest-mark");
+      /* the label's quest mark, looked up once */
+      if (npc.label && npc.label.questMark === undefined) {
+        npc.label.questMark = npc.label.el.querySelector(".quest-mark");
+      }
+      const marker = npc.label && npc.label.questMark;
       if (marker && !marker.hidden) {
         g.font = `900 ${11 * pixelRatio}px Rubik,sans-serif`;
         g.textAlign = "center";

@@ -506,7 +506,13 @@ export class LeviathanModel {
     const belly = lambert({ color: 0xc4caa8 });
     const bone = lambert({ color: 0xdcd2b4 });
     const webMaterial = (map) =>
-      lambert({ map, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+      lambert({
+        map,
+        transparent: true,
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+        forceSinglePass: true,
+      });
     const crestMaterial = webMaterial(crest);
     const frillMaterial = webMaterial(frill);
     this.materials = [skinMaterial, headSkin, belly, bone, crestMaterial, frillMaterial];

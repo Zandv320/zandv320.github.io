@@ -889,6 +889,7 @@ function beamFan(angle) {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
+      forceSinglePass: true,
     }),
   );
   fan.rotation.y = angle;

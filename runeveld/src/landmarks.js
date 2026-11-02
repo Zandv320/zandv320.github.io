@@ -265,6 +265,7 @@ function buildLightShafts(scene, random) {
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
       }),
     );
     mesh.position.set(x, 0, z);
