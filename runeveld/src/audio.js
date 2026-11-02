@@ -85,6 +85,11 @@ export function setVolume(value) {
 
 const canPlay = () => audioContext && soundOn && audioContext.state === "running";
 
+/** The audio graph for music and the sounds of the world (music.js): {context, master, noise}, or null until
+    audio is unlocked. */
+export const audioOutput = () =>
+  audioContext ? { context: audioContext, master: masterGain, noise: noiseBuffer } : null;
+
 /**
  * One tone: oscillator type, frequency (start → end), duration and volume, with a short attack and decay.
  * @param {number} [delay] seconds from now
@@ -298,6 +303,61 @@ export const sfx = {
     if (!canPlay()) return;
     tone("triangle", 1500, 950, 0.22, 0.035);
     tone("triangle", 1400, 880, 0.26, 0.03, 0.28);
+  },
+  /* the skills, one sound per element */
+  fire() {
+    if (!canPlay()) return;
+    noise(0.55, 0.26, { f0: 300, f1: 2400, q: 0.6, attack: 0.04 });
+    noise(0.4, 0.12, { f0: 5000, f1: 2500, type: "highpass", q: 0.4, delay: 0.12 });
+    tone("sawtooth", 110, 60, 0.4, 0.08);
+  },
+  frost() {
+    if (!canPlay()) return;
+    [1760, 2349, 2637, 3520].forEach((frequency, i) =>
+      tone("sine", frequency, frequency * 0.98, 0.5, 0.045, i * 0.04),
+    );
+    noise(0.12, 0.2, { f0: 6000, f1: 3000, type: "highpass", q: 1, delay: 0.05 });
+  },
+  storm() {
+    if (!canPlay()) return;
+    noise(0.08, 0.4, { f0: 8000, f1: 1500, type: "highpass", q: 0.7 });
+    noise(0.7, 0.22, { f0: 600, f1: 90, type: "lowpass", q: 0.5, delay: 0.05 });
+    tone("square", 90, 40, 0.3, 0.06, 0.03);
+  },
+  holy() {
+    if (!canPlay()) return;
+    [523, 659, 784, 1047].forEach((frequency, i) =>
+      tone("sine", frequency, frequency, 0.9, 0.06, i * 0.03),
+    );
+    tone("triangle", 2093, 2093, 0.6, 0.03, 0.08);
+  },
+  heal() {
+    if (!canPlay()) return;
+    [523, 659, 784, 1047, 1319].forEach((frequency, i) =>
+      tone("sine", frequency, frequency, 0.5, 0.06, i * 0.07),
+    );
+  },
+  arcane() {
+    if (!canPlay()) return;
+    tone("sine", 440, 880, 0.45, 0.08);
+    tone("sine", 554, 1109, 0.45, 0.06, 0.04);
+    noise(0.4, 0.08, { f0: 1500, f1: 4000, q: 2 });
+  },
+  earth() {
+    if (!canPlay()) return;
+    tone("sine", 70, 38, 0.6, 0.35);
+    noise(0.5, 0.3, { f0: 400, f1: 80, type: "lowpass", q: 0.5 });
+  },
+  rage() {
+    if (!canPlay()) return;
+    tone("sawtooth", 140, 110, 0.6, 0.12);
+    tone("sawtooth", 210, 165, 0.6, 0.08);
+    noise(0.5, 0.14, { f0: 900, f1: 400, q: 0.8 });
+  },
+  impact() {
+    if (!canPlay()) return;
+    tone("triangle", 180, 70, 0.22, 0.3);
+    noise(0.16, 0.32, { f0: 2400, f1: 500, q: 0.8 });
   },
   chime() {
     if (!canPlay()) return;

@@ -2,6 +2,7 @@
    Everything is stored in this browser (localStorage). The graphics settings are read at startup, so they apply
    after a reload; the window offers one. */
 import { isSoundOn, setSoundOn, getVolume, setVolume, sfx } from "./audio.js";
+import { getMusicVolume, setMusicVolume } from "./music.js";
 import { IS_TOUCH, isVibrationOn, setVibrationOn, buzz } from "./feel.js";
 import { SMOOTH, DETAIL } from "./sprites.js";
 
@@ -56,6 +57,13 @@ export function createSettings() {
       slider: true,
       get: getVolume,
       set: (value) => setVolume(value),
+    },
+    {
+      id: "music",
+      label: "Music",
+      slider: true,
+      get: getMusicVolume,
+      set: (value) => setMusicVolume(value),
     },
     { section: "Play" },
     {

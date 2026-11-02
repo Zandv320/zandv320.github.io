@@ -139,6 +139,31 @@ function targetInRange(cast, range) {
   return monster;
 }
 
+/* the sound of each skill as it is cast, by its element (audio.js); the rest have the plain skill sound */
+const SKILL_SOUNDS = {
+  crushing_blow: "impact",
+  flame_sweep: "fire",
+  war_cry: "rage",
+  quickening: "holy",
+  ember_bolt: "fire",
+  frostburst: "frost",
+  mana_ward: "arcane",
+  ice_shard: "frost",
+  spirit_volley: "arcane",
+  piercing_thrust: "impact",
+  radiant_cross: "holy",
+  shield_rush: "impact",
+  whirlwind_sweep: "impact",
+  iron_resolve: "holy",
+  spiral_lance: "impact",
+  thunderclap: "storm",
+  stone_spires: "earth",
+  blizzard: "frost",
+  mana_shell: "arcane",
+  starfall: "fire",
+};
+const castSound = (cast) => (sfx[SKILL_SOUNDS[cast.id]] || sfx.skill).call(sfx);
+
 /* A strike on the target within reach (the skill's range or the class's melee range): spends SP, plays the
    attack and returns the target, or null. */
 function startTargetedStrike(cast) {
@@ -151,7 +176,7 @@ function startTargetedStrike(cast) {
   player.nextAttackAt = cast.time + cast.stats.attackInterval;
   playOnce("attack", 0.5);
   player.sprite.face(monster.x - player.x, monster.z - player.z);
-  sfx.skill();
+  castSound(cast);
   return monster;
 }
 
@@ -228,7 +253,7 @@ function flameSweep(cast) {
   playOnce("attack", 0.6);
   groundRing(player.x, player.z, 0xff8c42, 0.4, skill.radius, 0.45, 0.9);
   ringBurst(player.x, player.z, skill.radius, { color: 0xff8c42, count: 40 });
-  sfx.skill();
+  castSound(cast);
   shakeCamera(0.15, 0.2);
   playEffect("fire_ring", player.x, player.z, { size: skill.radius * 2.3, y: 0.1 });
   playEffect("shockwave", player.x, player.z, {
@@ -270,6 +295,7 @@ function warCry(cast) {
   playOnce("hurt", 0.3);
   const radius = skill.radius(level);
   groundRing(player.x, player.z, 0xff4d4d, 0.3, radius, 0.5, 0.7);
+  castSound(cast);
   ringBurst(player.x, player.z, radius * 0.6, { color: 0xff6b6b, count: 28 });
   playEffect("shockwave", player.x, player.z, { size: radius * 2.2, y: 0.08, tint: 0xff6060 });
   playEffect("shockwave", player.x, player.z, {
@@ -323,7 +349,7 @@ function quickening(cast) {
     rate: 1.4,
     seconds: skill.duration(level),
   });
-  sfx.skill();
+  castSound(cast);
   const faster = Math.round((1 - skill.factor(level)) * 100);
   UI.systemMessage(`${skill.name}: ${faster}% faster attacks for ${skill.duration(level)}s.`);
 }
@@ -340,7 +366,7 @@ function emberBolt(cast) {
   player.nextAttackAt = cast.time + Math.max(cast.stats.attackInterval, 0.6);
   playOnce("attack", 0.45);
   player.sprite.face(monster.x - player.x, monster.z - player.z);
-  sfx.skill();
+  castSound(cast);
   glowFlash(player.x, 1, player.z, 0xff8c42, 1.4, 0.25);
   const result = spell(cast);
   launchProjectile(player.x, player.z, monster, 0xff8c42, () => {
@@ -360,7 +386,7 @@ function frostburst(cast) {
   playOnce("attack", 0.6);
   groundRing(player.x, player.z, 0x9ad8ff, 0.4, skill.radius, 0.5, 0.9);
   ringBurst(player.x, player.z, skill.radius, { color: 0x9ad8ff, count: 40 });
-  sfx.skill();
+  castSound(cast);
   shakeCamera(0.12, 0.2);
   runeCircle(0x9ad8ff, 0.6);
   frostDisc(player.x, player.z, skill.radius * 1.1, 1.2);
@@ -418,7 +444,7 @@ function manaWard(cast) {
     rate: 0.5,
     seconds: cast.skill.duration(cast.level),
   });
-  sfx.skill();
+  castSound(cast);
   wardMessage(cast);
 }
 
@@ -574,7 +600,7 @@ function whirlwindSweep(cast) {
   playOnce("attack", 0.6);
   groundRing(player.x, player.z, 0xffd27a, 0.4, skill.radius, 0.4, 0.9);
   ringBurst(player.x, player.z, skill.radius, { color: 0xfff0c4, count: 44 });
-  sfx.skill();
+  castSound(cast);
   shakeCamera(0.2, 0.2);
   stopAfter(
     playEffect("whirl", player.x, player.z, {
@@ -639,7 +665,7 @@ function ironResolve(cast) {
     rate: 1.2,
     seconds: skill.duration(level),
   });
-  sfx.skill();
+  castSound(cast);
   UI.systemMessage(
     `${skill.name}: DEF +${skill.def(level)}, nothing moves you for ${skill.duration(level)}s.`,
   );
@@ -691,7 +717,7 @@ function mendingLight(cast) {
   player.hp = Math.min(hpMax(), player.hp + healed);
   groundRing(player.x, player.z, 0x7cf5a0, 0.3, 1.6, 0.6, 0.9);
   UI.floatingText(player.x, player.sprite.height, player.z, camera, "+" + healed, "heal");
-  sfx.potion();
+  sfx.heal();
   game.characterSheet.render();
   playEffect("green_burst", player.x, player.z, { size: 3.6, y: 0.2 });
   glowFlash(player.x, 1, player.z, 0x9cffb8, 3);
@@ -730,6 +756,7 @@ function thunderclap(cast) {
   setTimeout(() => {
     if (!monster.isDead) {
       hitMonster(monster, result, "thunderclap");
+      sfx.storm();
       playEffect("spark", monster.x, monster.z, { size: 2, y: 0.4 });
       glowFlash(monster.x, 1.2, monster.z, 0xdff2ff, 4, 0.35);
       fxBurst("storms", monster.x, 0.6, monster.z, { count: 40, speed: 2.2 });
@@ -763,6 +790,7 @@ function stoneSpires(cast) {
   setTimeout(() => {
     if (!monster.isDead) {
       hitMonster(monster, result, "stone_spires");
+      sfx.earth();
       shakeCamera(0.1, 0.15);
       fxBurst("dust", monster.x, 0.3, monster.z, { count: 28, spread: 0.6, speed: 1.4 });
       groundRing(monster.x, monster.z, 0xe0b878, 0.3, 1.8, 0.45, 0.7);
@@ -778,7 +806,7 @@ function blizzard(cast) {
   groundRing(player.x, player.z, 0xbfe8ff, 0.4, skill.radius, 0.7, 0.9);
   ringBurst(player.x, player.z, skill.radius, { color: 0xbfe8ff, count: 56, size: 2.4 });
   groundRing(player.x, player.z, 0xffffff, 0.2, skill.radius * 0.6, 0.5, 0.6);
-  sfx.skill();
+  castSound(cast);
   shakeCamera(0.2, 0.3);
   runeCircle(0xbfe8ff, 1);
   frostDisc(player.x, player.z, skill.radius * 1.15, 2);
@@ -845,7 +873,7 @@ function manaShell(cast) {
     rate: 0.7,
     seconds: cast.skill.duration(cast.level),
   });
-  sfx.skill();
+  castSound(cast);
   wardMessage(cast);
 }
 
@@ -893,6 +921,7 @@ function starfall(cast) {
       });
     }
     sfx.hit(true);
+    sfx.earth();
     for (const target of monstersInRadius(impactX, impactZ, skill.radius)) {
       hitMonster(target, spell(cast), "starfall");
     }
@@ -911,7 +940,7 @@ function wellspring(cast) {
   player.sp = Math.min(spMax(), player.sp + restored);
   groundRing(player.x, player.z, 0x8ad0ff, 0.3, 1.6, 0.6, 0.9);
   UI.floatingText(player.x, player.sprite.height, player.z, camera, "+" + restored + " SP", "miss");
-  sfx.potion();
+  sfx.heal();
   game.characterSheet.render();
   runeCircle(0x8fe0a0, 1);
   playEffect("splash", player.x, player.z, {

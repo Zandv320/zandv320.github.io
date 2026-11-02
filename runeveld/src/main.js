@@ -59,6 +59,7 @@ import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
 import { buildWaterFeatures, updateWaterFeatures } from "./water-features.js";
 import { buildNature, updateNature } from "./nature.js";
 import { createWildlife, updateWildlife } from "./wildlife.js";
+import { setMusicArea, updateSoundscape } from "./music.js";
 import { buildLandmarks, updateLandmarks, LANDMARK_CANDLES, LANDMARK_LIGHTS } from "./landmarks.js";
 import {
   buildLoginScene,
@@ -2307,6 +2308,15 @@ function step(dt) {
     updateLoginScene(dt, time);
   }
   updateWaterFeatures(dt, time, scene);
+  /* the music of the area the hero is in (the start screens have their own), and the sounds of the world */
+  if (game.isStarted) {
+    const area = zoneAt(player.x, player.z);
+    setMusicArea(area);
+    updateSoundscape(player.x, player.z, area, area !== "crypt" && area !== "forge");
+  } else {
+    setMusicArea("login");
+    updateSoundscape(cameraState.target.x, cameraState.target.z, "login", false);
+  }
   updateNature(dt, time);
   updateLandmarks(dt, time);
   if (!game.isStarted && game.characterSelect && game.characterSelect.isOpen()) {
