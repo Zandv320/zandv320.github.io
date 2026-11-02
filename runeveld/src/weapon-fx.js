@@ -395,6 +395,14 @@ const RADIANT_WHITE = new THREE.Color(0xfffcf0);
 const RADIANT_GOLD = new THREE.Color(0xffc860);
 const GILDED_DEEP = new THREE.Color(0xd8901c);
 const SHARD_GREY = new THREE.Color(0xd4dae6);
+const HEAL_LIGHT = new THREE.Color(0xeaffd8);
+const HEAL_GREEN = new THREE.Color(0x56e08a);
+const MANA_LIGHT = new THREE.Color(0xe6f4ff);
+const MANA_BLUE = new THREE.Color(0x3f8cff);
+const RAGE_LIGHT = new THREE.Color(0xffe0d0);
+const RAGE_RED = new THREE.Color(0xff3a3a);
+const EARTH_LIGHT = new THREE.Color(0xf0dcb4);
+const EARTH_BROWN = new THREE.Color(0x8a6236);
 const scratch = new THREE.Color();
 
 /* the colour and brightness of a particle at share t of its life */
@@ -429,6 +437,18 @@ function particleColor(particle, t) {
       return scratch.copy(SHARD_GREY).multiplyScalar(1 - t);
     case "glint":
       return scratch.copy(RADIANT_WHITE).multiplyScalar(Math.sin(Math.PI * t) * 1.2);
+    case "heal":
+      return mixColor(HEAL_LIGHT, HEAL_GREEN, t, scratch).multiplyScalar(
+        Math.sin(Math.PI * t) * 1.1,
+      );
+    case "mana":
+      return mixColor(MANA_LIGHT, MANA_BLUE, t, scratch).multiplyScalar(
+        Math.sin(Math.PI * t) * 1.1,
+      );
+    case "rage":
+      return mixColor(RAGE_LIGHT, RAGE_RED, t, scratch).multiplyScalar(1 - t * 0.7);
+    case "dust":
+      return mixColor(EARTH_LIGHT, EARTH_BROWN, t, scratch).multiplyScalar(0.55 * (1 - t));
     case "mote":
       return mixColor(ARCANE_LIGHT, ARCANE_VIOLET, t, scratch).multiplyScalar(
         0.6 + 0.4 * Math.sin(particle.seed + t * 9),
@@ -470,8 +490,8 @@ function updateCloud(dt) {
     particle.z += particle.vz * dt;
     if (particle.kind === "spark") {
       particle.vy -= 6 * dt;
-    } else if (particle.kind === "shard") {
-      particle.vy -= 9 * dt;
+    } else if (particle.kind === "shard" || particle.kind === "dust") {
+      particle.vy -= (particle.kind === "dust" ? 4 : 9) * dt;
     }
     const tint = particleColor(particle, t);
     position.setXYZ(i, particle.x, particle.y, particle.z);
@@ -787,6 +807,46 @@ EMITTERS.hearth = [
     }),
   ],
 ];
+/* skills (skill-effects.js fxBurst, fxStream): healing light, mana, a war cry's fury, the earth of stone spells */
+const rising = (
+  kind,
+  { speed = [0.4, 0.9], life = [0.9, 1.5], size = [0.14, 0.22], star = 0.4 } = {},
+) => [
+  18,
+  (p) => ({
+    kind,
+    x: p.x,
+    y: p.y,
+    z: p.z,
+    vx: random(-0.08, 0.08),
+    vy: random(...speed),
+    vz: random(-0.08, 0.08),
+    life: random(...life),
+    size0: random(...size),
+    size1: 0.03,
+    shape: Math.random() < star ? 1 : 0,
+  }),
+];
+EMITTERS.heal = [rising("heal"), [4, EMITTERS.radiance[1][1]]];
+EMITTERS.mana = [rising("mana")];
+EMITTERS.rage = [rising("rage", { speed: [0.6, 1.4], life: [0.4, 0.8], star: 0.2 })];
+EMITTERS.dust = [
+  [
+    20,
+    (p) => ({
+      kind: "dust",
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      vx: random(-0.5, 0.5),
+      vy: random(0.8, 2),
+      vz: random(-0.3, 0.3),
+      life: random(0.5, 0.9),
+      size0: random(0.18, 0.3),
+      size1: 0.1,
+    }),
+  ],
+];
 /* epic gear glints, legendary gear sheds golden motes, like armour refined to +7 and +10 */
 EMITTERS.epic = EMITTERS.refine2;
 EMITTERS.legendary = EMITTERS.refine3;
@@ -986,8 +1046,87 @@ export function addFxPlace(place) {
   places.push({ ...place, carry: null });
 }
 
+/**
+ * A stream of an element's particles for a while, from a point or from something that moves (`follow`: anything with
+ * x and z, the place's y and spread round it): for a spell's aura or the trail of a bolt. Ends after `seconds`.
+ */
+export function fxStream(
+  element,
+  { x = 0, y = 1, z = 0, follow = null, spread = 0.3, rate = 1, seconds = 1 },
+) {
+  places.push({
+    element,
+    x,
+    y,
+    z,
+    follow,
+    spread,
+    rate,
+    until: performance.now() / 1000 + seconds,
+    carry: null,
+  });
+}
+
+/**
+ * A burst of `count` of an element's particles at once from (x, y, z), flung outwards at `speed` (units per
+ * second) on top of their own motion: the impact of a spell.
+ */
+export function fxBurst(element, x, y, z, { count = 24, spread = 0.2, speed = 1.5 } = {}) {
+  if (!cloud) {
+    initCloud();
+    initArcs();
+  }
+  const emitters = EMITTERS[element] || [];
+  const total = emitters.reduce((sum, [rate]) => sum + rate, 0);
+  if (!total) {
+    return;
+  }
+  for (let k = 0; k < count; k++) {
+    let pick = Math.random() * total;
+    const [, make] = emitters.find(([rate]) => (pick -= rate) <= 0) || emitters[0];
+    const angle = Math.random() * Math.PI * 2;
+    const out = speed * random(0.4, 1);
+    placePoint.set(
+      x + Math.cos(angle) * spread * Math.random(),
+      y + random(-spread, spread) * 0.5,
+      z + Math.sin(angle) * spread * Math.random(),
+    );
+    const particle = make(placePoint);
+    particle.vx = (particle.vx || 0) + Math.cos(angle) * out;
+    particle.vz = (particle.vz || 0) + Math.sin(angle) * out;
+    particle.vy = (particle.vy || 0) + random(0, out * 0.6);
+    if (particle.kind === "mote") {
+      /* motes circle where they started */
+      particle.cx = particle.x;
+      particle.cz = particle.z;
+    }
+    emit(particle);
+  }
+}
+
+/* short flashes of light at night: {x, z, y, radius, color, strength, until, seconds} */
+const flashes = [];
+
+/** A flash of light at (x, z) that lights the night for `seconds`, fading out. */
+export function flashLight(x, z, color, { radius = 5, strength = 1, seconds = 0.5, y = 1 } = {}) {
+  const until = performance.now() / 1000 + seconds;
+  flashes.push({ x, z, y, radius, color, strength, peak: strength, until, seconds });
+}
+
 function emitFromPlaces(dt) {
   const { x: cx, z: cz } = cameraState.target;
+  const time = performance.now() / 1000;
+  for (let k = places.length - 1; k >= 0; k--) {
+    const place = places[k];
+    if (place.until && time > place.until) {
+      places.splice(k, 1);
+      continue;
+    }
+    if (place.follow) {
+      place.x = place.follow.x;
+      place.z = place.follow.z;
+    }
+  }
   for (const place of places) {
     if (Math.abs(place.x - cx) > PLACE_RANGE || Math.abs(place.z - cz) > PLACE_RANGE) {
       continue;
@@ -1017,10 +1156,21 @@ function emitFromPlaces(dt) {
 
 /** The light the enchanted weapons and shields cast (for daylight.js: a glow round the hero at night and
     underground). */
-export const weaponLights = () =>
-  [...auras.values()]
+export const weaponLights = () => {
+  const time = performance.now() / 1000;
+  for (let k = flashes.length - 1; k >= 0; k--) {
+    const flash = flashes[k];
+    if (time > flash.until) {
+      flashes.splice(k, 1);
+    } else {
+      flash.strength = flash.peak * ((flash.until - time) / flash.seconds);
+    }
+  }
+  return [...auras.values()]
     .flatMap((parts) => [...parts.values()].map((aura) => aura.light))
-    .filter(Boolean);
+    .filter(Boolean)
+    .concat(flashes);
+};
 
 /**
  * The moment of a refine, on the hero who did it: on success a sweep of light runs down them from head to feet

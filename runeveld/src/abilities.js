@@ -30,6 +30,9 @@ import {
   launchProjectile,
   groundRing,
   wardAura,
+  glowFlash,
+  fxBurst,
+  fxStream,
 } from "./skill-effects.js";
 import { ringBurst } from "./particles.js";
 
@@ -197,6 +200,9 @@ function crushingBlow(cast) {
     }
     hitMonster(monster, result, "crushing_blow");
     playEffect("swing", monster.x, monster.z, { size: 2.6, y: 0.8, mirror: monster.x < player.x });
+    glowFlash(monster.x, 0.8, monster.z, 0xfff0c8, 2.4);
+    fxBurst("storms", monster.x, 0.8, monster.z, { count: 22, speed: 1.2 });
+    groundRing(monster.x, monster.z, 0xe8eeff, 0.3, 1.6, 0.4, 0.8);
     playEffect("shockwave", monster.x, monster.z, {
       size: 2.2,
       y: 0.08,
@@ -229,6 +235,15 @@ function flameSweep(cast) {
   });
   flamesAround(player.x, player.z, 1.9, 4, 1.1, "fire_pillar", 2.4);
   playEffect("swing", player.x, player.z, { size: 3.2, y: 1, tint: 0xffc080, follow: player });
+  glowFlash(player.x, 0.9, player.z, 0xff8c42, skill.radius * 1.6, 0.45);
+  for (let k = 0; k < 10; k++) {
+    const angle = (k / 10) * Math.PI * 2;
+    const reach = skill.radius * 0.7;
+    fxBurst("flame", player.x + Math.cos(angle) * reach, 0.5, player.z + Math.sin(angle) * reach, {
+      count: 10,
+      speed: 0.8,
+    });
+  }
   setTimeout(() => {
     const targets = monstersInRadius(player.x, player.z, skill.radius);
     for (const monster of targets) {
@@ -261,6 +276,9 @@ function warCry(cast) {
     delay: 0.12,
   });
   playEffect("burst", player.x, player.z, { size: 2.4, y: 1.6, tint: 0xff6060, follow: player });
+  glowFlash(player.x, 1.2, player.z, 0xff4d4d, 3, 0.5);
+  fxBurst("rage", player.x, 1, player.z, { count: 40, spread: 0.4, speed: radius * 0.9 });
+  fxStream("rage", { follow: player, y: 0.8, spread: 0.4, rate: 0.6, seconds: 1 });
   const count = monstersInRadius(player.x, player.z, radius).length;
   game.network.send("provoke", { x: +player.x.toFixed(2), z: +player.z.toFixed(2), radius });
   UI.systemMessage(
@@ -293,6 +311,15 @@ function quickening(cast) {
     }),
     0.9,
   );
+  glowFlash(player.x, 1, player.z, 0xffd27a, 2.4);
+  fxBurst("radiance", player.x, 0.9, player.z, { count: 26, spread: 0.4, speed: 1 });
+  fxStream("refine3", {
+    follow: player,
+    y: 0.7,
+    spread: 0.45,
+    rate: 1.4,
+    seconds: skill.duration(level),
+  });
   sfx.skill();
   const faster = Math.round((1 - skill.factor(level)) * 100);
   UI.systemMessage(`${skill.name}: ${faster}% faster attacks for ${skill.duration(level)}s.`);
@@ -311,11 +338,14 @@ function emberBolt(cast) {
   playOnce("attack", 0.45);
   player.sprite.face(monster.x - player.x, monster.z - player.z);
   sfx.skill();
+  glowFlash(player.x, 1, player.z, 0xff8c42, 1.4, 0.25);
   const result = spell(cast);
   launchProjectile(player.x, player.z, monster, 0xff8c42, () => {
     if (!monster.isDead) {
       hitMonster(monster, result, "ember_bolt");
       playEffect("explosion", monster.x, monster.z, { size: 2.2, grounded: true, y: -0.1 });
+      fxBurst("flame", monster.x, 0.7, monster.z, { count: 30, speed: 1.6 });
+      groundRing(monster.x, monster.z, 0xff8c42, 0.2, 1.4, 0.35, 0.8);
     }
   });
 }
@@ -336,6 +366,8 @@ function frostburst(cast) {
     playEffect("snow", player.x, player.z, { size: skill.radius * 2.2, y: 1.4, loop: true }),
     0.8,
   );
+  glowFlash(player.x, 0.8, player.z, 0x9ad8ff, skill.radius * 1.5, 0.45);
+  fxBurst("frost", player.x, 0.8, player.z, { count: 60, spread: 0.5, speed: skill.radius * 1.4 });
   setTimeout(() => {
     const ids = [];
     for (const monster of monstersInRadius(player.x, player.z, skill.radius)) {
@@ -373,6 +405,14 @@ function manaWard(cast) {
   runeCircle(0xd8c0ff, 0.8);
   playEffect("burst", player.x, player.z, { size: 2.4, y: 1, tint: 0xd8c0ff, follow: player });
   groundRing(player.x, player.z, 0x8ad0ff, 0.3, 1.6, 0.6, 0.9);
+  glowFlash(player.x, 1, player.z, 0xb08cff, 2.6);
+  fxStream("arcane", {
+    follow: player,
+    y: 0.9,
+    spread: 0.35,
+    rate: 0.5,
+    seconds: cast.skill.duration(cast.level),
+  });
   sfx.skill();
   wardMessage(cast);
 }
@@ -393,6 +433,7 @@ function iceShard(cast) {
     sendFreeze([monster.id], skill.freeze(level));
     playEffect("ice_shards", monster.x, monster.z, { size: 2, grounded: true });
     playEffect("splatter", monster.x, monster.z, { size: 1.4, y: 0.7, tint: 0xe0f8ff });
+    fxBurst("frost", monster.x, 0.7, monster.z, { count: 26, speed: 1.3 });
   };
   launchProjectile(player.x, player.z, monster, 0x9ad8ff, onHit, "ice_bolt", 1.5);
   player.sprite.nudge(player.x - monster.x, player.z - monster.z, 0.12);
@@ -419,6 +460,7 @@ function spiritVolley(cast) {
             grounded: true,
             tint: 0xd8c8ff,
           });
+          fxBurst("arcane", monster.x, 0.8, monster.z, { count: 12, speed: 0.9 });
         }
       };
       launchProjectile(player.x, player.z, monster, 0xd8c8ff, onHit, "spirit", 1.5);
@@ -445,6 +487,8 @@ function piercingThrust(cast) {
     if (!monster.isDead) {
       hitMonster(monster, result, "piercing_thrust");
       playEffect("shockwave", monster.x, monster.z, { size: 2.4, y: 0.08, tint: 0xdfe6f5 });
+      glowFlash(monster.x, 0.8, monster.z, 0xeef4ff, 2.2, 0.25);
+      fxBurst("storms", monster.x, 0.8, monster.z, { count: 18, speed: 1.6 });
       playEffect("flash", monster.x, monster.z, { size: 2, y: 0.7 });
     }
   }, 200);
@@ -470,6 +514,8 @@ function radiantCross(cast) {
     if (!monster.isDead) {
       hitMonster(monster, result, "radiant_cross");
       playEffect("holy_cross", monster.x, monster.z, { size: 3.2, y: 0.9, follow: monster });
+      glowFlash(monster.x, 1, monster.z, 0xfff2b0, 3, 0.5);
+      fxBurst("radiance", monster.x, 0.9, monster.z, { count: 34, spread: 0.3, speed: 1.2 });
       playEffect("sparkle", monster.x, monster.z, {
         size: 2,
         grounded: true,
@@ -491,6 +537,7 @@ function shieldRush(cast) {
   const dz = monster.z - player.z;
   const distance = Math.hypot(dx, dz) || 1;
   playEffect("smoke", player.x, player.z, { size: 1.8, grounded: true });
+  fxBurst("dust", player.x, 0.2, player.z, { count: 16, spread: 0.3, speed: 1 });
   if (distance > 1.2) {
     [player.x, player.z] = resolveCollision(
       monster.x - (dx / distance) * 1,
@@ -510,6 +557,8 @@ function shieldRush(cast) {
     playEffect("spark", monster.x, monster.z, { size: 1.8, y: 0.6 });
     playEffect("shockwave", monster.x, monster.z, { size: 2.8, y: 0.08, tint: 0xfff0b0 });
     playEffect("holy_cross", monster.x, monster.z, { size: 2, y: 0.8, delay: 0.05 });
+    glowFlash(monster.x, 0.8, monster.z, 0xfff0b0, 2.6);
+    fxBurst("radiance", monster.x, 0.8, monster.z, { count: 22, speed: 1.4 });
   }, 150);
 }
 
@@ -537,11 +586,19 @@ function whirlwindSweep(cast) {
     tint: 0xffd27a,
     delay: 0.15,
   });
+  fxStream("storms", {
+    follow: player,
+    y: 0.8,
+    spread: skill.radius * 0.6,
+    rate: 1.2,
+    seconds: 0.6,
+  });
   setTimeout(() => {
     const targets = monstersInRadius(player.x, player.z, skill.radius);
     for (const monster of targets) {
       hitMonster(monster, sureHit(cast, monster), "whirlwind_sweep");
       playEffect("splatter", monster.x, monster.z, { size: 1.5, y: 0.6, tint: 0xffd27a });
+      fxBurst("storms", monster.x, 0.7, monster.z, { count: 10, speed: 1.2 });
     }
     if (!targets.length) {
       UI.systemMessage(skill.name + " hit nothing.");
@@ -569,6 +626,14 @@ function ironResolve(cast) {
     additive: true,
   });
   playEffect("shockwave", player.x, player.z, { size: 3, y: 0.08, tint: 0xffd27a });
+  glowFlash(player.x, 1, player.z, 0xffd27a, 2.8);
+  fxStream("refine3", {
+    follow: player,
+    y: 0.5,
+    spread: 0.5,
+    rate: 1.2,
+    seconds: skill.duration(level),
+  });
   sfx.skill();
   UI.systemMessage(
     `${skill.name}: DEF +${skill.def(level)}, nothing moves you for ${skill.duration(level)}s.`,
@@ -598,6 +663,8 @@ function spiralLance(cast) {
           { size: 1.2, y: 0.9, angle: angle + (k - 1) * 0.3 },
         );
         playEffect("swing", monster.x, monster.z, { size: 2, y: 0.8, mirror: k % 2 === 1 });
+        glowFlash(monster.x, 0.8, monster.z, 0xeef4ff, 1.6, 0.2);
+        fxBurst("storms", monster.x, 0.8, monster.z, { count: 10, speed: 1.4 });
         if (k === skill.hits - 1) {
           playEffect("shockwave", monster.x, monster.z, { size: 2.6, y: 0.08, tint: 0xdfe6f5 });
         }
@@ -622,6 +689,9 @@ function mendingLight(cast) {
   sfx.potion();
   game.characterSheet.render();
   playEffect("green_burst", player.x, player.z, { size: 3.6, y: 0.2 });
+  glowFlash(player.x, 1, player.z, 0x9cffb8, 3);
+  fxBurst("heal", player.x, 0.4, player.z, { count: 30, spread: 0.5, speed: 0.6 });
+  fxStream("heal", { follow: player, y: 0.3, spread: 0.45, rate: 1.4, seconds: 1.4 });
   stopAfter(
     playEffect("light_rays", player.x, player.z, {
       size: 3.6,
@@ -656,6 +726,8 @@ function thunderclap(cast) {
     if (!monster.isDead) {
       hitMonster(monster, result, "thunderclap");
       playEffect("spark", monster.x, monster.z, { size: 2, y: 0.4 });
+      glowFlash(monster.x, 1.2, monster.z, 0xdff2ff, 4, 0.35);
+      fxBurst("storms", monster.x, 0.6, monster.z, { count: 40, speed: 2.2 });
       playEffect("shockwave", monster.x, monster.z, { size: 2.6, y: 0.08, tint: 0xbfe8ff });
       shakeCamera(0.14, 0.18);
     }
@@ -687,6 +759,8 @@ function stoneSpires(cast) {
     if (!monster.isDead) {
       hitMonster(monster, result, "stone_spires");
       shakeCamera(0.1, 0.15);
+      fxBurst("dust", monster.x, 0.3, monster.z, { count: 28, spread: 0.6, speed: 1.4 });
+      groundRing(monster.x, monster.z, 0xe0b878, 0.3, 1.8, 0.45, 0.7);
     }
   }, 350);
 }
@@ -714,6 +788,15 @@ function blizzard(cast) {
     y: 0.08,
     tint: 0xdff4ff,
   });
+  glowFlash(player.x, 1, player.z, 0xbfe8ff, skill.radius * 1.8, 0.6);
+  fxStream("frost", {
+    x: player.x,
+    z: player.z,
+    y: 2,
+    spread: skill.radius * 0.8,
+    rate: 5,
+    seconds: 1.6,
+  });
   setTimeout(() => {
     const ids = [];
     for (const monster of monstersInRadius(player.x, player.z, skill.radius)) {
@@ -736,6 +819,14 @@ function manaShell(cast) {
   groundRing(player.x, player.z, 0x5fb0ff, 0.3, 1.8, 0.7, 0.9);
   runeCircle(0x8ad0ff, 0.8);
   playEffect("shockwave", player.x, player.z, { size: 3, y: 0.08, tint: 0x8ad0ff });
+  glowFlash(player.x, 1, player.z, 0x8ad0ff, 3);
+  fxStream("mana", {
+    follow: player,
+    y: 0.4,
+    spread: 0.5,
+    rate: 0.7,
+    seconds: cast.skill.duration(cast.level),
+  });
   sfx.skill();
   wardMessage(cast);
 }
@@ -767,6 +858,10 @@ function starfall(cast) {
     playEffect("fire_ring", impactX, impactZ, { size: skill.radius * 2.2, y: 0.2, delay: 0.08 });
     flamesAround(impactX, impactZ, 1.8, 4, 2.2);
     shakeCamera(0.35, 0.35);
+    glowFlash(impactX, 1, impactZ, 0xffb060, skill.radius * 2.6, 0.7);
+    fxBurst("flame", impactX, 0.6, impactZ, { count: 70, spread: 0.6, speed: skill.radius * 1.6 });
+    fxBurst("hearth", impactX, 0.4, impactZ, { count: 30, spread: 0.8, speed: 1.2 });
+    groundRing(impactX, impactZ, 0xffb060, 0.4, skill.radius * 1.2, 0.6, 0.9);
     sfx.hit(true);
     for (const target of monstersInRadius(impactX, impactZ, skill.radius)) {
       hitMonster(target, spell(cast), "starfall");
@@ -806,6 +901,9 @@ function wellspring(cast) {
     tint: 0x9fd0ff,
     delay: 0.1,
   });
+  glowFlash(player.x, 1, player.z, 0x8ad0ff, 2.8);
+  fxBurst("mana", player.x, 0.4, player.z, { count: 30, spread: 0.5, speed: 0.6 });
+  fxStream("mana", { follow: player, y: 0.3, spread: 0.45, rate: 1.4, seconds: 1.2 });
 }
 
 /* skill id → what it does; `cast` is {id, skill, level, stats, spCost, time} */

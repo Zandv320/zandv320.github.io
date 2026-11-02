@@ -1,14 +1,88 @@
-/* Eldoria – visual helpers for skills and clicks: expanding rings on the ground, projectiles that fly to a
-   monster, rings of flames or ice shards, the rune circle under a caster, the ward aura and the target ring.
-   The sprite effects themselves come from effects.js (via playEffect). */
+/* Eldoria – visual helpers for skills and clicks: rings of light that spread over the ground, flashes of light,
+   projectiles that fly to a monster with a glow round them and a trail of their element, rings of flames or ice
+   shards, the rune circle under a caster, the ward aura and the target ring. The sprite effects themselves come
+   from effects.js (via playEffect); the particles and the light at night from weapon-fx.js, as an enchantment's. */
 import * as THREE from "three";
 import { scene, camera } from "./world.js";
 import { player, playEffect } from "./game-state.js";
 import { trail } from "./particles.js";
+import { fxBurst, fxStream, flashLight } from "./weapon-fx.js";
 
-/* running ground rings and projectile flights, advanced by updateSkillEffects() */
+export { fxBurst, fxStream, flashLight };
+
+/* running ground rings, flashes and projectile flights, advanced by updateSkillEffects() */
 const activeEffects = [];
-const ringGeometry = new THREE.RingGeometry(0.82, 1, 40);
+const ringGeometry = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
+
+/* a ring of light with a soft glow on both sides of its bright rim, fading towards the middle */
+const ringTexture = (() => {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.55, "rgba(255,255,255,0.08)");
+  gradient.addColorStop(0.84, "rgba(255,255,255,0.55)");
+  gradient.addColorStop(0.92, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.97, "rgba(255,255,255,0.35)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+})();
+
+/* a round soft light, white in its heart */
+const haloTexture = (() => {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.2, "rgba(255,255,255,0.7)");
+  gradient.addColorStop(0.5, "rgba(255,255,255,0.2)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(canvas);
+})();
+
+/* a soft light that always faces the camera, over the night haze */
+function halo(color, size) {
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: haloTexture,
+      color,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  sprite.scale.setScalar(size);
+  sprite.renderOrder = 10002;
+  return sprite;
+}
+
+/**
+ * A flash of soft light at (x, y, z): it swells to `size` and fades in `duration` seconds; at night it lights
+ * the ground around it too.
+ */
+export function glowFlash(x, y, z, color, size = 2, duration = 0.35) {
+  const sprite = halo(color, size * 0.4);
+  sprite.position.set(x, y, z);
+  scene.add(sprite);
+  activeEffects.push({ flash: sprite, time: 0, duration, size });
+  const tint = new THREE.Color(color);
+  flashLight(x, z, [tint.r * 255, tint.g * 255, tint.b * 255], {
+    radius: size * 2.2,
+    strength: 0.9,
+    seconds: duration * 1.6,
+    y,
+  });
+}
+
+/* a spell's colour → the element of its particles (for the trail of a bolt) */
+const ELEMENT_OF = { 0xff8c42: "flame", 0xffb347: "flame", 0x9ad8ff: "frost", 0xd8c8ff: "arcane" };
 
 /** `count` flames in a circle of `radius` around (x, z) that go out after `duration` seconds. */
 export function flamesAround(x, z, radius, count, duration, name = "fire", size = 1.3) {
@@ -73,10 +147,16 @@ export function screenAngle(x0, z0, x1, z1) {
  * `duration` seconds, then stops the effect and calls `onArrive`.
  */
 export function flyEffect(effect, x0, z0, target, duration, onArrive, trailColor = null) {
+  const element = trailColor === null ? null : ELEMENT_OF[trailColor] || null;
+  /* a glow round the bolt in its colour */
+  const glow = trailColor === null ? null : halo(trailColor, 1.4);
+  if (glow) {
+    scene.add(glow);
+  }
   activeEffects.push({
     time: 0,
     duration,
-    flight: { x0, z0, target, onArrive, effect, trailColor },
+    flight: { x0, z0, target, onArrive, effect, trailColor, element, glow },
   });
 }
 
@@ -96,18 +176,20 @@ export function launchProjectile(x0, z0, monster, color, onHit, name = "comet", 
   flyEffect(effect, x0, z0, monster, duration, onHit, color);
 }
 
-/** A flat ring on the ground that grows from startRadius to endRadius and fades out. */
+/** A ring of light on the ground that spreads from startRadius to endRadius and fades out. */
 export function groundRing(x, z, color, startRadius, endRadius, duration, opacity = 1) {
   const material = new THREE.MeshBasicMaterial({
+    map: ringTexture,
     color,
     transparent: true,
     opacity,
+    blending: THREE.AdditiveBlending,
     depthWrite: false,
-    side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(ringGeometry, material);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(x, 0.04, z);
+  mesh.position.set(x, 0.05, z);
+  /* over the night haze: a spell's ring lights up */
+  mesh.renderOrder = 10001;
   scene.add(mesh);
   activeEffects.push({ mesh, time: 0, duration, startRadius, endRadius, opacity });
 }
@@ -134,6 +216,18 @@ export function updateSkillEffects(dt) {
     entry.time += dt;
     const progress = Math.min(1, entry.time / entry.duration);
 
+    if (entry.flash) {
+      /* swells fast, fades slower */
+      entry.flash.scale.setScalar(entry.size * (0.4 + 0.6 * Math.sqrt(progress)));
+      entry.flash.material.opacity = 1 - progress * progress;
+      if (progress >= 1) {
+        scene.remove(entry.flash);
+        entry.flash.material.dispose();
+        activeEffects.splice(i, 1);
+      }
+      continue;
+    }
+
     if (entry.flight) {
       const flight = entry.flight;
       const targetX = flight.target.x;
@@ -146,12 +240,31 @@ export function updateSkillEffects(dt) {
         );
         if (flight.trailColor !== null) {
           const position = flight.effect.group.position;
-          trail(position.x, position.y, position.z, flight.trailColor);
+          /* the bolt sheds its element's particles, as an enchanted blade does */
+          if (flight.element) {
+            fxBurst(flight.element, position.x, position.y, position.z, {
+              count: 3,
+              spread: 0.12,
+              speed: 0.3,
+            });
+          } else {
+            trail(position.x, position.y, position.z, flight.trailColor);
+          }
+          if (flight.glow) {
+            flight.glow.position.copy(position);
+            flight.glow.material.opacity = 0.75 + 0.25 * Math.sin(entry.time * 40);
+          }
         }
       }
       if (progress >= 1) {
         if (flight.effect) {
           flight.effect.stop();
+        }
+        if (flight.glow) {
+          scene.remove(flight.glow);
+          flight.glow.material.dispose();
+          const position = flight.effect ? flight.effect.group.position : flight.glow.position;
+          glowFlash(position.x, position.y, position.z, flight.trailColor, 2.2, 0.3);
         }
         activeEffects.splice(i, 1);
         flight.onArrive();
