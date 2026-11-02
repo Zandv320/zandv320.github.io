@@ -6,6 +6,7 @@
    character-select.js puts the chosen hero in front of the heartstone and flies the camera in. */
 import * as THREE from "three";
 import * as builders from "./builders.js";
+import { SMOOTH } from "./sprites.js";
 import { addFxPlace } from "./weapon-fx.js";
 
 /** The middle of the stone circle, in the world. */
@@ -126,9 +127,11 @@ export function buildLoginScene({ scene, prop, pending, seededRandom }) {
   face.material = new THREE.MeshBasicMaterial({ map: face.material.map, transparent: true });
   face.scale.setScalar(1.25);
   group.add(heart);
-  /* the halo of the rune, and of the crystal: soft light that always faces the camera, drawn after the haze */
+  /* the halo of the rune, and of the crystal: soft light that always faces the camera, drawn after the haze (with
+     smooth sprites only: the pixel art has the rune and the crystal alone) */
   runeHalo = halo(RUNE_DEEP, 2.6);
   runeHalo.position.set(0, 1.7, HEART.z - ORIGIN_Z + 0.6);
+  runeHalo.visible = SMOOTH;
   group.add(runeHalo);
   crystal = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.36),
@@ -139,6 +142,7 @@ export function buildLoginScene({ scene, prop, pending, seededRandom }) {
   group.add(crystal);
   crystalHalo = halo(RUNE_DEEP, 2.2);
   crystalHalo.position.copy(crystal.position);
+  crystalHalo.visible = SMOOTH;
   group.add(crystalHalo);
   beam = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.2, CRYSTAL_Y - 2.3, 10, 1, true),
@@ -152,6 +156,7 @@ export function buildLoginScene({ scene, prop, pending, seededRandom }) {
   );
   beam.position.set(0, (CRYSTAL_Y + 2.3) / 2, HEART.z - ORIGIN_Z);
   beam.renderOrder = 10001;
+  beam.visible = SMOOTH;
   group.add(beam);
   /* a ring of runes on the paving round the heartstone and the hero, turning slowly */
   runeRing = new THREE.Mesh(

@@ -7,12 +7,16 @@ import { scene, camera } from "./world.js";
 import { player, playEffect } from "./game-state.js";
 import { trail } from "./particles.js";
 import { fxBurst, fxStream, flashLight } from "./weapon-fx.js";
+import { SMOOTH } from "./sprites.js";
 
 export { fxBurst, fxStream, flashLight };
 
 /* running ground rings, flashes and projectile flights, advanced by updateSkillEffects() */
 const activeEffects = [];
-const ringGeometry = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
+/* with smooth sprites a ring of soft light; without them a flat band, as pixel art has */
+const ringGeometry = SMOOTH
+  ? new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2)
+  : new THREE.RingGeometry(0.82, 1, 40).rotateX(-Math.PI / 2);
 
 /* a ring of light with a soft glow on both sides of its bright rim, fading towards the middle */
 const ringTexture = (() => {
@@ -68,6 +72,9 @@ function halo(color, size) {
  * the ground around it too.
  */
 export function glowFlash(x, y, z, color, size = 2, duration = 0.35) {
+  if (!SMOOTH) {
+    return;
+  }
   const sprite = halo(color, size * 0.4);
   sprite.position.set(x, y, z);
   scene.add(sprite);
@@ -226,6 +233,18 @@ const envelope = (progress, fadeIn = 0.12, fadeOut = 0.35) =>
 
 /** Ice crystals that shoot up out of the ground in a circle, stand a moment and burst into frost (frost spells). */
 export function iceShardsAround(x, z, radius, count, size) {
+  if (!SMOOTH) {
+    /* the shards of the effect sheet */
+    for (let k = 0; k < count; k++) {
+      const angle = (k / count) * Math.PI * 2 + Math.random() * 0.6;
+      playEffect("ice_shards", x + Math.cos(angle) * radius, z + Math.sin(angle) * radius, {
+        size,
+        grounded: true,
+        delay: 0.05 + Math.random() * 0.2,
+      });
+    }
+    return;
+  }
   const iceMaterial = new THREE.MeshLambertMaterial({
     color: 0xcdeeff,
     emissive: 0x3b86c8,
@@ -273,6 +292,10 @@ export function iceShardsAround(x, z, radius, count, size) {
 
 /** A disc of frost on the ground of `radius` round (x, z) for `duration` seconds. */
 export function frostDisc(x, z, radius, duration) {
+  if (!SMOOTH) {
+    playEffect("frost_ground", x, z, { size: radius * 2.3, y: 0.06 });
+    return;
+  }
   const mesh = groundPatch(frostTexture, 0xbfe8ff, radius);
   mesh.position.set(x, 0.05, z);
   mesh.rotation.y = Math.random() * Math.PI;
@@ -291,6 +314,9 @@ export function frostDisc(x, z, radius, duration) {
 
 /** A burnt patch of `radius` that fades over `duration` seconds (where a star fell). */
 export function scorch(x, z, radius, duration) {
+  if (!SMOOTH) {
+    return;
+  }
   const mesh = groundPatch(scorchTexture, 0xffffff, radius, { additive: false });
   mesh.position.set(x, 0.045, z);
   scene.add(mesh);
@@ -311,6 +337,12 @@ export function scorch(x, z, radius, duration) {
  * heart in an orange glow, with a tail of flames and embers behind it. onArrive() when it strikes.
  */
 export function fallingStar(x, z, duration, onArrive) {
+  if (!SMOOTH) {
+    /* the comet of the effect sheet, falling in from the side with a trail of sparks */
+    const comet = playEffect("comet", x - 3, z, { size: 3.4, y: 6, loop: true });
+    flyEffect(comet, x - 3, z, { x, z }, duration, onArrive, 0xffb347);
+    return;
+  }
   const heart = halo(0xffffff, 1.1);
   const glow = halo(0xff9a3c, 3.2);
   scene.add(heart, glow);
@@ -339,6 +371,20 @@ export function fallingStar(x, z, duration, onArrive) {
 
 /** The rune circle under the caster for `duration` seconds: a turning ring of runes in soft light. */
 export function runeCircle(tint, duration) {
+  if (!SMOOTH) {
+    stopAfter(
+      playEffect("rune_circle", player.x, player.z, {
+        size: 3.4,
+        y: 0.05,
+        tint,
+        loop: true,
+        follow: player,
+        additive: true,
+      }),
+      duration,
+    );
+    return;
+  }
   const mesh = groundPatch(runeRingTexture, tint, 1.8);
   mesh.position.set(player.x, 0.06, player.z);
   scene.add(mesh);
@@ -377,9 +423,10 @@ export function screenAngle(x0, z0, x1, z1) {
  * `duration` seconds, then stops the effect and calls `onArrive`.
  */
 export function flyEffect(effect, x0, z0, target, duration, onArrive, trailColor = null) {
-  const element = trailColor === null ? null : ELEMENT_OF[trailColor] || null;
+  const isGlowing = SMOOTH && trailColor !== null;
+  const element = isGlowing ? ELEMENT_OF[trailColor] || null : null;
   /* a glow round the bolt in its colour */
-  const glow = trailColor === null ? null : halo(trailColor, 1.4);
+  const glow = isGlowing ? halo(trailColor, 1.4) : null;
   if (glow) {
     scene.add(glow);
   }
@@ -416,10 +463,15 @@ export function groundRing(x, z, color, startRadius, endRadius, duration, opacit
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
+  if (!SMOOTH) {
+    /* a flat band, drawn under the night haze like the ground it lies on */
+    material.map = null;
+    material.blending = THREE.NormalBlending;
+  }
   const mesh = new THREE.Mesh(ringGeometry, material);
   mesh.position.set(x, 0.05, z);
   /* over the night haze: a spell's ring lights up */
-  mesh.renderOrder = 10001;
+  mesh.renderOrder = SMOOTH ? 10001 : 0;
   scene.add(mesh);
   activeEffects.push({ mesh, time: 0, duration, startRadius, endRadius, opacity });
 }

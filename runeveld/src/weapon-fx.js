@@ -20,6 +20,7 @@ import * as THREE from "three";
 import { scene, camera, cameraState } from "./world.js";
 import { rarityOf } from "./rules/rarity.js";
 import { GLOW_SHAPE } from "./glow-points.js";
+import { SMOOTH } from "./sprites.js";
 
 /* per enchantment: the part it lights, glow (halo) and core colours, the light it casts at night (daylight.js) */
 const ELEMENTS = {
@@ -150,23 +151,32 @@ const glowFragment = /* glsl */ `
   }
 
   void main() {
-    vec2 q = vUv * vec2(22.0, 16.0);
+    /* without smooth sprites (PIXEL_GLOW) everything goes by whole pixels of the frame */
+    vec2 uv = vUv;
+    #ifdef PIXEL_GLOW
+    uv = (floor(vUv / uStep) + 0.5) * uStep;
+    #endif
+    vec2 q = uv * vec2(22.0, 16.0);
     float n;
-    vec2 base = vUv;
+    vec2 base = uv;
     if (uKind < 0.5) {
       /* flame: noise rising through it, and the halo pulled upwards like flames */
       n = noise(q + vec2(0.0, -uTime * 7.0)) * 0.7 + noise(q * 2.3 + vec2(0.0, -uTime * 11.0)) * 0.3;
+      #ifdef PIXEL_GLOW
+      base.y -= uStep * floor(n * 2.0);
+      #else
       base.y -= uStep * (1.5 + 2.5 * n);
+      #endif
     } else if (uKind < 1.5) {
       /* frost: a slow shimmer running up the blade */
-      n = 0.7 + 0.3 * sin(uTime * 2.2 + vUv.y * 26.0 + vUv.x * 9.0);
+      n = 0.7 + 0.3 * sin(uTime * 2.2 + uv.y * 26.0 + uv.x * 9.0);
     } else if (uKind < 2.5) {
       /* storms: a stuttering crackle */
       float flick = step(0.35, hash(vec2(floor(uTime * 18.0), 3.1)));
       n = (0.35 + 0.9 * step(0.62, noise(q * 1.7 + uTime * 26.0))) * (0.55 + 0.45 * flick);
     } else if (uKind < 3.5) {
       /* arcane: waves of light pulsing along it */
-      n = 0.55 + 0.45 * sin(uTime * 3.4 - (vUv.x + vUv.y) * 30.0);
+      n = 0.55 + 0.45 * sin(uTime * 3.4 - (uv.x + uv.y) * 30.0);
     } else if (uKind < 4.5) {
       /* radiance: a slow, warm breathing */
       n = 0.75 + 0.25 * sin(uTime * 1.7);
@@ -174,14 +184,23 @@ const glowFragment = /* glsl */ `
       /* refined armour: its own sheen below */
       n = 1.0;
     }
-    float own = alphaAt(vUv);
+    float own = alphaAt(uv);
     float halo = 0.0;
+    #ifdef PIXEL_GLOW
+    /* a hard outline one pixel wide round the weapon */
+    halo = max(
+      max(alphaAt(base + vec2(uStep, 0.0)), alphaAt(base - vec2(uStep, 0.0))),
+      max(alphaAt(base + vec2(0.0, uStep)), alphaAt(base - vec2(0.0, uStep)))
+    );
+    halo = step(0.5, halo) * 1.6;
+    #else
     for (int i = 0; i < 12; i++) {
       float angle = float(i) * 0.5235988;
       vec2 d = vec2(cos(angle), sin(angle)) * uStep;
       halo += alphaAt(base + d * 1.8) * 0.55 + alphaAt(base + d * 3.8) * 0.3 + alphaAt(base + d * 6.5) * 0.18;
     }
     halo = clamp(halo / 5.0, 0.0, 1.0);
+    #endif
     float edge = halo * (1.0 - own);
     vec3 color;
     if (uKind > 4.5) {
@@ -189,7 +208,7 @@ const glowFragment = /* glsl */ `
          often from +7); at +10 a golden rim besides */
       float period = uKind < 5.5 ? 3.6 : 2.2;
       float phase = fract(uTime / period) * 2.4 - 0.4;
-      float across = vUv.x * 0.6 + (1.0 - vUv.y);
+      float across = uv.x * 0.6 + (1.0 - uv.y);
       float band = exp(-pow((across - phase) * 9.0, 2.0));
       float sheen = uKind < 5.5 ? 0.35 : 0.45;
       color = uCore * own * band * sheen;
@@ -205,7 +224,7 @@ const glowFragment = /* glsl */ `
     if (uCross > 0.5) {
       /* a small cross of light in the middle of the shield's face: thin, the upright longer than the bar, which
          sits a little high, growing and shrinking a little as it breathes */
-      vec2 d = (vUv - uCenter) / uStep;
+      vec2 d = (uv - uCenter) / uStep;
       float reach = 3.6 + 0.8 * sin(uTime * 1.3);
       float barY = d.y - 1.0;
       float upright = exp(-d.x * d.x * 2.0) * exp(-d.y * d.y / (reach * reach));
@@ -213,7 +232,13 @@ const glowFragment = /* glsl */ `
       float heart = exp(-dot(d, d) / 3.0);
       color += uCore * max(upright, bar) * own * (0.6 + 0.3 * n) + uCore * heart * 0.25 * n;
     }
+    #ifdef PIXEL_GLOW
+    /* a few flat steps of light, as pixel art has */
+    color = floor(color * uStrength * 4.0 + 0.5) / 4.0;
+    gl_FragColor = vec4(color, 1.0);
+    #else
     gl_FragColor = vec4(color * uStrength, 1.0);
+    #endif
   }
 `;
 
@@ -233,6 +258,7 @@ function makeGlow(layer) {
     },
     vertexShader: glowVertex,
     fragmentShader: glowFragment,
+    defines: SMOOTH ? {} : { PIXEL_GLOW: "" },
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
@@ -322,7 +348,7 @@ function initCloud() {
       void main() {
         vColor = color;
         vShape = shape;
-        gl_PointSize = size * pixelsPerUnit;
+        gl_PointSize = size * pixelsPerUnit * ${SMOOTH ? "1.0" : "0.5"};
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
@@ -1062,6 +1088,10 @@ const placePoint = new THREE.Vector3();
  * `rate` times as many as from a weapon, and only while `active()` (when given) is true.
  */
 export function addFxPlace(place) {
+  /* the pixel art has no such light (smooth sprites off) */
+  if (!SMOOTH) {
+    return;
+  }
   places.push({ ...place, carry: null });
 }
 
@@ -1073,6 +1103,9 @@ export function fxStream(
   element,
   { x = 0, y = 1, z = 0, follow = null, spread = 0.3, rate = 1, seconds = 1 },
 ) {
+  if (!SMOOTH) {
+    return;
+  }
   places.push({
     element,
     x,
@@ -1091,6 +1124,9 @@ export function fxStream(
  * second) on top of their own motion: the impact of a spell.
  */
 export function fxBurst(element, x, y, z, { count = 24, spread = 0.2, speed = 1.5 } = {}) {
+  if (!SMOOTH) {
+    return;
+  }
   if (!cloud) {
     initCloud();
     initArcs();

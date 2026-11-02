@@ -5,9 +5,10 @@
    initParticles() has run. */
 import * as THREE from "three";
 import { GLOW_SHAPE } from "./glow-points.js";
+import { SMOOTH } from "./sprites.js";
 
-/* a share of the sparks are four-pointed sparkles, the rest round glows */
-const SPARKLE_SHARE = 0.3;
+/* a share of the sparks are four-pointed sparkles, the rest round glows (with smooth sprites) */
+const SPARKLE_SHARE = SMOOTH ? 0.3 : 0;
 
 const POOL = 480;
 let cloud = null;
@@ -34,7 +35,7 @@ export function initParticles(scene) {
         vColor = color;
         vShape = shape;
         /* soft light fills less of its square than a pixel: the glow is drawn larger */
-        gl_PointSize = size * pixelsPerUnit / 16.0 * (1.7 + shape * 0.7);
+        gl_PointSize = size * pixelsPerUnit / 16.0 * ${SMOOTH ? "(1.7 + shape * 0.7)" : "1.0"};
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,

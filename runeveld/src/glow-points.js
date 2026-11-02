@@ -1,11 +1,14 @@
 /* Eldoria – the look of a particle of light, shared by every point cloud that glows: the sparks of hits and spells
    (particles.js), an enchantment's particles (weapon-fx.js), fireflies and glints on the water (ambience.js) and the
-   embers over the lava (ember.js). Not a square pixel but soft light: a round glow fading from a white-hot heart, or
-   a four-pointed sparkle. */
+   embers over the lava (ember.js). With smooth sprites (sprites.js SMOOTH) soft light: a round glow fading from a
+   white-hot heart, or a four-pointed sparkle; without them a square pixel of light with a brighter core, as the
+   rest of the pixel art. */
 import * as THREE from "three";
+import { SMOOTH } from "./sprites.js";
 
 /** GLSL: how bright a point is at `coord` (gl_PointCoord); `star` 0 for a round glow, 1 for a sparkle. */
-export const GLOW_SHAPE = /* glsl */ `
+export const GLOW_SHAPE = SMOOTH
+  ? /* glsl */ `
   float glowShape(vec2 coord, float star) {
     vec2 p = coord * 2.0 - 1.0;
     float r2 = dot(p, p);
@@ -21,6 +24,15 @@ export const GLOW_SHAPE = /* glsl */ `
   vec3 glowColor(vec3 color, float light) {
     return color * light + vec3(pow(light, 4.0) * 0.45 * max(color.r, max(color.g, color.b)));
   }
+`
+  : /* glsl */ `
+  float glowShape(vec2 coord, float star) {
+    vec2 offset = abs(coord - 0.5);
+    return max(offset.x, offset.y) < 0.25 ? 1.0 : 0.55;
+  }
+  vec3 glowColor(vec3 color, float light) {
+    return color * light;
+  }
 `;
 
 /* a soft glow fills less of its square than a pixel does: points grow this much to read as bright */
@@ -31,6 +43,10 @@ const GROWTH = 2.4;
  * way to a sparkle, and `growth` times its size. Meant for additive, depth-write-free materials.
  */
 export function glowPoints(material, { star = 0, growth = GROWTH } = {}) {
+  if (!SMOOTH) {
+    /* the pixel points as they are */
+    return material;
+  }
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader.replace(
       "gl_PointSize = size;",

@@ -36,6 +36,7 @@ import {
   fxBurst,
   fxStream,
 } from "./skill-effects.js";
+import { SMOOTH } from "./sprites.js";
 import { ringBurst } from "./particles.js";
 
 /** Uses a hotbar entry: "sit", "red_potion" or a skill id. */
@@ -364,6 +365,12 @@ function frostburst(cast) {
   runeCircle(0x9ad8ff, 0.6);
   frostDisc(player.x, player.z, skill.radius * 1.1, 1.2);
   iceShardsAround(player.x, player.z, skill.radius * 0.72, 5, 1.7);
+  if (!SMOOTH) {
+    stopAfter(
+      playEffect("snow", player.x, player.z, { size: skill.radius * 2.2, y: 1.4, loop: true }),
+      0.8,
+    );
+  }
   glowFlash(player.x, 0.8, player.z, 0x9ad8ff, skill.radius * 1.5, 0.45);
   fxBurst("frost", player.x, 0.8, player.z, { count: 60, spread: 0.5, speed: skill.radius * 1.4 });
   setTimeout(() => {
@@ -778,6 +785,18 @@ function blizzard(cast) {
   iceShardsAround(player.x, player.z, skill.radius * 0.8, 8, 2.1);
   iceShardsAround(player.x, player.z, skill.radius * 0.4, 4, 1.6);
   groundRing(player.x, player.z, 0xdff4ff, 0.3, skill.radius * 1.2, 0.8, 0.8);
+  if (!SMOOTH) {
+    /* the pixel art's snowstorm and shockwave from the effect sheets */
+    stopAfter(
+      playEffect("snow", player.x, player.z, { size: skill.radius * 2.6, y: 2, loop: true }),
+      1.6,
+    );
+    playEffect("shockwave", player.x, player.z, {
+      size: skill.radius * 2.4,
+      y: 0.08,
+      tint: 0xdff4ff,
+    });
+  }
   glowFlash(player.x, 1, player.z, 0x9ad8ff, skill.radius * 1.2, 0.6);
   /* the storm: flakes whirling round the hero's spot, and snow falling over all of it */
   fxStream("flurry", {
@@ -842,6 +861,16 @@ function starfall(cast) {
   runeCircle(0xffb060, 0.7);
   fallingStar(impactX, impactZ, 0.6, () => {
     shakeCamera(0.35, 0.35);
+    if (!SMOOTH) {
+      /* the pixel art's blast from the effect sheets */
+      playEffect("mushroom_cloud", impactX, impactZ, {
+        size: skill.radius * 3,
+        grounded: true,
+        y: -0.1,
+      });
+      playEffect("fire_ring", impactX, impactZ, { size: skill.radius * 2.2, y: 0.2, delay: 0.08 });
+      flamesAround(impactX, impactZ, 1.8, 4, 2.2);
+    }
     glowFlash(impactX, 1.2, impactZ, 0xffa64a, skill.radius * 2.2, 0.8);
     glowFlash(impactX, 0.6, impactZ, 0xffffff, skill.radius * 1.4, 0.3);
     groundRing(impactX, impactZ, 0xffb060, 0.4, skill.radius * 1.4, 0.6, 0.95);
