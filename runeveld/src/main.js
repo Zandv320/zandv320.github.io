@@ -56,6 +56,15 @@ import { buildSaltmere, updateSaltmere } from "./saltmere.js";
 import { updateChase } from "./maelis.js";
 import { buildSea, updateSea } from "./sea.js";
 import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
+import {
+  buildLoginScene,
+  updateLoginScene,
+  hideLoginScene,
+  LOGIN_FIRES,
+  LOGIN_LIGHTS,
+  LOGIN_SPARKLES,
+  LOGIN_HOUR,
+} from "./login-scene.js";
 import { updateBurning } from "./burning.js";
 import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from "./sailing.js";
 import { BERTHS, BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
@@ -281,6 +290,7 @@ async function init() {
     buildSea,
     buildEmberIsles,
     buildForge,
+    buildLoginScene,
   ]);
   clickables.push(...cryptClickables(), ...sealClickables(), ...forgeClickables());
   createMerchant();
@@ -347,6 +357,8 @@ async function init() {
   setZoom(ZOOM_LEVELS[closerZoom]);
   cameraState.yaw = PODIUM.yaw;
   cameraState.tilt = THREE.MathUtils.degToRad(PODIUM.tilt);
+  /* the start screens are always at dusk */
+  setTimeOverride(LOGIN_HOUR);
   const podiumTarget = game.characterSelect.cameraTarget();
   cameraState.target.set(podiumTarget[0], podiumTarget[1], podiumTarget[2]);
 
@@ -386,13 +398,18 @@ function createWorldLights() {
     [CASTLE.x1 + 2.6, 5.2, 1.1],
     /* the camp fire in Cinder Cove */
     [...inCamp(2, 2), 1],
+    /* the fire baskets of the start screens' stone circle */
+    ...LOGIN_FIRES,
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
     lights.push({ x, z, y: 0.8, radius: 3.5 * size, color: [255, 160, 80], strength: 0.9 });
   }
+  for (const { x, z, ...options } of LOGIN_SPARKLES) {
+    playEffect("sparkle", x, z, { ...options, loop: true, fps: 8 });
+  }
   /* the lava of the Ember Isles glows all night */
-  lights.push(...emberLights);
+  lights.push(...emberLights, ...LOGIN_LIGHTS);
   return lights;
 }
 
@@ -540,6 +557,14 @@ function restoreHero(hero) {
   player.sp = Math.min(hero.sp, spMax());
 }
 
+/* Entering the world: the picture comes up out of black. */
+function fadeIn() {
+  const veil = document.createElement("div");
+  veil.className = "world-fade";
+  document.body.append(veil);
+  veil.addEventListener("animationend", () => veil.remove());
+}
+
 /* Enters the world with hero number `index` from the list; a hero without a level is new. */
 async function start(index) {
   const heroList = game.heroList;
@@ -569,6 +594,9 @@ async function start(index) {
   setZoom(defaultZoom);
   cameraState.yaw = 0;
   cameraState.tilt = defaultTilt;
+  setTimeOverride(null);
+  hideLoginScene();
+  fadeIn();
   showNpcs(true);
   if (hero.level) {
     restoreHero(hero);
@@ -576,6 +604,8 @@ async function start(index) {
     player.hp = hpMax();
     player.sp = spMax();
   }
+  /* straight to the hero, not a flight across the world from the stone circle */
+  cameraState.target.set(player.x, 0, player.z);
 
   /* this hero's clothes are only loaded now */
   await loadLayersFor(player.equipment);
@@ -2254,6 +2284,9 @@ function step(dt) {
     game.characterSelect.tick(dt);
   }
   const time = now();
+  if (!game.isStarted) {
+    updateLoginScene(dt, time);
+  }
   if (!game.isStarted && game.characterSelect && game.characterSelect.isOpen()) {
     const target = game.characterSelect.cameraTarget();
     cameraFocus.set(target[0], target[1], target[2]);

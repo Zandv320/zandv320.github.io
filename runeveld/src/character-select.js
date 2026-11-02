@@ -7,11 +7,20 @@ import { inForest, FOREST } from "./regions.js";
 import { escapeHtml } from "./ui.js";
 import { SHEETS } from "./sheets.js";
 import { Sprite2D } from "./sprites.js";
+import { LOGIN_PODIUM } from "./login-scene.js";
 import * as THREE from "three";
 
 export const MAX_HEROES = 6;
-/* Where the chosen hero stands: in front of the well on the square, facing the camera. */
-export const PODIUM = { x: 0, z: 4.5, yaw: 0, tilt: 36 };
+/* Where the chosen hero stands: in the stone circle above the clouds (login-scene.js), facing a camera that looks
+   along the ground more than down on it. */
+export const PODIUM = { ...LOGIN_PODIUM, yaw: 0, tilt: 24 };
+
+/* The opening shot: the camera comes down out of the sky and swings round to the hero while it closes in; then the
+   title rises and the rest of the screen comes in. A click or a key skips it. */
+const INTRO_SECONDS = 5.5;
+const INTRO_FROM = { yaw: -0.85, tilt: 66, zoom: 0.42 };
+const TITLE_AT = 0.62;
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 const DEFAULT_HAIR = "plum";
 const DEFAULT_CLASS = "swordsman";
@@ -98,23 +107,81 @@ export function createCharacterSelect(deps) {
 
   /* The hero about a quarter of the stage high (40 to 110 CSS pixels), zoomed in whole steps of the pixel art so
      the pixels stay crisp; never further out than the game itself. */
-  function fitZoom() {
+  function fittedZoom() {
     const rect = stageRect();
     const heroUnits = SHEETS.hero.height * SHEETS.hero.scale;
     const wantedCss = Math.max(40, Math.min(110, rect.height * 0.24, rect.width * 0.22));
     const step = 16;
     const px = Math.floor(((wantedCss / heroUnits) * deps.pixelRatio()) / step) * step;
-    const zoom = Math.max(deps.minZoom(), Math.min(px, 160));
+    return Math.max(deps.minZoom(), Math.min(px, 160));
+  }
+
+  /* {start} (seconds, by the clock: a slow frame rate must not stretch it) while the opening shot runs */
+  let intro = null;
+  let hasPlayedIntro = false;
+
+  function startIntro() {
+    hasPlayedIntro = true;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      startScreen.classList.add("ui-in", "title-in");
+      return;
+    }
+    intro = { start: performance.now() / 1000 };
+    startScreen.classList.add("intro");
+    startScreen.classList.remove("ui-in", "title-in");
+  }
+
+  function endIntro() {
+    intro = null;
+    startScreen.classList.remove("intro");
+    startScreen.classList.add("title-in", "ui-in");
+    deps.cameraState.yaw = PODIUM.yaw;
+    deps.cameraState.tilt = THREE.MathUtils.degToRad(PODIUM.tilt);
+  }
+
+  /* the camera along the opening shot; at the end the screen is as it always is */
+  function stepIntro() {
+    const progress = Math.min(1, (performance.now() / 1000 - intro.start) / INTRO_SECONDS);
+    const eased = easeInOut(progress);
+    const { cameraState } = deps;
+    cameraState.yaw = THREE.MathUtils.lerp(INTRO_FROM.yaw, PODIUM.yaw, eased);
+    cameraState.tilt = THREE.MathUtils.degToRad(
+      THREE.MathUtils.lerp(INTRO_FROM.tilt, PODIUM.tilt, eased),
+    );
+    deps.setZoom(fittedZoom() * THREE.MathUtils.lerp(INTRO_FROM.zoom, 1, eased));
+    if (progress >= TITLE_AT) {
+      startScreen.classList.add("title-in");
+    }
+    if (progress >= 1) {
+      endIntro();
+    }
+  }
+
+  function fitZoom() {
+    const zoom = fittedZoom();
     if (zoom !== deps.cameraState.px) {
       deps.setZoom(zoom);
     }
   }
 
+  /* a click or a key during the opening shot skips to its end */
+  const skipIntro = () => {
+    if (intro) {
+      endIntro();
+    }
+  };
+  addEventListener("pointerdown", skipIntro, { capture: true });
+  addEventListener("keydown", skipIntro, { capture: true });
+
   function tick(dt) {
     if (!isOpenNow) {
       return;
     }
-    fitZoom();
+    if (intro) {
+      stepIntro();
+    } else {
+      fitZoom();
+    }
     const list = heroes();
     const hero =
       screen === "create"
@@ -403,6 +470,9 @@ export function createCharacterSelect(deps) {
   function show() {
     isOpenNow = true;
     startScreen.hidden = false;
+    if (!hasPlayedIntro) {
+      startIntro();
+    }
     showScreen(heroes().length ? "select" : "create");
     if (screen === "create") {
       hair = DEFAULT_HAIR;
