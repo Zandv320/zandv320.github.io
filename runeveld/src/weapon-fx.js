@@ -415,6 +415,7 @@ function particleColor(particle, t) {
     case "ember":
       return scratch.copy(FLAME_MID).lerp(FLAME_HOT, 0.4 + 0.4 * Math.sin(particle.seed + t * 20));
     case "snow":
+    case "flurry":
       /* it twinkles as it falls */
       return mixColor(FROST_LIGHT, FROST_BLUE, t, scratch).multiplyScalar(
         0.55 + 0.45 * Math.abs(Math.sin(particle.seed + t * 14)),
@@ -474,11 +475,11 @@ function updateCloud(dt) {
     }
     particle.age += dt;
     const t = Math.min(1, particle.age / particle.life);
-    if (particle.kind === "mote") {
+    if (particle.kind === "mote" || particle.kind === "flurry") {
       /* arcane motes circle their weapon as they rise */
       const dx = particle.x - particle.cx;
       const dz = particle.z - particle.cz;
-      const turn = dt * 3.2;
+      const turn = dt * (particle.kind === "flurry" ? 2.2 : 3.2);
       particle.x = particle.cx + dx * Math.cos(turn) - dz * Math.sin(turn);
       particle.z = particle.cz + dx * Math.sin(turn) + dz * Math.cos(turn);
     } else if (particle.kind === "flame" || particle.kind === "ember") {
@@ -829,6 +830,24 @@ const rising = (
 ];
 EMITTERS.heal = [rising("heal"), [4, EMITTERS.radiance[1][1]]];
 EMITTERS.mana = [rising("mana")];
+/* a snowstorm: flakes that whirl round the storm's middle as they fall, and some that only fall */
+EMITTERS.flurry = [
+  [
+    30,
+    (p) => ({
+      kind: "flurry",
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      vy: random(-1.1, -0.5),
+      life: random(1, 1.8),
+      size0: random(0.12, 0.2),
+      size1: 0.05,
+      shape: Math.random() < 0.5 ? 1 : 0,
+    }),
+  ],
+  EMITTERS.frost[1],
+];
 EMITTERS.rage = [rising("rage", { speed: [0.6, 1.4], life: [0.4, 0.8], star: 0.2 })];
 EMITTERS.dust = [
   [
@@ -1148,7 +1167,13 @@ function emitFromPlaces(dt) {
           place.y + random(-spread, spread) * 0.4,
           place.z + random(-spread, spread),
         );
-        emit(make(placePoint));
+        const particle = make(placePoint);
+        if (particle.kind === "flurry") {
+          /* a snowstorm's flakes whirl round its middle */
+          particle.cx = place.x;
+          particle.cz = place.z;
+        }
+        emit(particle);
       }
     });
   }

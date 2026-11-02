@@ -26,8 +26,10 @@ import {
   runeCircle,
   stopAfter,
   screenAngle,
-  flyEffect,
   launchProjectile,
+  frostDisc,
+  scorch,
+  fallingStar,
   groundRing,
   wardAura,
   glowFlash,
@@ -360,12 +362,8 @@ function frostburst(cast) {
   sfx.skill();
   shakeCamera(0.12, 0.2);
   runeCircle(0x9ad8ff, 0.6);
-  playEffect("frost_ground", player.x, player.z, { size: skill.radius * 2.6, y: 0.06 });
+  frostDisc(player.x, player.z, skill.radius * 1.1, 1.2);
   iceShardsAround(player.x, player.z, skill.radius * 0.72, 5, 1.7);
-  stopAfter(
-    playEffect("snow", player.x, player.z, { size: skill.radius * 2.2, y: 1.4, loop: true }),
-    0.8,
-  );
   glowFlash(player.x, 0.8, player.z, 0x9ad8ff, skill.radius * 1.5, 0.45);
   fxBurst("frost", player.x, 0.8, player.z, { count: 60, spread: 0.5, speed: skill.radius * 1.4 });
   setTimeout(() => {
@@ -776,26 +774,27 @@ function blizzard(cast) {
   sfx.skill();
   shakeCamera(0.2, 0.3);
   runeCircle(0xbfe8ff, 1);
-  playEffect("frost_ground", player.x, player.z, { size: skill.radius * 2.5, y: 0.06 });
+  frostDisc(player.x, player.z, skill.radius * 1.15, 2);
   iceShardsAround(player.x, player.z, skill.radius * 0.8, 8, 2.1);
   iceShardsAround(player.x, player.z, skill.radius * 0.4, 4, 1.6);
-  stopAfter(
-    playEffect("snow", player.x, player.z, { size: skill.radius * 2.6, y: 2, loop: true }),
-    1.6,
-  );
-  playEffect("shockwave", player.x, player.z, {
-    size: skill.radius * 2.4,
-    y: 0.08,
-    tint: 0xdff4ff,
+  groundRing(player.x, player.z, 0xdff4ff, 0.3, skill.radius * 1.2, 0.8, 0.8);
+  glowFlash(player.x, 1, player.z, 0x9ad8ff, skill.radius * 1.2, 0.6);
+  /* the storm: flakes whirling round the hero's spot, and snow falling over all of it */
+  fxStream("flurry", {
+    x: player.x,
+    z: player.z,
+    y: 2.4,
+    spread: skill.radius * 0.85,
+    rate: 4,
+    seconds: 1.8,
   });
-  glowFlash(player.x, 1, player.z, 0xbfe8ff, skill.radius * 1.8, 0.6);
   fxStream("frost", {
     x: player.x,
     z: player.z,
-    y: 2,
-    spread: skill.radius * 0.8,
-    rate: 5,
-    seconds: 1.6,
+    y: 2.6,
+    spread: skill.radius * 0.9,
+    rate: 3,
+    seconds: 1.8,
   });
   setTimeout(() => {
     const ids = [];
@@ -841,32 +840,34 @@ function starfall(cast) {
   const impactX = monster.x;
   const impactZ = monster.z;
   runeCircle(0xffb060, 0.7);
-  playEffect("comet", impactX - 2.5, impactZ - 4, {
-    size: 3.2,
-    y: 5,
-    mirror: false,
-    loop: true,
-  }).stop();
-  const comet = playEffect("comet", impactX - 3, impactZ, { size: 3.4, y: 6, loop: true });
-  flyEffect(comet, impactX - 3, impactZ, { x: impactX, z: impactZ }, 0.55, () => {}, 0xffb347);
-  setTimeout(() => {
-    playEffect("mushroom_cloud", impactX, impactZ, {
-      size: skill.radius * 3,
-      grounded: true,
-      y: -0.1,
-    });
-    playEffect("fire_ring", impactX, impactZ, { size: skill.radius * 2.2, y: 0.2, delay: 0.08 });
-    flamesAround(impactX, impactZ, 1.8, 4, 2.2);
+  fallingStar(impactX, impactZ, 0.6, () => {
     shakeCamera(0.35, 0.35);
-    glowFlash(impactX, 1, impactZ, 0xffb060, skill.radius * 2.6, 0.7);
-    fxBurst("flame", impactX, 0.6, impactZ, { count: 70, spread: 0.6, speed: skill.radius * 1.6 });
-    fxBurst("hearth", impactX, 0.4, impactZ, { count: 30, spread: 0.8, speed: 1.2 });
-    groundRing(impactX, impactZ, 0xffb060, 0.4, skill.radius * 1.2, 0.6, 0.9);
+    glowFlash(impactX, 1.2, impactZ, 0xffa64a, skill.radius * 2.2, 0.8);
+    glowFlash(impactX, 0.6, impactZ, 0xffffff, skill.radius * 1.4, 0.3);
+    groundRing(impactX, impactZ, 0xffb060, 0.4, skill.radius * 1.4, 0.6, 0.95);
+    groundRing(impactX, impactZ, 0xfff0d0, 0.2, skill.radius * 0.9, 0.4, 0.8);
+    scorch(impactX, impactZ, skill.radius * 0.9, 4);
+    fxBurst("flame", impactX, 0.6, impactZ, { count: 90, spread: 0.6, speed: skill.radius * 1.8 });
+    fxBurst("hearth", impactX, 0.4, impactZ, { count: 40, spread: 0.8, speed: 1.4 });
+    fxBurst("dust", impactX, 0.3, impactZ, { count: 30, spread: 1, speed: 2 });
+    /* a column of fire where it struck, and flames that burn on round it */
+    fxStream("flame", { x: impactX, z: impactZ, y: 0.4, spread: 0.4, rate: 3, seconds: 0.7 });
+    for (let k = 0; k < 5; k++) {
+      const angle = (k / 5) * Math.PI * 2 + Math.random() * 0.5;
+      fxStream("hearth", {
+        x: impactX + Math.cos(angle) * 1.6,
+        z: impactZ + Math.sin(angle) * 1.6,
+        y: 0.2,
+        spread: 0.25,
+        rate: 1.4,
+        seconds: 2.2,
+      });
+    }
     sfx.hit(true);
     for (const target of monstersInRadius(impactX, impactZ, skill.radius)) {
       hitMonster(target, spell(cast), "starfall");
     }
-  }, 600);
+  });
 }
 
 /* Wellspring: restores a share of the maximum SP; costs no SP */

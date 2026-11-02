@@ -100,31 +100,261 @@ export function flamesAround(x, z, radius, count, duration, name = "fire", size 
   }
 }
 
-/** Ice shards in a circle (frost spells). */
+/* a canvas texture of `size` pixels, drawn by draw(ctx, size), smooth */
+function canvasTexture(size, draw) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  draw(canvas.getContext("2d"), size);
+  return new THREE.CanvasTexture(canvas);
+}
+
+/* a circle of runes: two rings, runes between them and a six-pointed star, in soft light */
+const runeRingTexture = canvasTexture(256, (ctx, size) => {
+  const middle = size / 2;
+  ctx.strokeStyle = "#fff";
+  ctx.shadowColor = "#fff";
+  ctx.shadowBlur = 6;
+  ctx.lineWidth = 3;
+  for (const radius of [120, 98]) {
+    ctx.beginPath();
+    ctx.arc(middle, middle, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(middle, middle, 90, 0, Math.PI * 2);
+  ctx.stroke();
+  /* runes between the outer rings: small strokes, each a little different */
+  for (let k = 0; k < 18; k++) {
+    const angle = (k / 18) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(middle + Math.cos(angle) * 109, middle + Math.sin(angle) * 109);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(0, 6);
+    if (k % 3 === 0) {
+      ctx.moveTo(-4, -2);
+      ctx.lineTo(4, 2);
+    } else if (k % 3 === 1) {
+      ctx.moveTo(0, -6);
+      ctx.lineTo(4, -1);
+    } else {
+      ctx.moveTo(-4, 3);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(4, 3);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  /* the star */
+  ctx.beginPath();
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 - Math.PI / 2;
+    const b = ((k + 2) / 6) * Math.PI * 2 - Math.PI / 2;
+    ctx.moveTo(middle + Math.cos(a) * 90, middle + Math.sin(a) * 90);
+    ctx.lineTo(middle + Math.cos(b) * 90, middle + Math.sin(b) * 90);
+  }
+  ctx.stroke();
+});
+
+/* frost on the ground: a pale disc, brighter in the middle, with streaks of ice out to its edge */
+const frostTexture = canvasTexture(256, (ctx, size) => {
+  const middle = size / 2;
+  const gradient = ctx.createRadialGradient(middle, middle, 0, middle, middle, middle);
+  gradient.addColorStop(0, "rgba(255,255,255,0.75)");
+  gradient.addColorStop(0.6, "rgba(255,255,255,0.35)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 2;
+  for (let k = 0; k < 28; k++) {
+    const angle = (k / 28) * Math.PI * 2 + Math.sin(k * 7.3) * 0.1;
+    const from = 16 + (k % 4) * 10;
+    const to = 70 + ((k * 37) % 50);
+    ctx.beginPath();
+    ctx.moveTo(middle + Math.cos(angle) * from, middle + Math.sin(angle) * from);
+    ctx.lineTo(middle + Math.cos(angle) * to, middle + Math.sin(angle) * to);
+    /* a little branch */
+    const branch = (from + to) / 2;
+    ctx.moveTo(middle + Math.cos(angle) * branch, middle + Math.sin(angle) * branch);
+    ctx.lineTo(
+      middle + Math.cos(angle + 0.12) * (branch + 14),
+      middle + Math.sin(angle + 0.12) * (branch + 14),
+    );
+    ctx.stroke();
+  }
+});
+
+/* a burnt patch: dark in the middle, fading out */
+const scorchTexture = canvasTexture(128, (ctx, size) => {
+  const middle = size / 2;
+  const gradient = ctx.createRadialGradient(middle, middle, 0, middle, middle, middle);
+  gradient.addColorStop(0, "rgba(20,10,6,0.85)");
+  gradient.addColorStop(0.55, "rgba(30,16,10,0.5)");
+  gradient.addColorStop(1, "rgba(30,16,10,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+});
+
+/* a flat patch of light (or shade) on the ground of `radius`, over the night haze when it glows */
+function groundPatch(texture, color, radius, { additive = true } = {}) {
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(radius * 2, radius * 2).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({
+      map: texture,
+      color,
+      transparent: true,
+      opacity: 0,
+      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      depthWrite: false,
+    }),
+  );
+  mesh.renderOrder = additive ? 10001 : 1;
+  return mesh;
+}
+
+/* an effect that runs for `duration` seconds: tick(progress, time) each frame, then done() */
+function timed(duration, tick, done = () => {}) {
+  activeEffects.push({ time: 0, duration, tick, done });
+}
+
+/* fades in quickly, holds, fades out over the last `fade` of its life */
+const envelope = (progress, fadeIn = 0.12, fadeOut = 0.35) =>
+  Math.min(1, progress / fadeIn, (1 - progress) / fadeOut);
+
+/** Ice crystals that shoot up out of the ground in a circle, stand a moment and burst into frost (frost spells). */
 export function iceShardsAround(x, z, radius, count, size) {
+  const iceMaterial = new THREE.MeshLambertMaterial({
+    color: 0xcdeeff,
+    emissive: 0x3b86c8,
+    transparent: true,
+    opacity: 0.88,
+    flatShading: true,
+  });
+  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0xf4fcff });
   for (let k = 0; k < count; k++) {
     const angle = (k / count) * Math.PI * 2 + Math.random() * 0.6;
-    playEffect("ice_shards", x + Math.cos(angle) * radius, z + Math.sin(angle) * radius, {
-      size,
-      grounded: true,
-      delay: 0.05 + Math.random() * 0.2,
-    });
+    const cx = x + Math.cos(angle) * radius;
+    const cz = z + Math.sin(angle) * radius;
+    const crystal = new THREE.Group();
+    /* two or three shards leaning out of one spot */
+    for (let n = 0; n < 2 + (k % 2); n++) {
+      const geometry = new THREE.OctahedronGeometry(0.28 * size * (1 - n * 0.25), 0);
+      geometry.scale(0.5, 2.4, 0.5);
+      const shard = new THREE.Mesh(geometry, iceMaterial);
+      shard.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry), edgeMaterial));
+      shard.position.set((n - 1) * 0.18 * size, 0, (n % 2) * 0.12 * size);
+      shard.rotation.set((Math.random() - 0.5) * 0.6, Math.random() * 3, (n - 1) * 0.35);
+      crystal.add(shard);
+    }
+    crystal.position.set(cx, 0, cz);
+    crystal.scale.set(1, 0.01, 1);
+    scene.add(crystal);
+    const delay = 0.05 + Math.random() * 0.2;
+    const life = 1.1 + Math.random() * 0.3;
+    timed(
+      delay + life,
+      (progress, time) => {
+        const t = Math.max(0, time - delay);
+        /* shoots up with an overshoot, stands, sinks back at the end */
+        const grow = t < 0.16 ? (t / 0.16) * 1.15 : t < 0.26 ? 1.15 - ((t - 0.16) / 0.1) * 0.15 : 1;
+        const sink = t > life - 0.2 ? Math.max(0.01, (life - t) / 0.2) : 1;
+        crystal.scale.set(1, Math.max(0.01, grow * sink), 1);
+      },
+      () => {
+        scene.remove(crystal);
+        fxBurst("frost", cx, 0.5, cz, { count: 10, spread: 0.2, speed: 0.9 });
+      },
+    );
   }
 }
 
-/** The rune circle under the caster, for `duration` seconds. */
+/** A disc of frost on the ground of `radius` round (x, z) for `duration` seconds. */
+export function frostDisc(x, z, radius, duration) {
+  const mesh = groundPatch(frostTexture, 0xbfe8ff, radius);
+  mesh.position.set(x, 0.05, z);
+  mesh.rotation.y = Math.random() * Math.PI;
+  scene.add(mesh);
+  timed(
+    duration,
+    (progress) => {
+      mesh.material.opacity = 0.8 * envelope(progress, 0.1, 0.4);
+    },
+    () => {
+      scene.remove(mesh);
+      mesh.material.dispose();
+    },
+  );
+}
+
+/** A burnt patch of `radius` that fades over `duration` seconds (where a star fell). */
+export function scorch(x, z, radius, duration) {
+  const mesh = groundPatch(scorchTexture, 0xffffff, radius, { additive: false });
+  mesh.position.set(x, 0.045, z);
+  scene.add(mesh);
+  timed(
+    duration,
+    (progress) => {
+      mesh.material.opacity = envelope(progress, 0.05, 0.6);
+    },
+    () => {
+      scene.remove(mesh);
+      mesh.material.dispose();
+    },
+  );
+}
+
+/**
+ * A star falling out of the sky onto (x, z) in `duration` seconds, from high up and off to one side: a white-hot
+ * heart in an orange glow, with a tail of flames and embers behind it. onArrive() when it strikes.
+ */
+export function fallingStar(x, z, duration, onArrive) {
+  const heart = halo(0xffffff, 1.1);
+  const glow = halo(0xff9a3c, 3.2);
+  scene.add(heart, glow);
+  const from = new THREE.Vector3(x - 5, 9, z - 2);
+  const to = new THREE.Vector3(x, 0.4, z);
+  const position = new THREE.Vector3();
+  timed(
+    duration,
+    (progress) => {
+      /* faster as it falls */
+      position.lerpVectors(from, to, progress * progress);
+      heart.position.copy(position);
+      glow.position.copy(position);
+      glow.material.opacity = 0.8 + 0.2 * Math.sin(progress * 60);
+      fxBurst("flame", position.x, position.y, position.z, { count: 9, spread: 0.25, speed: 0.5 });
+      fxBurst("hearth", position.x, position.y, position.z, { count: 2, spread: 0.3, speed: 0.3 });
+    },
+    () => {
+      scene.remove(heart, glow);
+      heart.material.dispose();
+      glow.material.dispose();
+      onArrive();
+    },
+  );
+}
+
+/** The rune circle under the caster for `duration` seconds: a turning ring of runes in soft light. */
 export function runeCircle(tint, duration) {
-  const circle = playEffect("rune_circle", player.x, player.z, {
-    size: 3.4,
-    y: 0.05,
-    tint,
-    loop: true,
-    follow: player,
-    additive: true,
-  });
-  if (circle) {
-    setTimeout(() => circle.stop(), duration * 1000);
-  }
+  const mesh = groundPatch(runeRingTexture, tint, 1.8);
+  mesh.position.set(player.x, 0.06, player.z);
+  scene.add(mesh);
+  timed(
+    duration + 0.3,
+    (progress, time) => {
+      mesh.position.set(player.x, 0.06, player.z);
+      mesh.rotation.y = time * 1.4;
+      mesh.material.opacity = 0.95 * envelope(progress, 0.15, 0.3);
+      mesh.scale.setScalar(0.85 + 0.15 * Math.min(1, progress / 0.15));
+    },
+    () => {
+      scene.remove(mesh);
+      mesh.material.dispose();
+    },
+  );
 }
 
 /** Stops a (looping) effect after `duration` seconds; returns the effect. */
@@ -216,10 +446,20 @@ export function updateSkillEffects(dt) {
     entry.time += dt;
     const progress = Math.min(1, entry.time / entry.duration);
 
+    if (entry.tick) {
+      entry.tick(progress, entry.time);
+      if (progress >= 1) {
+        activeEffects.splice(i, 1);
+        entry.done();
+      }
+      continue;
+    }
+
     if (entry.flash) {
       /* swells fast, fades slower */
       entry.flash.scale.setScalar(entry.size * (0.4 + 0.6 * Math.sqrt(progress)));
-      entry.flash.material.opacity = 1 - progress * progress;
+      /* soft enough that the scene still shows through its heart */
+      entry.flash.material.opacity = 0.7 * (1 - progress * progress);
       if (progress >= 1) {
         scene.remove(entry.flash);
         entry.flash.material.dispose();
