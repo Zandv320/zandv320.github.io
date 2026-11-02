@@ -130,6 +130,21 @@ export class HeroStore extends DurableObject {
     return hero;
   }
 
+  /**
+   * Admin: puts `count` of an item in this hero's bag (as far as it fits). The World has checked that the account
+   * is an admin. Returns the hero, or null for an unknown hero or item.
+   */
+  async giveItem(token, name, id, count) {
+    const roster = await this.#getRoster(token);
+    const hero = this.#findHero(roster, name);
+    if (!hero || !ITEMS[id]) {
+      return null;
+    }
+    progression.addToBag(hero, id, Math.max(1, Math.min(99, Math.floor(+count) || 1)));
+    await this.#persist(token, roster);
+    return hero;
+  }
+
   /** Stores the volatile fields the client does keep itself (hp, sp, position); returns the hero or null. */
   async save(token, name, volatileFields) {
     const roster = await this.#getRoster(token);

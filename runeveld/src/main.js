@@ -688,6 +688,7 @@ function createPanels(name) {
     teleport,
     startStory,
     setProfessions,
+    giveItem,
     spawnMonster,
     killMonster,
     killAll,
@@ -1071,6 +1072,29 @@ async function startStory(questId) {
     }
   }
   saveProgress();
+}
+
+/* Admin: put items in the bag; on the server too, which only allows it for admin accounts. Resolves true when
+   the items are in the bag (the server's too, if there is one). */
+async function giveItem(id, count) {
+  if (!addToBag(id, count)) {
+    return false;
+  }
+  game.inventory.render();
+  const network = game.network;
+  if (!network.usesServer()) {
+    saveProgress();
+    return true;
+  }
+  const response = await network.request({ kind: "admin_give", id, count });
+  if (response && response.hero) {
+    applyHeroRecord(response.hero);
+    return true;
+  }
+  UI.systemMessage(
+    "The server did not allow it: only admin accounts can give themselves items there.",
+  );
+  return false;
 }
 
 /* Admin: set profession levels ({id: level}); on the server too, which only allows it for admin accounts. */

@@ -13,6 +13,13 @@ import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
 import { CAMP_WAKE, MOUNT_KHAROS, EMBER_LANDS } from "./rules/ember.js";
 import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
 import { PROFESSIONS, MAX_PROFESSION_LEVEL, professionLevel } from "./rules/professions.js";
+import { RARITIES, rarityOf } from "./rules/rarity.js";
+import { itemLevel } from "./rules/item-level.js";
+import { effectLines } from "./rules/item-effects.js";
+import { icon } from "./icons.js";
+import { itemStatText, setText } from "./character-sheet.js";
+import { heroLayers, drawHero } from "./appearance.js";
+import { equip } from "./bag.js";
 
 const ADMIN_KEY = "eldoria.admin";
 const TOKEN_KEY = "eldoria.token";
@@ -24,7 +31,7 @@ const ZONE_COLORS = { rabbit: 0x9fe3b0, fox: 0xffb84d, boar: 0xff6b6b };
 
 /**
  * @param {object} ctx {player, monsters, peers, cameraState, camera, scene, renderer, ADMIN, setZoom, network(),
- *   isHost(), addToBag, setLevel, setJobLevel, setProfessions, respec, teleport, spawnMonster, killMonster, killAll, respawnAll,
+ *   isHost(), addToBag, giveItem, setLevel, setJobLevel, setProfessions, respec, teleport, spawnMonster, killMonster, killAll, respawnAll,
  *   refreshAppearance, save, restore, exportSave, importSave, resetSave, derived, obstacles, render, timeOfDay(),
  *   setTimeOverride}
  */
@@ -250,19 +257,170 @@ export function createAdminPanel(ctx) {
       ["All 1", () => allProfessions(1), "danger"],
     ]);
 
-    /* ---------- items ---------- */
+    /* ---------- items: search, filter by kind and rarity, a preview, give ---------- */
     group = section("Items");
-    const itemSelect = element("select");
-    for (const [id, item] of Object.entries(ITEMS)) {
-      itemSelect.appendChild(element("option", { value: id }, `${item.icon} ${item.name}`));
+    const itemGroup = group;
+    const ITEM_KINDS = [
+      ["all", "All"],
+      ["weapon", "Weapons"],
+      ["armor", "Armour"],
+      ["cloak", "Cloaks"],
+      ["shield", "Shields"],
+      ["jewel", "Jewels"],
+      ["use", "Usable"],
+      ["rune", "Runes"],
+      ["material", "Materials"],
+    ];
+    const kindOfItem = (item) => {
+      if (item.rune) return "rune";
+      if (item.slot === "weapon" || item.slot === "cloak" || item.slot === "shield")
+        return item.slot;
+      if (item.slot === "ring" || item.slot === "necklace") return "jewel";
+      if (item.slot) return "armor";
+      return item.use ? "use" : "material";
+    };
+    /* one of a kind, for the preview */
+    const KIND_NAMES = {
+      weapon: "Weapon",
+      armor: "Armour",
+      cloak: "Cloak",
+      shield: "Shield",
+      jewel: "Jewel",
+      use: "Usable",
+      rune: "Rune",
+      material: "Material",
+    };
+    /* the slots a preview can show the hero wearing */
+    const VISIBLE_SLOTS = ["weapon", "body", "head", "cloak", "shield"];
+    const itemFilter = { text: "", kind: "all", rarity: "" };
+    let selectedItem = Object.keys(ITEMS)[0];
+
+    const searchInput = element("input", { type: "text", placeholder: "Search items…" });
+    row(group, "Find", searchInput);
+    const raritySelect = element("select");
+    raritySelect.appendChild(element("option", { value: "" }, "Any rarity"));
+    for (const [grade, info] of Object.entries(RARITIES)) {
+      raritySelect.appendChild(element("option", { value: grade }, info.name));
     }
+    row(group, "Rarity", raritySelect);
+    const chips = element("div", { class: "admin-chips" });
+    for (const [kind, label] of ITEM_KINDS) {
+      const chip = element("button", { class: "admin-chip", "data-kind": kind }, label);
+      chips.appendChild(chip);
+    }
+    group.appendChild(chips);
+    const grid = element("div", { class: "admin-item-grid" });
+    group.appendChild(grid);
+    const preview = element("div", { class: "admin-item-preview" });
+    const heroCanvas = element("canvas", { class: "admin-item-hero", width: 72, height: 80 });
+    const previewInfo = element("div", { class: "admin-item-info" });
+    preview.append(heroCanvas, previewInfo);
+    group.appendChild(preview);
     const countInput = element("input", { type: "number", min: 1, max: 99, value: 1 });
     const giveButton = element("button", { class: "admin-btn" }, "Give");
-    giveButton.onclick = () => {
-      ctx.addToBag(itemSelect.value, +countInput.value || 1);
+    const equipButton = element("button", { class: "admin-btn" }, "Give & equip");
+    row(group, "", countInput, giveButton, equipButton);
+
+    const matches = (id, item) =>
+      (itemFilter.kind === "all" || kindOfItem(item) === itemFilter.kind) &&
+      (!itemFilter.rarity || rarityOf(id) === itemFilter.rarity) &&
+      (!itemFilter.text ||
+        item.name.toLowerCase().includes(itemFilter.text) ||
+        id.includes(itemFilter.text));
+
+    function renderItemGrid() {
+      const ids = Object.keys(ITEMS).filter((id) => matches(id, ITEMS[id]));
+      grid.innerHTML = ids.length
+        ? ids
+            .map(
+              (id) =>
+                `<button class="admin-item ${UI.rarityClass(id)} ${id === selectedItem ? "selected" : ""}" data-item="${id}" title="${UI.escapeHtml(ITEMS[id].name)}">${icon(id, ITEMS[id].icon)}</button>`,
+            )
+            .join("")
+        : '<p class="admin-mono">No item fits.</p>';
+      for (const chip of chips.children) {
+        chip.classList.toggle("on", chip.dataset.kind === itemFilter.kind);
+      }
+    }
+
+    function renderItemPreview() {
+      const item = ITEMS[selectedItem];
+      const grade = rarityOf(selectedItem);
+      const level = itemLevel(selectedItem);
+      const kind = [grade ? RARITIES[grade].name : "", KIND_NAMES[kindOfItem(item)]]
+        .filter(Boolean)
+        .join(" · ");
+      const stats = itemStatText(item);
+      const unique = effectLines(selectedItem)
+        .map((line) => "Unique: " + UI.escapeHtml(line))
+        .join("<br>");
+      previewInfo.innerHTML =
+        `<div class="admin-item-head">${icon(selectedItem, item.icon)}<div><b class="rname ${UI.rarityClass(selectedItem)}">${UI.escapeHtml(item.name)}</b>` +
+        `<small>${UI.escapeHtml(kind)}${level > 1 ? ` · level ${level}` : ""} · ${item.price || 0} zeny</small></div></div>` +
+        (stats ? `<small class="item-stats">${stats}</small>` : "") +
+        (unique ? `<p class="item-unique">${unique}</p>` : "") +
+        setText(player, selectedItem) +
+        `<p class="admin-item-desc">${UI.escapeHtml(item.description || "")}</p>` +
+        `<small class="admin-mono">${selectedItem}</small>`;
+      const isVisible = VISIBLE_SLOTS.includes(item.slot);
+      heroCanvas.hidden = !isVisible;
+      equipButton.hidden = !item.slot;
+    }
+
+    /* the hero wearing the chosen piece, turning slowly, while the section is open */
+    const directions = ["down", "left", "up", "right"];
+    function drawItemHero(time) {
+      if (!isOpenNow || !itemGroup.open || heroCanvas.hidden) {
+        return;
+      }
+      const item = ITEMS[selectedItem];
+      const equipment = { ...player.equipment, [item.slot]: selectedItem };
+      const context = heroCanvas.getContext("2d");
+      const seconds = time / 1000;
+      drawHero(context, heroLayers(equipment, player.hair), seconds, {
+        direction: directions[Math.floor(seconds / 1.6) % directions.length],
+      });
+    }
+    (function animate(time) {
+      drawItemHero(time || 0);
+      requestAnimationFrame(animate);
+    })();
+
+    searchInput.oninput = () => {
+      itemFilter.text = searchInput.value.trim().toLowerCase();
+      renderItemGrid();
+    };
+    raritySelect.onchange = () => {
+      itemFilter.rarity = raritySelect.value;
+      renderItemGrid();
+    };
+    chips.onclick = (event) => {
+      const chip = event.target.closest("[data-kind]");
+      if (chip) {
+        itemFilter.kind = chip.dataset.kind;
+        renderItemGrid();
+      }
+    };
+    grid.onclick = (event) => {
+      const button = event.target.closest("[data-item]");
+      if (button) {
+        selectedItem = button.dataset.item;
+        renderItemGrid();
+        renderItemPreview();
+      }
+    };
+    giveButton.onclick = async () => {
+      await ctx.giveItem(selectedItem, +countInput.value || 1);
       ctx.render();
     };
-    row(group, "", itemSelect, countInput, giveButton);
+    equipButton.onclick = async () => {
+      if (await ctx.giveItem(selectedItem, 1)) {
+        equip(selectedItem);
+      }
+      ctx.render();
+    };
+    renderItemGrid();
+    renderItemPreview();
     buttons(group, [
       [
         "Give one of everything",

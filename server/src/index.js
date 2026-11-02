@@ -64,6 +64,7 @@ const HERO_MESSAGE_KINDS = new Set([
   "hero_action",
   "admin_story",
   "admin_professions",
+  "admin_give",
 ]);
 /* only the server decides about monsters */
 const SERVER_ONLY_EVENTS = new Set(["monsters", "monster_attack", "kill", "node_state"]);
@@ -448,6 +449,20 @@ export class World extends DurableObject {
           }
           const hero = await store.setProfessions(token, attachment.heroName, message.levels);
           reply(hero ? { kind: "hero", hero } : { kind: "error", error: "bad_levels" });
+          break;
+        }
+        case "admin_give": {
+          if (!attachment.heroName || !(await this.#isAdmin(token))) {
+            reply({ kind: "error", error: "not_admin" });
+            return;
+          }
+          const hero = await store.giveItem(
+            token,
+            attachment.heroName,
+            String(message.id),
+            message.count,
+          );
+          reply(hero ? { kind: "hero", hero } : { kind: "error", error: "unknown_item" });
           break;
         }
         case "hero_action": {
