@@ -59,6 +59,7 @@ import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
 import { buildWaterFeatures, updateWaterFeatures } from "./water-features.js";
 import { buildNature, updateNature } from "./nature.js";
 import { createWildlife, updateWildlife } from "./wildlife.js";
+import { buildLandmarks, updateLandmarks, LANDMARK_CANDLES, LANDMARK_LIGHTS } from "./landmarks.js";
 import {
   buildLoginScene,
   updateLoginScene,
@@ -296,6 +297,7 @@ async function init() {
     buildForge,
     buildLoginScene,
     buildWaterFeatures,
+    buildLandmarks,
     /* last: the grass keeps clear of everything built before it */
     buildNature,
   ]);
@@ -420,8 +422,12 @@ function createWorldLights() {
   for (const { x, z, ...options } of LOGIN_SPARKLES) {
     playEffect("sparkle", x, z, { ...options, loop: true, fps: 8 });
   }
+  /* the candles before the wayside shrine */
+  for (const [x, z, y] of LANDMARK_CANDLES) {
+    playEffect("candle", x, z, { size: 0.45, y, loop: true });
+  }
   /* the lava of the Ember Isles glows all night */
-  lights.push(...emberLights, ...LOGIN_LIGHTS);
+  lights.push(...emberLights, ...LOGIN_LIGHTS, ...LANDMARK_LIGHTS);
   return lights;
 }
 
@@ -2302,6 +2308,7 @@ function step(dt) {
   }
   updateWaterFeatures(dt, time, scene);
   updateNature(dt, time);
+  updateLandmarks(dt, time);
   if (!game.isStarted && game.characterSelect && game.characterSelect.isOpen()) {
     const target = game.characterSelect.cameraTarget();
     cameraFocus.set(target[0], target[1], target[2]);
