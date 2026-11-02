@@ -52,7 +52,7 @@ export function createWorkbench(player, deps) {
 
   const professionId = () => STATIONS[place.kind].profession;
   const itemLine = (id, mods) =>
-    `${icon(id, ITEMS[id].icon, "small")} ${UI.escapeHtml(displayName(id, mods))}`;
+    `${icon(id, ITEMS[id].icon, "small")} <span class="rname ${UI.rarityClass(id)}">${UI.escapeHtml(displayName(id, mods))}</span>`;
 
   function renderHeader() {
     const station = STATIONS[place.kind];

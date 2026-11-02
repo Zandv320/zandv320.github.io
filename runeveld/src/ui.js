@@ -1,5 +1,6 @@
 /* Eldoria – HUD, name labels, floating damage numbers and the chat log. */
 import * as THREE from "three";
+import { rarityOf } from "./rules/rarity.js";
 
 export const $ = (selector) => document.querySelector(selector);
 
@@ -190,6 +191,12 @@ export function logMessage(html) {
 }
 
 const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+
+/** The class that colours an item by how rare it is ("rarity-epic"), or "" for anything without a grade. */
+export function rarityClass(id) {
+  const grade = rarityOf(id);
+  return grade ? "rarity-" + grade : "";
+}
 
 export const escapeHtml = (value) => String(value).replace(/[&<>"]/g, (c) => HTML_ESCAPES[c]);
 

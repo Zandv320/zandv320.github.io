@@ -43,6 +43,7 @@ import { inGreySea } from "./rules/sea.js";
 import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
 import { absorbWithRunes } from "./rune-powers.js";
+import { RARITIES, rarityOf, isAtLeast } from "./rules/rarity.js";
 import { useSkill } from "./abilities.js";
 
 /** Keys held down (KeyboardEvent.code), filled by the input handlers in main.js. */
@@ -466,6 +467,24 @@ function weaponEnchantEffect(monster) {
   }
 }
 
+/* A rare drop: a beam of light in its grade's colour where it fell; an epic or legendary one is announced. */
+function lootBeam(id, x, z) {
+  const grade = rarityOf(id);
+  const color = parseInt(RARITIES[grade].color.slice(1), 16);
+  const isGreat = grade === "epic" || grade === "legendary";
+  playEffect("light_rays", x, z, {
+    size: grade === "legendary" ? 3.8 : isGreat ? 3.1 : 2.4,
+    grounded: true,
+    tint: color,
+  });
+  groundRing(x, z, color, 0.3, isGreat ? 2.6 : 1.8, 0.8, 0.9);
+  burst(x, 0.6, z, { color, count: isGreat ? 30 : 16, speed: 3.5, size: 3 });
+  if (isGreat) {
+    UI.announce(`${RARITIES[grade].name} find`, ITEMS[id].name);
+    (grade === "legendary" ? sfx.levelUp : sfx.chime)();
+  }
+}
+
 /* stat and skill points */
 export function raiseStat(stat) {
   const value = player.stats[stat] || 1;
@@ -699,12 +718,15 @@ export function grantReward(reward) {
       UI.logMessage(
         '<span class="level-msg">You found: ' +
           icon(reward.loot, item.icon, "small") +
-          " " +
+          ` <span class="rname ${UI.rarityClass(reward.loot)}">` +
           UI.escapeHtml(item.name) +
-          "!" +
+          "</span>!" +
           equipHint +
           "</span>",
       );
+      if (isAtLeast(reward.loot, "rare")) {
+        lootBeam(reward.loot, from.x, from.z);
+      }
     } else {
       UI.systemMessage(`Your bag is full: the ${UI.itemNoun(item.name)} was left behind.`);
     }

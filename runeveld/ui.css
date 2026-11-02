@@ -4513,3 +4513,69 @@ body.rpg-cursor #game[data-cursor="steer"] {
   color: var(--green);
   font-size: 12px;
 }
+
+/* ---------- rarity (rules/rarity.js): names, bag slots, equipment slots ---------- */
+.rname.rarity-common {
+  color: #e8e4d8;
+}
+.rname.rarity-uncommon {
+  color: #7fe09a;
+}
+.rname.rarity-rare {
+  color: #7fbfff;
+}
+.rname.rarity-epic {
+  color: #d3aaff;
+  text-shadow: 0 0 6px rgba(201, 155, 255, 0.45);
+}
+.rname.rarity-legendary {
+  color: #ffc266;
+  text-shadow: 0 0 8px rgba(255, 184, 77, 0.55);
+}
+.bag-slot.rarity-uncommon {
+  border-color: rgba(111, 211, 138, 0.6);
+}
+.bag-slot.rarity-rare {
+  border-color: rgba(111, 179, 255, 0.75);
+  background: linear-gradient(180deg, #1f2c4a, #11141f);
+}
+.bag-slot.rarity-epic {
+  border-color: rgba(201, 155, 255, 0.9);
+  background: linear-gradient(180deg, #2c2148, #11141f);
+  box-shadow: inset 0 0 8px rgba(201, 155, 255, 0.35);
+}
+.bag-slot.rarity-legendary {
+  border-color: #ffb84d;
+  background: linear-gradient(180deg, #3d2a14, #11141f);
+  box-shadow:
+    inset 0 0 10px rgba(255, 184, 77, 0.4),
+    0 0 6px rgba(255, 184, 77, 0.35);
+  animation: legendary-pulse 2.6s ease-in-out infinite;
+}
+@keyframes legendary-pulse {
+  50% {
+    box-shadow:
+      inset 0 0 14px rgba(255, 200, 110, 0.55),
+      0 0 10px rgba(255, 184, 77, 0.55);
+  }
+}
+.bag-slot.selected.rarity-uncommon,
+.bag-slot.selected.rarity-rare,
+.bag-slot.selected.rarity-epic,
+.bag-slot.selected.rarity-legendary {
+  outline: 1px solid var(--gold);
+  outline-offset: 1px;
+}
+.equip-slot.rarity-uncommon {
+  border-left: 3px solid #6fd38a;
+}
+.equip-slot.rarity-rare {
+  border-left: 3px solid #6fb3ff;
+}
+.equip-slot.rarity-epic {
+  border-left: 3px solid #c99bff;
+}
+.equip-slot.rarity-legendary {
+  border-left: 3px solid #ffb84d;
+  box-shadow: inset 4px 0 10px -6px rgba(255, 184, 77, 0.7);
+}

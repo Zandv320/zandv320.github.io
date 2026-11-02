@@ -4,7 +4,7 @@ import { icon } from "./icons.js";
 import { heroLayers, drawHero } from "./appearance.js";
 import { STATS, MAX_STAT, statCost } from "./rules/stats.js";
 import { SKILLS, canLearn, jobExpForLevel, SKILL_TREES, TREE_BRANCHES } from "./rules/skills.js";
-import { escapeHtml } from "./ui.js";
+import { escapeHtml, rarityClass } from "./ui.js";
 import { ENCHANTMENTS, applyMods, displayName, modsOf } from "./rules/item-mods.js";
 import {
   SAGAS,
@@ -291,7 +291,7 @@ export function createCharacterSheet(player, deps) {
         }
         const mods = player.equipmentMods && player.equipmentMods[slot];
         const name = displayName(itemId, mods);
-        return `<button class="equip-slot ${modsOf(mods) ? "modded" : ""}" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} ${escapeHtml(name)}</b><i>${itemStatText(applyMods(item, mods))}</i></button>`;
+        return `<button class="equip-slot ${rarityClass(itemId)} ${modsOf(mods) ? "modded" : ""}" data-slot="${slot}" title="Click to unequip"><small>${label}</small><b>${icon(itemId, item.icon, "small")} <span class="rname ${rarityClass(itemId)}">${escapeHtml(name)}</span></b><i>${itemStatText(applyMods(item, mods))}</i></button>`;
       })
       .join("");
 
@@ -512,7 +512,7 @@ export function createCharacterSheet(player, deps) {
             .filter((entry) => entry.id === id)
             .reduce((total, entry) => total + entry.count, 0);
           const ownedText = owned ? `<small class="shop-owned">You have ${owned}</small>` : "";
-          return `<div class="row ${isLocked ? "locked" : ""}"><span>${icon(id, item.icon, "small")} ${escapeHtml(item.name)}<small class="shop-stat">${stats}</small>${compare}${ownedText}</span><button class="btn" data-item="${id}" ${player.zeny < item.price ? "disabled" : ""}>${item.price} zeny</button></div>`;
+          return `<div class="row ${isLocked ? "locked" : ""}"><span>${icon(id, item.icon, "small")} <span class="rname ${rarityClass(id)}">${escapeHtml(item.name)}</span><small class="shop-stat">${stats}</small>${compare}${ownedText}</span><button class="btn" data-item="${id}" ${player.zeny < item.price ? "disabled" : ""}>${item.price} zeny</button></div>`;
         })
         .join("") +
       '<p class="hint">Sell items from your inventory while the shop is open, for half their price.</p>';

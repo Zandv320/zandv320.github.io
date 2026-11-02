@@ -1,7 +1,8 @@
 /* Eldoria – the inventory window (I): a grid of bag slots with stacks, and buttons to equip, use, sell or drop. */
 import { ITEMS, BAG_SIZE } from "./data.js";
 import { icon } from "./icons.js";
-import { escapeHtml } from "./ui.js";
+import { escapeHtml, rarityClass } from "./ui.js";
+import { RARITIES, rarityOf } from "./rules/rarity.js";
 import { itemStatText, modsText, modsBadge, compareHtml } from "./character-sheet.js";
 import { sellPrice } from "./rules/progression.js";
 import { displayName, applyMods, modsOf } from "./rules/item-mods.js";
@@ -43,7 +44,7 @@ export function createInventory(player, deps) {
       const item = ITEMS[entry.id];
       const countBadge = entry.count > 1 ? `<span class="item-count">${entry.count}</span>` : "";
       slots.push(
-        `<button class="bag-slot ${selectedIndex === i ? "selected" : ""}" data-index="${i}" title="${escapeHtml(displayName(entry.id, entry))}"><span class="item-icon">${icon(entry.id, item.icon)}</span>${countBadge}${modsBadge(entry)}</button>`,
+        `<button class="bag-slot ${rarityClass(entry.id)} ${selectedIndex === i ? "selected" : ""}" data-index="${i}" title="${escapeHtml(displayName(entry.id, entry))}"><span class="item-icon">${icon(entry.id, item.icon)}</span>${countBadge}${modsBadge(entry)}</button>`,
       );
     }
     $("#inventory-grid").innerHTML = slots.join("");
@@ -67,9 +68,10 @@ export function createInventory(player, deps) {
     pending && pending.action === action && pending.index === selectedIndex;
 
   /* what kind of thing an item is, for the line under its name */
-  function kindOf(item) {
+  function kindOf(item, id) {
     if (item.slot) {
-      return SLOT_NAMES[item.slot] || "Equipment";
+      const grade = rarityOf(id);
+      return (grade ? RARITIES[grade].name + " " : "") + (SLOT_NAMES[item.slot] || "Equipment");
     }
     return item.use ? "Usable" : "Material";
   }
@@ -108,7 +110,7 @@ export function createInventory(player, deps) {
 
     const countText = entry.count > 1 ? ` <small>×${entry.count}</small>` : "";
     const stats = itemStatText(applyMods(item, entry));
-    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b>${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
+    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
   }
 
   function render() {
