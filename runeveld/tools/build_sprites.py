@@ -1004,7 +1004,9 @@ WEAPON_SHAPES = {
             (3, 16, -1, 1, STEEL),
             (3, 17, 1, 1.5, STEEL_LIGHT),
             (16, 17.5, -0.5, 0.5, STEEL),
-        ]
+        ],
+        # walking towards the viewer the long blade leans into the body: a little to the left
+        row_shift={4: (-2, 0)},
     ),
     "scimitar1": dict(
         parts=[
@@ -1043,6 +1045,8 @@ def shaped_weapon(front, back, body, shape, fw=64, fh=64, rows=4):
                 gx, gy = c * fw + hx, r * fh + hy
                 ux, uy = (tx - hx) / length, (ty - hy) / length
         nx, ny = -uy, ux
+        # a nudge per row (in pixels) where the sword's own pose sits the weapon badly
+        sx, sy = shape.get("row_shift", {}).get(r, (0, 0))
         drawn = {}
         for t0, t1, s0, s1, color in shape["parts"]:
             t = t0
@@ -1050,8 +1054,8 @@ def shaped_weapon(front, back, body, shape, fw=64, fh=64, rows=4):
                 bend = curve * max(0, t - curve_from) ** 2
                 s = s0
                 while s <= s1:
-                    x = round(gx + ux * t + nx * (s + bend))
-                    y = round(gy + uy * t + ny * (s + bend))
+                    x = round(gx + sx + ux * t + nx * (s + bend))
+                    y = round(gy + sy + uy * t + ny * (s + bend))
                     if c * fw <= x < (c + 1) * fw and r * fh <= y < (r + 1) * fh:
                         drawn[(x, y)] = color
                     s += 0.5
