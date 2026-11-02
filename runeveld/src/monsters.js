@@ -31,7 +31,7 @@ import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
 import { sfx } from "./audio.js";
 import { chargeDust } from "./boss-effects.js";
 import { setSanctumDark } from "./crypt.js";
-import { SHEETS } from "./sheets.js";
+import { SHEETS, sheetTexture } from "./sheets.js";
 import { recolor, HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES } from "./appearance.js";
 import { Sprite2D } from "./sprites.js";
 import { scene, camera, cameraState, resolveCollision, isFree, inVillage } from "./world.js";
@@ -99,6 +99,15 @@ export function ensureMonster(id) {
   const scale = spec.scale || (spec.humanoid && spec.humanoid.scale) || 1;
   const sheet = spec.humanoid ? SHEETS.hero : SHEETS[spec.sheet || monsterId];
   const sprite = new Sprite2D(sheet, { shadow: 1.1 * scale, layers });
+  /* a monster of the later lands whose picture is not loaded yet shows as soon as it is */
+  if (!sheet.texture && !layers) {
+    sheetTexture(sheet).then((texture) => {
+      if (texture && monsters.get(id) && monsters.get(id).sprite === sprite) {
+        sprite.setLayers([texture]);
+        sprite.play(sprite.animName || "idle", true);
+      }
+    });
+  }
   if (scale !== 1) {
     sprite.group.scale.setScalar(scale);
   }

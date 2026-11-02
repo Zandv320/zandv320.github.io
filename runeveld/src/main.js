@@ -60,6 +60,7 @@ import { buildWaterFeatures, updateWaterFeatures } from "./water-features.js";
 import { buildNature, updateNature } from "./nature.js";
 import { createWildlife, updateWildlife } from "./wildlife.js";
 import { setMusicArea, updateSoundscape } from "./music.js";
+import { loadingStep, loadingDone } from "./loading.js";
 import { buildLandmarks, updateLandmarks, LANDMARK_CANDLES, LANDMARK_LIGHTS } from "./landmarks.js";
 import {
   buildLoginScene,
@@ -146,7 +147,7 @@ import { unlockAudio, sfx } from "./audio.js";
 import { baseStats } from "./rules/stats.js";
 import { icon } from "./icons.js";
 import { SKILLS, SKILLS_BY_CLASS, jobExpForLevel } from "./rules/skills.js";
-import { SHEETS, loadSheets, loadLayersFor, onLayerLoaded } from "./sheets.js";
+import { SHEETS, loadSheets, loadLayersFor, onLayerLoaded, preloadLazySheets } from "./sheets.js";
 import { heroLayers, drawHero } from "./appearance.js";
 import { createCharacterSelect, PODIUM } from "./character-select.js";
 import { createAccountPanel } from "./account.js";
@@ -287,7 +288,9 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /* ====================== startup ====================== */
 
 async function init() {
+  loadingStep("Waking the heroes", 0.25);
   await loadSheets();
+  loadingStep("Raising the world", 0.7);
   await buildWorld([
     buildCrypt,
     buildSeals,
@@ -307,6 +310,7 @@ async function init() {
   createVillagers(scene, clickables);
   showNpcs(false);
   createStorm();
+  loadingStep("Kindling the magic", 0.82);
   game.effects = await createEffects({ scene });
   game.gathering = createGathering({
     applyHero: applyHeroRecord,
@@ -326,11 +330,12 @@ async function init() {
   game.ambience = createAmbience(scene, { smokeSources, waterSpots, spinners });
   createWildlife(scene);
   initParticles(scene);
+  loadingStep("Lighting the lanterns", 0.9);
   warmUpGpu();
-  $("#loading").classList.add("away");
   addEventListener("pointerdown", unlockAudio, { capture: true });
   addEventListener("keydown", unlockAudio, { capture: true });
 
+  loadingStep("Reaching the realm", 1);
   game.heroList = readHeroList();
   startNetwork();
   game.party = createParty({ network: game.network, player, peers });
@@ -380,6 +385,9 @@ async function init() {
   setupInput();
   loop();
   game.characterSelect.show();
+  loadingDone();
+  /* the monsters of the later lands load now, quietly, while the player chooses a hero */
+  preloadLazySheets();
 }
 
 /* Day and night: lanterns and the altar give light at night; the bandit campfire, the fire baskets at the

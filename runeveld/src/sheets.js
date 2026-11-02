@@ -138,6 +138,8 @@ function cryptSheet(
 ) {
   return {
     url: `sprites/${name}.png`,
+    /* the monsters of the later lands: loaded after the start screens are up, or as soon as one appears */
+    isLazy: true,
     frameWidth: 64,
     frameHeight: 64,
     scale: 1 / 16,
@@ -470,6 +472,29 @@ async function loadWorkAnimations() {
 export const loadLayersFor = (equipment) => Promise.all(heroLayerNames(equipment).map(loadLayer));
 
 /** Loads the textures of all sheets (for the hero: only the startup layers). */
+/** The texture of a sheet, loading it first when it is a lazy one (the monsters of the later lands). */
+export function sheetTexture(sheet) {
+  if (sheet.texture) {
+    return Promise.resolve(sheet.texture);
+  }
+  if (!sheet.texturePromise) {
+    sheet.texturePromise = loadTexture(sheet.url).then((texture) => {
+      sheet.texture = texture;
+      return texture;
+    });
+  }
+  return sheet.texturePromise;
+}
+
+/** Loads the lazy sheets one after another, in the background, so they are there before they are needed. */
+export async function preloadLazySheets() {
+  for (const sheet of Object.values(SHEETS)) {
+    if (sheet.isLazy) {
+      await sheetTexture(sheet);
+    }
+  }
+}
+
 export async function loadSheets() {
   const load = async (url) => {
     const texture = await loadTexture(url);
@@ -489,7 +514,7 @@ export async function loadSheets() {
         sheet.height = (sheet.height || sheet.frameHeight / SHEET_SCALE) * SHEET_SCALE;
         sheet.scale /= SHEET_SCALE;
       }
-      if (sheet.url) {
+      if (sheet.url && !sheet.isLazy) {
         sheet.texture = await load(sheet.url);
       }
       if (sheet.layers && typeof Object.values(sheet.layers)[0] === "string") {

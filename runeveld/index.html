@@ -500,7 +500,14 @@
         </div>
       </div>
     </div>
-    <div id="loading">Loading Eldoria…</div>
+    <div id="loading">
+      <div class="loading-card">
+        <div class="loading-logo">Eldoria</div>
+        <div class="loading-bar"><i id="loading-fill"></i></div>
+        <div id="loading-step">Loading Eldoria…</div>
+        <p id="loading-tip"></p>
+      </div>
+    </div>
     <!-- Safety net for the start, in plain old JavaScript so it runs on every browser: when the game fails before it
          is running (an old browser, no WebGL, a file that did not load) or loading takes very long, the loading
          screen says so and offers a reload instead of waiting forever. -->

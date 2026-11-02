@@ -2866,6 +2866,66 @@ body.touch #world-map .hint-touch {
   opacity: 0;
   pointer-events: none;
 }
+#loading {
+  background: radial-gradient(ellipse at 50% 42%, #1b1f3a 0%, var(--bg) 70%);
+}
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(420px, 86vw);
+  text-align: center;
+}
+.loading-logo {
+  font-family: "Cinzel Decorative", var(--heading-font);
+  font-size: clamp(40px, 9vw, 64px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  background: linear-gradient(#fffbe8 0%, #ffe39a 30%, #f2b53a 52%, #b8701a 70%, #ffd77a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 #4a2606) drop-shadow(0 0 18px rgba(255, 196, 92, 0.3));
+}
+.loading-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(230, 187, 99, 0.35);
+  overflow: hidden;
+}
+.loading-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #b8701a, #ffd77a);
+  box-shadow: 0 0 10px rgba(255, 200, 90, 0.6);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+#loading-step {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: #e8d9b0;
+}
+#loading-tip {
+  margin: 6px 0 0;
+  min-height: 2.6em;
+  font-family: var(--body-font, inherit);
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--dim);
+}
+#loading-tip.fresh {
+  animation: tip-in 0.6s ease;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
 /* a failed or very slow start (index.html), and a lost graphics context (main.js) */
 .loading-problem {
   display: flex;

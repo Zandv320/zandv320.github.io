@@ -66,17 +66,27 @@ const textureCache = new Map();
  * Loads an image as a texture (resolves to null when the file is missing). In smooth mode it comes from
  * sprites/smooth/, unless `raw` is set (for the ground tiles, which are composed in a canvas themselves).
  */
+/* how many pictures have been asked for and how many have arrived, for the loading screen's bar (loading.js) */
+export const textureLoads = { requested: 0, done: 0 };
+
 export function loadTexture(url, { raw = false } = {}) {
   const useSmooth = SMOOTH && !raw && url.startsWith("sprites/");
   const source = useSmooth ? url.replace("sprites/", "sprites/smooth/") : url;
   if (textureCache.has(source)) {
     return textureCache.get(source);
   }
+  textureLoads.requested++;
   const promise = new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(makeTexture(img, useSmooth));
+    img.onload = () => {
+      textureLoads.done++;
+      resolve(makeTexture(img, useSmooth));
+    };
     /* a missing smooth version falls back to the original pixel art */
-    img.onerror = () => resolve(useSmooth ? loadTexture(url, { raw: true }) : null);
+    img.onerror = () => {
+      textureLoads.done++;
+      resolve(useSmooth ? loadTexture(url, { raw: true }) : null);
+    };
     img.src = source;
   });
   textureCache.set(source, promise);
@@ -354,6 +364,10 @@ export class Sprite2D {
       this._setWork(this.anim.work);
     }
     const first = sources[0];
+    if (!first) {
+      /* nothing to draw yet (a sheet still loading, sheets.js sheetTexture) */
+      return;
+    }
     this.cols = Math.max(1, Math.round(first.image.width / this.sheet.frameWidth));
     this.rows = Math.max(1, Math.round(first.image.height / this.sheet.frameHeight));
     this._updateUv();
