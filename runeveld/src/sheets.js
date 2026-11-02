@@ -302,6 +302,9 @@ function markWeapon(name, texture) {
   if (/^shield\d/.test(name)) {
     texture.userData.isShield = true;
   }
+  if (/^(armor|robe)\d/.test(name)) {
+    texture.userData.isArmor = true;
+  }
   /* the half behind the body */
   texture.userData.isBack = name.endsWith("_back");
 }

@@ -98,7 +98,7 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { initParticles, updateParticles } from "./particles.js";
-import { updateWeaponFx, weaponLights } from "./weapon-fx.js";
+import { updateWeaponFx, weaponLights, refineGlow, refineFlash } from "./weapon-fx.js";
 import {
   bossTelegraph,
   bossCharge,
@@ -717,6 +717,7 @@ function createPanels(name) {
     reportProgress: (result) => game.gathering.reportProgress(result),
     playEffect: (effectName, place) =>
       playEffect(effectName, place.x, place.z, { size: 2, y: 1.2 }),
+    refineFlash: (isSuccess) => refineFlash(player.sprite, isSuccess),
   });
   player.label = UI.createLabel("player", name);
   game.questLog = createQuestLog(player, {
@@ -1447,6 +1448,8 @@ function sendPresence() {
     /* the element of an enchanted weapon, for its glow (weapon-fx.js) */
     enchant: player.equipmentMods?.weapon?.enchant || null,
     shieldEnchant: player.equipmentMods?.shield?.enchant || null,
+    /* how far the body armour is refined, for its sheen */
+    armorRefine: player.equipmentMods?.body?.refine || 0,
     /* at the helm: the ship's [x, z, heading] (sailing.js) */
     ship: shipPresence(),
   };
@@ -2226,16 +2229,18 @@ function step(dt) {
   }
   updateVillagers(dt, cameraState, camera, player);
   updateSkillEffects(dt);
-  /* enchanted weapons and shields: their glow and their element's particles, on everyone who carries one */
+  /* enchanted weapons and shields and refined armour: their glow and particles, on everyone who has them */
   updateWeaponFx(
     dt,
     game.isStarted
       ? [
           { sprite: player.sprite, element: player.equipmentMods?.weapon?.enchant },
           { sprite: player.sprite, element: player.equipmentMods?.shield?.enchant },
+          { sprite: player.sprite, element: refineGlow(player.equipmentMods?.body?.refine || 0) },
           ...[...peers.values()].flatMap((peer) => [
             { sprite: peer.sprite, element: peer.presence.enchant },
             { sprite: peer.sprite, element: peer.presence.shieldEnchant },
+            { sprite: peer.sprite, element: refineGlow(peer.presence.armorRefine || 0) },
           ]),
         ]
       : [],

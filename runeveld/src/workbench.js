@@ -37,7 +37,8 @@ const ENCHANTING_TABS = [
 /**
  * @param {object} player the hero record of the player
  * @param {object} deps {perform(type, data) → Promise<result>, work(place, seconds, label) → Promise<boolean> (the
- *   hero works at the station first; false when interrupted), reportProgress(result), playEffect(name, place)}
+ *   hero works at the station first; false when interrupted), reportProgress(result), playEffect(name, place),
+ *   refineFlash(isSuccess) (the hero lights up, or shards fly, as a refine ends)}
  */
 export function createWorkbench(player, deps) {
   const $ = (selector) => document.querySelector(selector);
@@ -284,6 +285,7 @@ export function createWorkbench(player, deps) {
       );
       UI.announce("Refine succeeded", result.name);
       deps.playEffect("light_rays", place);
+      deps.refineFlash?.(true);
     } else {
       sfx.miss();
       UI.logMessage(
@@ -291,6 +293,7 @@ export function createWorkbench(player, deps) {
       );
       UI.announce("Refine failed", result.name);
       deps.playEffect("smoke", place);
+      deps.refineFlash?.(false);
     }
     deps.reportProgress(result);
   }

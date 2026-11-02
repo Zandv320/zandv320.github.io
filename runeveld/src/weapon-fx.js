@@ -7,8 +7,11 @@
      frost   a cold blue rime: a slow shimmer, snow sparkles and a breath of mist sinking from it
      storms  it crackles: a stuttering yellow-white glow, lightning arcs jumping along it and sparks spitting off
      arcane  violet light pulses along it, and motes of it circle the weapon
-     radiance  (shields) a warm white light round the shield, a cross of light on its face that reaches past its
-             rim, and golden motes rising from it
+     radiance  (shields) a soft warm light round the shield's rim, a small cross of light in the middle of its face,
+             and golden motes rising from it
+   Refined armour (body armour or robe) shines too, richer the higher it is refined (refineGlow): from +4 a sheen
+   now and then sweeps across it, from +7 more often and with glints on it, at +10 it has a golden rim and golden
+   motes rise off it. refineFlash() is the moment of refining: a sweep of light down the hero, or grey shards.
    The glow is a second mesh on each weapon layer of the sprite (the front and the back half of the weapon), with
    the same geometry and texture, drawn additively after the night haze; the particles are one point cloud for all
    heroes. Where the particles start comes from the weapon's own pixels in the frame on show (Sprite2D.cell). */
@@ -49,6 +52,17 @@ const ELEMENTS = {
     light: [190, 130, 255],
     strength: 1.05,
   },
+  /* refined armour: the tiers of refineGlow() */
+  refine1: { part: "armor", kind: 5, glow: 0xffffff, core: 0xf2f6ff, light: null, strength: 1 },
+  refine2: { part: "armor", kind: 6, glow: 0xfff0c8, core: 0xffffff, light: null, strength: 1 },
+  refine3: {
+    part: "armor",
+    kind: 7,
+    glow: 0xffc94a,
+    core: 0xfff4d0,
+    light: [255, 214, 120],
+    strength: 1,
+  },
   radiance: {
     part: "shield",
     kind: 4,
@@ -63,7 +77,12 @@ const ELEMENTS = {
 const PARTS = {
   weapon: (layer) => !!layer.source?.userData?.isWeapon,
   shield: (layer) => !!layer.source?.userData?.isShield,
+  armor: (layer) => !!layer.source?.userData?.isArmor,
 };
+
+/** The look of armour refined to `level`: none below +4, then three tiers (+4, +7, +10). */
+export const refineGlow = (level) =>
+  level >= 10 ? "refine3" : level >= 7 ? "refine2" : level >= 4 ? "refine1" : null;
 
 /* ---------------------------------------------------------------- the glow ----------------------------------- */
 
@@ -123,9 +142,12 @@ const glowFragment = /* glsl */ `
     } else if (uKind < 3.5) {
       /* arcane: waves of light pulsing along it */
       n = 0.55 + 0.45 * sin(uTime * 3.4 - (vUv.x + vUv.y) * 30.0);
-    } else {
+    } else if (uKind < 4.5) {
       /* radiance: a slow, warm breathing */
       n = 0.75 + 0.25 * sin(uTime * 1.7);
+    } else {
+      /* refined armour: its own sheen below */
+      n = 1.0;
     }
     float own = alphaAt(vUv);
     float halo = 0.0;
@@ -137,7 +159,19 @@ const glowFragment = /* glsl */ `
     halo = clamp(halo / 5.0, 0.0, 1.0);
     float edge = halo * (1.0 - own);
     vec3 color;
-    if (uKind > 3.5) {
+    if (uKind > 4.5) {
+      /* refined armour: a band of light sweeping across it, top left to bottom right, every few seconds (more
+         often from +7); at +10 a golden rim besides */
+      float period = uKind < 5.5 ? 3.6 : 2.2;
+      float phase = fract(uTime / period) * 2.4 - 0.4;
+      float across = vUv.x * 0.6 + (1.0 - vUv.y);
+      float band = exp(-pow((across - phase) * 9.0, 2.0));
+      float sheen = uKind < 5.5 ? 0.4 : 0.6;
+      color = uCore * own * band * sheen;
+      if (uKind > 6.5) {
+        color += uGlow * edge * (0.38 + 0.14 * sin(uTime * 2.0)) + uGlow * own * 0.05;
+      }
+    } else if (uKind > 3.5) {
       /* radiance: only a soft light round the rim of the shield, its face left as it is */
       color = uGlow * edge * (0.3 + 0.25 * n);
     } else {
@@ -338,6 +372,8 @@ const ARCANE_LIGHT = new THREE.Color(0xfbeaff);
 const ARCANE_VIOLET = new THREE.Color(0x9d4dff);
 const RADIANT_WHITE = new THREE.Color(0xfffcf0);
 const RADIANT_GOLD = new THREE.Color(0xffc860);
+const GILDED_DEEP = new THREE.Color(0xd8901c);
+const SHARD_GREY = new THREE.Color(0xd4dae6);
 const scratch = new THREE.Color();
 
 /* the colour and brightness of a particle at share t of its life */
@@ -364,6 +400,12 @@ function particleColor(particle, t) {
       return mixColor(RADIANT_WHITE, RADIANT_GOLD, t, scratch).multiplyScalar(
         Math.sin(Math.PI * t),
       );
+    case "gilded":
+      return mixColor(RADIANT_GOLD, GILDED_DEEP, t, scratch).multiplyScalar(Math.sin(Math.PI * t));
+    case "sweep":
+      return mixColor(RADIANT_WHITE, RADIANT_GOLD, t, scratch).multiplyScalar(1 - t * 0.7);
+    case "shard":
+      return scratch.copy(SHARD_GREY).multiplyScalar(1 - t);
     case "glint":
       return scratch.copy(RADIANT_WHITE).multiplyScalar(Math.sin(Math.PI * t) * 1.2);
     case "mote":
@@ -407,6 +449,8 @@ function updateCloud(dt) {
     particle.z += particle.vz * dt;
     if (particle.kind === "spark") {
       particle.vy -= 6 * dt;
+    } else if (particle.kind === "shard") {
+      particle.vy -= 9 * dt;
     }
     const tint = particleColor(particle, t);
     position.setXYZ(i, particle.x, particle.y, particle.z);
@@ -592,6 +636,51 @@ const EMITTERS = {
       },
     ],
   ],
+  refine1: [],
+  refine2: [
+    [
+      3,
+      (p) => ({
+        kind: "glint",
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        life: random(0.25, 0.4),
+        size0: 0.16,
+        size1: 0.04,
+        shape: 1,
+      }),
+    ],
+  ],
+  refine3: [
+    [
+      9,
+      (p) => ({
+        kind: "gilded",
+        x: p.x + random(-0.1, 0.1),
+        y: p.y,
+        z: p.z,
+        vx: random(-0.05, 0.05),
+        vy: random(0.3, 0.6),
+        life: random(1, 1.6),
+        size0: random(0.14, 0.2),
+        size1: 0.03,
+      }),
+    ],
+    [
+      4,
+      (p) => ({
+        kind: "glint",
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        life: random(0.25, 0.4),
+        size0: 0.18,
+        size1: 0.04,
+        shape: 1,
+      }),
+    ],
+  ],
   radiance: [
     [
       14,
@@ -708,7 +797,7 @@ function updateAura(sprite, element, dt, time) {
     }
     glow.geometry = layer.mesh.geometry;
   }
-  aura.light = isShown ? aura.light || { y: 1, radius: 2.6, strength: 0.5 } : null;
+  aura.light = isShown && spec.light ? aura.light || { y: 1, radius: 2.6, strength: 0.5 } : null;
   if (!isShown) {
     return;
   }
@@ -725,17 +814,12 @@ function updateAura(sprite, element, dt, time) {
     return;
   }
   /* the light it casts, on the hero, flickering by element */
-  aura.light.x = sprite.group.position.x;
-  aura.light.z = sprite.group.position.z;
-  aura.light.color = spec.light;
-  aura.light.strength =
-    element === "storms"
-      ? 0.35 + 0.35 * Math.random()
-      : element === "flame"
-        ? 0.48 + 0.08 * Math.sin(time * 13) + 0.05 * Math.sin(time * 7.7)
-        : element === "radiance"
-          ? 0.5 + 0.08 * Math.sin(time * 1.7)
-          : 0.45;
+  if (aura.light) {
+    aura.light.x = sprite.group.position.x;
+    aura.light.z = sprite.group.position.z;
+    aura.light.color = spec.light;
+    aura.light.strength = lightStrength(element, time);
+  }
   for (const [index, [rate, make]] of EMITTERS[element].entries()) {
     aura.carry[index] = (aura.carry[index] || 0) + rate * dt;
     while (aura.carry[index] >= 1) {
@@ -759,6 +843,21 @@ function updateAura(sprite, element, dt, time) {
     for (const arc of aura.arcs) {
       drawArc(arc.a, arc.b);
     }
+  }
+}
+
+/* how strongly an enchantment's light falls round the hero now: storms stutter, flames flicker, the rest breathe */
+function lightStrength(element, time) {
+  switch (element) {
+    case "storms":
+      return 0.35 + 0.35 * Math.random();
+    case "flame":
+      return 0.48 + 0.08 * Math.sin(time * 13) + 0.05 * Math.sin(time * 7.7);
+    case "radiance":
+    case "refine3":
+      return 0.5 + 0.08 * Math.sin(time * 1.7);
+    default:
+      return 0.45;
   }
 }
 
@@ -816,3 +915,67 @@ export const weaponLights = () =>
   [...auras.values()]
     .flatMap((parts) => [...parts.values()].map((aura) => aura.light))
     .filter(Boolean);
+
+/**
+ * The moment of a refine, on the hero who did it: on success a sweep of light runs down them from head to feet
+ * and a ring of glints rises at their feet; on failure the runes crack into grey shards that fall away.
+ */
+export function refineFlash(sprite, isSuccess) {
+  if (!cloud) {
+    initCloud();
+    initArcs();
+  }
+  camera.getWorldDirection(towardsCamera).negate();
+  const { x, z } = sprite.group.position;
+  const top = sprite.height * 1.05;
+  /* in front of the hero, so the body does not hide it */
+  const fx = x + towardsCamera.x * 0.4;
+  const fz = z + towardsCamera.z * 0.4;
+  if (isSuccess) {
+    for (let k = 0; k < 46; k++) {
+      const speed = random(2.4, 3);
+      emit({
+        kind: "sweep",
+        x: fx + random(-0.5, 0.5),
+        y: top + random(0, 0.15),
+        z: fz,
+        vy: -speed,
+        life: top / speed,
+        size0: random(0.16, 0.26),
+        size1: 0.06,
+      });
+    }
+    for (let k = 0; k < 24; k++) {
+      const angle = (k / 24) * Math.PI * 2;
+      emit({
+        kind: "glint",
+        x: x + Math.cos(angle) * 0.75,
+        y: 0.1,
+        z: z + Math.sin(angle) * 0.75,
+        vy: random(0.6, 1.1),
+        life: random(0.5, 0.8),
+        size0: 0.2,
+        size1: 0.05,
+        shape: 1,
+      });
+    }
+    return;
+  }
+  for (let k = 0; k < 36; k++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = random(0.8, 2);
+    emit({
+      kind: "shard",
+      x: fx,
+      y: sprite.height * 0.55,
+      z: fz,
+      vx: Math.cos(angle) * speed,
+      vy: random(0.5, 2.2),
+      vz: Math.sin(angle) * speed * 0.4,
+      life: random(0.6, 1),
+      size0: random(0.14, 0.22),
+      size1: 0.05,
+      shape: Math.random() < 0.5 ? 1 : 0,
+    });
+  }
+}
