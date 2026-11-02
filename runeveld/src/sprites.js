@@ -134,32 +134,79 @@ function makeFlashable(material) {
 /* How far sprites lean back towards the camera (1 = facing the camera exactly). */
 export const LEAN = 1;
 
-/* A plane of w × h standing on y = 0 (the feet `feet` units above the bottom edge), with an extra row of vertices
-   at the hip (`hip` units above the feet) so the legs can be squeezed into a crouch. */
+/* A plane of w × h standing on y = 0 (the feet `feet` units above the bottom edge), with extra rows of vertices at
+   the feet and at the hip (`hip` units above the feet) so the legs can be squeezed into a crouch. What hangs below
+   the feet (a long blade, a tower shield) would lie under the ground and be cut off by it; foldBelowFeet() tips that
+   strip towards the camera so it stays above the ground, without moving it on screen. */
 function figureGeometry(width, height, feet, hip) {
   const geometry = new THREE.BufferGeometry();
   const bottom = -feet;
   const top = height - feet;
+  const feetV = feet / height;
   const hipV = (feet + hip) / height;
   const x0 = -width / 2;
   const x1 = width / 2;
   geometry.setAttribute(
     "position",
     new THREE.Float32BufferAttribute(
-      [x0, bottom, 0, x1, bottom, 0, x0, hip, 0, x1, hip, 0, x0, top, 0, x1, top, 0],
+      [
+        x0,
+        bottom,
+        0,
+        x1,
+        bottom,
+        0,
+        x0,
+        0,
+        0,
+        x1,
+        0,
+        0,
+        x0,
+        hip,
+        0,
+        x1,
+        hip,
+        0,
+        x0,
+        top,
+        0,
+        x1,
+        top,
+        0,
+      ],
       3,
     ),
   );
   geometry.setAttribute(
     "uv",
-    new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, hipV, 1, hipV, 0, 1, 1, 1], 2),
+    new THREE.Float32BufferAttribute(
+      [0, 0, 1, 0, 0, feetV, 1, feetV, 0, hipV, 1, hipV, 0, 1, 1, 1],
+      2,
+    ),
   );
-  geometry.setIndex([0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5]);
+  geometry.setIndex([0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5, 4, 5, 6, 6, 5, 7]);
   geometry.computeBoundingSphere();
   /* some room for the lean, squash and crouch, so the camera only skips figures that are truly out of view */
   geometry.boundingSphere.radius *= 1.25;
-  geometry.userData = { hip, top };
+  geometry.userData = { hip, top, feet, foldTilt: null };
   return geometry;
+}
+
+/* The figure faces the camera (LEAN 1), so moving a vertex along its own z moves it along the line of sight: the
+   same place on screen, only nearer. The bottom edge, `feet` below the ground, comes up to the ground when it moves
+   feet / tan(tilt) towards the camera; the strip between it and the feet follows. */
+function foldBelowFeet(geometry, tilt) {
+  const { feet } = geometry.userData;
+  if (geometry.userData.foldTilt === tilt || !feet) {
+    return;
+  }
+  geometry.userData.foldTilt = tilt;
+  const lift = feet / Math.tan(Math.max(0.2, tilt)) + 0.02;
+  const position = geometry.attributes.position;
+  position.setZ(0, lift);
+  position.setZ(1, lift);
+  position.needsUpdate = true;
 }
 
 export class Sprite2D {
@@ -365,15 +412,16 @@ export class Sprite2D {
     }
   }
 
-  /* Squeeze the legs: 0 standing, 1 legs gone. Moves the hip row of the geometry down and the top along with it. */
+  /* Squeeze the legs: 0 standing, 1 legs gone. Moves the hip row of the geometry down and the top along with it;
+     the feet row and what hangs below it stay. */
   _applyCrouch() {
     const { hip, top } = this.geometry.userData;
     const drop = hip * this.crouch;
     const position = this.geometry.attributes.position;
-    position.setY(2, hip - drop);
-    position.setY(3, hip - drop);
-    position.setY(4, top - drop);
-    position.setY(5, top - drop);
+    position.setY(4, hip - drop);
+    position.setY(5, hip - drop);
+    position.setY(6, top - drop);
+    position.setY(7, top - drop);
     position.needsUpdate = true;
   }
 
@@ -510,6 +558,7 @@ export class Sprite2D {
     }
     this.group.rotation.y = cameraState.yaw;
     const tiltX = -cameraState.tilt * LEAN;
+    foldBelowFeet(this.geometry, cameraState.tilt);
     this.mesh.rotation.x = tiltX;
     for (const layer of this.layers) {
       layer.mesh.rotation.x = tiltX;
