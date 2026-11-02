@@ -56,6 +56,7 @@ import { buildSaltmere, updateSaltmere } from "./saltmere.js";
 import { updateChase } from "./maelis.js";
 import { buildSea, updateSea } from "./sea.js";
 import { buildEmberIsles, updateEmberIsles, emberLights } from "./ember.js";
+import { buildWaterFeatures, updateWaterFeatures } from "./water-features.js";
 import {
   buildLoginScene,
   updateLoginScene,
@@ -292,6 +293,7 @@ async function init() {
     buildEmberIsles,
     buildForge,
     buildLoginScene,
+    buildWaterFeatures,
   ]);
   clickables.push(...cryptClickables(), ...sealClickables(), ...forgeClickables());
   createMerchant();
@@ -2292,6 +2294,7 @@ function step(dt) {
   if (!game.isStarted) {
     updateLoginScene(dt, time);
   }
+  updateWaterFeatures(dt, time, scene);
   if (!game.isStarted && game.characterSelect && game.characterSelect.isOpen()) {
     const target = game.characterSelect.cameraTarget();
     cameraFocus.set(target[0], target[1], target[2]);

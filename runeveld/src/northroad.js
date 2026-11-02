@@ -23,6 +23,7 @@ import {
   gorgeSouthRim,
   gorgeOpening,
   brokenPlanks,
+  nearBrook,
 } from "./rules/gorge.js";
 import { player, playEffect } from "./game-state.js";
 
@@ -34,7 +35,7 @@ export const PELL_CAMP = [-150, -201];
 export const WIL_CART = [-130, -254.5];
 
 /* how deep Greyfall Gorge goes below the land */
-const GORGE_DEPTH = 8;
+export const GORGE_DEPTH = 8;
 /* the bridge's planks, in two halves across: {mesh, x, z, y, fall (seconds falling, 0 while it lies in place), spin} */
 const planks = [];
 /* the river at the bottom of the gorge, whose water flows */
@@ -191,7 +192,7 @@ export function buildNorthroad({ scene, prop, place, isFree, seededRandom, pendi
   for (let k = 0; k < 170; k++) {
     const x = NORTHROAD.x0 + random() * (NORTHROAD.x1 - NORTHROAD.x0);
     const z = NORTHROAD.z0 + random() * (NORTHROAD.z1 - 20 - NORTHROAD.z0);
-    if (!isOpen(x, z, 1) || !isFree(x, z, 1.4)) {
+    if (!isOpen(x, z, 1) || !isFree(x, z, 1.4) || nearBrook(x, z, 2.2)) {
       continue;
     }
     /* further north the hills grow pines and rocks */
@@ -229,8 +230,8 @@ export function buildNorthroad({ scene, prop, place, isFree, seededRandom, pendi
       }
       const name =
         jz < -150 ? (random() < 0.6 ? "pine" : "pine2") : random() < 0.5 ? "tree" : "pine";
-      /* where the band meets the gorge, the trees stand back from the edge */
-      if (inGorge(jx, jz)) {
+      /* where the band meets the gorge, the trees stand back from the edge, and off the brook */
+      if (inGorge(jx, jz) || nearBrook(jx, jz, 2.2)) {
         continue;
       }
       pending.push(prop(name, jx, jz, { radius: isClosed ? 0.7 : 0, shadow: 1.8, scale: 1.3 }));
@@ -412,7 +413,7 @@ function cliff(rim, lean, map) {
 }
 
 /* the river's middle line on the bottom, halfway between the cliffs */
-const riverZ = (x) => (gorgeNorthRim(x) + gorgeSouthRim(x)) / 2 + 0.5 * Math.sin(0.17 * x);
+export const riverZ = (x) => (gorgeNorthRim(x) + gorgeSouthRim(x)) / 2 + 0.5 * Math.sin(0.17 * x);
 
 function buildGorge({ scene, random }) {
   const rock = rockTexture(random);

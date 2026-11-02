@@ -141,3 +141,39 @@ export function northSpotFor(key, id) {
 
 /** How many of this monster have a spot (data.js spawns one per spot). */
 export const northSpotCount = (key) => (SPOTS[key] ? SPOTS[key].length : 0);
+
+/* The brook that rises among rocks north of the gorge and runs to the north rim, where it falls in
+   (water-features.js draws it; the trees keep off it): its course from the spring to the lip, [x, z] per step. */
+export const FALL_X = -110;
+export const BROOK_SPRING = [FALL_X + 7, -301];
+export const brookCourse = () => {
+  const lip = gorgeNorthRim(FALL_X) + 0.2;
+  const course = [];
+  for (let k = 0; k <= 16; k++) {
+    const t = k / 16;
+    course.push([
+      BROOK_SPRING[0] + (FALL_X - BROOK_SPRING[0]) * t + Math.sin(t * Math.PI * 2.2) * 1.6,
+      BROOK_SPRING[1] + (lip - BROOK_SPRING[1]) * t,
+    ]);
+  }
+  return course;
+};
+
+/** Is (x, z) within `margin` of the brook or its spring? */
+export function nearBrook(x, z, margin) {
+  if (Math.hypot(x - BROOK_SPRING[0], z - BROOK_SPRING[1]) < margin + 1.5) {
+    return true;
+  }
+  const course = brookCourse();
+  for (let k = 1; k < course.length; k++) {
+    const [ax, az] = course[k - 1];
+    const [bx, bz] = course[k];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    if (Math.hypot(x - ax - dx * t, z - az - dz * t) < margin) {
+      return true;
+    }
+  }
+  return false;
+}

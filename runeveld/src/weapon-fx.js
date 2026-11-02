@@ -474,6 +474,10 @@ function particleColor(particle, t) {
       );
     case "rage":
       return mixColor(RAGE_LIGHT, RAGE_RED, t, scratch).multiplyScalar(1 - t * 0.7);
+    case "spray":
+      return mixColor(FROST_LIGHT, FROST_BLUE, t * 0.6, scratch).multiplyScalar(0.8 * (1 - t));
+    case "vapor":
+      return scratch.copy(FROST_LIGHT).multiplyScalar(0.16 * Math.sin(Math.PI * t));
     case "dust":
       return mixColor(EARTH_LIGHT, EARTH_BROWN, t, scratch).multiplyScalar(0.55 * (1 - t));
     case "mote":
@@ -517,8 +521,8 @@ function updateCloud(dt) {
     particle.z += particle.vz * dt;
     if (particle.kind === "spark") {
       particle.vy -= 6 * dt;
-    } else if (particle.kind === "shard" || particle.kind === "dust") {
-      particle.vy -= (particle.kind === "dust" ? 4 : 9) * dt;
+    } else if (particle.kind === "shard" || particle.kind === "dust" || particle.kind === "spray") {
+      particle.vy -= (particle.kind === "shard" ? 9 : particle.kind === "spray" ? 7 : 4) * dt;
     }
     const tint = particleColor(particle, t);
     position.setXYZ(i, particle.x, particle.y, particle.z);
@@ -856,6 +860,40 @@ const rising = (
 ];
 EMITTERS.heal = [rising("heal"), [4, EMITTERS.radiance[1][1]]];
 EMITTERS.mana = [rising("mana")];
+/* falling water striking a pool: droplets thrown up and falling back, and a veil of vapour rising */
+EMITTERS.spray = [
+  [
+    26,
+    (p) => ({
+      kind: "spray",
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      vx: random(-0.8, 0.8),
+      vy: random(1.2, 2.6),
+      vz: random(-0.3, 0.5),
+      life: random(0.4, 0.75),
+      size0: random(0.08, 0.14),
+      size1: 0.04,
+      shape: Math.random() < 0.3 ? 1 : 0,
+    }),
+  ],
+  [
+    7,
+    (p) => ({
+      kind: "vapor",
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      vx: random(-0.15, 0.15),
+      vy: random(0.3, 0.6),
+      vz: random(0, 0.2),
+      life: random(1.4, 2.2),
+      size0: 0.6,
+      size1: 1.4,
+    }),
+  ],
+];
 /* a snowstorm: flakes that whirl round the storm's middle as they fall, and some that only fall */
 EMITTERS.flurry = [
   [
