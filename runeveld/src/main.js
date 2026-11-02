@@ -98,6 +98,7 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { initParticles, updateParticles } from "./particles.js";
+import { updateItemEffects } from "./item-effects.js";
 import {
   updateWeaponFx,
   weaponLights,
@@ -2153,6 +2154,7 @@ function stepWorld(dt, time) {
   updatePlayer(dt);
   updateCrypt(dt);
   updateForge(dt);
+  updateItemEffects();
   updateRunePowers();
   updateStorm(dt, time);
   updateNorthroad(dt, time);

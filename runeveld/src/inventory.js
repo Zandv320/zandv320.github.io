@@ -3,6 +3,7 @@ import { ITEMS, BAG_SIZE } from "./data.js";
 import { icon } from "./icons.js";
 import { escapeHtml, rarityClass } from "./ui.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
+import { effectLines } from "./rules/item-effects.js";
 import { itemStatText, modsText, modsBadge, compareHtml } from "./character-sheet.js";
 import { sellPrice } from "./rules/progression.js";
 import { displayName, applyMods, modsOf } from "./rules/item-mods.js";
@@ -68,6 +69,14 @@ export function createInventory(player, deps) {
     pending && pending.action === action && pending.index === selectedIndex;
 
   /* what kind of thing an item is, for the line under its name */
+  /* what a unique item does, in its own colour */
+  function uniqueText(id) {
+    const lines = effectLines(id);
+    return lines.length
+      ? `<p class="item-unique">${lines.map((line) => "Unique: " + escapeHtml(line)).join("<br>")}</p>`
+      : "";
+  }
+
   function kindOf(item, id) {
     if (item.slot) {
       const grade = rarityOf(id);
@@ -110,7 +119,7 @@ export function createInventory(player, deps) {
 
     const countText = entry.count > 1 ? ` <small>×${entry.count}</small>` : "";
     const stats = itemStatText(applyMods(item, entry));
-    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
+    detail.innerHTML = `<div class="item-detail-header"><span class="item-icon large">${icon(entry.id, item.icon)}</span><div><b class="rname ${rarityClass(entry.id)}">${escapeHtml(displayName(entry.id, entry))}</b>${countText}<small class="item-kind">${kindOf(item, entry.id)} · worth ${salePrice} zeny</small>${stats ? `<small class="item-stats">${stats}</small>` : ""}</div></div>${compareHtml(player, entry.id, entry)}${modsText(entry)}${uniqueText(entry.id)}<p>${escapeHtml(item.description || "")}</p><div class="item-actions">${buttons.join("")}</div>`;
   }
 
   function render() {

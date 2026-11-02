@@ -4579,3 +4579,8 @@ body.rpg-cursor #game[data-cursor="steer"] {
   border-left: 3px solid #ffb84d;
   box-shadow: inset 4px 0 10px -6px rgba(255, 184, 77, 0.7);
 }
+.item-unique {
+  color: #ffc266;
+  font-size: 11.5px;
+  line-height: 1.4;
+}

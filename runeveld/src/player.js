@@ -44,6 +44,7 @@ import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
 import { absorbWithRunes } from "./rune-powers.js";
 import { RARITIES, rarityOf, isAtLeast } from "./rules/rarity.js";
+import { onHeroHit, blockWithItems, afterHeroHurt } from "./item-effects.js";
 import { useSkill } from "./abilities.js";
 
 /** Keys held down (KeyboardEvent.code), filled by the input handlers in main.js. */
@@ -440,6 +441,8 @@ export function hitMonster(monster, result, kind) {
     pushZ: +(monster.z - player.z).toFixed(2),
     force,
   });
+  /* what the hero's unique items do on a hit (item-effects.js) */
+  onHeroHit(monster, result, kind);
 }
 
 /* The element of an enchanted weapon shows on every hit; frost can freeze the target. */
@@ -549,6 +552,8 @@ export function takeDamage(damage, spec, attacker) {
       );
     }
   }
+  /* a unique item may block part of it */
+  damage = blockWithItems(damage);
   player.hp -= damage;
   UI.floatingText(player.x, player.sprite.height, player.z, camera, damage, "hurt");
   player.sprite.flashHit();
@@ -567,6 +572,8 @@ export function takeDamage(damage, spec, attacker) {
       playEffect("flash", attacker.x, attacker.z, { size: 1.2, y: 0.6, tint: 0xfff0a0 });
     }
   }
+  /* thorns and a last stand from unique items */
+  afterHeroHurt(damage, attacker);
   /* with Iron Resolve nothing pushes or shakes the hero */
   if (now() >= (player.ironResolveUntil || 0)) {
     if (attacker) {
