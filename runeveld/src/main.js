@@ -63,7 +63,6 @@ import {
   LOGIN_FIRES,
   LOGIN_LIGHTS,
   LOGIN_SPARKLES,
-  LOGIN_FX,
   LOGIN_HOUR,
 } from "./login-scene.js";
 import { updateBurning } from "./burning.js";
@@ -116,7 +115,7 @@ import {
   refineFlash,
   rarityGlow,
   REFINE_SLOTS,
-  emitFromPlaces,
+  addFxPlace,
 } from "./weapon-fx.js";
 import {
   bossTelegraph,
@@ -403,6 +402,7 @@ function createWorldLights() {
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
+    addFxPlace({ element: "hearth", x, y: 0.3 * size, z, spread: 0.22 * size, rate: 0.8 * size });
     lights.push({ x, z, y: 0.8, radius: 3.5 * size, color: [255, 160, 80], strength: 0.9 });
   }
   /* the fire baskets of the start screens' stone circle: the fire in the bowl */
@@ -2291,7 +2291,6 @@ function step(dt) {
   const time = now();
   if (!game.isStarted) {
     updateLoginScene(dt, time);
-    emitFromPlaces(dt, LOGIN_FX);
   }
   if (!game.isStarted && game.characterSelect && game.characterSelect.isOpen()) {
     const target = game.characterSelect.cameraTarget();

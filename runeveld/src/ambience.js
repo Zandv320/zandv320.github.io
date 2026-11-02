@@ -10,6 +10,7 @@
 import * as THREE from "three";
 import { inForest, inCapital } from "./regions.js";
 import { inVillage } from "./world.js";
+import { glowPoints } from "./glow-points.js";
 
 const DUST_POOL = 24;
 const DUST_LIFE = 0.5; /* seconds */
@@ -234,15 +235,18 @@ export function createAmbience(scene, { smokeSources = [], waterSpots = [], spin
     return points;
   }
 
+  /* fireflies and glints glow like an enchantment's particles (glow-points.js): soft lights and sparkles */
   const fireflies = pointCloud(
     FIREFLIES,
-    new THREE.PointsMaterial({
-      vertexColors: true,
-      sizeAttenuation: false,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }),
+    glowPoints(
+      new THREE.PointsMaterial({
+        vertexColors: true,
+        sizeAttenuation: false,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    ),
   );
   /* after the night haze (renderOrder 10000 in daylight.js): they light up instead of being dimmed */
   fireflies.renderOrder = 10001;
@@ -276,13 +280,16 @@ export function createAmbience(scene, { smokeSources = [], waterSpots = [], spin
   /* glints on the water: white specks that light up and fade at random spots on the surface */
   const glints = pointCloud(
     GLINTS,
-    new THREE.PointsMaterial({
-      vertexColors: true,
-      sizeAttenuation: false,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }),
+    glowPoints(
+      new THREE.PointsMaterial({
+        vertexColors: true,
+        sizeAttenuation: false,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+      { star: 1 },
+    ),
   );
   const glintData = Array.from({ length: GLINTS }, () => ({ age: 1, life: 1, x: 0, y: 0, z: 0 }));
 

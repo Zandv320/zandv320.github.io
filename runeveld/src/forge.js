@@ -29,6 +29,7 @@ import {
 import { EMBER_LANDS, MOUNT_KHAROS, kharosRadius } from "./rules/ember.js";
 import { QUESTS } from "./rules/quests.js";
 import { player, game, now, hpMax, playEffect, ADMIN } from "./game-state.js";
+import { addFxPlace } from "./weapon-fx.js";
 import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { takeDamage } from "./player.js";
 import { burst } from "./particles.js";
@@ -95,7 +96,18 @@ function addLight(x, z, { y = 1.2, radius = 5, color = FIRE_COLOR, strength = 0.
 
 /* a fire with its light: braziers */
 function addFire(x, z, { y = 1.1, size = 1, radius = 5 } = {}) {
-  state.fires.push({ x, z, y, size, effect: null });
+  const fire = { x, z, y, size, effect: null };
+  state.fires.push(fire);
+  /* flames and embers over it, like a flame enchantment's, while it burns */
+  addFxPlace({
+    element: "hearth",
+    x,
+    y,
+    z,
+    spread: 0.18 * size,
+    rate: 0.6 * size,
+    active: () => !!fire.effect,
+  });
   return addLight(x, z, { y, radius });
 }
 

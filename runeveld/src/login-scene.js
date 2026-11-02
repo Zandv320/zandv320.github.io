@@ -6,6 +6,7 @@
    character-select.js puts the chosen hero in front of the heartstone and flies the camera in. */
 import * as THREE from "three";
 import * as builders from "./builders.js";
+import { addFxPlace } from "./weapon-fx.js";
 
 /** The middle of the stone circle, in the world. */
 export const LOGIN_ORIGIN = [-420, 500];
@@ -29,9 +30,9 @@ const CRYSTAL_Y = 3.4;
 /** Sparkles round the heartstone's crystal (main.js plays them). */
 export const LOGIN_SPARKLES = [{ ...HEART, y: CRYSTAL_Y, size: 2.2, tint: 0xd6b4ff }];
 
-/** What gives off an enchantment's particles (weapon-fx.js emitFromPlaces): flames from the fire baskets, arcane
-    motes round the crystal and up the face of the heartstone. */
-export const LOGIN_FX = [
+/* what gives off an enchantment's particles (weapon-fx.js addFxPlace): flames from the fire baskets, arcane motes
+   round the crystal and up the face of the heartstone */
+const LOGIN_FX = [
   ...LOGIN_FIRES.map(({ x, z, y }) => ({
     element: "flame",
     x,
@@ -82,6 +83,7 @@ export function buildLoginScene({ scene, prop, pending, seededRandom }) {
   group.position.set(ORIGIN_X, 0, ORIGIN_Z);
   scene.add(group);
   stage = group;
+  LOGIN_FX.forEach(addFxPlace);
 
   /* ----- the crag: a column of dark rock down into the clouds, grass on top, old paving in the middle ----- */
   const rock = new THREE.Mesh(

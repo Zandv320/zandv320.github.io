@@ -24,6 +24,7 @@ import { sfx } from "./audio.js";
 import { icon } from "./icons.js";
 import * as UI from "./ui.js";
 import { player, game, clickables, now, playEffect, hpMax, spMax } from "./game-state.js";
+import { addFxPlace } from "./weapon-fx.js";
 import { pressedKeys } from "./player.js";
 import { createWorkAnimation } from "./work-animation.js";
 import { flyToHud } from "./feel.js";
@@ -174,12 +175,23 @@ export function createGathering(deps) {
         place,
         label: UI.createLabel("station", station.emoji + " " + station.name),
       });
-      /* a little life: fire on the forge and the campfire, a glow on the altars, bubbles on the table */
+      /* a little life: fire on the forge and the campfire, a glow on the altars, bubbles on the table; the fires
+         give off flames and embers and the altars arcane motes, like an enchantment's (weapon-fx.js) */
       if (place.kind === "forge") {
         playEffect("fire", place.x, place.z + 0.1, { size: 0.9, y: 1.25, loop: true });
+        addFxPlace({
+          element: "hearth",
+          x: place.x,
+          y: 1.1,
+          z: place.z + 0.1,
+          spread: 0.2,
+          rate: 0.6,
+        });
       } else if (place.kind === "campfire") {
         playEffect("fire", place.x, place.z, { size: 1.3, y: 0.55, loop: true });
+        addFxPlace({ element: "hearth", x: place.x, y: 0.35, z: place.z, spread: 0.3, rate: 0.9 });
       } else if (place.kind === "enchanting_altar") {
+        addFxPlace({ element: "arcane", x: place.x, y: 1.3, z: place.z, spread: 0.7, rate: 0.35 });
         playEffect("sparkle", place.x, place.z, {
           size: 1.6,
           y: 1.7,

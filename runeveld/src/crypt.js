@@ -17,6 +17,7 @@ import {
   inCrypt,
 } from "./rules/crypt.js";
 import { player, game, now, hpMax, playEffect, ADMIN } from "./game-state.js";
+import { addFxPlace } from "./weapon-fx.js";
 import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { takeDamage } from "./player.js";
 import { burst, trail } from "./particles.js";
@@ -111,7 +112,18 @@ function addLight(
 
 /* a fire with its light: braziers and wall torches */
 function addFire(x, z, { y = 1.1, size = 1, radius = 5, room = null } = {}) {
-  state.fires.push({ x, z, y, size, room, effect: null });
+  const fire = { x, z, y, size, room, effect: null };
+  state.fires.push(fire);
+  /* flames and embers over it, like a flame enchantment's, while it burns */
+  addFxPlace({
+    element: "hearth",
+    x,
+    y,
+    z,
+    spread: 0.16 * size,
+    rate: 0.5 * size,
+    active: () => !!fire.effect,
+  });
   return addLight(x, z, { y, radius, room });
 }
 

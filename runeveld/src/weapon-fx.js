@@ -19,6 +19,7 @@
 import * as THREE from "three";
 import { scene, camera, cameraState } from "./world.js";
 import { rarityOf } from "./rules/rarity.js";
+import { GLOW_SHAPE } from "./glow-points.js";
 
 /* per enchantment: the part it lights, glow (halo) and core colours, the light it casts at night (daylight.js) */
 const ELEMENTS = {
@@ -328,14 +329,10 @@ function initCloud() {
     fragmentShader: /* glsl */ `
       varying vec3 vColor;
       varying float vShape;
+      ${GLOW_SHAPE}
       void main() {
-        vec2 p = gl_PointCoord * 2.0 - 1.0;
-        float r2 = dot(p, p);
         /* 0: a soft round glow; 1: a four-pointed sparkle with a bright heart */
-        float disc = exp(-r2 * 4.5);
-        float rays = max(exp(-abs(p.x) * 14.0) * exp(-abs(p.y) * 2.2), exp(-abs(p.y) * 14.0) * exp(-abs(p.x) * 2.2));
-        float star = max(rays, exp(-r2 * 18.0)) * smoothstep(1.0, 0.6, sqrt(r2));
-        float light = mix(disc, star, vShape);
+        float light = glowShape(gl_PointCoord, vShape);
         if (light < 0.01) {
           discard;
         }
@@ -757,6 +754,39 @@ const EMITTERS = {
     ],
   ],
 };
+/* a fire in the world (a fire basket, a camp fire, a forge): small licks of flame over it and embers rising high */
+EMITTERS.hearth = [
+  [
+    12,
+    (p) => ({
+      kind: "flame",
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      vx: random(-0.12, 0.12),
+      vy: random(0.8, 1.3),
+      vz: random(-0.08, 0.08),
+      life: random(0.3, 0.5),
+      size0: random(0.14, 0.22),
+      size1: 0.03,
+    }),
+  ],
+  [
+    6,
+    (p) => ({
+      kind: "ember",
+      x: p.x,
+      y: p.y + 0.2,
+      z: p.z,
+      vx: random(-0.35, 0.35),
+      vy: random(1.2, 2.2),
+      life: random(1, 1.8),
+      size0: 0.08,
+      size1: 0.02,
+      shape: 1,
+    }),
+  ],
+];
 /* epic gear glints, legendary gear sheds golden motes, like armour refined to +7 and +10 */
 EMITTERS.epic = EMITTERS.refine2;
 EMITTERS.legendary = EMITTERS.refine3;
@@ -934,30 +964,43 @@ export function updateWeaponFx(dt, holders) {
       auras.delete(sprite);
     }
   }
+  emitFromPlaces(dt);
   finishArcs();
   updateCloud(dt);
 }
 
-/* a point of a fixed place that gives off particles */
+/* ---------------------------------------------------------------- places that glow too ---------------------- */
+
+/* Fixed places in the world that give off an enchantment's particles without a sprite: fire baskets, camp fires and
+   forges (flames and embers), altars and the heartstone (arcane motes). Only those near the camera do. */
+const places = [];
+const PLACE_RANGE = 26;
 const placePoint = new THREE.Vector3();
 
 /**
- * Places that give off an element's particles as an enchanted weapon does, without a sprite (the fire baskets and
- * the heartstone of the start screens): [{element, x, y, z, spread, rate}], every frame before updateWeaponFx;
- * each comes from a random point within `spread` of (x, y, z), `rate` times as many as from a weapon.
+ * Lets a place give off an element's particles (an EMITTERS key), every frame while the camera is near it:
+ * {element, x, y, z, spread, rate, active}; each particle comes from a random point within `spread` of (x, y, z),
+ * `rate` times as many as from a weapon, and only while `active()` (when given) is true.
  */
-export function emitFromPlaces(dt, places) {
-  if (!cloud) {
-    initCloud();
-    initArcs();
-  }
+export function addFxPlace(place) {
+  places.push({ ...place, carry: null });
+}
+
+function emitFromPlaces(dt) {
+  const { x: cx, z: cz } = cameraState.target;
   for (const place of places) {
+    if (Math.abs(place.x - cx) > PLACE_RANGE || Math.abs(place.z - cz) > PLACE_RANGE) {
+      continue;
+    }
+    if (place.active && !place.active()) {
+      continue;
+    }
     const emitters = EMITTERS[place.element] || [];
     if (!place.carry) {
       place.carry = emitters.map(() => 0);
     }
     emitters.forEach(([rate, make], k) => {
-      place.carry[k] += rate * (place.rate || 1) * dt;
+      place.carry[k] = Math.min(4, place.carry[k] + rate * (place.rate || 1) * dt);
       while (place.carry[k] >= 1) {
         place.carry[k] -= 1;
         const spread = place.spread || 0;

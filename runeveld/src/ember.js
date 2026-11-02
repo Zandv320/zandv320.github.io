@@ -4,6 +4,7 @@
    Gull's Promise lying alongside when a hero has brought her here, and the camp on the beach above. The ground,
    the basalt and the props come from schwarnhild's free volcano pack (tools/build_sprites.py, build_ember). */
 import * as THREE from "three";
+import { glowPoints } from "./glow-points.js";
 import * as builders from "./builders.js";
 import {
   EMBER_ISLES,
@@ -33,6 +34,7 @@ import { HULL } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { addShadowCatcher, applyGroundFilter, cameraState } from "./world.js";
 import { clickables, player } from "./game-state.js";
+import { addFxPlace } from "./weapon-fx.js";
 import { loadTexture, IS_PHONE } from "./sprites.js";
 
 /* the mountain's shape: height, and the crater's mouth at the top */
@@ -857,17 +859,20 @@ function buildEmbers(scene, lines, random) {
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(COUNT * 3), 3));
+  /* embers of soft light, like a flame enchantment's (glow-points.js) */
   const points = new THREE.Points(
     geometry,
-    new THREE.PointsMaterial({
-      color: 0xffa040,
-      size: 3,
-      sizeAttenuation: false,
-      transparent: true,
-      opacity: 0.9,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }),
+    glowPoints(
+      new THREE.PointsMaterial({
+        color: 0xffa040,
+        size: 3,
+        sizeAttenuation: false,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    ),
   );
   points.frustumCulled = false;
   points.renderOrder = 10003;
@@ -1404,6 +1409,7 @@ function buildGate({ scene, place, taken, random }) {
     taken.push([bx, bz, 1]);
     emberLights.push({ x: bx, z: bz, y: 1.2, radius: 4, color: [255, 150, 70], strength: 0.85 });
     addVent(scene, bx, bz, random, { size: 0.35, y: 1.4, height: 2.5 });
+    addFxPlace({ element: "hearth", x: bx, y: 1.1, z: bz, spread: 0.2, rate: 0.6 });
   }
 }
 
