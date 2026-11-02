@@ -33,6 +33,7 @@
 
 import { EMBER_LANDS } from "./ember.js";
 import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
+import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./landmarks.js";
 
 const BELLOWS_HALL = forgePoint(24, 18);
 
@@ -1291,6 +1292,63 @@ export const QUESTS = {
       "Six! My barley thanks you, and so do I. Here, still warm. And something for the road.",
     goal: { type: "kill", monster: "ridge_boar", count: 6 },
     reward: { exp: 2000, zeny: 900, items: [{ id: "cooked_minnow", count: 3 }] },
+  },
+  /* ---- side quests: the landmarks (rules/landmarks.js), one for every land ---- */
+  sven_watchtower: {
+    giver: "Guard Sven",
+    title: "A light in the ruin",
+    level: 5,
+    hint: "Cross the fields to the west, past the last fence. The old tower stands alone among the trees.",
+    intro:
+      "See the old stones out west, past the farms? That was a watchtower once, when Runeveld still needed one. These last nights I have seen a light up there. Go and have a look for me. Carefully.",
+    progressText:
+      "West across the fields, past the last fence. The tower stands alone among the trees.",
+    completeText:
+      "Only rubble and crows? Then the light was some shepherd's fire, nothing more. Good. Here, for your boots.",
+    goal: { type: "reach", x: WATCHTOWER[0], z: WATCHTOWER[1], r: 6, label: "the Old Watchtower" },
+    reward: { exp: 260, zeny: 150, items: [{ id: "red_potion", count: 3 }] },
+  },
+  mette_fairy_ring: {
+    giver: "Old Mette",
+    title: "Where the fairies dance",
+    level: 9,
+    after: "mette_altar",
+    hint: "In Whisperwood, west of the path a little before the old altar. Look for mushrooms that glow.",
+    intro:
+      "My grandmother swore there is a ring of mushrooms in Whisperwood that glows in the dark, west of the path before the altar. The fairies dance there, she said. I looked for it all my life and never found it. Will you look, with your young eyes?",
+    progressText:
+      "West of the forest path, a little before the old altar. A ring of mushrooms that glow.",
+    completeText:
+      "It is real? Glowing, in a ring... Oh, she would have laughed at me. Here, moonbloom. She always kept some, for luck.",
+    goal: { type: "reach", x: FAIRY_RING[0], z: FAIRY_RING[1], r: 3, label: "the fairy ring" },
+    reward: { exp: 500, zeny: 150, items: [{ id: "moonbloom", count: 3 }] },
+  },
+  abe_shrine: {
+    giver: "Miller Abe",
+    title: "A candle for the road",
+    level: 16,
+    hint: "South of the Kingsroad, east of the mill: a statue in a ring of standing stones.",
+    intro:
+      "On the road to Aurelia there is a shrine, in a ring of old stones a little south of the road. Travellers light a candle there for a safe journey. My legs will not carry me that far any more. Would you light one for me?",
+    progressText: "South of the Kingsroad, east of my mill: a statue in a ring of standing stones.",
+    completeText:
+      "You lit it? Then the road will be kind to both of us. Take this, and do not argue with an old miller.",
+    goal: { type: "reach", x: SHRINE[0], z: SHRINE[1], r: 4.5, label: "the Wayside Shrine" },
+    reward: { exp: 900, zeny: 400, items: [{ id: "orange_potion", count: 3 }] },
+  },
+  wil_falls: {
+    giver: "Carter Wil",
+    title: "The roar in the gorge",
+    level: 22,
+    hint: "East of the Old King's Bridge, on the south rim of Greyfall Gorge: a wooden platform facing the falls.",
+    intro:
+      "Hear that roar, east of the bridge? A stream falls into the gorge there, all the way down. Somebody built a lookout on the rim to watch it. Go and see it. Then you will know why I take this road the long way round.",
+    progressText:
+      "East of the Old King's Bridge, on the south rim of the gorge: a wooden platform facing the falls.",
+    completeText:
+      "Something, is it not? The world is bigger than its monsters. Here, for the walk back.",
+    goal: { type: "reach", x: LOOKOUT[0], z: LOOKOUT[1], r: 3.5, label: "the Falls Lookout" },
+    reward: { exp: 1600, zeny: 500, items: [{ id: "grand_potion", count: 2 }] },
   },
 };
 

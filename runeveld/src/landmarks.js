@@ -13,10 +13,7 @@ import { daylight } from "./daylight.js";
 import { cameraState } from "./world.js";
 import { inForest } from "./regions.js";
 
-const WATCHTOWER = [-46, -28];
-const SHRINE = [-82, -27];
-const FAIRY_RING = [-26, -98];
-const LOOKOUT = [-116.5, -258.4];
+import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./rules/landmarks.js";
 
 /** The candles before the shrine and the lantern on the lookout: [x, z, y] (main.js lights them at night). */
 export const LANDMARK_CANDLES = [-0.5, 0, 0.5].map((dx) => [SHRINE[0] + dx, SHRINE[1] + 1.3, 0.92]);
