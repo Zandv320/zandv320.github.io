@@ -58,10 +58,46 @@ const HERO_LAYER_FILES = [
   "cloak4_back",
   "cloak5",
   "cloak5_back",
+  /* weapons of other shapes, drawn along the sword (tools/build_sprites.py WEAPON_SHAPES, STAFFS_EXTRA) */
+  "axe1",
+  "axe1_back",
+  "hammer1",
+  "hammer1_back",
+  "spear1",
+  "spear1_back",
+  "greatsword1",
+  "greatsword1_back",
+  "scimitar1",
+  "scimitar1_back",
+  "runestaff1",
+  "runestaff1_back",
+  "moonstaff1",
+  "moonstaff1_back",
+  "crystalstaff1",
+  "crystalstaff1_back",
   "shield1",
   "shield1_back",
   "shield2",
   "shield2_back",
+  /* the buckler, the kite and the tower shield; helmets, the hood and the circlet; mail, plate and leathers; the
+     fur mantle and the tattered cloak (tools/build_sprites.py --only shields, headgear, armour) */
+  "shield3",
+  "shield3_back",
+  "shield4",
+  "shield4_back",
+  "shield5",
+  "shield5_back",
+  "helm_horned",
+  "helm_great",
+  "hood1",
+  "circlet1",
+  "armor6",
+  "armor7",
+  "armor8",
+  "cloak6",
+  "cloak6_back",
+  "cloak7",
+  "cloak7_back",
 ];
 
 function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {
@@ -349,7 +385,11 @@ export function loadLayer(name) {
 /* swords and staffs hide while the hero works with a tool; shields are marked for their enchantment's light
    (weapon-fx.js) */
 function markWeapon(name, texture) {
-  if (/^(sword|staff)\d/.test(name)) {
+  if (
+    /^(sword|staff|axe|hammer|spear|greatsword|scimitar|runestaff|moonstaff|crystalstaff)\d/.test(
+      name,
+    )
+  ) {
     texture.userData.isWeapon = true;
   }
   if (/^shield\d/.test(name)) {
@@ -358,7 +398,7 @@ function markWeapon(name, texture) {
   /* the equipment slot whose refine makes it shine (weapon-fx.js) */
   if (/^(armor|robe)\d/.test(name)) {
     texture.userData.refineSlot = "body";
-  } else if (/^(cap|helm|hat\d)$/.test(name)) {
+  } else if (/^(cap|helm|helm_\w+|hat\d|hood\d|circlet\d)$/.test(name)) {
     texture.userData.refineSlot = "head";
   } else if (/^cloak\d/.test(name)) {
     texture.userData.refineSlot = "cloak";

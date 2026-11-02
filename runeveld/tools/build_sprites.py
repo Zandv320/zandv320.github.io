@@ -401,6 +401,191 @@ CAP_BACK = """
 .oooooooooooooo."""
 
 
+# ---- more headgear: a horned helm, a closed great helm, a ranger's hood and a golden circlet ----
+# The circlet sits on the hair, so its drawing carries the hair itself in the pack's own hair colours (a..e): the
+# game recolours those to the hero's hair colour like it does for every headgear layer (appearance.js).
+HORNS = {"w": (232, 224, 200), "e": (176, 164, 136)}
+HAIR_SHADES = {
+    "a": (33, 26, 28),
+    "b": (43, 32, 35),
+    "c": (59, 44, 51),
+    "e": (77, 57, 69),
+    "f": (104, 79, 90),
+}
+HORNED_FRONT = """
+o..................o
+eo................oe
+weo....oooooo....oew
+.weo..ollllllo..oew.
+..weoolllhhllloowe..
+...weollmmmmmmlleo..
+....olmmmmmmmmlo....
+....odmmmmmmmmdo....
+...ooddddddddddoo...
+...olddddddddddlo...
+...oooooooddoooooo..
+.........oddo.......
+.........oddo.......
+..........oo........"""
+HORNED_RIGHT = """
+..o...........
+.oeo..........
+.oweo.........
+..oweoooooo...
+...owlllllllo.
+...olllhhlllo.
+..ollmmmmmmllo
+..olmmmmmmmmlo
+..odmmmmmmmmdo
+.oodddddddddddo
+.olddddddddddlo
+.oooooooooodddo
+...........oddo
+............oo."""
+HORNED_BACK = """
+o..................o
+eo................oe
+weo....oooooo....oew
+.weo..ollllllo..oew.
+..weoolllmmllloowe..
+...weollmmmmmmlleo..
+....olmmmmmmmmlo....
+....odmmmmmmmmdo....
+...ooddddddddddoo...
+...olddddddddddlo...
+...oooooooooooooo..."""
+GREATHELM_FRONT = """
+.....oooooo.....
+....ollllllo....
+...olllhhlllo...
+..ollmmmmmmllo..
+..olmmmmmmmmlo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..oooooooooooo..
+..odmmmmmmmmdo..
+..odmmmhmmmmdo..
+..odmmmhmmmmdo..
+...oddddddddo...
+....oooooooo...."""
+GREATHELM_RIGHT = """
+....oooooo....
+...ollllllo...
+..olllhhlllo..
+.ollmmmmmmllo.
+.olmmmmmmmmlo.
+.odmmmmmmmmdo.
+.odmmmmmmmmdo.
+.odmmmmmmmmdo.
+.odmmmmoooooo.
+.odmmmmmmmmdo.
+.odmmmmmmmhdo.
+.odmmmmmmmhdo.
+..oddddddddo..
+...oooooooo..."""
+GREATHELM_BACK = """
+.....oooooo.....
+....ollllllo....
+...olllmmlllo...
+..ollmmmmmmllo..
+..olmmmmmmmmlo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+..odmmmmmmmmdo..
+...oddddddddo...
+....oooooooo...."""
+HOOD_FRONT = """
+......oooo......
+....oolllloo....
+...ollmmmmllo...
+..olmmmmmmmmlo..
+.olmmmmmmmmmmlo.
+.ommmmmmmmmmmmo.
+.ommmmmmmmmmmmo.
+.odmmmmmmmmmmdo.
+.odmo......omdo.
+.odmo......omdo.
+.odmo......omdo.
+.oddo......oddo.
+..oo........oo.."""
+HOOD_RIGHT = """
+....ooooo.....
+..oollllloo...
+.ollmmmmmmlo..
+.olmmmmmmmmlo.
+ommmmmmmmmmmlo
+ommmmmmmmmmmmo
+ommmmmmmmmmmmo
+odmmmmmmmmmmdo
+odmmmmmmmo....
+odmmmmmmo.....
+oddmmmmo......
+.odddddo......
+..ooooo......."""
+HOOD_BACK = """
+......oooo......
+....oolllloo....
+...ollmmmmllo...
+..olmmmmmmmmlo..
+.olmmmmmmmmmmlo.
+.ommmmmmmmmmmmo.
+.ommmmmmmmmmmmo.
+.odmmmmmmmmmmdo.
+.odmmmmmmmmmmdo.
+.odmmmmmmmmmmdo.
+.oddmmmmmmmmddo.
+..oddddddddddo..
+...oooooooooo..."""
+CIRCLET_FRONT = """
+.....abbba......
+...abccccba.a...
+..abcceeccba....
+.abcceffeeccba..
+.abcceffeeccbba.
+.oooooooooooooo.
+.ogglgrrglgggho.
+.oooooooooooooo."""
+CIRCLET_RIGHT = """
+....abbba.....
+..abccccbba...
+.abcceeeccba..
+abcceffeecba..
+abcceffeeccba.
+oooooooooooooo
+oggglggglgrrho
+oooooooooooooo"""
+CIRCLET_BACK = """
+.....abbba......
+...abccccba.....
+..abcceeccbba...
+.abcceffeeccba..
+.abcceeeeeccbba.
+.oooooooooooooo.
+.ogglgglgglgggo.
+.oooooooooooooo."""
+CLOTH_GREEN = {"o": (24, 36, 22), "d": (44, 70, 40), "m": (66, 102, 56), "l": (96, 136, 78), "h": (140, 176, 110)}
+GOLD_BAND = {"o": (90, 60, 20), "g": (214, 172, 78), "l": (255, 232, 150), "h": (255, 250, 220), "r": (200, 30, 50)}
+DARK_STEEL = {"o": (24, 26, 36), "d": (64, 70, 92), "m": (104, 112, 138), "l": (156, 166, 192), "h": (216, 224, 240)}
+
+
+def build_new_headgear(head, body, out_dir):
+    """The horned helm, the great helm, the hood and the circlet, from the hero's head and body layers."""
+    pieces = {
+        "helm_horned": (HORNED_FRONT, HORNED_RIGHT, HORNED_BACK, {**IRON, **HORNS}, 10),
+        "helm_great": (GREATHELM_FRONT, GREATHELM_RIGHT, GREATHELM_BACK, DARK_STEEL, 7),
+        "hood1": (HOOD_FRONT, HOOD_RIGHT, HOOD_BACK, CLOTH_GREEN, 7),
+        "circlet1": (CIRCLET_FRONT, CIRCLET_RIGHT, CIRCLET_BACK, {**GOLD_BAND, **HAIR_SHADES}, 7),
+    }
+    for name, (front, right, back, colors, brim) in pieces.items():
+        headgear(head, body, front, right, back, colors, brim).save(out_dir / f"{name}.png")
+    return list(pieces)
+
+
 def pixel_drawing(text, colors):
     lines = text.strip("\n").split("\n")
     width = max(len(line) for line in lines)
@@ -631,6 +816,47 @@ def hand_over(canvas, target, body, gx, gy, fw, fh, r, c):
                     canvas.pixels[x, y] = p
 
 
+def staff_head(canvas, ox, oy, colors, shape):
+    """The head of a staff at (ox, oy): an orb (the default), a rune stone, a crescent moon or a crystal."""
+    px = canvas.pixels
+    outline, core, light = colors["orb_outline"], colors["orb"], colors["orb_highlight"]
+    if shape == "rune":  # a square stone with a glowing cut
+        for yy in range(-2, 3):
+            for xx in range(-2, 3):
+                edge = abs(xx) == 2 or abs(yy) == 2
+                px[ox + xx, oy + yy] = (outline if edge else (52, 54, 76)) + (255,)
+        for yy in (-1, 0, 1):
+            px[ox, oy + yy] = core + (255,)
+        px[ox - 1, oy - 1] = px[ox + 1, oy] = core + (255,)
+        px[ox, oy] = light + (255,)
+        return
+    if shape == "crescent":  # a moon opening towards the top
+        for yy in range(-3, 2):
+            for xx in range(-3, 4):
+                d = (xx * xx + (yy + 1) ** 2) ** 0.5
+                inner = (xx * xx + (yy + 2.4) ** 2) ** 0.5
+                if d <= 3.2 and inner > 2.4:
+                    rim = d > 2.4
+                    px[ox + xx, oy + yy] = (outline if rim else core) + (255,)
+        px[ox - 2, oy - 1] = px[ox + 2, oy - 1] = light + (255,)
+        return
+    if shape == "crystal":  # a tall shard, pointed at both ends
+        for yy in range(-4, 3):
+            half = 1 if -3 <= yy <= 1 else 0
+            for xx in range(-half - 1, half + 2):
+                edge = abs(xx) == half + 1 or yy in (-4, 2)
+                px[ox + xx, oy + yy] = (outline if edge else core) + (255,)
+        px[ox, oy - 2] = px[ox, oy - 1] = light + (255,)
+        return
+    for yy in range(-1, 2):  # the orb on top
+        for xx in range(-1, 2):
+            is_corner = abs(xx) + abs(yy) == 2
+            px[ox + xx, oy + yy] = (outline if is_corner else core) + (255,)
+    for xx, yy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
+        px[ox + xx, oy + yy] = outline + (255,)
+    px[ox, oy] = light + (255,)
+
+
 def staff(sword, sword_back, body, head, colors, fw=64, fh=64, rows=4):
     """colors: {'wood', 'wood_light', 'orb_outline', 'orb', 'orb_highlight', 'arc'}. Returns (front, back).
 
@@ -672,13 +898,7 @@ def staff(sword, sword_back, body, head, colors, fw=64, fh=64, rows=4):
             nx, ny = (1, 0)
         draw_line(canvas, x0 + nx, y0 + ny, x1 + nx, y1 + ny, colors["wood_light"])
         draw_line(canvas, x0, y0, x1, y1, colors["wood"])
-        for yy in range(-1, 2):  # the orb on top
-            for xx in range(-1, 2):
-                is_corner = abs(xx) + abs(yy) == 2
-                canvas.pixels[ox + xx, oy + yy] = (colors["orb_outline"] if is_corner else colors["orb"]) + (255,)
-        for xx, yy in ((0, -1), (-1, 0), (1, 0), (0, 1)):
-            canvas.pixels[ox + xx, oy + yy] = colors["orb_outline"] + (255,)
-        canvas.pixels[ox, oy] = colors["orb_highlight"] + (255,)
+        staff_head(canvas, ox, oy, colors, colors.get("head", "orb"))
         # the hand back on top of the staff, so it holds it (only when the staff is in front of the body)
         if target is front and hand:
             hand_over(canvas, target, body, gx, gy, fw, fh, r, c)
@@ -711,6 +931,141 @@ STAFFS = {
         arc=(200, 170, 255),
     ),
 }
+
+# staves with heads of their own (staff_head): a rune stone, a crescent moon, a crystal
+STAFFS_EXTRA = {
+    "runestaff1": dict(
+        wood=(46, 40, 52),
+        wood_light=(112, 104, 128),
+        orb_outline=(24, 22, 34),
+        orb=(110, 220, 255),
+        orb_highlight=(235, 252, 255),
+        arc=(150, 220, 255),
+        head="rune",
+    ),
+    "moonstaff1": dict(
+        wood=(206, 210, 228),
+        wood_light=(246, 248, 255),
+        orb_outline=(70, 74, 120),
+        orb=(226, 230, 255),
+        orb_highlight=(255, 255, 255),
+        arc=(220, 225, 255),
+        head="crescent",
+    ),
+    "crystalstaff1": dict(
+        wood=(70, 34, 60),
+        wood_light=(140, 76, 120),
+        orb_outline=(110, 20, 70),
+        orb=(255, 90, 170),
+        orb_highlight=(255, 220, 240),
+        arc=(255, 170, 220),
+        head="crystal",
+    ),
+}
+
+# ---- weapons of other shapes for the swordsman: drawn along the sword's axis in every frame ----
+# A shape is a list of parts (t0, t1, s0, s1, colour): a band from t0 to t1 pixels along the weapon (from the
+# hand towards the tip) and from s0 to s1 pixels across it. "curve" bends the blade (pixels sideways per t²).
+WOOD, WOOD_LIGHT = (85, 45, 33), (147, 97, 65)
+STEEL, STEEL_LIGHT, STEEL_DARK = (150, 160, 186), (228, 234, 246), (90, 96, 118)
+GOLD, LEATHER = (214, 178, 90), (78, 46, 26)
+WEAPON_OUTLINE = (30, 24, 34)
+WEAPON_SHAPES = {
+    "axe1": dict(
+        parts=[
+            (-3, 11, -0.5, 0.5, WOOD),
+            (7, 11.5, 1, 3.5, STEEL),
+            (6.5, 12, 3.5, 4.5, STEEL_LIGHT),
+            (8, 10, -2, -1, STEEL_DARK),
+        ]
+    ),
+    "hammer1": dict(
+        parts=[
+            (-3, 10, -0.5, 0.5, WOOD),
+            (9, 12.5, -3, 3, STEEL_DARK),
+            (9, 10, -3, 3, STEEL),
+            (12, 12.5, -3, 3, STEEL_LIGHT),
+        ]
+    ),
+    "spear1": dict(
+        parts=[
+            (-7, 13, -0.5, 0.5, WOOD),
+            (12, 13, -1.5, 1.5, GOLD),
+            (13, 16, -1, 1, STEEL),
+            (13, 17.5, 0, 0.5, STEEL_LIGHT),
+        ]
+    ),
+    "greatsword1": dict(
+        parts=[
+            (-3, 0, -0.5, 0.5, LEATHER),
+            (0.5, 1.5, -3, 3, GOLD),
+            (1.5, 16, -1, 1, STEEL),
+            (1.5, 17, 1, 1.5, STEEL_LIGHT),
+            (16, 17.5, -0.5, 0.5, STEEL),
+        ]
+    ),
+    "scimitar1": dict(
+        parts=[
+            (-3, 0, -0.5, 0.5, LEATHER),
+            (0.5, 1.5, -2, 2, GOLD),
+            (1.5, 12.5, -0.8, 0.8, STEEL),
+            (1.5, 13, 0.8, 1.3, STEEL_LIGHT),
+        ],
+        curve=0.045,
+    ),
+}
+
+
+def shaped_weapon(front, back, body, shape, fw=64, fh=64, rows=4):
+    """A weapon of another shape in the hand of the sword (front, back: the sword sheets it replaces), along the
+    sword's axis in every frame: idle, walk, attack, hurt and death. The swing arcs stay; the hand is drawn over
+    the grip. Returns (front, back)."""
+    out_front = Image.new("RGBA", front.size, TRANSPARENT)
+    out_back = out_front.copy()
+    curve = shape.get("curve", 0)
+    for (r, c), frame in weapon_grips(front, back, body, fw, fh, rows).items():
+        for x, y, is_back in frame["arcs"]:
+            (out_back if is_back else out_front).putpixel((x, y), (235, 240, 255, 255))
+        if frame["grip"] is None:
+            continue
+        gx, gy, ux, uy, hand, is_back = frame["grip"]
+        if r < 4:
+            # at rest the sword's point is its lowest pixel (as in hold_idle_swords_forward): from the hilt to it,
+            # so a weapon that hangs (facing right) hangs too instead of rising past the face
+            cell = (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
+            ends = idle_sword_ends([front.crop(cell), back.crop(cell)])
+            if ends:
+                (hx, hy), (tx, ty) = ends
+                length = max(1, ((tx - hx) ** 2 + (ty - hy) ** 2) ** 0.5)
+                gx, gy = c * fw + hx, r * fh + hy
+                ux, uy = (tx - hx) / length, (ty - hy) / length
+        nx, ny = -uy, ux
+        drawn = {}
+        for t0, t1, s0, s1, color in shape["parts"]:
+            t = t0
+            while t <= t1:
+                bend = curve * max(0, t - 1.5) ** 2
+                s = s0
+                while s <= s1:
+                    x = round(gx + ux * t + nx * (s + bend))
+                    y = round(gy + uy * t + ny * (s + bend))
+                    if c * fw <= x < (c + 1) * fw and r * fh <= y < (r + 1) * fh:
+                        drawn[(x, y)] = color
+                    s += 0.5
+                t += 0.5
+        target = out_back if is_back else out_front
+        px = target.load()
+        for x, y in drawn:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                edge = (x + dx, y + dy)
+                if edge not in drawn and c * fw <= edge[0] < (c + 1) * fw and r * fh <= edge[1] < (r + 1) * fh:
+                    px[edge] = WEAPON_OUTLINE + (255,)
+        for (x, y), color in drawn.items():
+            px[x, y] = color + (255,)
+        if target is out_front and hand:
+            hand_over(PixelCanvas(target), target, body, gx, gy, fw, fh, r, c)
+    return out_front, out_back
+
 
 # ---------- cloaks: a cape derived from the body and the tunic, per frame ----------
 # The cape hangs behind the figure (layer '..._back', below the body) and comes in front of the body where needed
@@ -934,6 +1289,190 @@ ARCANE = {
 }
 
 
+def build_new_weapons(swordsman_dir, out_dir):
+    """Only the shaped weapons and the extra staves (for `--only weapons`), from a fresh build of the hero layers in
+    memory, so nothing else on disk changes."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        stacked, body = build_hero_layers(swordsman_dir, pathlib.Path(tmp))
+    head = stacked[1]
+    for name, colors in STAFFS_EXTRA.items():
+        front, back = staff(stacked[3], stacked[4], body, head, colors)
+        front.save(out_dir / f"{name}.png")
+        back.save(out_dir / f"{name}_back.png")
+    return build_shaped_weapons(stacked, body, out_dir)
+
+
+def build_new_armour_only(swordsman_dir, out_dir):
+    """Only the new armour and cloaks (for `--only armour`), from the hero layers built in memory."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        stacked, body = build_hero_layers(swordsman_dir, pathlib.Path(tmp))
+    return build_new_armour(stacked, body, out_dir)
+
+
+def build_shaped_weapons(stacked, body, out_dir):
+    """Axes, hammers, spears, greatswords and scimitars, in the hand and pose of the resting-forward sword."""
+    front, back = hold_idle_swords_forward(stacked[3], stacked[4], body)
+    for name, shape in WEAPON_SHAPES.items():
+        weapon_front, weapon_back = shaped_weapon(front, back, body, shape)
+        weapon_front.save(out_dir / f"{name}.png")
+        weapon_back.save(out_dir / f"{name}_back.png")
+    return [n + part for n in WEAPON_SHAPES for part in ("", "_back")] + [
+        n + part for n in STAFFS_EXTRA for part in ("", "_back")
+    ]
+
+
+# ---- more armour and cloaks, each a shape of its own on an existing one ----
+MAIL = [(58, 62, 74), (96, 102, 118), (138, 144, 160), (182, 188, 202), (222, 226, 236)]
+
+
+def lightness(rgb):
+    return (0.3 * rgb[0] + 0.59 * rgb[1] + 0.11 * rgb[2]) / 255
+
+
+def is_dark_outline(rgb):
+    return rgb[0] < 40 and rgb[1] < 40 and rgb[2] < 40
+
+
+def chainmail(layer):
+    """A coat of rings in the shape of `layer`: its light and shade on a grey ramp, every other pixel a step darker
+    (the rings); the outline stays."""
+    out = layer.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            p = px[x, y]
+            if p[3] == 0 or is_dark_outline(p[:3]):
+                continue
+            step = min(len(MAIL) - 1, int(lightness(p[:3]) * len(MAIL) * 1.2))
+            if (x + y) % 2:
+                step = max(0, step - 1)
+            px[x, y] = MAIL[step] + (255,)
+    return out
+
+
+def frame_cells(im, fw=64, fh=64):
+    for r in range(im.height // fh):
+        for c in range(im.width // fw):
+            yield r, c, (c * fw, r * fh, (c + 1) * fw, (r + 1) * fh)
+
+
+def pauldrons(layer, edge, face, fw=64, fh=64):
+    """Big shoulder plates on an armour layer: in each frame, a plate over each upper corner of the armour, one
+    pixel wider and higher than the shoulder, with a lit edge."""
+    out = layer.copy()
+    px = out.load()
+    for r, _c, box in frame_cells(layer, fw, fh):
+        bbox = layer.crop(box).getbbox()
+        if not bbox:
+            continue
+        top = box[1] + bbox[1]
+        rows = [[x for x in range(box[0], box[2]) if px[x, y][3]] for y in range(top + 1, min(top + 4, box[3]))]
+        xs = [x for row in rows for x in row]
+        if not xs:
+            continue
+        left, right = min(xs), max(xs)
+        view = r % 4
+        sides = (left, right) if view in (0, 3) else ((left,) if view == 2 else (right,))
+        for x0 in sides:
+            outward = -1 if x0 == left else 1
+            for dy in range(0, 3):
+                for dx in range(-1, 3):
+                    x = x0 + outward * dx
+                    y = top + dy
+                    if box[0] <= x < box[2] and box[1] <= y < box[3]:
+                        rim = dy == 0 or dx == 2
+                        px[x, y] = (edge if rim else face) + (255,)
+            if box[0] <= x0 + outward * 3 < box[2]:
+                for dy in range(0, 3):
+                    px[x0 + outward * 3, top + dy] = (30, 24, 34, 255)
+    return out
+
+
+def strap(layer, leather, buckle, fw=64, fh=64):
+    """A strap across the chest, from the shoulder to the opposite hip, in the front and back views."""
+    out = layer.copy()
+    px = out.load()
+    for r, _c, box in frame_cells(layer, fw, fh):
+        if r % 4 not in (0, 3):
+            continue
+        bbox = layer.crop(box).getbbox()
+        if not bbox:
+            continue
+        x0, y0 = box[0] + bbox[0] + 1, box[1] + bbox[1] + 1
+        x1, y1 = box[0] + bbox[2] - 2, box[1] + bbox[1] + 7
+        steps = max(1, x1 - x0)
+        for k in range(steps + 1):
+            x = x0 + k
+            y = round(y0 + (y1 - y0) * k / steps)
+            for dy in (0, 1):
+                if px[x, y + dy][3] and not is_dark_outline(px[x, y + dy][:3]):
+                    px[x, y + dy] = leather + (255,)
+        bx = (x0 + x1) // 2
+        by = round((y0 + y1) / 2)
+        if px[bx, by][3]:
+            px[bx, by] = buckle + (255,)
+    return out
+
+
+def fur_collar(front, back, fur, fw=64, fh=64):
+    """A collar of fur along the top of a cape: its two highest rows in every column, speckled white and grey."""
+    front, back = front.copy(), back.copy()
+    for layer in (front, back):
+        px = layer.load()
+        for _r, _c, box in frame_cells(layer, fw, fh):
+            for x in range(box[0], box[2]):
+                ys = [y for y in range(box[1], box[3]) if px[x, y][3]]
+                for k, y in enumerate(ys[:2]):
+                    px[x, y] = fur[(x + y + k) % len(fur)] + (255,)
+    return front, back
+
+
+def tatters(front, back, darkest, fw=64, fh=64):
+    """A ragged hem: every column of the cape loses 0 to 3 pixels at the bottom, the new edge in the darkest
+    colour."""
+    front, back = front.copy(), back.copy()
+    for layer in (front, back):
+        px = layer.load()
+        for _r, c, box in frame_cells(layer, fw, fh):
+            for x in range(box[0], box[2]):
+                ys = [y for y in range(box[1], box[3]) if px[x, y][3]]
+                if len(ys) < 6:
+                    continue
+                cut = [0, 2, 1, 3, 0, 1, 2][(x * 7 + c) % 7]
+                for y in ys[len(ys) - cut :]:
+                    px[x, y] = TRANSPARENT
+                if cut:
+                    px[x, ys[len(ys) - cut - 1]] = darkest + (255,)
+    return front, back
+
+
+def build_new_armour(stacked, body, out_dir):
+    """Chainmail, gilded plate and ranger's leathers, and a fur mantle and a tattered cloak."""
+    head = stacked[1]
+    vest = layer_difference(stacked[5], body)  # the leather vest without the body
+    plate = layer_difference(stacked[8], body)  # the steel armour without the body
+    chainmail(vest).save(out_dir / "armor6.png")
+    gilded = hsv_layer(
+        plate, lambda h, s, v: (0.12, s * 0.35, min(1, v * 1.25)) if s > 0.25 else (h, s * 0.2, min(1, v * 1.25))
+    )
+    pauldrons(gilded, (255, 230, 150), (214, 172, 78)).save(out_dir / "armor7.png")
+    ranger = hsv_layer(vest, lambda h, s, v: (0.27, min(1, s * 1.1 + 0.15), v * 0.85))
+    strap(ranger, (82, 50, 26), (226, 190, 96)).save(out_dir / "armor8.png")
+    front, back = cloak(body, head, [(40, 28, 20), (72, 50, 34), (104, 74, 50), (138, 102, 72)])
+    front, back = fur_collar(front, back, [(236, 232, 222), (204, 198, 186), (250, 248, 242)])
+    front.save(out_dir / "cloak6.png")
+    back.save(out_dir / "cloak6_back.png")
+    front, back = cloak(body, head, [(20, 22, 20), (38, 42, 38), (60, 66, 58), (86, 94, 82)])
+    front, back = tatters(front, back, (14, 16, 14))
+    front.save(out_dir / "cloak7.png")
+    back.save(out_dir / "cloak7_back.png")
+    return ["armor6", "armor7", "armor8", "cloak6", "cloak6_back", "cloak7", "cloak7_back"]
+
+
 def build_class_gear(stacked, body, out_dir):
     """Headgear, robes, staffs, cloaks and second-class armour, all derived from the hero layers."""
     head = stacked[1]
@@ -943,10 +1482,11 @@ def build_class_gear(stacked, body, out_dir):
     tunic_layer = layer_difference(stacked[2], body)  # the level-1 tunic without the body
     for name, palette in ROBES.items():
         robe(tunic_layer, body, palette).save(out_dir / f"{name}.png")
-    for name, colors in STAFFS.items():
+    for name, colors in {**STAFFS, **STAFFS_EXTRA}.items():
         front, back = staff(stacked[3], stacked[4], body, head, colors)
         front.save(out_dir / f"{name}.png")
         back.save(out_dir / f"{name}_back.png")
+    build_shaped_weapons(stacked, body, out_dir)
 
     for name, spec in CLOAKS.items():
         front, back = cloak(body, head, spec["palette"], spec["trim"])
@@ -961,6 +1501,8 @@ def build_class_gear(stacked, body, out_dir):
 
     headgear(head, body, HAT_FRONT, HAT_RIGHT, HAT_BACK, FELT, brim=13).save(out_dir / "hat1.png")
     headgear(head, body, HAT_FRONT, HAT_RIGHT, HAT_BACK, ARCANE, brim=13).save(out_dir / "hat2.png")
+    build_new_headgear(head, body, out_dir)
+    build_new_armour(stacked, body, out_dir)
 
 
 # ---------- animals ----------
@@ -2044,6 +2586,155 @@ SHIELDS = {
 }
 
 
+BUCKLER = (
+    """
+..ooo..
+.obbbo.
+obbmbbo
+obmhmbo
+obbmbbo
+.obbbo.
+..ooo..
+""",
+    """
+.o.
+obo
+obo
+omo
+obo
+obo
+.o.
+""",
+    """
+..ooo..
+.obbbo.
+obbbbbo
+obbdbbo
+obbbbbo
+.obbbo.
+..ooo..
+""",
+)
+KITE = (
+    """
+.ooooooo.
+orrrrrrro
+ormmmmmro
+ormmcmmro
+ormcccmro
+ormmcmmro
+ormmmmmro
+.ormmmro.
+.ormmmro.
+..ormro..
+..ormro..
+...oro...
+....o....
+""",
+    """
+.oooo.
+orrrdo
+ormmdo
+orcmdo
+ormmdo
+ormmdo
+ormmdo
+.ormo.
+.ormo.
+..oo..
+""",
+    """
+.ooooooo.
+orrrrrrro
+ormmmmmro
+ormmbmmro
+ormbbbmro
+ormmbmmro
+.ormmmro.
+..ormro..
+...oro...
+....o....
+""",
+)
+TOWER = (
+    """
+ooooooooooo
+orrrrrrrrro
+ormmmmmmmro
+ormdmmmdmro
+ormmmmmmmro
+ormmmcmmmro
+ormmcccmmro
+ormmmcmmmro
+ormmmmmmmro
+ormdmmmdmro
+ormmmmmmmro
+orrrrrrrrro
+ooooooooooo
+""",
+    """
+.oooo.
+orrrro
+ormmdo
+ormmdo
+ormmdo
+ormmdo
+ormmdo
+ormmdo
+ormmdo
+ormmdo
+orrrro
+.oooo.
+""",
+    """
+ooooooooooo
+orrrrrrrrro
+ormmmmmmmro
+ormmmbmmmro
+ormmmbmmmro
+ormbbbbbmro
+ormmmbmmmro
+ormmmbmmmro
+ormmmmmmmro
+orrrrrrrrro
+ooooooooooo
+""",
+)
+SHIELDS.update(
+    {
+        # an oak buckler with an iron boss
+        "shield3": {
+            "o": (12, 15, 42),
+            "b": (140, 92, 56),
+            "d": (100, 64, 40),
+            "m": (120, 128, 148),
+            "h": (220, 226, 240),
+            "art": BUCKLER,
+        },
+        # a kite shield: blue with a silver rim and a white sign
+        "shield4": {
+            "o": (12, 15, 42),
+            "r": (190, 198, 216),
+            "m": (46, 74, 150),
+            "d": (30, 48, 104),
+            "c": (236, 236, 240),
+            "b": (74, 52, 40),
+            "art": KITE,
+        },
+        # a tower shield: dark iron, riveted, with a golden sign
+        "shield5": {
+            "o": (12, 15, 42),
+            "r": (120, 128, 148),
+            "m": (70, 76, 96),
+            "d": (190, 196, 210),
+            "c": (222, 182, 70),
+            "b": (74, 52, 40),
+            "art": TOWER,
+        },
+    }
+)
+
+
 def shield_spot(view, piece, xc, neck, left, right):
     """Top left corner of the shield piece in a frame."""
     if view == 0:
@@ -2057,10 +2748,12 @@ def shield_spot(view, piece, xc, neck, left, right):
 
 def shield(head, body, colors, fw=64, fh=64):
     """The shield layers (in front of and behind the body) for the whole hero sheet; none in the death frames once
-    the hero falls."""
-    side = pixel_drawing(SHIELD_SIDE, colors)
-    face = pixel_drawing(SHIELD_FRONT, colors)
-    pieces = {0: face, 1: face, 2: side, 3: pixel_drawing(SHIELD_BACK, colors)}
+    the hero falls. `colors` may carry an "art" of its own: (front, side, back) drawings."""
+    art_front, art_side, art_back = colors.get("art", (SHIELD_FRONT, SHIELD_SIDE, SHIELD_BACK))
+    colors = {key: value for key, value in colors.items() if key != "art"}
+    side = pixel_drawing(art_side, colors)
+    face = pixel_drawing(art_front, colors)
+    pieces = {0: face, 1: face, 2: side, 3: pixel_drawing(art_back, colors)}
     front = Image.new("RGBA", head.size, TRANSPARENT)
     back = Image.new("RGBA", head.size, TRANSPARENT)
     src = head.load()
@@ -2096,7 +2789,8 @@ def shield(head, body, colors, fw=64, fh=64):
 
 
 def build_shields(out_dir):
-    """shield1/2 and their _back layers, from the hero's own head and body layers; returns the names written."""
+    """The shields (SHIELDS) and their _back layers, from the hero's own head and body layers; returns the names
+    written."""
     head = open_rgba(out_dir / "hero_head.png")
     body = open_rgba(out_dir / "hero_body.png")
     written = []
@@ -2413,6 +3107,11 @@ def main():
         builders = {
             "swords": lambda: build_hero_layers(swordsman_dir, out_dir)
             and [f"sword{level}{part}" for level in (1, 2, 3) for part in ("", "_back")],
+            "weapons": lambda: build_new_weapons(swordsman_dir, out_dir),
+            "armour": lambda: build_new_armour_only(swordsman_dir, out_dir),
+            "headgear": lambda: build_new_headgear(
+                open_rgba(out_dir / "hero_head.png"), open_rgba(out_dir / "hero_body.png"), out_dir
+            ),
             "crypt": lambda: build_crypt(packs_dir, out_dir),
             "shields": lambda: build_shields(out_dir),
             "goblins": lambda: build_goblins(packs_dir, out_dir),

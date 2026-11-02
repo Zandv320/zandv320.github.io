@@ -12,6 +12,7 @@ Packs: Free Swordsman Skills, Free Paladin Skill Icons, Free RPG Loot Icons, Fre
 import colorsys
 import glob
 import json
+import math
 import pathlib
 import sys
 
@@ -651,6 +652,272 @@ def heater_shield(face, rim, cross):
     return add_outline(im)
 
 
+# ---- the weapons, helmets, shields and armour of other shapes (tools/build_sprites.py), drawn like the hero wears them
+STEEL = ((90, 96, 118), (150, 160, 186), (228, 234, 246))
+DARK_IRON = ((40, 42, 52), (70, 74, 90), (120, 126, 146))
+GOLD = ((150, 120, 60), (214, 178, 90), (250, 230, 170))
+WOOD = ((70, 38, 26), (120, 76, 48), (164, 114, 72))
+LEATHER = ((60, 34, 20), (98, 60, 34), (140, 92, 54))
+
+
+def bar(d, start, end, width, color):
+    """A straight band from start to end (a haft, a blade)."""
+    d.line([start, end], fill=color + (255,), width=width)
+
+
+def haft(d, start, end, colors=WOOD):
+    """A wooden shaft with its lit side, from the butt to the head."""
+    bar(d, start, end, 3, colors[0])
+    bar(d, (start[0], start[1] - 1), (end[0], end[1] - 1), 1, colors[2])
+    bar(d, start, end, 1, colors[1])
+
+
+def along(origin, direction, t, s):
+    """The point t pixels along `direction` from origin and s pixels across it."""
+    (ox, oy), (ux, uy) = origin, direction
+    return (ox + ux * t - uy * s, oy + uy * t + ux * s)
+
+
+DIAGONAL = (0.7071, -0.7071)  # from the bottom left to the top right
+
+
+def battle_axe():
+    im = blank()
+    d = ImageDraw.Draw(im)
+    haft(d, (6, 27), (22, 9))
+    polygon(d, [(17, 10), (20, 4), (27, 4), (29, 11), (24, 16), (20, 13)], STEEL[1])
+    polygon(d, [(22, 5), (27, 5), (28, 10), (25, 13), (23, 10)], STEEL[2])
+    polygon(d, [(17, 10), (20, 13), (21, 11), (19, 8)], STEEL[0])
+    d.line([(27, 5), (29, 11)], fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+def war_hammer():
+    im = blank()
+    d = ImageDraw.Draw(im)
+    haft(d, (6, 27), (19, 12))
+    corners = [along((21, 10), DIAGONAL, t, s) for t, s in ((-4, -7), (4, -7), (4, 7), (-4, 7))]
+    polygon(d, corners, STEEL[0])
+    polygon(d, [along((21, 10), DIAGONAL, t, s) for t, s in ((-3, -6), (3, -6), (3, 6), (-3, 6))], STEEL[1])
+    polygon(d, [along((21, 10), DIAGONAL, t, s) for t, s in ((1, -6), (3, -6), (3, 6), (1, 6))], STEEL[2])
+    polygon(d, [along((21, 10), DIAGONAL, t, s) for t, s in ((-3, -1), (3, -1), (3, 1), (-3, 1))], GOLD[1])
+    return add_outline(im)
+
+
+def spear():
+    im = blank()
+    d = ImageDraw.Draw(im)
+    haft(d, (3, 29), (21, 11))
+    polygon(d, [along((21, 11), DIAGONAL, t, s) for t, s in ((-1, -2), (1, -2), (1, 2), (-1, 2))], GOLD[1])
+    head = [along((21, 11), DIAGONAL, t, s) for t, s in ((1, 0), (4, -3), (11, 0), (4, 3))]
+    polygon(d, head, STEEL[1])
+    polygon(d, [along((21, 11), DIAGONAL, t, s) for t, s in ((2, 0), (4, -2), (10, 0))], STEEL[2])
+    return add_outline(im)
+
+
+def blade(curve=0.0, length=19, grip=GOLD, guard=7):
+    """A long blade from the hilt (bottom left) to the point; `curve` bends it like a scimitar."""
+    im = blank()
+    d = ImageDraw.Draw(im)
+    hilt = (8, 24)
+    bar(d, along(hilt, DIAGONAL, -6, 0), along(hilt, DIAGONAL, -1, 0), 3, LEATHER[1])
+    d.point(along(hilt, DIAGONAL, -6, 0), fill=grip[1] + (255,))
+    for t in range(1, length + 1):
+        bend = curve * t * t
+        width = 2.2 if t < length - 2 else 1.2 if t < length else 0.5
+        polygon(
+            d,
+            [
+                along(hilt, DIAGONAL, t, bend - width),
+                along(hilt, DIAGONAL, t + 1, bend - width),
+                along(hilt, DIAGONAL, t + 1, bend + width),
+                along(hilt, DIAGONAL, t, bend + width),
+            ],
+            STEEL[1],
+        )
+        d.point(along(hilt, DIAGONAL, t, bend - 1), fill=STEEL[2] + (255,))
+    polygon(
+        d,
+        [
+            along(hilt, DIAGONAL, -1, -guard),
+            along(hilt, DIAGONAL, 1, -guard),
+            along(hilt, DIAGONAL, 1, guard),
+            along(hilt, DIAGONAL, -1, guard),
+        ],
+        grip[1],
+    )
+    d.point(along(hilt, DIAGONAL, 0, 0), fill=grip[2] + (255,))
+    return add_outline(im)
+
+
+def staff_icon(head, colors):
+    """A staff with its head (staff_head in build_sprites.py): 'rune', 'crescent' or 'crystal'.
+    colors: (wood ramp, (outline, core, light))."""
+    wood, (rim, core, light) = colors
+    im = blank()
+    d = ImageDraw.Draw(im)
+    haft(d, (5, 29), (21, 12), wood)
+    if head == "rune":  # a square stone with a glowing cut
+        d.rectangle([18, 3, 28, 13], fill=rim + (255,))
+        d.rectangle([19, 4, 27, 12], fill=(52, 54, 76, 255))
+        d.line([(23, 5), (23, 11)], fill=core + (255,), width=2)
+        d.line([(20, 6), (22, 8)], fill=core + (255,))
+        d.line([(24, 9), (26, 10)], fill=core + (255,))
+        d.point((23, 7), fill=light + (255,))
+    elif head == "crescent":  # a moon opening upwards
+        d.ellipse([16, 2, 30, 16], fill=rim + (255,))
+        d.ellipse([17, 3, 29, 15], fill=core + (255,))
+        d.ellipse([16, -3, 30, 10], fill=(0, 0, 0, 0))
+        d.point((18, 10), fill=light + (255,))
+        d.point((28, 10), fill=light + (255,))
+    else:  # a tall shard
+        polygon(d, [(23, 1), (27, 6), (26, 14), (23, 17), (20, 14), (19, 6)], rim)
+        polygon(d, [(23, 3), (25, 7), (24, 13), (23, 15), (21, 13), (21, 7)], core)
+        d.line([(22, 6), (22, 11)], fill=light + (255,))
+    return add_outline(im)
+
+
+def great_helm():
+    im = blank()
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([8, 5, 24, 27], radius=6, fill=DARK_IRON[1] + (255,))
+    d.rounded_rectangle([9, 6, 15, 26], radius=5, fill=DARK_IRON[2] + (255,))  # the lit half
+    d.rectangle([9, 14, 23, 15], fill=(16, 16, 22, 255))  # the eye slit
+    for y in (19, 22):
+        for x in (18, 20, 22):
+            d.point((x, y), fill=(16, 16, 22, 255))
+    d.rectangle([15, 5, 17, 27], fill=GOLD[1] + (255,))
+    d.rectangle([9, 14, 23, 15], fill=(16, 16, 22, 255))
+    d.point((11, 8), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+def hood(cloth):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    polygon(d, [(16, 3), (24, 9), (27, 20), (29, 28), (3, 28), (5, 20), (8, 9)], cloth[0])
+    polygon(d, [(16, 4), (22, 9), (24, 18), (16, 16)], cloth[2])
+    polygon(d, [(16, 4), (10, 9), (8, 18), (16, 16)], cloth[1])
+    d.ellipse([10, 11, 22, 25], fill=(20, 18, 24, 255))  # the dark face opening
+    polygon(d, [(3, 28), (10, 22), (16, 26), (22, 22), (29, 28)], cloth[1])
+    return add_outline(im)
+
+
+def circlet(gem):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    d.ellipse([3, 10, 29, 24], outline=GOLD[0] + (255,), width=3)
+    d.arc([4, 11, 28, 23], 10, 170, fill=GOLD[2] + (255,), width=2)
+    d.arc([4, 11, 28, 23], 190, 350, fill=GOLD[1] + (255,), width=1)
+    polygon(d, [(16, 15), (20, 20), (16, 25), (12, 20)], gem[0])
+    polygon(d, [(16, 17), (18, 20), (16, 23), (14, 20)], gem[1])
+    d.point((15, 18), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+def buckler(face, rim, boss):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    d.ellipse([4, 4, 28, 28], fill=rim[0] + (255,))
+    d.ellipse([6, 6, 26, 26], fill=face[0] + (255,))
+    d.pieslice([6, 6, 26, 26], 150, 300, fill=face[1] + (255,))  # the lit side
+    for a in range(0, 360, 45):  # the rivets round the rim
+        d.point((16 + 8 * math.cos(math.radians(a)), 16 + 8 * math.sin(math.radians(a))), fill=rim[1] + (255,))
+    d.ellipse([12, 12, 20, 20], fill=boss[0] + (255,))
+    d.ellipse([13, 13, 19, 19], fill=boss[1] + (255,))
+    d.point((14, 14), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+def kite_shield(face, rim, sign):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    polygon(d, [(7, 3), (25, 3), (26, 12), (16, 30), (6, 12)], rim)
+    polygon(d, [(9, 5), (23, 5), (24, 12), (16, 27), (8, 12)], face[0])
+    polygon(d, [(9, 5), (16, 5), (16, 27), (8, 12)], face[1])
+    polygon(d, [(16, 8), (21, 13), (16, 18), (11, 13)], sign)  # a white diamond
+    d.point((10, 6), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+def tower_shield(face, rim, sign):
+    im = blank()
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([7, 2, 25, 30], radius=3, fill=rim + (255,))
+    d.rectangle([9, 4, 23, 28], fill=face[0] + (255,))
+    d.rectangle([9, 4, 15, 28], fill=face[1] + (255,))
+    for y in (6, 26):  # the iron bands
+        d.line([(9, y), (23, y)], fill=rim + (255,))
+    d.rectangle([15, 9, 17, 23], fill=sign + (255,))
+    d.rectangle([11, 12, 21, 14], fill=sign + (255,))
+    d.point((10, 5), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+TUNIC = [(9, 4), (13, 6), (19, 6), (23, 4), (29, 9), (27, 15), (24, 14), (24, 28), (8, 28), (8, 14), (5, 15), (3, 9)]
+
+
+def tunic(ramp, pattern=None, strap=None):
+    """A jerkin with sleeves: ramp (dark, mid, light); pattern 'mail' for rings; strap: (leather, buckle)."""
+    im = blank()
+    d = ImageDraw.Draw(im)
+    polygon(d, TUNIC, ramp[0])
+    polygon(d, [(9, 5), (13, 7), (16, 7), (16, 27), (9, 27), (9, 13), (5, 14), (4, 9)], ramp[1])
+    polygon(d, [(16, 7), (19, 7), (23, 5), (28, 9), (26, 14), (23, 13), (23, 27), (16, 27)], ramp[1])
+    polygon(d, [(13, 6), (16, 9), (19, 6)], (24, 22, 30))  # the neck
+    if pattern == "mail":
+        for y in range(8, 28, 2):
+            for x in range(4 + y % 4 // 2, 29, 2):
+                if im.getpixel((x, y))[3]:
+                    d.point((x, y), fill=ramp[2] + (255,))
+    else:
+        d.line([(10, 8), (10, 26)], fill=ramp[2] + (255,))
+    if strap:
+        leather, buckle = strap
+        d.line([(9, 6), (23, 27)], fill=leather + (255,), width=3)
+        d.rectangle([14, 14, 18, 18], outline=buckle + (255,))
+    d.line([(8, 22), (24, 22)], fill=ramp[0] + (255,), width=2)  # the belt line
+    return add_outline(im)
+
+
+def plate(ramp, trim):
+    """A breastplate with round pauldrons and a gilded trim."""
+    im = tunic(ramp)
+    d = ImageDraw.Draw(im)
+    for box in ([2, 4, 12, 13], [20, 4, 30, 13]):
+        d.ellipse(box, fill=trim[0] + (255,))
+        d.ellipse([box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 2], fill=ramp[2] + (255,))
+    d.line([(12, 10), (16, 14), (20, 10)], fill=trim[1] + (255,), width=2)
+    d.line([(16, 14), (16, 21)], fill=trim[1] + (255,))
+    d.line([(8, 22), (24, 22)], fill=trim[1] + (255,), width=2)
+    return add_outline(im)
+
+
+def cloak(ramp, fur=None, torn=False):
+    """A cloak seen from behind: ramp (dark, mid, light); fur: a fur collar (dark, mid, light); torn: a ragged hem."""
+    im = blank()
+    d = ImageDraw.Draw(im)
+    polygon(d, [(11, 4), (21, 4), (25, 10), (28, 29), (4, 29), (7, 10)], ramp[0])
+    polygon(d, [(12, 5), (16, 5), (16, 28), (6, 28), (8, 11)], ramp[1])
+    polygon(d, [(16, 5), (20, 5), (24, 11), (26, 28), (16, 28)], ramp[0])
+    for x0, x1 in ((10, 8), (16, 16), (21, 23)):  # the folds
+        d.line([(x0, 12), (x1, 27)], fill=ramp[2] + (255,))
+    if torn:
+        for x in range(4, 29):
+            depth = (1, 4, 2, 5, 0, 3)[(x // 2) % 6]
+            if depth:
+                d.line([(x, 30 - depth), (x, 29)], fill=(0, 0, 0, 0))
+    if fur:
+        d.ellipse([5, 1, 27, 12], fill=fur[0] + (255,))
+        d.ellipse([6, 1, 26, 10], fill=fur[1] + (255,))
+        for x in range(8, 25, 3):
+            d.point((x, 4 + x % 2), fill=fur[2] + (255,))
+            d.point((x + 1, 8), fill=fur[0] + (255,))
+    else:
+        d.rectangle([10, 3, 22, 5], fill=ramp[2] + (255,))
+    return add_outline(im)
+
+
 ITEM_RUNES = {
     "rune_of_radiance": (
         ((200, 150, 40), (255, 244, 200)),
@@ -716,6 +983,36 @@ def item_icons(sources):
         # potions and runes
         "orange_potion": hue_shift(pack("potions", 1), 0.07, 1.0, 1.05),
         **{name: rune(colors, glyph) for name, (colors, glyph) in ITEM_RUNES.items()},
+        # weapons, helmets, shields and armour of other shapes
+        "battle_axe": battle_axe(),
+        "war_hammer": war_hammer(),
+        "boar_spear": spear(),
+        "claymore": blade(length=22),
+        "sunsteel_scimitar": blade(curve=0.035, length=19, guard=4),
+        "runecarved_staff": staff_icon(
+            "rune", (((34, 30, 40), (70, 64, 82), (112, 104, 128)), ((24, 22, 34), (110, 220, 255), (235, 252, 255)))
+        ),
+        "moonsilver_staff": staff_icon(
+            "crescent",
+            (((120, 124, 150), (206, 210, 228), (246, 248, 255)), ((70, 74, 120), (226, 230, 255), (255, 255, 255))),
+        ),
+        "prism_staff": staff_icon(
+            "crystal", (((44, 20, 38), (70, 34, 60), (140, 76, 120)), ((110, 20, 70), (255, 90, 170), (255, 220, 240)))
+        ),
+        "horned_helm": pack("loot40", 40),
+        "great_helm": great_helm(),
+        "rangers_hood": hood(((36, 64, 40), (58, 98, 58), (92, 140, 84))),
+        "golden_circlet": circlet(((30, 60, 160), (90, 150, 255))),
+        "oak_buckler": buckler(((118, 76, 44), (160, 110, 66)), ((70, 74, 90), (150, 156, 176)), GOLD[1:]),
+        "kite_shield": kite_shield(((40, 70, 150), (70, 110, 200)), (150, 156, 176), (240, 244, 255)),
+        "tower_shield": tower_shield(((50, 52, 64), (80, 84, 100)), (30, 30, 38), GOLD[1]),
+        "chainmail": tunic(((70, 74, 90), (120, 126, 146), (196, 204, 226)), pattern="mail"),
+        "gilded_plate": plate(((150, 156, 176), (200, 206, 224), (245, 248, 255)), GOLD),
+        "ranger_leathers": tunic(((36, 60, 34), (64, 100, 56), (110, 150, 90)), strap=((78, 46, 26), GOLD[1])),
+        "fur_mantle": cloak(
+            ((70, 44, 28), (110, 72, 44), (150, 104, 66)), fur=((150, 140, 128), (214, 206, 192), (245, 240, 230))
+        ),
+        "tattered_cloak": cloak(((34, 36, 40), (58, 62, 66), (92, 98, 104)), torn=True),
     }
 
 

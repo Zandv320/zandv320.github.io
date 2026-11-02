@@ -135,7 +135,17 @@ export const TUNIC_PALETTES = {
 };
 
 /* The head layers that carry hair and can therefore be recoloured. */
-const HAIR_LAYERS = ["hero_head", "cap", "helm", "hat1", "hat2"];
+const HAIR_LAYERS = [
+  "hero_head",
+  "cap",
+  "helm",
+  "hat1",
+  "hat2",
+  "helm_horned",
+  "helm_great",
+  "hood1",
+  "circlet1",
+];
 
 const recolorCache = new Map();
 
