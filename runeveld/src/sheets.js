@@ -130,6 +130,24 @@ function animalSheet(name, { walk, attack, scale = 1 / 16, height = 20 }) {
   };
 }
 
+/* A mount's sheet: 64x64 frames, the animals' rows (down/up/left/right), idle then walk; its feet on the bottom row. */
+function mountSheet(name) {
+  return {
+    url: `sprites/${name}.png`,
+    frameWidth: 64,
+    frameHeight: 64,
+    scale: 1 / 16,
+    /* the fox's paws are ten pixels above the bottom of the frame (fox_mount.json) */
+    feet: 10,
+    height: 40,
+    directions: ANIMAL_DIRECTIONS,
+    anims: {
+      idle: { row: 0, frames: 4, fps: 5 },
+      walk: { row: 4, frames: 6, fps: 12 },
+    },
+  };
+}
+
 /* The crypt's vampires and its ooze: 64x64 frames like the hero, rows down/up/left/right like the animals. The
    count also has 'fly' (the flight he dives with). */
 function cryptSheet(
@@ -193,6 +211,13 @@ export const SHEETS = {
       attack: { row: 8, frames: 8, fps: 16, once: true },
       hurt: { row: 12, frames: 5, fps: 12, once: true },
       death: { row: 16, frames: 7, fps: 9, once: true },
+      /* on a mount (mounts.js): breathing as when standing; the saddle and the mount's front layer do the rest */
+      ride: {
+        row: 0,
+        frames: 12,
+        fps: 8,
+        columns: { up: [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3] },
+      },
     },
   },
   merchant: {
@@ -213,6 +238,10 @@ export const SHEETS = {
   stag: animalSheet("stag", { walk: 6, attack: 6, scale: 1 / 15, height: 26 }),
   wolf: animalSheet("wolf", { walk: 6, attack: 6, scale: 1 / 13, height: 22 }),
   dire_boar: animalSheet("dire_boar", { walk: 6, attack: 5, scale: 1 / 11, height: 26 }),
+  /* the riding fox (tools/build_mounts.py): the fox twice as large and saddled, under the rider, and what of it is
+     over the rider's legs */
+  fox_mount: mountSheet("fox_mount"),
+  fox_mount_front: mountSheet("fox_mount_front"),
   crypt_thrall: cryptSheet("crypt_thrall", {}),
   grave_witch: cryptSheet("grave_witch", { height: 28 }),
   crimson_count: cryptSheet("crimson_count", { height: 27 }),

@@ -5,6 +5,15 @@
    abilities.js (skills), bag.js (bag and equipment), skill-effects.js and storage.js. */
 /* storage.js goes first: it migrates the old save data before other modules read their settings */
 import { readHeroList, writeHeroList } from "./storage.js";
+import {
+  heroMount,
+  toggleMount,
+  teachRiding,
+  riderLift,
+  updatePeerMount,
+  removePeerMount,
+} from "./mounts.js";
+import { MOUNTS } from "./rules/mounts.js";
 import { updateCells } from "./culling.js";
 import * as THREE from "three";
 import {
@@ -953,7 +962,7 @@ function showNpcs(isVisible) {
 function buildHotbar() {
   const hotbar = $("#hotbar");
   hotbar.querySelectorAll(".slot[data-skill]").forEach((slot) => {
-    if (!["red_potion", "rune", "sit"].includes(slot.dataset.skill)) {
+    if (!["red_potion", "rune", "sit", "mount"].includes(slot.dataset.skill)) {
       slot.remove();
     }
   });
@@ -1552,6 +1561,7 @@ function removePeer(id) {
   if (clickableIndex >= 0) {
     clickables.splice(clickableIndex, 1);
   }
+  removePeerMount(peer);
   peer.sprite.dispose();
   UI.removeLabel(peer.label);
   peers.delete(id);
@@ -1596,6 +1606,8 @@ function sendPresence() {
     hpMax: hpMax(),
     dead: player.isDead,
     sitting: player.isSitting,
+    /* on a mount: which (mounts.js) */
+    mount: player.riding || null,
     equipment: player.equipment,
     /* the element of an enchanted weapon, for its glow (weapon-fx.js) */
     enchant: player.equipmentMods?.weapon?.enchant || null,
@@ -1640,9 +1652,14 @@ function updatePeers(dt) {
         peer.busyUntil = time + 0.45;
       }
     }
+    /* on a mount: the animal under them, the rider sitting still (mounts.js) */
+    const mountKey = presence.dead ? null : presence.mount || null;
+    updatePeerMount(peer, mountKey, isMoving, dt);
     if (time >= peer.busyUntil) {
       if (presence.dead) {
         peer.sprite.play("death");
+      } else if (mountKey) {
+        peer.sprite.play("ride");
       } else if (isMoving) {
         peer.sprite.play("walk");
       } else if (presence.sitting) {
@@ -1654,7 +1671,13 @@ function updatePeers(dt) {
       }
     }
     peer.sprite.update(dt, cameraState);
-    UI.positionLabel(peer.label, peer.x, peer.sprite.height + 0.15, peer.z, camera);
+    UI.positionLabel(
+      peer.label,
+      peer.x,
+      peer.sprite.height + 0.15 + riderLift(mountKey),
+      peer.z,
+      camera,
+    );
     const hp = presence.hp || 0;
     const peerHpMax = presence.hpMax || 1;
     UI.setLabelHp(peer.label, hp, peerHpMax, hp < peerHpMax);
@@ -2024,6 +2047,8 @@ function setupKeyboardInput() {
       useSkill("red_potion");
     } else if (event.code === "KeyQ") {
       useRunePower();
+    } else if (event.code === "KeyH") {
+      toggleMount();
     } else if (event.code === "KeyX") {
       useSkill("sit");
     } else if (event.code === "KeyC") {
@@ -2064,6 +2089,7 @@ function setupButtons() {
     .querySelectorAll('.slot[data-skill="red_potion"],.slot[data-skill="sit"]')
     .forEach((button) => button.addEventListener("click", () => useSkill(button.dataset.skill)));
   $('.slot[data-skill="rune"]').addEventListener("click", useRunePower);
+  $('.slot[data-skill="mount"]').addEventListener("click", toggleMount);
   $("#chat-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const text = chatInput.value.trim();
@@ -2298,6 +2324,18 @@ function updateHotbar(time) {
     ((player.cooldowns.red_potion || 0) - time) / ITEMS.red_potion.cooldown,
   );
   UI.setSlotState("sit", false, player.isSitting);
+  /* the mount slot shows once there is a mount in the mount slot; the first time, a word on riding */
+  const mountSlot = $('.slot[data-skill="mount"]');
+  const mountKey = heroMount();
+  if (mountSlot.hidden === !!mountKey) {
+    mountSlot.hidden = !mountKey;
+    if (mountKey) {
+      mountSlot.querySelector(".slot-icon").textContent = ITEMS[player.equipment.mount].icon;
+      mountSlot.querySelector(".slot-name").textContent = MOUNTS[mountKey].name;
+      teachRiding();
+    }
+  }
+  UI.setSlotState("mount", false, !!player.riding);
   UI.setCooldown("rune", runeCooldownShare());
   UI.setSlotState("rune", false, isRunePowerActive());
   UI.setSlotState("red_potion", bagCount("red_potion") <= 0, false);

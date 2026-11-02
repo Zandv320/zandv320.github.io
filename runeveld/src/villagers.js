@@ -762,6 +762,25 @@ const VILLAGERS = [
     facing: [0, 1],
     lines: ["Saltmere's gate. State your business, or do not.", "Nice day for it. Whatever it is."],
   },
+  /* the stables in the southeast quarter: mounts (rules/mounts.js) */
+  {
+    name: "Stablemaster Hilde",
+    hair: "blond",
+    outfit: "armor2",
+    route: [
+      [-105.6, 15],
+      [-102.8, 14.4],
+    ],
+    speed: 0.6,
+    pause: [6, 12],
+    shop: "stable",
+    lines: [
+      "A riding fox: quick, clever, and softer to sit on than any horse.",
+      "Never take a fox down a staircase. Ask me how I know.",
+      "Brush the tail every evening, or it sulks for a week.",
+    ],
+    night: ["Hush. The foxes are asleep, curled up in their own tails."],
+  },
   /* Saga II: the court archmage, who knows what the old altar really is */
   {
     name: "Archmage Selwyn",

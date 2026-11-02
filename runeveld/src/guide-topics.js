@@ -114,6 +114,15 @@ export const GUIDE_TOPICS = {
       "Bring her back <b>slowly</b> to her berth by the east pier and she moors by herself. The hero comes ashore on the pier.",
     ],
   },
+  riding: {
+    title: "Riding",
+    icons: ["ui_map"],
+    body: [
+      "You have a <b>mount</b> in your mount slot. Press <kbd>H</kbd> (or the slot on the hotbar) to call it and ride: you go a good deal faster.",
+      "You get off by yourself for a fight, a skill, a seat or a crafting station, and nobody rides down into the crypt or the forge. Press <kbd>H</kbd> again to get off.",
+      "Stablemaster Hilde at the stables in Aurelia's southeast quarter sells riding foxes.",
+    ],
+  },
   saga_end: {
     title: "Saga I complete",
     icons: ["amulet_of_aurelia", "ui_quests"],
@@ -144,6 +153,7 @@ export const GUIDE_ORDER = [
   "crafting",
   "enchanting",
   "travel",
+  "riding",
   "northroad",
   "sailing",
 ];

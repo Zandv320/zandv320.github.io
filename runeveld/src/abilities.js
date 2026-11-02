@@ -2,6 +2,7 @@
    Each skill spends SP, starts its cooldown, plays its effects and hits monsters through hitMonster()
    (player.js); freezes are sent to the host or server as freeze events. */
 import { ITEMS } from "./data.js";
+import { dismount } from "./mounts.js";
 import { SKILLS } from "./rules/skills.js";
 import { meleeHit, spellHit, monsterCombatStats } from "./rules/combat.js";
 import { sfx } from "./audio.js";
@@ -61,6 +62,8 @@ export function useSkill(id) {
   if (!skill || skill.passive) {
     return;
   }
+  /* nobody fights from the saddle (mounts.js) */
+  dismount();
   if (level <= 0) {
     UI.systemMessage(
       `You have not learned ${skill.name} yet. Spend skill points in your character sheet (C).`,

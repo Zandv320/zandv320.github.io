@@ -109,6 +109,7 @@ export const EQUIPMENT_SLOTS = [
   ["belt", "Belt"],
   ["pants", "Pants"],
   ["boots", "Boots"],
+  ["mount", "Mount"],
 ];
 
 /** A fresh equipment object with every slot empty. */
@@ -124,6 +125,7 @@ export const emptyEquipment = () => ({
   belt: null,
   pants: null,
   boots: null,
+  mount: null,
 });
 
 /* Number of slots in the bag. */
@@ -133,6 +135,17 @@ export const BAG_SIZE = 30;
    sheets.js); `forClass` limits who can wear it; consumables have `use`. Everything stacks up to `stack` per bag
    slot (default 1). `bonus` adds to the base stats. */
 export const ITEMS = {
+  /* mounts (rules/mounts.js): worn in the mount slot, ridden with H */
+  riding_fox: {
+    name: "Riding fox",
+    slot: "mount",
+    mount: "riding_fox",
+    level: 10,
+    price: 3600,
+    icon: "🦊",
+    description:
+      "A fox of the Aurelia stables, bred big and gentle, with a blue saddle blanket and a gold-hemmed bridle. It runs low and quick, and it is very proud of its tail.",
+  },
   red_potion: {
     name: "Red potion",
     use: "heal",
@@ -1881,6 +1894,13 @@ export const SHOPS = {
     ],
   },
   /* Saltmere */
+  /* the stables in Aurelia's southeast quarter (rules/mounts.js) */
+  stable: {
+    name: "Stablemaster Hilde",
+    greeting:
+      '"A riding fox: quick, clever, and softer to sit on than any horse. Brush its tail every evening, or it sulks."',
+    items: ["riding_fox"],
+  },
   saltmere_harbor: {
     name: "Chandler Bess",
     greeting:

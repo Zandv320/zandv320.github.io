@@ -432,6 +432,7 @@ const SLOT_ORDER = [
   "belt",
   "necklace",
   "ring",
+  "mount",
 ];
 function bagRank(entry) {
   const item = ITEMS[entry.id];

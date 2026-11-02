@@ -1,6 +1,7 @@
 /* Eldoria – the player's hero in the world: walking (keys, click-to-move, following a target), sitting,
    basic attacks, hitting monsters, taking damage, dying and respawning, and rewards with level ups. */
 import { CLASSES, ADVANCEMENTS, MAX_LEVEL, expForLevel, ITEMS } from "./data.js";
+import { dismount, mountSpeed, riderLift, updateHeroMount } from "./mounts.js";
 import { statCost, MAX_STAT } from "./rules/stats.js";
 import { SKILLS, jobExpForLevel, JOB_EXP_SHARE, canLearn } from "./rules/skills.js";
 import { meleeHit, spellHit, applyDefense, hitChance, monsterCombatStats } from "./rules/combat.js";
@@ -57,6 +58,10 @@ export const isChatActive = () => document.activeElement === document.querySelec
 const RESPAWN_DELAY = 5;
 
 export function setAnim(name) {
+  /* on a mount the hero sits still on its back, legs folded away (mounts.js) */
+  if (player.riding && (name === "walk" || name === "idle")) {
+    name = "ride";
+  }
   if (player.anim === name) {
     return;
   }
@@ -66,6 +71,10 @@ export function setAnim(name) {
 
 /** Plays a one-shot animation (attack, hurt, death) and keeps the hero busy for `duration` seconds. */
 export function playOnce(name, duration) {
+  /* nobody fights from the saddle */
+  if (name === "attack") {
+    dismount();
+  }
   player.anim = name;
   player.seq++;
   player.sprite.play(name, true);
@@ -78,6 +87,7 @@ export function setSitting(isSitting) {
   }
   player.isSitting = isSitting;
   if (isSitting) {
+    dismount();
     player.destination = null;
     player.target = null;
     UI.setTargetFrame(null);
@@ -221,6 +231,8 @@ function followTarget(time, isBusy) {
 /** Moves and animates the player for one frame, and regenerates HP and SP. */
 export function updatePlayer(dt) {
   const time = now();
+  const fromX = player.x;
+  const fromZ = player.z;
   if (player.isDead) {
     if (time > player.respawnAt) {
       respawn();
@@ -271,7 +283,8 @@ export function updatePlayer(dt) {
     if (game.dialogue.isOpen()) {
       game.dialogue.close();
     }
-    const step = heroClass().speed * ADMIN.speed * dt;
+    /* faster on a mount (mounts.js) */
+    const step = heroClass().speed * (1 + mountSpeed()) * ADMIN.speed * dt;
     let newX;
     let newZ;
     if (ADMIN.noclip) {
@@ -299,8 +312,15 @@ export function updatePlayer(dt) {
     setAnim(player.isSitting ? "sit" : player.workAnim || "idle");
   }
   player.sprite.group.position.set(player.x, 0, player.z);
+  updateHeroMount(dt, Math.hypot(player.x - fromX, player.z - fromZ) > 1e-4);
   player.sprite.update(dt, cameraState);
-  UI.positionLabel(player.label, player.x, player.sprite.height + 0.15, player.z, camera);
+  UI.positionLabel(
+    player.label,
+    player.x,
+    player.sprite.height + 0.15 + riderLift(player.riding),
+    player.z,
+    camera,
+  );
 
   /* regeneration once per second, four times as fast while sitting */
   player.regenTimer += dt;
