@@ -995,23 +995,26 @@ WEAPON_SHAPES = {
             (13, 17.5, 0, 0.5, STEEL_LIGHT),
         ]
     ),
+    # the swords' grips run through the fist, so the guard sits just beyond it instead of over the hand
     "greatsword1": dict(
         parts=[
-            (-3, 0, -0.5, 0.5, LEATHER),
-            (0.5, 1.5, -3, 3, GOLD),
-            (1.5, 16, -1, 1, STEEL),
-            (1.5, 17, 1, 1.5, STEEL_LIGHT),
+            (-2.5, -2, -1, 1, GOLD),
+            (-2, 2, -0.5, 0.5, LEATHER),
+            (2, 3, -2.5, 2.5, GOLD),
+            (3, 16, -1, 1, STEEL),
+            (3, 17, 1, 1.5, STEEL_LIGHT),
             (16, 17.5, -0.5, 0.5, STEEL),
         ]
     ),
     "scimitar1": dict(
         parts=[
-            (-3, 0, -0.5, 0.5, LEATHER),
-            (0.5, 1.5, -2, 2, GOLD),
-            (1.5, 12.5, -0.8, 0.8, STEEL),
-            (1.5, 13, 0.8, 1.3, STEEL_LIGHT),
+            (-2, 2, -0.5, 0.5, LEATHER),
+            (2, 3, -2, 2, GOLD),
+            (3, 13.5, -0.8, 0.8, STEEL),
+            (3, 14, 0.8, 1.3, STEEL_LIGHT),
         ],
         curve=0.045,
+        curve_from=3,
     ),
 }
 
@@ -1022,7 +1025,7 @@ def shaped_weapon(front, back, body, shape, fw=64, fh=64, rows=4):
     the grip. Returns (front, back)."""
     out_front = Image.new("RGBA", front.size, TRANSPARENT)
     out_back = out_front.copy()
-    curve = shape.get("curve", 0)
+    curve, curve_from = shape.get("curve", 0), shape.get("curve_from", 1.5)
     for (r, c), frame in weapon_grips(front, back, body, fw, fh, rows).items():
         for x, y, is_back in frame["arcs"]:
             (out_back if is_back else out_front).putpixel((x, y), (235, 240, 255, 255))
@@ -1044,7 +1047,7 @@ def shaped_weapon(front, back, body, shape, fw=64, fh=64, rows=4):
         for t0, t1, s0, s1, color in shape["parts"]:
             t = t0
             while t <= t1:
-                bend = curve * max(0, t - 1.5) ** 2
+                bend = curve * max(0, t - curve_from) ** 2
                 s = s0
                 while s <= s1:
                     x = round(gx + ux * t + nx * (s + bend))
