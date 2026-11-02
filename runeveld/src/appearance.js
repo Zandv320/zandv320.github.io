@@ -182,6 +182,8 @@ export function recolor(layer, source, target, name, strict = false) {
   }
   ctx.putImageData(imageData, 0, 0);
   const texture = makeTexture(canvas, SMOOTH);
+  /* what the layer is (a weapon, the slot whose refine makes it shine) stays with its recoloured copy */
+  texture.userData = { ...SHEETS.hero.layers[layer].userData };
   recolorCache.set(cacheKey, texture);
   return texture;
 }

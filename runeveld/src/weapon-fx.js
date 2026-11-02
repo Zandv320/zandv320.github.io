@@ -9,7 +9,8 @@
      arcane  violet light pulses along it, and motes of it circle the weapon
      radiance  (shields) a soft warm light round the shield's rim, a small cross of light in the middle of its face,
              and golden motes rising from it
-   Refined armour (body armour or robe) shines too, richer the higher it is refined (refineGlow): from +4 a sheen
+   Refined armour (body armour or robe, helmet or hat, cloak: each by its own refine) shines too, richer the
+   higher it is refined (refineGlow): from +4 a sheen
    now and then sweeps across it, from +7 more often and with glints on it, at +10 it has a golden rim and golden
    motes rise off it. refineFlash() is the moment of refining: a sweep of light down the hero, or grey shards.
    The glow is a second mesh on each weapon layer of the sprite (the front and the back half of the weapon), with
@@ -52,11 +53,11 @@ const ELEMENTS = {
     light: [190, 130, 255],
     strength: 1.05,
   },
-  /* refined armour: the tiers of refineGlow() */
-  refine1: { part: "armor", kind: 5, glow: 0xffffff, core: 0xf2f6ff, light: null, strength: 1 },
-  refine2: { part: "armor", kind: 6, glow: 0xfff0c8, core: 0xffffff, light: null, strength: 1 },
+  /* refined armour: the tiers of refineGlow(); its part is the slot it is worn in, given along with it */
+  refine1: { part: "body", kind: 5, glow: 0xffffff, core: 0xf2f6ff, light: null, strength: 1 },
+  refine2: { part: "body", kind: 6, glow: 0xfff0c8, core: 0xffffff, light: null, strength: 1 },
   refine3: {
-    part: "armor",
+    part: "body",
     kind: 7,
     glow: 0xffc94a,
     core: 0xfff4d0,
@@ -77,8 +78,14 @@ const ELEMENTS = {
 const PARTS = {
   weapon: (layer) => !!layer.source?.userData?.isWeapon,
   shield: (layer) => !!layer.source?.userData?.isShield,
-  armor: (layer) => !!layer.source?.userData?.isArmor,
+  /* refined gear, per equipment slot */
+  body: (layer) => layer.source?.userData?.refineSlot === "body",
+  head: (layer) => layer.source?.userData?.refineSlot === "head",
+  cloak: (layer) => layer.source?.userData?.refineSlot === "cloak",
 };
+
+/** The equipment slots whose refine shows on the hero. */
+export const REFINE_SLOTS = ["body", "head", "cloak"];
 
 /** The look of armour refined to `level`: none below +4, then three tiers (+4, +7, +10). */
 export const refineGlow = (level) =>
@@ -166,7 +173,7 @@ const glowFragment = /* glsl */ `
       float phase = fract(uTime / period) * 2.4 - 0.4;
       float across = vUv.x * 0.6 + (1.0 - vUv.y);
       float band = exp(-pow((across - phase) * 9.0, 2.0));
-      float sheen = uKind < 5.5 ? 0.4 : 0.6;
+      float sheen = uKind < 5.5 ? 0.35 : 0.45;
       color = uCore * own * band * sheen;
       if (uKind > 6.5) {
         color += uGlow * edge * (0.38 + 0.14 * sin(uTime * 2.0)) + uGlow * own * 0.05;
@@ -751,18 +758,18 @@ function partCenter(sprite, pixels, target) {
   return target.set(sprite.mirrored ? 1 - u : u, 1 - (y / count + 0.5) / 64);
 }
 
-function updateAura(sprite, element, dt, time) {
+function updateAura(sprite, element, dt, time, part = ELEMENTS[element].part) {
   const spec = ELEMENTS[element];
-  const isPart = PARTS[spec.part];
+  const isPart = PARTS[part];
   let parts = auras.get(sprite);
   if (!parts) {
     parts = new Map();
     auras.set(sprite, parts);
   }
-  let aura = parts.get(spec.part);
+  let aura = parts.get(part);
   if (!aura) {
     aura = { carry: {}, arcs: [], light: null };
-    parts.set(spec.part, aura);
+    parts.set(part, aura);
   }
   aura.seen = true;
   if (aura.element !== element) {
@@ -873,7 +880,8 @@ function removeStaleGlows(sprite) {
 
 /**
  * Per frame, after the sprites have been updated: `holders` lists every enchanted weapon and shield to show, as
- * {sprite, element} (element: an ENCHANTMENTS key, or null for none); a hero with both is in it twice.
+ * {sprite, element, part} (element: an ENCHANTMENTS key or a refineGlow tier, or null for none; part: for a
+ * refine tier, the slot of the gear that shines); a hero with several is in it several times.
  */
 export function updateWeaponFx(dt, holders) {
   if (!cloud) {
@@ -889,9 +897,9 @@ export function updateWeaponFx(dt, holders) {
       aura.seen = false;
     }
   }
-  for (const { sprite, element } of holders) {
+  for (const { sprite, element, part } of holders) {
     if (sprite && ELEMENTS[element]) {
-      updateAura(sprite, element, dt, time);
+      updateAura(sprite, element, dt, time, part);
     }
   }
   for (const [sprite, parts] of auras) {

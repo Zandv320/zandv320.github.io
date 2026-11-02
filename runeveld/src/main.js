@@ -98,7 +98,13 @@ import { createDaylight, daylight, clockText, setTimeOverride } from "./daylight
 import { createPerfOverlay } from "./perf-overlay.js";
 import { createAmbience } from "./ambience.js";
 import { initParticles, updateParticles } from "./particles.js";
-import { updateWeaponFx, weaponLights, refineGlow, refineFlash } from "./weapon-fx.js";
+import {
+  updateWeaponFx,
+  weaponLights,
+  refineGlow,
+  refineFlash,
+  REFINE_SLOTS,
+} from "./weapon-fx.js";
 import {
   bossTelegraph,
   bossCharge,
@@ -1448,8 +1454,10 @@ function sendPresence() {
     /* the element of an enchanted weapon, for its glow (weapon-fx.js) */
     enchant: player.equipmentMods?.weapon?.enchant || null,
     shieldEnchant: player.equipmentMods?.shield?.enchant || null,
-    /* how far the body armour is refined, for its sheen */
-    armorRefine: player.equipmentMods?.body?.refine || 0,
+    /* how far the gear on show is refined, for its sheen */
+    refines: Object.fromEntries(
+      REFINE_SLOTS.map((slot) => [slot, player.equipmentMods?.[slot]?.refine || 0]),
+    ),
     /* at the helm: the ship's [x, z, heading] (sailing.js) */
     ship: shipPresence(),
   };
@@ -2236,11 +2244,19 @@ function step(dt) {
       ? [
           { sprite: player.sprite, element: player.equipmentMods?.weapon?.enchant },
           { sprite: player.sprite, element: player.equipmentMods?.shield?.enchant },
-          { sprite: player.sprite, element: refineGlow(player.equipmentMods?.body?.refine || 0) },
+          ...REFINE_SLOTS.map((slot) => ({
+            sprite: player.sprite,
+            element: refineGlow(player.equipmentMods?.[slot]?.refine || 0),
+            part: slot,
+          })),
           ...[...peers.values()].flatMap((peer) => [
             { sprite: peer.sprite, element: peer.presence.enchant },
             { sprite: peer.sprite, element: peer.presence.shieldEnchant },
-            { sprite: peer.sprite, element: refineGlow(peer.presence.armorRefine || 0) },
+            ...REFINE_SLOTS.map((slot) => ({
+              sprite: peer.sprite,
+              element: refineGlow(peer.presence.refines?.[slot] || 0),
+              part: slot,
+            })),
           ]),
         ]
       : [],

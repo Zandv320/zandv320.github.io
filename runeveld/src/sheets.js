@@ -302,8 +302,13 @@ function markWeapon(name, texture) {
   if (/^shield\d/.test(name)) {
     texture.userData.isShield = true;
   }
+  /* the equipment slot whose refine makes it shine (weapon-fx.js) */
   if (/^(armor|robe)\d/.test(name)) {
-    texture.userData.isArmor = true;
+    texture.userData.refineSlot = "body";
+  } else if (/^(cap|helm|hat\d)$/.test(name)) {
+    texture.userData.refineSlot = "head";
+  } else if (/^cloak\d/.test(name)) {
+    texture.userData.refineSlot = "cloak";
   }
   /* the half behind the body */
   texture.userData.isBack = name.endsWith("_back");
