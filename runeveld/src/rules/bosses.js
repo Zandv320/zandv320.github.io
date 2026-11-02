@@ -18,12 +18,16 @@
      boss_dive     {x0, z0, x1, z1, duration}  it flies up and comes down on (x1, z1)
      boss_planks   {x0, z0, x1, z1}    a stretch of the bridge's deck falls into the gorge (rules/gorge.js)
      boss_boulder  {x0, z0, x1, z1, duration}  a rock thrown from (x0, z0) lands on (x1, z1)
+     boss_submerge {}                  it sinks out of sight (and cannot be hit until it surfaces)
+     boss_surface  {x, z}              it rises out of the water at (x, z)
      boss_reset    {}                  nobody left to fight: it heals and starts over (a broken bridge is mended)
    A telegraph of kind 'blast' is a lane like 'charge', but the boss stays where it is and breathes fire along it;
-   the lane stops at the first wall or pillar, so whoever stands behind one is safe.
+   the lane stops at the first wall or pillar, so whoever stands behind one is safe. Kind 'surge' is the same with
+   a wave of the lake instead of fire, and kind 'tentacle' a lane where a tentacle comes down out of the water.
    Damage goes out as the usual monster_attack {id, target, damage}, per player that is hit. */
 
 import { GORGE, onBridge, plankStretch, breakPlanks, mendBridge, BRIDGE } from "./gorge.js";
+import { surfaceSpotNear } from "./tidecrown.js";
 
 /* the bosses and their moves; numbers in seconds, units and multiples of the boss's ATK */
 export const BOSSES = {
@@ -80,6 +84,18 @@ export const BOSSES = {
     summon: { below: 0.6, helper: "molten_slime", count: 2 },
     enrage: { below: 0.3, cooldownFactor: 0.6, damageFactor: 1.3 },
   },
+  /* the Crownmere on Tidecrown (rules/tidecrown.js): it never leaves the lake. It comes up beside whoever it hunts,
+     bites at the shore and slams tentacles across it, then sinks out of reach and comes up somewhere else; geysers
+     burst under everyone near the lake, and from half health a wave rolls out over the shore until a rock tooth of
+     the crown breaks it */
+  grey_leviathan: {
+    surface: { under: [3, 4.5], above: [10, 13] },
+    cleave: { every: [5, 7], windup: 1, radius: 3.6, damage: 1.8 },
+    tentacles: { every: [4.5, 6.5], windup: 1.3, width: 2.2, length: 11, damage: 1.9 },
+    geysers: { every: [7, 9], windup: 1.4, radius: 2, damage: 1.5, range: 30 },
+    surge: { below: 0.5, every: [11, 14], windup: 1.8, length: 18, width: 4.4, damage: 2.6 },
+    enrage: { below: 0.25, cooldownFactor: 0.7, damageFactor: 1.25 },
+  },
 };
 /* a boss with nobody to fight for this long heals and starts over */
 const RESET_SECONDS = 8;
@@ -91,6 +107,9 @@ const randomBetween = ([min, max]) => min + Math.random() * (max - min);
 
 /** The boss rules for a monster key ('dire_boar'), or null for an ordinary monster. */
 export const bossOf = (key) => BOSSES[key] || null;
+
+/** Is this monster out of reach under the water (a lake monster between surfacings)? It cannot be hit then. */
+export const isSubmerged = (monster) => !!(monster.boss && monster.boss.submerged);
 
 /** Clears a boss's state, for a fresh start after it respawns (the troll's bridge is whole again). */
 export function resetBoss(monster) {
@@ -120,6 +139,12 @@ function brain(monster, now) {
       nextPlanks: now + 2.5,
       nextDive: now + 7,
       nextBlast: now + 5,
+      nextTentacle: now + 2.5,
+      nextSurge: now + 6,
+      /* a lake monster starts out of sight, and comes up a moment after someone is near */
+      submerged: !!bossOf(monster.spec.key)?.surface,
+      surfaceAt: now + 1.5,
+      diveAt: 0,
       idleFor: 0,
       hasSummoned: false,
       isEnraged: false,
@@ -255,9 +280,18 @@ export function bossTick(monster, target, dt, ctx) {
       }
       return true;
     }
-    if (move.kind === "blast-windup") {
+    if (
+      move.kind === "blast-windup" ||
+      move.kind === "surge-windup" ||
+      move.kind === "tentacle-windup"
+    ) {
       if (now >= move.until) {
-        const blast = rules.blast;
+        const blast =
+          move.kind === "surge-windup"
+            ? rules.surge
+            : move.kind === "tentacle-windup"
+              ? rules.tentacles
+              : rules.blast;
         strike(
           monster,
           playersOnLine(ctx.players, move.x0, move.z0, move.x1, move.z1, blast.width),
@@ -332,6 +366,11 @@ export function bossTick(monster, target, dt, ctx) {
       return true;
     }
     return true;
+  }
+
+  /* a lake monster: under the water out of reach, then up beside the one it hunts for a while */
+  if (rules.surface) {
+    return lakeTick(monster, target, rules, state, now, ctx);
   }
 
   if (!target) {
@@ -448,6 +487,7 @@ export function bossTick(monster, target, dt, ctx) {
   /* a volley: blood runes or pools of lava (from the start) or boulders (when low on health), a circle under every
      player nearby that bursts a moment later; boulders fly there from the boss's hands */
   const volleyName =
+    (rules.geysers && "geysers") ||
     (rules.bloodRunes && "bloodRunes") ||
     (rules.lavaPools && "lavaPools") ||
     (rules.boulders && health <= rules.boulders.below && "boulders");
@@ -566,4 +606,141 @@ export function bossTick(monster, target, dt, ctx) {
     }
   }
   return false;
+}
+
+/* A blow in a lane from (x0, z0) along (ux, uz), `length` long, shown on the ground first: 'blast' and 'surge' stop
+   at the first rock or wall in their way, a tentacle does not. */
+function laneMove(monster, kind, x0, z0, ux, uz, rules, now, ctx) {
+  /* a wave starts in the water: it runs free until it reaches the shore, and from there until something stops it */
+  let startX = x0;
+  let startZ = z0;
+  for (let k = 0; kind === "surge" && k < 32 && !ctx.isFree(startX, startZ, 0.5); k++) {
+    startX += ux * 0.25;
+    startZ += uz * 0.25;
+  }
+  const lane =
+    kind === "tentacle"
+      ? { x1: x0 + ux * rules.length, z1: z0 + uz * rules.length }
+      : freeRun(startX, startZ, ux, uz, rules.length - Math.hypot(startX - x0, startZ - z0), ctx);
+  monster.boss.move = {
+    kind: kind + "-windup",
+    until: now + rules.windup,
+    x0,
+    z0,
+    x1: lane.x1,
+    z1: lane.z1,
+  };
+  ctx.emit("boss_telegraph", {
+    id: monster.id,
+    kind,
+    x0: +x0.toFixed(2),
+    z0: +z0.toFixed(2),
+    x1: +lane.x1.toFixed(2),
+    z1: +lane.z1.toFixed(2),
+    width: rules.width,
+    duration: rules.windup,
+  });
+}
+
+/* The Leviathan's step in its lake (see the top of grey_leviathan): it never walks, so this always takes over. */
+function lakeTick(monster, target, rules, state, now, ctx) {
+  const surface = rules.surface;
+  const rage = rageFactors(monster).cooldown;
+  if (!state.submerged && (now >= state.diveAt || !target)) {
+    state.submerged = true;
+    state.surfaceAt = now + randomBetween(surface.under);
+    ctx.emit("boss_submerge", { id: monster.id });
+    return true;
+  }
+  if (!target) {
+    return true;
+  }
+  if (state.submerged) {
+    if (now < state.surfaceAt) {
+      return true;
+    }
+    const spot = surfaceSpotNear(target.x, target.z);
+    if (!spot) {
+      /* nobody by the lake: it waits under the water */
+      state.surfaceAt = now + 1;
+      return true;
+    }
+    [monster.x, monster.z] = spot;
+    const length = Math.hypot(target.x - monster.x, target.z - monster.z) || 1;
+    monster.faceX = (target.x - monster.x) / length;
+    monster.faceZ = (target.z - monster.z) / length;
+    state.submerged = false;
+    state.diveAt = now + randomBetween(surface.above) * rage;
+    /* a moment to see it come up before it strikes */
+    state.nextCleave = Math.max(state.nextCleave, now + 1.2);
+    state.nextTentacle = Math.max(state.nextTentacle, now + 1.6);
+    ctx.emit("boss_surface", { id: monster.id, x: monster.x, z: monster.z });
+    return true;
+  }
+  const dx = target.x - monster.x;
+  const dz = target.z - monster.z;
+  const distance = Math.hypot(dx, dz) || 1e-4;
+  const ux = dx / distance;
+  const uz = dz / distance;
+  monster.faceX = ux;
+  monster.faceZ = uz;
+  const health = monster.hp / monster.spec.hp;
+  /* the wave: from half health, out of the lake over the shore at the one it hunts */
+  if (rules.surge && health <= rules.surge.below && now >= state.nextSurge) {
+    state.nextSurge = now + rules.surge.windup + randomBetween(rules.surge.every) * rage;
+    laneMove(monster, "surge", monster.x, monster.z, ux, uz, rules.surge, now, ctx);
+    return true;
+  }
+  /* the bite: whoever stands at the water's edge before its head */
+  if (now >= state.nextCleave && distance < rules.cleave.radius + 1) {
+    state.nextCleave = now + rules.cleave.windup + randomBetween(rules.cleave.every) * rage;
+    state.move = { kind: "cleave-windup", until: now + rules.cleave.windup };
+    ctx.emit("boss_telegraph", {
+      id: monster.id,
+      kind: "circle",
+      x: +monster.x.toFixed(2),
+      z: +monster.z.toFixed(2),
+      radius: rules.cleave.radius,
+      duration: rules.cleave.windup,
+    });
+    return true;
+  }
+  /* a tentacle: out of the water beside its head, and down across the target */
+  if (now >= state.nextTentacle) {
+    state.nextTentacle = now + rules.tentacles.windup + randomBetween(rules.tentacles.every) * rage;
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const x0 = monster.x - uz * side * 2;
+    const z0 = monster.z + ux * side * 2;
+    const tx = target.x - x0;
+    const tz = target.z - z0;
+    const reach = Math.hypot(tx, tz) || 1;
+    laneMove(monster, "tentacle", x0, z0, tx / reach, tz / reach, rules.tentacles, now, ctx);
+    return true;
+  }
+  /* geysers under everyone near the lake */
+  if (now >= state.nextRunes) {
+    const volley = rules.geysers;
+    const spots = ctx.players
+      .filter(
+        (player) =>
+          !player.isDead && Math.hypot(player.x - monster.x, player.z - monster.z) <= volley.range,
+      )
+      .map((player) => [+player.x.toFixed(2), +player.z.toFixed(2)]);
+    state.nextRunes = now + volley.windup + randomBetween(volley.every) * rage;
+    if (spots.length) {
+      state.move = { kind: "volley-windup", volley: "geysers", until: now + volley.windup, spots };
+      for (const [x, z] of spots) {
+        ctx.emit("boss_telegraph", {
+          id: monster.id,
+          kind: "geyser",
+          x,
+          z,
+          radius: volley.radius,
+          duration: volley.windup,
+        });
+      }
+      return true;
+    }
+  }
+  return true;
 }

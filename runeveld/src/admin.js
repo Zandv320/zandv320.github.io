@@ -11,6 +11,7 @@ import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests
 import { stormStrength, setStormOverride } from "./rules/weather.js";
 import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
 import { CAMP_WAKE, MOUNT_KHAROS, EMBER_LANDS } from "./rules/ember.js";
+import { TIDE_WAKE, CAUSEWAY } from "./rules/tidecrown.js";
 import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
 import { PROFESSIONS, MAX_PROFESSION_LEVEL, professionLevel } from "./rules/professions.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
@@ -504,6 +505,8 @@ export function createAdminPanel(ctx) {
       ],
       ["Forge", () => ctx.teleport(...FORGE_ENTRY)],
       ["Heart of Kharos", () => ctx.teleport(...forgePoint(0, -2))],
+      ["Tidecrown", () => ctx.teleport(...TIDE_WAKE)],
+      ["Crownmere", () => ctx.teleport(CAUSEWAY.x, CAUSEWAY.south - 1)],
     ]);
 
     /* ---------- monsters ---------- */

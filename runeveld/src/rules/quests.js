@@ -34,6 +34,7 @@
 import { EMBER_LANDS } from "./ember.js";
 import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
 import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./landmarks.js";
+import { TIDE_SEAL } from "./tidecrown.js";
 
 const BELLOWS_HALL = forgePoint(24, 18);
 
@@ -66,6 +67,7 @@ export const CHAPTERS = {
   9: "Across the Grey Sea",
   10: "The Ember Isles",
   11: "The Forge of the First Flame",
+  12: "The Grey Sea Rises",
 };
 
 export const QUESTS = {
@@ -1219,8 +1221,6 @@ export const QUESTS = {
   orven_edda: {
     giver: "Smith-Mage Orven",
     turnIn: "Scholar Edda",
-    final: true,
-    ending: "saga2_end",
     hint: "Leave the forge by the stairs in the Gate Hall, and go back round the mountain to the camp in Cinder Cove.",
     chapter: 11,
     main: true,
@@ -1234,6 +1234,121 @@ export const QUESTS = {
       "The First Flame. Gone with him. Then he was never fleeing from us: he was racing us, seal by seal. Two runes are yours, and five seals remain. Rest tonight. Tomorrow we find out where the third one lies.",
     goal: { type: "visit", npc: "Scholar Edda" },
     reward: { exp: 8000, zeny: 6000, items: [{ id: "obsidian_ring", count: 1 }] },
+  },
+  /* ---- Saga II, chapter 12: the Grey Sea rises (Tidecrown, rules/tidecrown.js) ---- */
+  edda_rising: {
+    giver: "Scholar Edda",
+    hint: "Take the Gull's Promise from the jetty in Cinder Cove and sail north-east, to the island that was not there before. Moor in the golden circle by its pier on the south coast; someone waits in the camp above the beach.",
+    chapter: 12,
+    main: true,
+    title: "An island out of the sea",
+    level: 35,
+    after: "orven_edda",
+    intro:
+      "Tamsin came back from his nets as white as a sail. North-east of here, where there was only water, there is an island. It rose the night we lost the First Flame, and the sea round it has not stopped boiling since. Maelis is racing us, seal by seal: if there is a seal on that island, he is on his way. Go. Go now.",
+    progressText:
+      "Sail the Gull's Promise to Tidecrown, north-east of the Ember Isles. Moor at its pier and find whoever waits in the camp.",
+    completeText:
+      "A living face! Forgive me for staring. I am Ondine. I kept the tide seal on this island before the sea took it, and I have kept it ever since, after a fashion. Welcome to Tidecrown.",
+    goal: { type: "visit", npc: "Tide-Keeper Ondine" },
+    reward: { exp: 6000, zeny: 3000, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  ondine_drowned: {
+    giver: "Tide-Keeper Ondine",
+    where: { monster: "drowned_sailor" },
+    hint: "The Drowned Sailors walk the ring of land between the coast and the crown of rocks round the lake.",
+    chapter: 12,
+    main: true,
+    title: "The drowned crew",
+    level: 35,
+    after: "edda_rising",
+    intro:
+      "Every ship the Leviathan ever took: their crews never left it. They walk the shore now, between the coast and the crown, and they do not know they are dead. Lay eight of them to rest, and the way to the lake is open.",
+    progressText: "Lay eight Drowned Sailors to rest on the ring of land round the Crownmere.",
+    completeText:
+      "Thank you. Some of them had names I still remember. I will say them tonight, to the lake.",
+    goal: { type: "kill", monster: "drowned_sailor", count: 8 },
+    reward: { exp: 8000, zeny: 4200, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  ondine_oozes: {
+    giver: "Tide-Keeper Ondine",
+    where: { monster: "tide_ooze" },
+    hint: "Tide Oozes creep about the ring of land. They spit brine from a distance: close in on them.",
+    chapter: 12,
+    main: true,
+    title: "Brine and bile",
+    level: 36,
+    after: "ondine_drowned",
+    intro:
+      "The lake spits up oozes of brine when it is angry, and it has been very angry since the island rose. They spit salt that burns like fire. Six of them, and the Leviathan will have to come up for its supper itself.",
+    progressText: "Destroy six Tide Oozes on Tidecrown.",
+    completeText: "Good. Now it is hungry. Hungry things come up.",
+    goal: { type: "kill", monster: "tide_ooze", count: 6 },
+    reward: { exp: 8000, zeny: 4200, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  ondine_leviathan: {
+    giver: "Tide-Keeper Ondine",
+    where: { monster: "grey_leviathan" },
+    hint: "Walk up through the crown of rocks to the Crownmere's shore. The Leviathan comes up beside you and sinks again: strike while its head is up. Step out of the red lanes where its tentacles come down and the circles where geysers burst; from half health its waves roll over the shore, and a rock of the crown breaks them.",
+    chapter: 12,
+    main: true,
+    title: "The Grey Leviathan",
+    level: 36,
+    after: "ondine_oozes",
+    intro:
+      "The tide seal's guardian. We made it gentle, once: it carried children across the lake on its back. Then the sea took the island, and it grew in the dark, and the boy's fire woke it angry. It will let nobody near the seal. I am sorry. Kill it.",
+    progressText:
+      "Defeat the Grey Leviathan in the Crownmere. Hit it while its head is up; hide behind the crown's rocks from its waves.",
+    completeText: "It is gone. The lake is so still. Thank you, and forgive me for being glad.",
+    goal: { type: "kill", monster: "grey_leviathan", count: 1 },
+    reward: { exp: 14000, zeny: 10000, items: [{ id: "grand_potion", count: 8 }] },
+  },
+  ondine_seal: {
+    giver: "Tide-Keeper Ondine",
+    hint: "Walk out along the causeway from the south shore of the Crownmere to the islet in its middle, and click the altar of the tide seal.",
+    chapter: 12,
+    main: true,
+    title: "The tide seal",
+    level: 36,
+    after: "ondine_leviathan",
+    intro:
+      "Walk the causeway to the islet and lay your hand on the altar. If the tide still knows the hands that made its seal, it will bind its rune to you. And then we will see what the boy wanted here.",
+    progressText: "Walk out along the causeway and click the altar of the tide seal.",
+    completeText:
+      "Maelis. Standing on the water like a saint in a window, with the heart of my seal in his hand. No, do not explain: you could not have stopped him, and he knew it. But the seal knew you. The Tide Rune is yours: call it (Q), and the lake pulls with you.",
+    goal: {
+      type: "ritual",
+      seal: "tide",
+      x: TIDE_SEAL[0],
+      z: TIDE_SEAL[1],
+      r: 4,
+      label: "the tide seal",
+    },
+    reward: {
+      exp: 10000,
+      zeny: 6000,
+      rune: "tide",
+      items: [{ id: "grand_potion", count: 5 }],
+    },
+  },
+  ondine_selwyn: {
+    giver: "Tide-Keeper Ondine",
+    turnIn: "Archmage Selwyn",
+    final: true,
+    ending: "saga2_end",
+    hint: "Sail back to Saltmere and take the Northroad south to Aurelia. Archmage Selwyn waits by the keep in the castle courtyard.",
+    chapter: 12,
+    main: true,
+    title: "What the seals were fed",
+    level: 36,
+    after: "ondine_seal",
+    intro:
+      "He told you to ask your archmage what the old mages fed the seals. I can tell you what I fed mine: nothing. It was fed long before me. Go home, hero, and ask him. Then come back one day and tell an old ghost what he said.",
+    progressText: "Go back to Archmage Selwyn in the castle courtyard of Aurelia.",
+    completeText:
+      "Fed them? ... Stand. You will not want to be sitting for this. The seals were never walls. They are mouths: each one feeds the Hollow a little of the land it sits in. Moonlight, fire, the tide. Just enough to keep it asleep. Maelis is not breaking our cage. He is starving what is inside it. And if he is right that it wakes anyway... The King must hear all of it. Tonight. You did well. Take this: the King meant you to have it the day you brought the Moon Rune home, and I kept forgetting.",
+    goal: { type: "visit", npc: "Archmage Selwyn" },
+    reward: { exp: 12000, zeny: 8000, items: [{ id: "runebearer_mantle", count: 1 }] },
   },
   tamsin_nets: {
     giver: "Fisherman Tamsin",

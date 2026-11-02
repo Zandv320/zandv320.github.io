@@ -13,6 +13,8 @@ import { player, peers, now } from "./game-state.js";
 import { keyDirection } from "./player.js";
 import { setMooredGullVisible } from "./saltmere.js";
 import { setCoveGullVisible } from "./ember.js";
+import { setTideGullVisible } from "./tidecrown.js";
+import { TIDECROWN } from "./rules/tidecrown.js";
 import { createWake } from "./sea.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
@@ -25,6 +27,7 @@ let ship = null;
 let wake = null;
 let bumpedAt = 0;
 let toldIsles = false;
+let toldTidecrown = false;
 
 /* the Gull's Promise as she sails: the same build as at her berth */
 const gullsPromise = () =>
@@ -53,6 +56,7 @@ function fadeSails(group, heading) {
 function showMooredGulls(isVisible) {
   setMooredGullVisible(isVisible);
   setCoveGullVisible(isVisible);
+  setTideGullVisible(isVisible);
 }
 
 /* the golden circles on the water round every berth, shown while sailing: sail into one to moor */
@@ -262,6 +266,17 @@ export function updateSailing(dt) {
     toldIsles = true;
     UI.systemMessage(
       "The Ember Isles: black reefs, ash and smoke. Cinder Cove opens on the south coast: sail into the golden circle by its jetty to moor.",
+    );
+  }
+
+  /* Tidecrown: the same, the first time she comes near */
+  if (
+    !toldTidecrown &&
+    Math.hypot(state.x - TIDECROWN.x, state.z - TIDECROWN.z) < TIDECROWN.radius + 30
+  ) {
+    toldTidecrown = true;
+    UI.systemMessage(
+      "Tidecrown: a ring of land round a grey lake, its rocks still wet from the deep. A pier stands on the south coast: sail into the golden circle beside it to moor.",
     );
   }
 

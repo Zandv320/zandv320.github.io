@@ -21,6 +21,15 @@ import {
   EMBER_ROADS,
 } from "./rules/ember.js";
 import { VALE, FOREST, CAPITAL, NORTHROAD } from "./regions.js";
+import {
+  TIDECROWN,
+  TIDECROWN_REACH,
+  tidecrownCoast,
+  CROWNMERE,
+  CROWN_TEETH,
+  SEAL_ISLET,
+  CAUSEWAY,
+} from "./rules/tidecrown.js";
 
 /* The bounds of the world map: from the mainland's southern fields to beyond the Ember Isles. */
 export const WORLD = {
@@ -117,6 +126,7 @@ export function drawWorldBase(g, scale, worldX0, worldZ0, ratio) {
     drawIslet(g, view, islet);
   }
   drawEmberIsles(g, view);
+  drawTidecrown(g, view);
 }
 
 /* ---------- the ocean: deeper further out, a faint grid, waves drawn in the old way ---------- */
@@ -180,7 +190,49 @@ function isNearLand(x, z, margin) {
       return true;
     }
   }
-  return Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_REACH + margin;
+  return (
+    Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_REACH + margin ||
+    Math.hypot(x - TIDECROWN.x, z - TIDECROWN.z) < TIDECROWN_REACH + margin
+  );
+}
+
+/* Tidecrown: sand and salt-worn grass round the grey lake, the crown of rocks, the causeway and the seal's islet */
+function drawTidecrown(g, { px, pz, scale, ratio }) {
+  const coast = (grow, color) => {
+    g.fillStyle = color;
+    traceCoast(g, px, pz, TIDECROWN.x, TIDECROWN.z, tidecrownCoast, grow);
+    g.fill();
+  };
+  coast(10, PALETTE.shallow);
+  coast(4, PALETTE.shoal);
+  coast(0, PALETTE.sand);
+  coast(-4, "#6f8f68");
+  g.fillStyle = "#3f6f72";
+  g.beginPath();
+  g.arc(px(CROWNMERE.x), pz(CROWNMERE.z), CROWNMERE.radius * scale, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#8a8478";
+  g.fillRect(
+    px(CAUSEWAY.x - CAUSEWAY.halfWidth),
+    pz(CAUSEWAY.north),
+    Math.max(1, CAUSEWAY.halfWidth * 2 * scale),
+    (CAUSEWAY.south - CAUSEWAY.north) * scale,
+  );
+  g.beginPath();
+  g.arc(
+    px(SEAL_ISLET.x),
+    pz(SEAL_ISLET.z),
+    Math.max(1.5 * ratio, SEAL_ISLET.radius * scale),
+    0,
+    Math.PI * 2,
+  );
+  g.fill();
+  g.fillStyle = "#2a2a30";
+  for (const tooth of CROWN_TEETH) {
+    g.beginPath();
+    g.arc(px(tooth.x), pz(tooth.z), Math.max(1.2 * ratio, tooth.radius * scale), 0, Math.PI * 2);
+    g.fill();
+  }
 }
 
 /* ---------- the mainland: the coast with its beach, and the wild lands behind it ---------- */
@@ -606,6 +658,14 @@ const NAMES = [
   },
   { text: MOUNT_KHAROS.name, x: MOUNT_KHAROS.x, z: MOUNT_KHAROS.z - 10, size: 5 },
   { text: CINDER_CAMP.name, x: CINDER_CAMP.x + 22, z: CINDER_CAMP.z + 6, size: 5 },
+  {
+    text: TIDECROWN.name,
+    x: TIDECROWN.x,
+    z: TIDECROWN.z + TIDECROWN_REACH + 10,
+    size: 8,
+    region: true,
+  },
+  { text: CROWNMERE.name, x: CROWNMERE.x, z: CROWNMERE.z + 12, size: 5 },
   ...Object.values(EMBER_LANDS).map((land) => ({
     text: land.name,
     x: land.center[0],

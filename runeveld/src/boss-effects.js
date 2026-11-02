@@ -14,6 +14,7 @@ import { bossOf } from "./rules/bosses.js";
 import { breakPlanks, mendBridge, isBrokenAt, BRIDGE } from "./rules/gorge.js";
 import { setSanctumDark } from "./crypt.js";
 import { throwBoulder } from "./missiles.js";
+import { tentacleStrike, updateTentacles } from "./leviathan.js";
 
 /* a warning on the ground draws over the night haze (renderOrder 10000), so it is never missed */
 const WARNING_ORDER = 10001;
@@ -25,6 +26,9 @@ const HEARING_DISTANCE = 22;
 const laneGeometry = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0).rotateX(Math.PI / 2);
 const discGeometry = new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2);
 const edgeGeometry = new THREE.RingGeometry(0.94, 1, 48).rotateX(-Math.PI / 2);
+
+/* the warnings that are lanes; the others are circles */
+const LANE_KINDS = ["charge", "planks", "blast", "surge", "tentacle"];
 
 /* running warnings, advanced by updateBossEffects() */
 const warnings = [];
@@ -56,7 +60,7 @@ function bossById(id) {
 /** boss_telegraph: a red lane (charge) or circle (cleave) on the ground that fills up until the blow lands. */
 export function bossTelegraph(data) {
   /* the troll's planks show as a lane too, on the stretch of the bridge that is going to break */
-  const isLane = data.kind === "charge" || data.kind === "planks" || data.kind === "blast";
+  const isLane = LANE_KINDS.includes(data.kind);
   const group = new THREE.Group();
   const area = warningMesh(isLane ? laneGeometry : discGeometry, 0.16);
   const fill = warningMesh(isLane ? laneGeometry : discGeometry, 0.32);
@@ -92,6 +96,9 @@ export function bossTelegraph(data) {
     /* it rears back: away from where it is going to strike */
     if (data.kind === "charge") {
       boss.sprite.nudge(data.x0 - data.x1, data.z0 - data.z1, 0.35);
+    } else if (data.kind === "tentacle") {
+      /* a tentacle comes up out of the lake along the lane, the head stays where it is */
+      tentacleStrike(data);
     } else {
       boss.sprite.play("attack", true);
       boss.attackAnimUntil = now() + data.duration + 0.3;
@@ -262,6 +269,11 @@ export function bossReset(data) {
   if (bossOf(boss.spec.key)?.enrage?.darkness) {
     setSanctumDark(false);
   }
+  /* the Leviathan starts over under the water */
+  if (boss.sprite.submerge) {
+    boss.isSubmerged = true;
+    boss.sprite.submerge(true);
+  }
 }
 
 /** boss_enrage: low on health, it turns red and hits harder and sooner. */
@@ -295,14 +307,47 @@ function removeWarning(index) {
   warnings.splice(index, 1);
 }
 
+/** boss_submerge: the Leviathan sinks out of sight, and cannot be hit until it comes up again. */
+export function bossSubmerge(data) {
+  const boss = bossById(data.id);
+  if (!boss || !boss.sprite.submerge) {
+    return;
+  }
+  boss.isSubmerged = true;
+  boss.sprite.submerge(true);
+  playEffect("ripples", boss.x, boss.z, { size: 3, grounded: true });
+  if (player.target === boss) {
+    UI.systemMessage("The Leviathan sinks under the water. Watch where it comes up!");
+  }
+}
+
+/** boss_surface: the Leviathan rises out of the water at (x, z), there at once (no gliding through the lake). */
+export function bossSurface(data) {
+  const boss = bossById(data.id);
+  if (!boss || !boss.sprite.submerge) {
+    return;
+  }
+  boss.x = boss.targetX = data.x;
+  boss.z = boss.targetZ = data.z;
+  boss.isSubmerged = false;
+  boss.sprite.group.position.set(data.x, 0, data.z);
+  boss.sprite.submerge(false);
+  playEffect("splash", data.x, data.z, { size: 3.4, grounded: true, tint: 0xbff4ee });
+  if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
+    sfx.bossRoar();
+    shakeCamera(0.2, 0.4);
+  }
+}
+
 /** Fills the warnings on the ground; once the blow lands, a warning flashes and fades. */
 export function updateBossEffects(dt) {
+  updateTentacles(dt);
   for (let i = warnings.length - 1; i >= 0; i--) {
     const warning = warnings[i];
     const { data, area, fill, edges } = warning;
     warning.time += dt;
     const progress = Math.min(1, warning.time / data.duration);
-    if (data.kind === "charge" || data.kind === "planks" || data.kind === "blast") {
+    if (LANE_KINDS.includes(data.kind)) {
       fill.scale.set(data.width, 1, area.scale.z * progress);
     } else {
       fill.scale.setScalar(data.radius * progress);
@@ -338,6 +383,30 @@ export function updateBossEffects(dt) {
         if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
           sfx.bossSlam();
           shakeCamera(0.3, 0.3);
+        }
+      } else if (data.kind === "surge") {
+        /* a wave of the lake rolls out over the shore, as far as the first rock */
+        const length = Math.hypot(data.x1 - data.x0, data.z1 - data.z0);
+        for (let step = 0; step <= length; step += 1.6) {
+          const t = length ? step / length : 0;
+          const x = data.x0 + (data.x1 - data.x0) * t;
+          const z = data.z0 + (data.z1 - data.z0) * t;
+          setTimeout(() => {
+            playEffect("splash", x, z, { size: 2.2, grounded: true, tint: 0xbff4ee });
+            burst(x, 0.5, z, { color: 0xd8f6f2, count: 8, speed: 4, size: 3 });
+          }, step * 25);
+        }
+        if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
+          sfx.bossSlam();
+          shakeCamera(0.3, 0.35);
+        }
+      } else if (data.kind === "geyser") {
+        /* the water bursts up out of the ground */
+        playEffect("splash", data.x, data.z, { size: 2.6, grounded: true, tint: 0xbff4ee });
+        burst(data.x, 0.4, data.z, { color: 0xd8f6f2, count: 26, speed: 6, size: 3 });
+        if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
+          sfx.bossSlam();
+          shakeCamera(0.15, 0.2);
         }
       } else if (data.kind === "planks") {
         /* the club comes down: splinters fly, whether the planks hold or not */

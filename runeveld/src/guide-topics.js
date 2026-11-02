@@ -123,11 +123,11 @@ export const GUIDE_TOPICS = {
     ],
   },
   saga2_end: {
-    title: "The First Flame is gone",
-    icons: ["wardens_heart", "ui_quests"],
+    title: "Saga II complete",
+    icons: ["runebearer_mantle", "ui_quests"],
     body: [
-      "The Ember Warden is cold and the fire seal holds, but Maelis was there first: he carries the First Flame. That is the end of the chapters of <b>Saga II: The Shattered Runes</b> for now.",
-      "Two runes are bound to you. Open the <b>rune overview</b> (the rune button in the menu, or <kbd>U</kbd>) to see what they give you. Five seals are still out there: their runes show as question marks until you find them.",
+      "The Grey Leviathan is still, and the seals of moon, fire and tide know your hand. But Maelis carries the hearts of fire and tide, and Selwyn's answer changes everything: the seals were never walls. They feed the Hollow, to keep it asleep. That is the end of <b>Saga II: The Shattered Runes</b>.",
+      "Three runes are bound to you: open the <b>rune overview</b> (<kbd>U</kbd>) to see what they give. Four seals are still out there, in lands no chart of ours has a name for. That is where <b>Saga III</b> will begin.",
     ],
   },
 };

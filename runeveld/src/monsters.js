@@ -24,6 +24,9 @@ import {
   inCinderCamp,
   inEmberIsles,
   inForge,
+  inTidecrown,
+  inTideCamp,
+  byCrownmere,
 } from "./regions.js";
 import { isStorm } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
@@ -34,6 +37,7 @@ import { setSanctumDark } from "./crypt.js";
 import { SHEETS, sheetTexture } from "./sheets.js";
 import { recolor, HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES } from "./appearance.js";
 import { Sprite2D } from "./sprites.js";
+import { LeviathanModel } from "./leviathan.js";
 import { scene, camera, cameraState, resolveCollision, isFree, inVillage } from "./world.js";
 import * as UI from "./ui.js";
 import {
@@ -94,13 +98,16 @@ export function ensureMonster(id) {
   if (!spec) {
     return null;
   }
-  /* animals can borrow another sheet, be bigger and get a tint */
+  /* animals can borrow another sheet, be bigger and get a tint; the Leviathan is a model of its own */
   const layers = spec.humanoid ? humanoidLayers(spec.humanoid) : null;
   const scale = spec.scale || (spec.humanoid && spec.humanoid.scale) || 1;
   const sheet = spec.humanoid ? SHEETS.hero : SHEETS[spec.sheet || monsterId];
-  const sprite = new Sprite2D(sheet, { shadow: 1.1 * scale, layers });
+  const sprite =
+    spec.model === "leviathan"
+      ? new LeviathanModel()
+      : new Sprite2D(sheet, { shadow: 1.1 * scale, layers });
   /* a monster of the later lands whose picture is not loaded yet shows as soon as it is */
-  if (!sheet.texture && !layers) {
+  if (!spec.model && !sheet.texture && !layers) {
     sheetTexture(sheet).then((texture) => {
       if (texture && monsters.get(id) && monsters.get(id).sprite === sprite) {
         sprite.setLayers([texture]);
@@ -125,6 +132,8 @@ export function ensureMonster(id) {
     sprite,
     scale,
     label: UI.createLabel("monster", spec.name),
+    /* the Leviathan starts under the water, out of reach (boss_surface brings it up) */
+    isSubmerged: spec.model === "leviathan",
     x: 0,
     z: 0,
     targetX: 0,
@@ -298,13 +307,23 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "forge") {
     return inForge(x, z);
   }
+  if (spec.area === "tidecrown") {
+    return inTidecrown(x, z);
+  }
+  if (spec.area === "crownmere") {
+    return byCrownmere(x, z);
+  }
   return true;
 }
 
 /** Safe places: inside the palisade of Runeveld, inside the walls of Aurelia, Saltmere but for its warehouses, and
-    the camp in Cinder Cove. */
+    the camps in Cinder Cove and on Tidecrown. */
 export const isSafe = (x, z) =>
-  inVillage(x, z) || inCapital(x, z) || isSaltmereSafe(x, z) || inCinderCamp(x, z);
+  inVillage(x, z) ||
+  inCapital(x, z) ||
+  isSaltmereSafe(x, z) ||
+  inCinderCamp(x, z) ||
+  inTideCamp(x, z);
 
 /** A monster died: death animation, smoke, and (on the host) the respawn timer. */
 export function monsterDied(monster) {
@@ -354,6 +373,11 @@ function reviveMonster(monster, [x, z]) {
   monster.sprite.group.visible = true;
   monster.label.el.hidden = false;
   monster.sprite.play("idle", true);
+  /* the Leviathan comes back under the water, out of sight */
+  if (monster.sprite.submerge) {
+    monster.sprite.submerge(true);
+    monster.isSubmerged = true;
+  }
 }
 
 /** Shows a monster's sprite where the monster is (after it was made with ensureMonster). */
@@ -756,6 +780,8 @@ export function updateMonsters(dt) {
     }
     monster.sprite.update(dt, cameraState);
     UI.positionLabel(monster.label, monster.x, labelHeight, monster.z, camera);
+    /* under the water, no name over it */
+    monster.label.el.hidden = !!monster.isSubmerged;
     UI.setLabelHp(
       monster.label,
       monster.hp,

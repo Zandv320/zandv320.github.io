@@ -77,6 +77,22 @@ import { updateBurning } from "./burning.js";
 import { takeHelm, sailTo, updatePeerShips, shipPresence, resetSailing } from "./sailing.js";
 import { BERTHS, BERTH_LANDING, EMBER_ISLES, ISLETS, inGreySea } from "./rules/sea.js";
 import { CINDER_CAMP, MOUNT_KHAROS, onCoveJetty, inCamp, emberLandAt } from "./rules/ember.js";
+import {
+  TIDECROWN,
+  CROWNMERE,
+  TIDE_CAMP,
+  SEAL_ISLET,
+  inTidecrown,
+  onTidePier,
+  byCrownmere,
+} from "./rules/tidecrown.js";
+import {
+  buildTidecrown,
+  updateTidecrown,
+  tidecrownLights,
+  tidecrownClickables,
+  clickTidecrownObject,
+} from "./tidecrown.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { FORGE_ROOMS, forgeRoomAt } from "./rules/forge.js";
 import {
@@ -136,6 +152,8 @@ import {
   bossReset,
   bossPlanks,
   bossBoulder,
+  bossSubmerge,
+  bossSurface,
   updateBossEffects,
 } from "./boss-effects.js";
 import { throwSpear, updateMissiles } from "./missiles.js";
@@ -274,6 +292,10 @@ const ZONES = {
   saltmere: [SALTMERE.name, "The great harbor of the realm. Ships leave for the edge of the map."],
   sea: ["The Grey Sea", "Open water, and no chart past the lighthouse."],
   ember: [EMBER_ISLES.name, "Ash, black rock and the smoking mountain. Something waits under it."],
+  tidecrown: [
+    TIDECROWN.name,
+    "An island that was not there a week ago. The sea has not let go of it.",
+  ],
   /* the stairs announce the crypt themselves (crypt.js), the Gate of Kharos the forge (forge.js) */
   crypt: null,
   forge: null,
@@ -300,6 +322,7 @@ async function init() {
     buildSaltmere,
     buildSea,
     buildEmberIsles,
+    buildTidecrown,
     buildForge,
     buildLoginScene,
     buildWaterFeatures,
@@ -307,7 +330,12 @@ async function init() {
     /* last: the grass keeps clear of everything built before it */
     buildNature,
   ]);
-  clickables.push(...cryptClickables(), ...sealClickables(), ...forgeClickables());
+  clickables.push(
+    ...cryptClickables(),
+    ...sealClickables(),
+    ...forgeClickables(),
+    ...tidecrownClickables(),
+  );
   createMerchant();
   createVillagers(scene, clickables);
   showNpcs(false);
@@ -418,8 +446,9 @@ function createWorldLights() {
     [BANDIT_CAMP[0], BANDIT_CAMP[1], 1.7],
     [CASTLE.x1 + 2.6, -5.2, 1.1],
     [CASTLE.x1 + 2.6, 5.2, 1.1],
-    /* the camp fire in Cinder Cove */
+    /* the camp fires in Cinder Cove and on Tidecrown */
     [...inCamp(2, 2), 1],
+    [TIDE_CAMP.x, TIDE_CAMP.z, 0.9],
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
@@ -439,7 +468,7 @@ function createWorldLights() {
     playEffect("candle", x, z, { size: 0.45, y, loop: true });
   }
   /* the lava of the Ember Isles glows all night */
-  lights.push(...emberLights, ...LOGIN_LIGHTS, ...LANDMARK_LIGHTS);
+  lights.push(...emberLights, ...tidecrownLights, ...LOGIN_LIGHTS, ...LANDMARK_LIGHTS);
   return lights;
 }
 
@@ -563,7 +592,11 @@ function restoreHero(hero) {
   player.buffs = hero.buffs && typeof hero.buffs === "object" ? hero.buffs : {};
   resetSailing();
   /* saved at sea (sailing, out of the game): back on the pier at the Gull's Promise's berth */
-  if (inGreySea(player.x, player.z) && !inEmberIsles(player.x, player.z)) {
+  if (
+    inGreySea(player.x, player.z) &&
+    !inEmberIsles(player.x, player.z) &&
+    !inTidecrown(player.x, player.z)
+  ) {
     [player.x, player.z] = BERTH_LANDING;
   }
   if (!insideWorld(player.x, player.z, 1)) {
@@ -1299,6 +1332,8 @@ function startNetwork() {
     boss_reset: bossReset,
     boss_planks: bossPlanks,
     boss_boulder: bossBoulder,
+    boss_submerge: bossSubmerge,
+    boss_surface: bossSurface,
   };
   for (const [type, show] of Object.entries(bossEvents)) {
     network.on(type, (data, from) => {
@@ -1731,6 +1766,11 @@ function handleClick(clientX, clientY, mode = "select") {
       clickSeal(data.sealObject);
       return;
     }
+    if (data.tidecrownObject) {
+      clearTarget();
+      clickTidecrownObject(data.tidecrownObject);
+      return;
+    }
     if (data.station) {
       clearTarget();
       game.gathering.clickStation(data.station);
@@ -2137,6 +2177,9 @@ function zoneAt(x, z) {
   if (inEmberIsles(x, z, -1)) {
     return "ember";
   }
+  if (inTidecrown(x, z, -1)) {
+    return "tidecrown";
+  }
   if (inGreySea(x, z)) {
     return "sea";
   }
@@ -2156,6 +2199,18 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "tidecrown") {
+    if (
+      Math.hypot(x - TIDE_CAMP.x, z - TIDE_CAMP.z) < TIDE_CAMP.radius + 6 ||
+      onTidePier(x, z, -2)
+    ) {
+      return "The Landing";
+    }
+    if (Math.hypot(x - SEAL_ISLET.x, z - SEAL_ISLET.z) < SEAL_ISLET.radius + 1) {
+      return "The Tide Seal";
+    }
+    return byCrownmere(x, z) ? CROWNMERE.name : TIDECROWN.name;
+  }
   if (zone === "ember") {
     if (
       Math.hypot(x - CINDER_CAMP.x, z - CINDER_CAMP.z) < CINDER_CAMP.radius + 6 ||
@@ -2174,6 +2229,9 @@ function zoneLabel(zone, x, z) {
   if (zone === "sea") {
     if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius + 30) {
       return EMBER_ISLES.name;
+    }
+    if (Math.hypot(x - TIDECROWN.x, z - TIDECROWN.z) < TIDECROWN.radius + 30) {
+      return TIDECROWN.name;
     }
     const islet = ISLETS.find((isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius + 18);
     return islet ? islet.name : "The Grey Sea";
@@ -2255,6 +2313,7 @@ function stepWorld(dt, time) {
   updateSaltmere(dt, time);
   updateSea(dt, time);
   updateEmberIsles(dt, time);
+  updateTidecrown(dt, time);
   updateWildlife(dt, time);
   updateChase(dt);
   if (game.host) {

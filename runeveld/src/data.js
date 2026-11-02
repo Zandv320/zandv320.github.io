@@ -597,6 +597,71 @@ export const ITEMS = {
     icon: "🧥",
     description: "Layers of the Warden's shell, thin as cloth and glowing at the seams.",
   },
+  /* the Grey Leviathan's (Tidecrown, chapter 12), and Saga II's last reward */
+  leviathan_fang: {
+    name: "Leviathan's fang",
+    slot: "weapon",
+    layer: "sword3",
+    look: { color: "#7fe0d4", amount: 0.6, value: 1.15 },
+    atk: 54,
+    bonus: { str: 3, dex: 2 },
+    price: 8600,
+    icon: "⚔️",
+    forClass: "swordsman",
+    description:
+      "A tooth of the Grey Leviathan, as long as an arm and set in a hilt of driftwood. It is never dry.",
+  },
+  deepcaller_staff: {
+    name: "Deepcaller staff",
+    slot: "weapon",
+    layer: "staff3",
+    look: { color: "#4fc8e8", amount: 0.6, value: 1.1 },
+    atk: 14,
+    matk: 74,
+    bonus: { int: 3, dex: 1 },
+    price: 8600,
+    icon: "🪄",
+    forClass: "mage",
+    description:
+      "Coral grown round a spine of the Leviathan. Hold it to your ear and you hear the deep.",
+  },
+  leviathan_mantle: {
+    name: "Leviathan mantle",
+    slot: "cloak",
+    layer: "cloak3",
+    look: { color: "#5f9a96", amount: 0.85, value: 1.6 },
+    def: 15,
+    hp: 160,
+    price: 7800,
+    icon: "🧥",
+    description:
+      "Grey-green scales, each the size of a hand, sewn onto sailcloth. Water runs off it like off a fish.",
+  },
+  tide_pearl: {
+    name: "Tide pearl",
+    slot: "necklace",
+    hp: 120,
+    sp: 120,
+    bonus: { int: 2, vit: 2 },
+    price: 7000,
+    icon: "🫧",
+    description:
+      "A pearl from the bed of the Crownmere, grey as the sea before a storm. It is cold, and it ebbs and flows.",
+  },
+  runebearer_mantle: {
+    name: "Runebearer's mantle",
+    slot: "cloak",
+    layer: "cloak3",
+    look: { color: "#b49cff", amount: 0.8, value: 2 },
+    def: 16,
+    hp: 180,
+    sp: 80,
+    bonus: { str: 1, int: 1, vit: 1 },
+    price: 9000,
+    icon: "🧥",
+    description:
+      "Given by the King's own hand to the one who bears the runes of the seals. Violet, for the moon; its hem is stitched with fire and water.",
+  },
   saltmere_cutlass: {
     name: "Saltmere cutlass",
     slot: "weapon",
@@ -2529,6 +2594,78 @@ export const FORGE_MONSTERS = {
 };
 Object.assign(MONSTERS, FORGE_MONSTERS);
 
+/* Tidecrown, the island that rose out of the Grey Sea (rules/tidecrown.js, Saga II chapter 12): the drowned crew
+   of every ship the Leviathan ever took, oozes of brine, each on its own spot on the ring of land (area
+   'tidecrown'), and the Grey Leviathan in the Crownmere, a 3D serpent (leviathan.js) that never leaves the lake
+   ('crownmere': it hunts whoever comes near the water) */
+export const TIDECROWN_MONSTERS = {
+  drowned_sailor: {
+    name: "Drowned Sailor",
+    level: 35,
+    hp: 5200,
+    atk: 184,
+    exp: 1150,
+    zeny: [120, 220],
+    speed: 2.5,
+    aggressive: true,
+    range: 1.6,
+    aggroRange: 6.5,
+    humanoid: { tunicColor: "grey", weapon: "sword2", hair: "black", scale: 1.05 },
+    tint: 0x9fd8c8,
+    area: "tidecrown",
+    respawn: [40, 60],
+    materials: { arcane_dust: 0.3 },
+    loot: { grand_potion: 0.1, saltmere_cutlass: 0.02, sea_boots: 0.02, harbor_charm: 0.02 },
+  },
+  tide_ooze: {
+    name: "Tide Ooze",
+    level: 34,
+    hp: 4200,
+    atk: 170,
+    exp: 960,
+    zeny: [100, 180],
+    speed: 2.2,
+    aggressive: true,
+    range: 5,
+    aggroRange: 7,
+    projectile: 0x7fe0f0,
+    sheet: "grave_ooze",
+    tint: 0x9fe8ff,
+    scale: 1.3,
+    area: "tidecrown",
+    respawn: [40, 60],
+    materials: { arcane_dust: 0.35 },
+    loot: { grand_potion: 0.12, tidecaller_staff: 0.02 },
+  },
+  grey_leviathan: {
+    name: "The Grey Leviathan",
+    title: "Guardian of the Tide Seal",
+    level: 37,
+    hp: 30000,
+    atk: 206,
+    exp: 9600,
+    zeny: [1600, 2600],
+    speed: 0,
+    aggressive: true,
+    range: 3.6,
+    aggroRange: 34,
+    /* a 3D serpent in the lake, which a blade reaches from the shore */
+    model: "leviathan",
+    reach: 2.6,
+    lines: { enrage: "The lake heaves. The Leviathan is bleeding, and furious." },
+    area: "crownmere",
+    respawn: [150, 210],
+    loot: {
+      leviathan_fang: 0.22,
+      deepcaller_staff: 0.22,
+      leviathan_mantle: 0.25,
+      tide_pearl: 0.25,
+      grand_potion: 0.8,
+    },
+  },
+};
+Object.assign(MONSTERS, TIDECROWN_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -2652,6 +2789,10 @@ export const SPAWNS = [
   { monster: "forge_imp", count: 4 },
   { monster: "forge_golem", count: 3 },
   { monster: "ember_warden", count: 1 },
+  /* Tidecrown: one per spot in rules/tidecrown.js */
+  { monster: "drowned_sailor", count: 10 },
+  { monster: "tide_ooze", count: 8 },
+  { monster: "grey_leviathan", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

@@ -8,6 +8,7 @@ import * as UI from "./ui.js";
 import { isNight } from "./daylight.js";
 import { inCamp } from "./rules/ember.js";
 import { forgePoint } from "./rules/forge.js";
+import { TIDE_CAMP } from "./rules/tidecrown.js";
 import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } from "./appearance.js";
 
 /* The villagers: looks, route (list of points; a single point = standing still) and lines.
@@ -17,7 +18,7 @@ import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } fro
    hammers: plays the attack animation now and then (recruits), work: a profession animation (sheets.js WORK:
    smith, fish, harvest, brew, cook, chop) played while standing at a route point, facing workFacing,
    shop: SHOPS key, night: extra lines after dark, after: {questId: lines} that join once the player has finished
-   that quest, so the world talks about what the player did. */
+   that quest, so the world talks about what the player did; tint: a colour over the whole figure (a ghost). */
 /* Orven keeps his place in the passage before the Heart of Kharos, beside its gate */
 const FORGE_ORVEN = forgePoint(-1.8, 6.5);
 
@@ -778,7 +779,13 @@ const VILLAGERS = [
       "The stars over Whisperwood have been wrong since the altar burned.",
     ],
     night: ["At night the chart almost reads itself. Almost."],
-    after: { selwyn_altar: ["The moon answered you. It does not answer many."] },
+    after: {
+      selwyn_altar: ["The moon answered you. It does not answer many."],
+      ondine_selwyn: [
+        "Mouths, not walls. I have read that chart a thousand times, and never once read it right.",
+        "The King did not sleep last night. Neither did I. Neither, I suspect, did you.",
+      ],
+    },
   },
   {
     name: "Lady Elara",
@@ -1280,6 +1287,34 @@ const VILLAGERS = [
       edda_slag: ["The road west is clear. I can hear the sea again over the hissing."],
       edda_watch: ["Hearts of stone, given back to the stone. I keep saying it under my breath."],
       edda_gate: ["The mountain is hammering. Do not look at me like that: I hear it too."],
+      ondine_seal: [
+        "A ghost who kept a seal for three hundred years. I would give my left hand to talk to her.",
+      ],
+    },
+  },
+  /* ---- Tidecrown (Saga II, chapter 12): the ghost of the last keeper of the tide seal, in the camp above the
+     landing ---- */
+  {
+    name: "Tide-Keeper Ondine",
+    hair: "silver",
+    outfit: "armor1",
+    tunicColor: "blue",
+    tint: 0xa8ece4,
+    route: [
+      [TIDE_CAMP.x - 2, TIDE_CAMP.z - 3.5],
+      [TIDE_CAMP.x + 1.5, TIDE_CAMP.z - 5],
+    ],
+    speed: 0.5,
+    pause: [10, 18],
+    lines: [
+      "I kept the tide seal for sixty years before the sea took the island. I have kept it for three hundred more since. Old habits.",
+      "Do not drink from the lake. Do not swim in it. Do not, whatever you do, sing to it.",
+      "The drowned walk the shore. They were sailors once. Some of them were my friends.",
+    ],
+    night: ["Listen: the lake is breathing. It never did that while it slept."],
+    after: {
+      ondine_leviathan: ["The lake is quiet. Quiet! I had forgotten what that sounds like."],
+      ondine_seal: ["He walked on the water as if it owed him. Perhaps it did."],
     },
   },
   {
@@ -1385,6 +1420,9 @@ export function createVillagers(scene, clickables) {
       spec.weapon && heroLayers[spec.weapon],
     ].filter(Boolean);
     const sprite = new Sprite2D(SHEETS.hero, { layers, shadow: 0.9 * (spec.scale || 1) });
+    if (spec.tint) {
+      sprite.tint(spec.tint);
+    }
     if (spec.scale) {
       sprite.group.scale.setScalar(spec.scale);
     }

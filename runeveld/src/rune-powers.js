@@ -1,8 +1,9 @@
 /* Eldoria – the rune powers (rules/runes.js) in play: the rune slot on the hotbar (Q), calling the power, and what
-   it does: the Moon Rune's Moonward, a shell of moonlight that takes the blows for a while, and the Ember Rune's
-   Emberbreath, a cone of the First Flame before the hero. */
+   it does: the Moon Rune's Moonward, a shell of moonlight that takes the blows for a while, the Ember Rune's
+   Emberbreath, a cone of the First Flame before the hero, and the Tide Rune's Undertow, a whirl of water that drags
+   the monsters round the hero in and holds them. */
 import { RUNES, activeRune } from "./rules/runes.js";
-import { player, monsters, now, hpMax, derived, playEffect } from "./game-state.js";
+import { player, game, monsters, now, hpMax, derived, playEffect } from "./game-state.js";
 import { spellHit } from "./rules/combat.js";
 import { hitMonster, playOnce } from "./player.js";
 import { camera, shakeCamera } from "./world.js";
@@ -67,7 +68,60 @@ export function useRunePower() {
     moonward(rune, time);
   } else if (id === "ember") {
     emberbreath(rune);
+  } else if (id === "tide") {
+    undertow(rune);
   }
+}
+
+const TIDE_COLOR = 0x7fe0d4;
+
+/* Undertow: every monster round the hero is dragged in (a pull, sent like a blow's push), held, and hit; the hero
+   heals a little for each */
+function undertow(rune) {
+  playOnce("attack", 0.6);
+  sfx.bossSlam();
+  shakeCamera(0.18, 0.35);
+  screenFlash("120, 220, 210");
+  playEffect("whirl", player.x, player.z, {
+    size: rune.radius * 0.9,
+    grounded: true,
+    tint: TIDE_COLOR,
+  });
+  playEffect("ripples", player.x, player.z, {
+    size: rune.radius,
+    grounded: true,
+    tint: TIDE_COLOR,
+  });
+  groundRing(player.x, player.z, TIDE_COLOR, 0.3, rune.radius, 0.7, 0.9);
+  const time = now();
+  const caught = [...monsters.values()].filter(
+    (monster) =>
+      !monster.isDead &&
+      !monster.isSubmerged &&
+      monster.sprite.group.visible &&
+      Math.hypot(monster.x - player.x, monster.z - player.z) <= rune.radius,
+  );
+  if (!caught.length) {
+    UI.systemMessage(`${rune.power} caught nothing.`);
+  }
+  const stats = derived();
+  for (const monster of caught) {
+    monster.frozenUntil = time + rune.hold;
+    playEffect("splash", monster.x, monster.z, { size: 1.4, grounded: true, tint: TIDE_COLOR });
+    /* a negative force: towards the hero instead of away */
+    hitMonster(
+      monster,
+      spellHit({ matk: Math.max(stats.atk, stats.matk), mult: rune.mult }),
+      "undertow",
+    );
+  }
+  if (caught.length) {
+    game.network.send("freeze", { ids: caught.map((monster) => monster.id), duration: rune.hold });
+    const heal = Math.round(hpMax() * Math.min(rune.healMax, rune.heal * caught.length));
+    player.hp = Math.min(hpMax(), player.hp + heal);
+    UI.floatingText(player.x, player.sprite.height + 0.6, player.z, camera, `+${heal}`, "heal");
+  }
+  UI.floatingText(player.x, player.sprite.height + 0.4, player.z, camera, "Undertow", "skill");
 }
 
 const EMBER_COLOR = 0xff8a2a;

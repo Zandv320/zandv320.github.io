@@ -1090,6 +1090,12 @@ def item_icons(sources):
         "firstflame_blade": tint(sword, (255, 195, 120)),
         "flamecaller_staff": hue_shift(orb_staff, 0.97, 1.25, 1.1),
         "molten_mantle": hue_shift(cape, 0.06, 1.1, 1.25),
+        # Tidecrown and the end of Saga II
+        "leviathan_fang": tint(sword, (150, 235, 220)),
+        "deepcaller_staff": hue_shift(orb_staff, 0.5, 1.2, 1.05),
+        "leviathan_mantle": hue_shift(cape, 0.45, 0.5, 0.85),
+        "tide_pearl": tint(pendant, (170, 235, 230)),
+        "runebearer_mantle": hue_shift(cape, 0.75, 0.9, 1.15),
         # potions and runes
         "orange_potion": hue_shift(pack("potions", 1), 0.07, 1.0, 1.05),
         **{name: rune(colors, glyph) for name, (colors, glyph) in ITEM_RUNES.items()},

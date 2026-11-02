@@ -34,6 +34,24 @@ export const RUNES = {
     bonus: { atkPct: 0.05, matkPct: 0.05, bonus: { str: 2, dex: 2 } },
     color: "#ff9a40",
   },
+  tide: {
+    name: "Tide Rune",
+    power: "Undertow",
+    icon: "🌊",
+    quest: "ondine_seal",
+    description:
+      "The lake pulls with you: a whirl of water drags every monster round you closer, holds them for 2.5 seconds and hits them for five times your ATK or MATK; you heal 4% of your HP for each one caught.",
+    cooldown: 45,
+    /* the whirl: how far it reaches, how long it holds, the damage as a multiple of the hero's best attack, and the
+       healing per monster caught (a share of max HP, at most `healMax` in all) */
+    radius: 6.5,
+    hold: 2.5,
+    mult: 5,
+    heal: 0.04,
+    healMax: 0.2,
+    bonus: { hp: 120, sp: 60, bonus: { vit: 2, int: 1, dex: 1 } },
+    color: "#7fe0d4",
+  },
 };
 
 /** How many runes there are in all: one for each of the seven seals, most of them not yet found. */

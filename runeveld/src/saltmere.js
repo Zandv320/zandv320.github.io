@@ -12,6 +12,7 @@ import { daylight } from "./daylight.js";
 import { player, clickables } from "./game-state.js";
 import { BERTH, HULL, ROCKS, ISLETS, EMBER_ISLES, isletReach } from "./rules/sea.js";
 import { emberShore } from "./rules/ember.js";
+import { TIDECROWN, tidecrownCoast } from "./rules/tidecrown.js";
 import { sfx } from "./audio.js";
 import { IS_PHONE } from "./sprites.js";
 
@@ -571,12 +572,13 @@ const SHALLOWS = [
     coastCircles(islet.x, islet.z, (angle) => isletReach(islet, angle), 16, islet.radius * 0.6),
   ),
   ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 96, 14),
+  ...coastCircles(TIDECROWN.x, TIDECROWN.z, tidecrownCoast, 48, 10),
 ];
 
 /* The water of the sea, drawn on the GPU in the game's pixels: clear turquoise over the shallows along the quay and
    round every rock and island, deepening to a dark blue out at sea under slow cloudy shadows; over it all a net of
    light (the sun through the moving surface) that wanders and shifts, and here and there a white glint on it. */
-const SEA_VERTEX = /* glsl */ `
+export const SEA_VERTEX = /* glsl */ `
   varying vec2 vWorld;
   void main() {
     vec4 world = modelMatrix * vec4(position, 1.0);
@@ -584,7 +586,7 @@ const SEA_VERTEX = /* glsl */ `
     gl_Position = projectionMatrix * viewMatrix * world;
   }
 `;
-const SEA_FRAGMENT = /* glsl */ `
+export const SEA_FRAGMENT = /* glsl */ `
   ${IS_PHONE ? "#define SIMPLE" : ""}
   uniform float uTime;
   uniform float uShore;

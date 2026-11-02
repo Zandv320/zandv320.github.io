@@ -27,9 +27,18 @@ import {
   inCinderCamp,
   inEmberIsles,
   inForge,
+  inTidecrown,
+  inTideCamp,
+  byCrownmere,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
-import { bossOf, bossTick, resetBoss, rageFactors } from "../../runeveld/src/rules/bosses.js";
+import {
+  bossOf,
+  bossTick,
+  resetBoss,
+  rageFactors,
+  isSubmerged,
+} from "../../runeveld/src/rules/bosses.js";
 import { isStorm } from "../../runeveld/src/rules/weather.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
@@ -58,10 +67,14 @@ const KNOCKBACK_SCALE = 0.6;
 
 const randomBetween = (min, max) => min + Math.random() * (max - min);
 const inVillage = (x, z) => Math.abs(x) < VILLAGE_HALF_SIZE && Math.abs(z) < VILLAGE_HALF_SIZE;
-/* players in the village, the capital, Saltmere (but for its warehouses) or the camp in Cinder Cove cannot be
-   attacked */
+/* players in the village, the capital, Saltmere (but for its warehouses) or the camps in Cinder Cove and on
+   Tidecrown cannot be attacked */
 const isSafe = (x, z) =>
-  inVillage(x, z) || inCapital(x, z) || isSaltmereSafe(x, z) || inCinderCamp(x, z);
+  inVillage(x, z) ||
+  inCapital(x, z) ||
+  isSaltmereSafe(x, z) ||
+  inCinderCamp(x, z) ||
+  inTideCamp(x, z);
 const nowSeconds = () => Date.now() / 1000;
 
 function gameHour() {
@@ -245,6 +258,12 @@ export function createSimulation(emit) {
     }
     if (spec.area === "forge") {
       return inForge(x, z);
+    }
+    if (spec.area === "tidecrown") {
+      return inTidecrown(x, z);
+    }
+    if (spec.area === "crownmere") {
+      return byCrownmere(x, z);
     }
     return true;
   }
@@ -544,7 +563,8 @@ export function createSimulation(emit) {
 
   function hit(id, damage, attackerId) {
     const monster = monsters.get(id);
-    if (!monster || monster.isDead || !Number.isFinite(damage)) {
+    /* the Leviathan under the water is out of reach */
+    if (!monster || monster.isDead || !Number.isFinite(damage) || isSubmerged(monster)) {
       return;
     }
     const appliedDamage = Math.max(0, Math.min(damage, MAX_HIT_DAMAGE));

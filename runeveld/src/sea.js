@@ -242,7 +242,7 @@ function coastShape(reach, scale, grow) {
 }
 
 /* a slab in a coast's shape, `depth` thick, its top edge rounded off over `bevel`; standing on y = 0 */
-function coastSlab(reach, scale, grow, depth, bevel) {
+export function coastSlab(reach, scale, grow, depth, bevel) {
   return new THREE.ExtrudeGeometry(coastShape(reach, scale, grow), {
     depth,
     bevelEnabled: true,
@@ -255,7 +255,7 @@ function coastSlab(reach, scale, grow, depth, bevel) {
 
 /* A ring of white foam round something standing in the sea, `inner` to `outer` from its middle, or from its coast
    when `reach(angle)` gives one. */
-function addSurf(scene, x, z, inner, outer, reach = null) {
+export function addSurf(scene, x, z, inner, outer, reach = null) {
   let geometry;
   if (reach) {
     const shape = coastShape(reach, 1, outer);

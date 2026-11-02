@@ -44,7 +44,8 @@ let maelis = null;
 /* the rune on the ground: {x, z, flareIn (seconds), ring} */
 let trap = null;
 
-function build() {
+/** Maelis as the players see him, wherever he turns up: his figure (in the scene) and his name label. */
+export function maelisFigure() {
   const layers = SHEETS.hero.layers;
   const head = recolor("hero_head", HAIR_SOURCE, HAIR_PALETTES.black, "hair-black");
   const sprite = new Sprite2D(SHEETS.hero, {
@@ -53,6 +54,11 @@ function build() {
   });
   sprite.tint(0xc8b8ff);
   scene.add(sprite.group);
+  return { sprite, label: UI.createLabel("npc", "Maelis the Unbound") };
+}
+
+function build() {
+  const { sprite, label } = maelisFigure();
   /* his boat: a rowing boat at the head of the mole, its bow to the open sea */
   const boat = builders.rowingBoat();
   boat.rotation.y = Math.atan2(
@@ -64,7 +70,7 @@ function build() {
   maelis = {
     sprite,
     boat,
-    label: UI.createLabel("npc", "Maelis the Unbound"),
+    label,
     x: CHASE_ROUTE[0][0],
     z: CHASE_ROUTE[0][1],
     index: 0,

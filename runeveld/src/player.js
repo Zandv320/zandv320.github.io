@@ -39,6 +39,7 @@ import { inForge, FORGE_ENTRY } from "./rules/forge.js";
 import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
 import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
 import { inEmberIsles, CAMP_WAKE } from "./rules/ember.js";
+import { inTidecrown, TIDE_WAKE } from "./rules/tidecrown.js";
 import { inGreySea } from "./rules/sea.js";
 import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
@@ -200,7 +201,9 @@ function followTarget(time, isBusy) {
   const dz = monster.z - player.z;
   const distance = Math.hypot(dx, dz);
   const queued = player.queuedSkill && SKILLS[player.queuedSkill];
-  const range = queued && queued.range ? queued.range : heroClass().range;
+  /* a monster as big as the Leviathan can be hit from further off (`reach`) */
+  const range =
+    (queued && queued.range ? queued.range : heroClass().range) + (monster.spec.reach || 0);
   if (distance > range) {
     return [dx / distance, dz / distance];
   }
@@ -400,6 +403,10 @@ function hitSparks(monster, result, kind) {
  * to the host or server. `kind` is "" for a basic attack, otherwise the skill id.
  */
 export function hitMonster(monster, result, kind) {
+  /* the Leviathan under the water is out of reach */
+  if (monster.isSubmerged) {
+    return;
+  }
   const numberHeight = monster.sprite.height * 0.8;
   if (result.miss) {
     UI.floatingText(monster.x, numberHeight, monster.z, camera, "Miss", "miss");
@@ -409,7 +416,9 @@ export function hitMonster(monster, result, kind) {
   const text = result.crit ? result.damage + "!" : result.damage;
   const style = result.crit ? "crit" : kind ? "skill" : "own";
   UI.floatingText(monster.x, numberHeight, monster.z, camera, text, style);
-  const force = kind === "whirlwind_sweep" ? 1.2 : result.crit ? 0.45 : 0.28;
+  /* the Tide Rune's undertow pulls instead of pushing */
+  const force =
+    kind === "undertow" ? -1.6 : kind === "whirlwind_sweep" ? 1.2 : result.crit ? 0.45 : 0.28;
   knockBack(monster, monster.x - player.x, monster.z - player.z, force);
   hitSparks(monster, result, kind);
   /* the blow lands: hero and monster hold for a moment, longer on a critical hit */
@@ -627,6 +636,9 @@ function respawn() {
   ) {
     /* on the Ember Isles: by the fire in Cinder Cove, once the camp has taken them in */
     [player.x, player.z] = CAMP_WAKE;
+  } else if (inTidecrown(player.x, player.z, -2) && player.quests.edda_rising?.state === "done") {
+    /* on Tidecrown: by the fire at the landing, once Keeper Ondine has found them */
+    [player.x, player.z] = TIDE_WAKE;
   } else if (
     (inSaltmere(player.x, player.z, -2) ||
       inGreySea(player.x, player.z) ||

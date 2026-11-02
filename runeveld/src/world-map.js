@@ -38,6 +38,15 @@ import {
 } from "./rules/sea.js";
 import { emberShore, MOUNT_KHAROS, CINDER_CAMP, COVE_JETTY, EMBER_REACH } from "./rules/ember.js";
 import {
+  TIDECROWN,
+  tidecrownCoast,
+  CROWNMERE,
+  CROWN_TEETH,
+  SEAL_ISLET,
+  CAUSEWAY,
+  TIDE_PIER,
+} from "./rules/tidecrown.js";
+import {
   WORLD,
   ZOOM_REGIONS,
   mainlandCoast,
@@ -1017,6 +1026,12 @@ export function createWorldMap(deps) {
       if (Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_ISLES.radius * 1.3) {
         return EMBER_ISLES.name;
       }
+      if (Math.hypot(x - CROWNMERE.x, z - CROWNMERE.z) < CROWNMERE.radius) {
+        return CROWNMERE.name;
+      }
+      if (Math.hypot(x - TIDECROWN.x, z - TIDECROWN.z) < TIDECROWN.radius * 1.3) {
+        return TIDECROWN.name;
+      }
       return GREY_SEA.name;
     }
     if (inSaltmere(x, z, -2)) {
@@ -1282,6 +1297,32 @@ export function createWorldMap(deps) {
       (COVE_JETTY.north - worldZ0) * scale,
       COVE_JETTY.halfWidth * 2 * scale,
       (COVE_JETTY.south - COVE_JETTY.north) * scale,
+    );
+    /* Tidecrown: its beach and grass, the lake, the causeway and islet, the crown of rocks, the pier */
+    context.fillStyle = "#d8c08a";
+    traceCoast(context, px, pz, TIDECROWN.x, TIDECROWN.z, tidecrownCoast, 0);
+    context.fill();
+    context.fillStyle = "#6f8f68";
+    traceCoast(context, px, pz, TIDECROWN.x, TIDECROWN.z, tidecrownCoast, -3.5);
+    context.fill();
+    circle(CROWNMERE.x, CROWNMERE.z, CROWNMERE.radius, "#3f6f72");
+    context.fillStyle = "#9a9488";
+    context.fillRect(
+      px(CAUSEWAY.x - CAUSEWAY.halfWidth),
+      pz(CAUSEWAY.north),
+      CAUSEWAY.halfWidth * 2 * scale,
+      (CAUSEWAY.south - CAUSEWAY.north) * scale,
+    );
+    circle(SEAL_ISLET.x, SEAL_ISLET.z, SEAL_ISLET.radius, "#9a9488");
+    for (const tooth of CROWN_TEETH) {
+      circle(tooth.x, tooth.z, tooth.radius, "#2a2a30");
+    }
+    context.fillStyle = "#8a6a42";
+    context.fillRect(
+      px(TIDE_PIER.x - TIDE_PIER.halfWidth),
+      pz(TIDE_PIER.north),
+      TIDE_PIER.halfWidth * 2 * scale,
+      (TIDE_PIER.south - TIDE_PIER.north) * scale,
     );
   }
 
