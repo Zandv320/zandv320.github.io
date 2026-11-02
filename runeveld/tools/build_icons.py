@@ -636,6 +636,89 @@ def profession_icons(sources):
     return icons
 
 
+# ---- the items of the later lands (Northroad, Saltmere, the crypt, the Ember Isles) ----
+def heater_shield(face, rim, cross):
+    """A heater shield with a cross: face (dark, light), rim colour, cross colour."""
+    im = blank()
+    d = ImageDraw.Draw(im)
+    outline_points = [(7, 6), (25, 6), (25, 16), (16, 27), (7, 16)]
+    d.polygon(outline_points, fill=rim + (255,))
+    d.polygon([(9, 8), (23, 8), (23, 16), (16, 24), (9, 16)], fill=face[0] + (255,))
+    d.polygon([(9, 8), (16, 8), (16, 24), (9, 16)], fill=face[1] + (255,))  # the lit half
+    d.rectangle([15, 9, 17, 22], fill=cross + (255,))
+    d.rectangle([11, 12, 21, 14], fill=cross + (255,))
+    d.point((10, 9), fill=(255, 255, 255, 255))
+    return add_outline(im)
+
+
+ITEM_RUNES = {
+    "rune_of_radiance": (
+        ((200, 150, 40), (255, 244, 200)),
+        (((16, 10), (16, 22)), ((12, 14), (20, 14)), ((12, 10), (13, 11)), ((20, 10), (19, 11))),
+    ),
+}
+
+
+def item_icons(sources):
+    """Icons for the items of the later lands, appended after all others (existing positions stay): pack icons
+    in their own colours where one fits, the rest drawn like the rings, boots and runes above."""
+
+    def pack(name, number):
+        return Image.open(sources[name](number)).convert("RGBA")
+
+    sword, staff, orb_staff, cape, pendant = (
+        pack("loot40", 23),
+        pack("basic", 60),
+        pack("basic", 41),
+        pack("basic", 39),
+        pack("loot40", 26),
+    )
+    silver = ((120, 126, 150), (196, 204, 226), (245, 248, 255))
+    return {
+        # the Northroad and the gorge
+        "travel_papers": pack("loot40", 28),
+        "storm_pelt": hue_shift(pack("rpg_loot", 3), 0.5, 0.45, 1.25),
+        "goblin_trinket": pack("loot40", 32),
+        "skrags_cleaver": tint(pack("basic", 57), (200, 170, 140)),
+        "humming_staff": hue_shift(orb_staff, 0.5, 1.1, 1.1),
+        "trollhide_cloak": hue_shift(cape, 0.25, 0.35, 0.9),
+        "grumms_toll": ring(None, silver),
+        "bridgestone_pendant": tint(pendant, (175, 175, 185)),
+        "rune_shard": hue_shift(pack("rpg_loot", 35), 0.55, 1.2, 1.1),
+        "dire_wolf_pelt": pack("rpg_loot", 25),
+        "bandit_insignia": pack("loot40", 5),
+        # Saltmere and the sea
+        "saltmere_cutlass": tint(pack("basic", 57), (235, 215, 170)),
+        "tidecaller_staff": tint(staff, (150, 200, 235)),
+        "sailcloth_cloak": hue_shift(cape, 0.1, 0.2, 1.4),
+        "sea_boots": boots(((24, 24, 30), (56, 56, 66), (96, 96, 110)), (20, 20, 24)),
+        "harbor_charm": tint(pack("rpg_loot", 4), (255, 225, 150)),
+        # the crypt
+        "grave_dust": tint(pack("basic", 108), (175, 175, 180)),
+        "vampire_fang": pack("rpg_loot", 9),
+        "bloodfang_blade": tint(sword, (255, 120, 120)),
+        "nightveil_staff": hue_shift(orb_staff, 0.7, 1.0, 0.8),
+        "crimson_mantle": hue_shift(cape, 0.97, 1.1, 0.9),
+        "counts_signet": ring(((120, 10, 30), (220, 40, 60)), silver),
+        "templar_shield": heater_shield(((150, 156, 176), (200, 206, 224)), (90, 96, 120), (200, 40, 50)),
+        "dawn_aegis": heater_shield(((220, 222, 232), (250, 250, 255)), (214, 178, 90), (240, 196, 70)),
+        # the Ember Isles and the forge
+        "imp_horn": pack("rpg_loot", 43),
+        "golem_core": hue_shift(pack("loot40", 22), 0.07, 1.0, 1.1),
+        "cinder_blade": tint(sword, (125, 115, 125)),
+        "ashwood_staff": tint(staff, (140, 115, 100)),
+        "ashen_cloak": hue_shift(cape, 0, 0.0, 0.85),
+        "obsidian_ring": ring(((30, 20, 50), (110, 80, 160)), ((24, 22, 30), (54, 50, 66), (110, 104, 130))),
+        "wardens_heart": tint(pendant, (255, 160, 90)),
+        "firstflame_blade": tint(sword, (255, 195, 120)),
+        "flamecaller_staff": hue_shift(orb_staff, 0.97, 1.25, 1.1),
+        "molten_mantle": hue_shift(cape, 0.06, 1.1, 1.25),
+        # potions and runes
+        "orange_potion": hue_shift(pack("potions", 1), 0.07, 1.0, 1.05),
+        **{name: rune(colors, glyph) for name, (colors, glyph) in ITEM_RUNES.items()},
+    }
+
+
 def main():
     icon_dir = pathlib.Path(sys.argv[1])
     fx_dir = pathlib.Path(sys.argv[2])
@@ -645,6 +728,7 @@ def main():
     sources = pack_sources(icon_dir, fx_dir)
     custom = custom_icons()
     custom.update(profession_icons(sources))  # after the older custom icons, so no existing position changes
+    custom.update(item_icons(sources))
     choices = dict(CHOICES)
     for name in custom:
         choices[name] = ("custom", 0)
