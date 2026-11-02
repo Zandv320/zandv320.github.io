@@ -103,6 +103,7 @@ import {
   weaponLights,
   refineGlow,
   refineFlash,
+  rarityGlow,
   REFINE_SLOTS,
 } from "./weapon-fx.js";
 import {
@@ -1426,6 +1427,20 @@ function removePeer(id) {
   UI.systemMessage(`${peer.presence.name || "Someone"} left.`);
 }
 
+/* What shines on a hero, part by part (weapon-fx.js): an enchantment first, then the refine of armour, then
+   the glow of an epic or legendary piece. */
+function gearShine(sprite, equipment, { weapon, shield, refines }) {
+  return [
+    { sprite, element: weapon || rarityGlow(equipment.weapon), part: "weapon" },
+    { sprite, element: shield || rarityGlow(equipment.shield), part: "shield" },
+    ...REFINE_SLOTS.map((slot) => ({
+      sprite,
+      element: refineGlow(refines[slot] || 0) || rarityGlow(equipment[slot]),
+      part: slot,
+    })),
+  ];
+}
+
 /* sends the player's presence at most five times per second, and only when it changed */
 let lastPresenceAt = 0;
 let lastPresenceKey = "";
@@ -2242,22 +2257,20 @@ function step(dt) {
     dt,
     game.isStarted
       ? [
-          { sprite: player.sprite, element: player.equipmentMods?.weapon?.enchant },
-          { sprite: player.sprite, element: player.equipmentMods?.shield?.enchant },
-          ...REFINE_SLOTS.map((slot) => ({
-            sprite: player.sprite,
-            element: refineGlow(player.equipmentMods?.[slot]?.refine || 0),
-            part: slot,
-          })),
-          ...[...peers.values()].flatMap((peer) => [
-            { sprite: peer.sprite, element: peer.presence.enchant },
-            { sprite: peer.sprite, element: peer.presence.shieldEnchant },
-            ...REFINE_SLOTS.map((slot) => ({
-              sprite: peer.sprite,
-              element: refineGlow(peer.presence.refines?.[slot] || 0),
-              part: slot,
-            })),
-          ]),
+          ...gearShine(player.sprite, player.equipment, {
+            weapon: player.equipmentMods?.weapon?.enchant,
+            shield: player.equipmentMods?.shield?.enchant,
+            refines: Object.fromEntries(
+              REFINE_SLOTS.map((slot) => [slot, player.equipmentMods?.[slot]?.refine || 0]),
+            ),
+          }),
+          ...[...peers.values()].flatMap((peer) =>
+            gearShine(peer.sprite, peer.presence.equipment || {}, {
+              weapon: peer.presence.enchant,
+              shield: peer.presence.shieldEnchant,
+              refines: peer.presence.refines || {},
+            }),
+          ),
         ]
       : [],
   );

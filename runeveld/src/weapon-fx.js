@@ -18,6 +18,7 @@
    heroes. Where the particles start comes from the weapon's own pixels in the frame on show (Sprite2D.cell). */
 import * as THREE from "three";
 import { scene, camera, cameraState } from "./world.js";
+import { rarityOf } from "./rules/rarity.js";
 
 /* per enchantment: the part it lights, glow (halo) and core colours, the light it casts at night (daylight.js) */
 const ELEMENTS = {
@@ -64,6 +65,16 @@ const ELEMENTS = {
     light: [255, 214, 120],
     strength: 1,
   },
+  /* epic and legendary gear without an enchantment or refine of its own: a violet sheen, or a golden rim */
+  epic: { part: "weapon", kind: 6, glow: 0xc99bff, core: 0xeedcff, light: null, strength: 0.9 },
+  legendary: {
+    part: "weapon",
+    kind: 7,
+    glow: 0xffb84d,
+    core: 0xfff0d0,
+    light: [255, 200, 120],
+    strength: 0.9,
+  },
   radiance: {
     part: "shield",
     kind: 4,
@@ -86,6 +97,12 @@ const PARTS = {
 
 /** The equipment slots whose refine shows on the hero. */
 export const REFINE_SLOTS = ["body", "head", "cloak"];
+
+/** The shine of an epic or legendary item (its part is the slot it is worn in), or null. */
+export const rarityGlow = (id) => {
+  const grade = rarityOf(id);
+  return grade === "epic" || grade === "legendary" ? grade : null;
+};
 
 /** The look of armour refined to `level`: none below +4, then three tiers (+4, +7, +10). */
 export const refineGlow = (level) =>
@@ -740,6 +757,9 @@ const EMITTERS = {
     ],
   ],
 };
+/* epic gear glints, legendary gear sheds golden motes, like armour refined to +7 and +10 */
+EMITTERS.epic = EMITTERS.refine2;
+EMITTERS.legendary = EMITTERS.refine3;
 
 /* sprite → part ("weapon", "shield") → {element, carry (particles owed), arcs: [{a, b, until}], light, seen} */
 const auras = new Map();
@@ -862,6 +882,7 @@ function lightStrength(element, time) {
       return 0.48 + 0.08 * Math.sin(time * 13) + 0.05 * Math.sin(time * 7.7);
     case "radiance":
     case "refine3":
+    case "legendary":
       return 0.5 + 0.08 * Math.sin(time * 1.7);
     default:
       return 0.45;

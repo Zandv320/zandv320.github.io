@@ -11,7 +11,7 @@
    The profession animations (mine, chop, harvest, fish_cast, fish, smith, brew, cook, enchant) come from
    sprites/work.json: body frames of the attack animation per direction, with the tool from work_<name>.png
    (tools/build_sprites.py). WORK holds their tool tips and impact frames. */
-import { loadTexture, SHEET_SCALE } from "./sprites.js";
+import { loadTexture, makeTexture, SHEET_SCALE, SMOOTH } from "./sprites.js";
 import { ITEMS } from "./data.js";
 
 const HERO_DIRECTIONS = { down: 0, left: 1, right: 2, up: 3 };
@@ -231,14 +231,67 @@ export function heroLayerNames(equipment) {
  */
 export function baseHeroLayers(equipment) {
   const loaded = SHEETS.hero.layers;
+  const looks = itemLooks(equipment);
   return heroLayerNames(equipment)
     .map((name) => {
       if (!loaded[name]) {
         loadLayer(name);
+        return null;
       }
-      return loaded[name];
+      return looks[name] ? lookedLayer(name, looks[name]) : loaded[name];
     })
     .filter(Boolean);
+}
+
+/* layer name → the `look` of the worn item that uses it (weapons and cloaks with a colour of their own) */
+function itemLooks(equipment) {
+  const looks = {};
+  for (const slot of ["weapon", "cloak"]) {
+    const item = equipment[slot] && ITEMS[equipment[slot]];
+    if (item && item.look) {
+      looks[item.layer] = looks[item.layer + "_back"] = item.look;
+    }
+  }
+  return looks;
+}
+
+/* A layer in an item's own colour (data.js `look`: {color, amount, value}): every pixel is tinted towards the
+   colour by its own brightness, so light and shade stay, and grey steel takes the colour as well as wood does.
+   Made once per layer and look. */
+const lookedLayers = new Map();
+function lookedLayer(name, look) {
+  const amount = look.amount ?? 0.6;
+  const value = look.value ?? 1;
+  const key = `${name}|${look.color}|${amount}|${value}`;
+  if (lookedLayers.has(key)) {
+    return lookedLayers.get(key);
+  }
+  const source = SHEETS.hero.layers[name];
+  const canvas = document.createElement("canvas");
+  canvas.width = source.image.width;
+  canvas.height = source.image.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(source.image, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  const tr = parseInt(look.color.slice(1, 3), 16);
+  const tg = parseInt(look.color.slice(3, 5), 16);
+  const tb = parseInt(look.color.slice(5, 7), 16);
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] === 0) {
+      continue;
+    }
+    const lightness = (0.3 * pixels[i] + 0.59 * pixels[i + 1] + 0.11 * pixels[i + 2]) / 255;
+    const scale = Math.min(1.6, lightness * 1.7);
+    pixels[i] = Math.min(255, (pixels[i] * (1 - amount) + tr * scale * amount) * value);
+    pixels[i + 1] = Math.min(255, (pixels[i + 1] * (1 - amount) + tg * scale * amount) * value);
+    pixels[i + 2] = Math.min(255, (pixels[i + 2] * (1 - amount) + tb * scale * amount) * value);
+  }
+  ctx.putImageData(imageData, 0, 0);
+  const texture = makeTexture(canvas, SMOOTH);
+  texture.userData = { ...source.userData };
+  lookedLayers.set(key, texture);
+  return texture;
 }
 
 /* Only the layers needed at startup (body, head, the villagers' outfits) are loaded right away; the rest (armour,
