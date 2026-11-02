@@ -938,6 +938,40 @@ export function updateWeaponFx(dt, holders) {
   updateCloud(dt);
 }
 
+/* a point of a fixed place that gives off particles */
+const placePoint = new THREE.Vector3();
+
+/**
+ * Places that give off an element's particles as an enchanted weapon does, without a sprite (the fire baskets and
+ * the heartstone of the start screens): [{element, x, y, z, spread, rate}], every frame before updateWeaponFx;
+ * each comes from a random point within `spread` of (x, y, z), `rate` times as many as from a weapon.
+ */
+export function emitFromPlaces(dt, places) {
+  if (!cloud) {
+    initCloud();
+    initArcs();
+  }
+  for (const place of places) {
+    const emitters = EMITTERS[place.element] || [];
+    if (!place.carry) {
+      place.carry = emitters.map(() => 0);
+    }
+    emitters.forEach(([rate, make], k) => {
+      place.carry[k] += rate * (place.rate || 1) * dt;
+      while (place.carry[k] >= 1) {
+        place.carry[k] -= 1;
+        const spread = place.spread || 0;
+        placePoint.set(
+          place.x + random(-spread, spread),
+          place.y + random(-spread, spread) * 0.4,
+          place.z + random(-spread, spread),
+        );
+        emit(make(placePoint));
+      }
+    });
+  }
+}
+
 /** The light the enchanted weapons and shields cast (for daylight.js: a glow round the hero at night and
     underground). */
 export const weaponLights = () =>

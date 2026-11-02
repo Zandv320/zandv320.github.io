@@ -63,6 +63,7 @@ import {
   LOGIN_FIRES,
   LOGIN_LIGHTS,
   LOGIN_SPARKLES,
+  LOGIN_FX,
   LOGIN_HOUR,
 } from "./login-scene.js";
 import { updateBurning } from "./burning.js";
@@ -115,6 +116,7 @@ import {
   refineFlash,
   rarityGlow,
   REFINE_SLOTS,
+  emitFromPlaces,
 } from "./weapon-fx.js";
 import {
   bossTelegraph,
@@ -398,12 +400,15 @@ function createWorldLights() {
     [CASTLE.x1 + 2.6, 5.2, 1.1],
     /* the camp fire in Cinder Cove */
     [...inCamp(2, 2), 1],
-    /* the fire baskets of the start screens' stone circle */
-    ...LOGIN_FIRES,
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
     lights.push({ x, z, y: 0.8, radius: 3.5 * size, color: [255, 160, 80], strength: 0.9 });
+  }
+  /* the fire baskets of the start screens' stone circle: the fire in the bowl */
+  for (const { x, z, y, size } of LOGIN_FIRES) {
+    playEffect("fire", x, z, { size, y, grounded: true, loop: true });
+    lights.push({ x, z, y: y + 0.3, radius: 4, color: [255, 160, 80], strength: 0.9 });
   }
   for (const { x, z, ...options } of LOGIN_SPARKLES) {
     playEffect("sparkle", x, z, { ...options, loop: true, fps: 8 });
@@ -2286,6 +2291,7 @@ function step(dt) {
   const time = now();
   if (!game.isStarted) {
     updateLoginScene(dt, time);
+    emitFromPlaces(dt, LOGIN_FX);
   }
   if (!game.isStarted && game.characterSelect && game.characterSelect.isOpen()) {
     const target = game.characterSelect.cameraTarget();

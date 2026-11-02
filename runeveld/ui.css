@@ -2343,25 +2343,93 @@ body.touch #world-map .hint-touch {
   padding: 24px 32px;
   align-items: stretch;
 }
+/* the title: tall decorative capitals in old gold, embossed on a dark edge, with a sheen of light that crosses it
+   now and then; the subtitle between two ornamented rules */
 .logo {
   margin: 0;
-  font-family: var(--heading-font);
-  font-size: 64px;
+  font-family: "Cinzel Decorative", var(--heading-font);
+  font-size: clamp(44px, 6.4vw, 92px);
   font-weight: 900;
-  letter-spacing: 0.08em;
-  background: linear-gradient(#fff3c8, #ffc857 50%, #c47f17);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-align: center;
+  background-image:
+    linear-gradient(100deg, transparent 42%, rgba(255, 255, 255, 0.95) 50%, transparent 58%),
+    linear-gradient(#fffbe8 0%, #ffe39a 30%, #f2b53a 52%, #b8701a 70%, #ffd77a 100%);
+  background-size:
+    300% 100%,
+    100% 100%;
+  background-position:
+    150% 0,
+    0 0;
+  background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(255, 200, 87, 0.25));
+  filter: drop-shadow(0 2px 0 #4a2606) drop-shadow(0 3px 0 #1c0d02)
+    drop-shadow(0 0 22px rgba(255, 196, 92, 0.35));
+  animation: logo-sheen 7s ease-in-out 3s infinite;
+}
+@keyframes logo-sheen {
+  0%,
+  70% {
+    background-position:
+      150% 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      -50% 0,
+      0 0;
+  }
 }
 #start .sub {
-  color: var(--dim);
-  margin: 2px 0 18px;
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 8px 0 18px;
+  color: #f1dca8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
   font-family: var(--heading-font);
+  text-shadow:
+    0 1px 0 #000,
+    0 0 10px rgba(0, 0, 0, 0.8);
+}
+/* the rules either side of the subtitle, each ending in a small diamond */
+#start .sub::before,
+#start .sub::after {
+  content: "";
+  width: min(120px, 14vw);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #e6bb63);
+}
+#start .sub::after {
+  background: linear-gradient(270deg, transparent, #e6bb63);
+}
+#start .sub span {
+  position: relative;
+  padding: 0 14px;
+}
+#start .sub span::before,
+#start .sub span::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  background: #ffd77a;
+  transform: translateY(-50%) rotate(45deg);
+  box-shadow: 0 0 6px rgba(255, 200, 90, 0.8);
+}
+#start .sub span::before {
+  left: 0;
+}
+#start .sub span::after {
+  right: 0.32em;
 }
 .select-left {
   display: flex;
@@ -2603,7 +2671,9 @@ body.touch #world-map .hint-touch {
   opacity: 0;
 }
 #start.title-in .logo {
-  animation: logo-rise 2.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation:
+    logo-rise 2.4s cubic-bezier(0.2, 0.7, 0.2, 1),
+    logo-sheen 7s ease-in-out 3s infinite;
 }
 #start.title-in .sub {
   transition-delay: 0.9s;
@@ -2611,17 +2681,20 @@ body.touch #world-map .hint-touch {
 @keyframes logo-rise {
   0% {
     opacity: 0;
-    letter-spacing: 0.5em;
-    filter: blur(8px) drop-shadow(0 0 0 rgba(255, 200, 87, 0));
+    letter-spacing: 0.4em;
+    transform: scale(1.12);
+    filter: blur(10px) drop-shadow(0 0 0 rgba(255, 200, 87, 0));
   }
   45% {
     opacity: 1;
-    filter: blur(0) drop-shadow(0 3px 0 rgba(0, 0, 0, 0.6))
-      drop-shadow(0 0 42px rgba(255, 200, 87, 0.9));
+    filter: blur(0) drop-shadow(0 2px 0 #4a2606) drop-shadow(0 3px 0 #1c0d02)
+      drop-shadow(0 0 48px rgba(255, 200, 87, 0.95));
   }
   100% {
-    letter-spacing: 0.08em;
-    filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(255, 200, 87, 0.25));
+    letter-spacing: 0.06em;
+    transform: scale(1);
+    filter: drop-shadow(0 2px 0 #4a2606) drop-shadow(0 3px 0 #1c0d02)
+      drop-shadow(0 0 22px rgba(255, 196, 92, 0.35));
   }
 }
 /* entering the world: the picture comes up out of black */
@@ -3440,7 +3513,7 @@ body.touch #world-map .hint-touch {
     padding: 12px;
   }
   .logo {
-    font-size: 38px;
+    font-size: 40px;
   }
 }
 /* very narrow phones (320–360 px): a slimmer left column, no clock, tighter tabs, so nothing touches */

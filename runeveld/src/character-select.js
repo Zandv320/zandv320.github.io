@@ -18,6 +18,8 @@ export const PODIUM = { ...LOGIN_PODIUM, yaw: 0, tilt: 24 };
 /* The opening shot: the camera comes down out of the sky and swings round to the hero while it closes in; then the
    title rises and the rest of the screen comes in. A click or a key skips it. */
 const INTRO_SECONDS = 5.5;
+/* the first moment holds still: the first frames after loading are the slowest */
+const INTRO_HOLD = 0.5;
 const INTRO_FROM = { yaw: -0.85, tilt: 66, zoom: 0.42 };
 const TITLE_AT = 0.62;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -141,7 +143,8 @@ export function createCharacterSelect(deps) {
 
   /* the camera along the opening shot; at the end the screen is as it always is */
   function stepIntro() {
-    const progress = Math.min(1, (performance.now() / 1000 - intro.start) / INTRO_SECONDS);
+    const elapsed = Math.max(0, performance.now() / 1000 - intro.start - INTRO_HOLD);
+    const progress = Math.min(1, elapsed / INTRO_SECONDS);
     const eased = easeInOut(progress);
     const { cameraState } = deps;
     cameraState.yaw = THREE.MathUtils.lerp(INTRO_FROM.yaw, PODIUM.yaw, eased);

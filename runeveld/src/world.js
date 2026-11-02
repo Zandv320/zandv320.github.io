@@ -255,9 +255,14 @@ export function snapToPixel(position) {
 }
 
 export function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  fitCamera();
+}
+
+/* the camera's view to the screen and the zoom; without touching the canvas, so zooming every frame stays smooth */
+function fitCamera() {
   const width = innerWidth;
   const height = innerHeight;
-  renderer.setSize(width, height, false);
   /* rendered pixels */
   const renderedWidth = Math.floor(width * renderer.getPixelRatio());
   const renderedHeight = Math.floor(height * renderer.getPixelRatio());
@@ -270,7 +275,7 @@ export function resize() {
 
 export function setZoom(px) {
   cameraState.px = px;
-  resize();
+  fitCamera();
 }
 
 addEventListener("resize", resize);
