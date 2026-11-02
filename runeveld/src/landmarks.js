@@ -3,25 +3,15 @@
    - the Wayside Shrine in Kingsvale: a statue in a ring of standing stones, with candles burning before it;
    - a fairy ring of glowing mushrooms in Whisperwood, with motes of light over it;
    - the Falls Lookout on the south rim of Greyfall Gorge, a wooden platform facing the waterfall, with a bench;
-   - mist lying low over the ground, thickest at dawn and dusk and in the forest;
    - shafts of sunlight slanting between the trees of Whisperwood by day (with smooth sprites).
    Landmarks stand on spots kept free of everything else (the grass keeps clear of them too). */
 import * as THREE from "three";
 import * as builders from "./builders.js";
 import { SMOOTH } from "./sprites.js";
 import { addFxPlace } from "./weapon-fx.js";
-import { daylight, timeOfDay } from "./daylight.js";
+import { daylight } from "./daylight.js";
 import { cameraState } from "./world.js";
-import {
-  inForest,
-  inFields,
-  inVale,
-  inNorthroad,
-  inCapital,
-  inCrypt,
-  inForge,
-  GORGE,
-} from "./regions.js";
+import { inForest } from "./regions.js";
 
 const WATCHTOWER = [-46, -28];
 const SHRINE = [-82, -27];
@@ -60,7 +50,7 @@ function stone(size, random, material, edge) {
   return mesh;
 }
 
-/** Builds the landmarks, the mist and the light shafts (world.js calls this with its build context). */
+/** Builds the landmarks and the light shafts (world.js calls this with its build context). */
 export function buildLandmarks({ scene, prop, place, pending, seededRandom, obstacles }) {
   const random = seededRandom(5151);
   const rockMaterial = builders.material("stone", 2, 2, 0.7);
@@ -204,7 +194,6 @@ export function buildLandmarks({ scene, prop, place, pending, seededRandom, obst
     pending.push(prop("lantern", x + 1.6, z + 0.9, { radius: 0.25 }));
   }
 
-  buildMist(scene);
   if (SMOOTH) {
     buildLightShafts(scene, random);
   }
@@ -238,67 +227,6 @@ function mushroom(cap, light) {
   texture.magFilter = texture.minFilter = THREE.NearestFilter;
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
-}
-
-/* ---------------------------------------------------------------- mist ---------------------------------------- */
-
-/* low mist: soft drifts in two shades, in blocks of the game's pixels */
-const MIST_FRAGMENT = /* glsl */ `
-  uniform float uTime;
-  uniform float uDensity;
-  varying vec2 vWorld;
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), f.x), f.y);
-  }
-  void main() {
-    vec2 p = floor(vWorld * 4.0) / 4.0 + vec2(uTime * 0.35, uTime * 0.12);
-    float drift = noise(p * 0.12) * 0.6 + noise(p * 0.31 + 4.0) * 0.4;
-    float shade = drift > 0.66 ? 1.0 : drift > 0.56 ? 0.55 : 0.0;
-    if (shade <= 0.0) {
-      discard;
-    }
-    gl_FragColor = vec4(0.86, 0.9, 0.94, shade * uDensity);
-  }
-`;
-const WORLD_VERTEX = /* glsl */ `
-  varying vec2 vWorld;
-  void main() {
-    vec4 world = modelMatrix * vec4(position, 1.0);
-    vWorld = world.xz;
-    gl_Position = projectionMatrix * viewMatrix * world;
-  }
-`;
-
-let mist = null;
-
-function buildMist(scene) {
-  mist = new THREE.Mesh(
-    new THREE.PlaneGeometry(120, 120).rotateX(-Math.PI / 2),
-    new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uDensity: { value: 0 } },
-      vertexShader: WORLD_VERTEX,
-      fragmentShader: MIST_FRAGMENT,
-      transparent: true,
-      depthWrite: false,
-    }),
-  );
-  mist.position.y = 0.3;
-  mist.renderOrder = 3;
-  scene.add(mist);
-}
-
-/* how thick the mist lies at this hour: most at dawn, again at dusk, a little all night, none at midday */
-function mistOfHour(hours) {
-  const dawn = Math.exp(-(((hours - 6.5) / 1.6) ** 2));
-  const dusk = Math.exp(-(((hours - 20) / 1.4) ** 2)) * 0.7;
-  const night = hours > 21 || hours < 5 ? 0.35 : 0;
-  return Math.min(1, dawn + dusk + night);
 }
 
 /* ---------------------------------------------------------------- light shafts in the forest ----------------- */
@@ -351,29 +279,8 @@ function buildLightShafts(scene, random) {
 
 /* ---------------------------------------------------------------- every frame -------------------------------- */
 
-/** Per frame: the mist drifts and thickens with the hour, the light shafts turn to the camera and breathe. */
+/** Per frame: the light shafts turn to the camera and breathe. */
 export function updateLandmarks(dt, time) {
-  if (!mist) {
-    return;
-  }
-  const { x, z } = cameraState.target;
-  const hours = timeOfDay();
-  /* thickest in the forest and over the vale's meadows; none in the towns, the crypt or the forge */
-  const place = inForest(x, z)
-    ? 1
-    : inVale(x, z) && !inCapital(x, z)
-      ? 0.75
-      : inFields(x, z) || inNorthroad(x, z)
-        ? 0.5
-        : 0;
-  const isOutside =
-    !inCrypt(x, z) && !inForge(x, z) && !(z < GORGE.south + 14 && z > GORGE.north - 14);
-  mist.visible = isOutside && place > 0;
-  mist.position.x = x;
-  mist.position.z = z;
-  mist.material.uniforms.uTime.value = time;
-  mist.material.uniforms.uDensity.value = 0.42 * place * mistOfHour(hours);
-
   const light = daylight();
   for (const shaft of shafts) {
     shaft.mesh.rotation.set(0, cameraState.yaw, 0.35);

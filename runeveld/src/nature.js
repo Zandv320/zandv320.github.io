@@ -2,7 +2,6 @@
    - grass and meadows: tufts of grass everywhere in the open, and in patches flowers (poppies, buttercups, bluebells,
      daisies), swaying in the wind (batching.js);
    - the forest floor of Whisperwood: ferns, and mushrooms here and there;
-   - cloud shadows drifting over the land by day;
    - pollen and seeds floating in the sunlight over the fields.
    The plants are pixel art drawn here, one instanced batch per picture and area, so thousands of them cost a handful
    of draw calls. */
@@ -266,59 +265,11 @@ export function buildNature({ scene, isFree, seededRandom }) {
 
 /* ---------------------------------------------------------------- the sky over the land ---------------------- */
 
-/* clouds' shadows: soft patches in two shades, in blocks of the game's pixels, drifting with the wind */
-const SHADOW_FRAGMENT = /* glsl */ `
-  uniform float uTime;
-  uniform float uStrength;
-  varying vec2 vWorld;
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), f.x), f.y);
-  }
-  void main() {
-    vec2 p = floor(vWorld * 4.0) / 4.0 + vec2(uTime * 1.1, uTime * 0.4);
-    float cloud = noise(p * 0.035) * 0.65 + noise(p * 0.09) * 0.35;
-    float shade = cloud > 0.56 ? 1.0 : cloud > 0.5 ? 0.5 : 0.0;
-    if (shade <= 0.0) {
-      discard;
-    }
-    gl_FragColor = vec4(0.04, 0.06, 0.14, shade * uStrength);
-  }
-`;
-const SHADOW_VERTEX = /* glsl */ `
-  varying vec2 vWorld;
-  void main() {
-    vec4 world = modelMatrix * vec4(position, 1.0);
-    vWorld = world.xz;
-    gl_Position = projectionMatrix * viewMatrix * world;
-  }
-`;
-
-let shadows = null;
 let pollen = null;
 const POLLEN = 26;
 const pollenData = [];
 
 function buildSky(scene) {
-  shadows = new THREE.Mesh(
-    new THREE.PlaneGeometry(140, 140).rotateX(-Math.PI / 2),
-    new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uStrength: { value: 0 } },
-      vertexShader: SHADOW_VERTEX,
-      fragmentShader: SHADOW_FRAGMENT,
-      transparent: true,
-      depthWrite: false,
-    }),
-  );
-  shadows.position.y = 0.035;
-  shadows.renderOrder = 1;
-  scene.add(shadows);
-
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(POLLEN * 3), 3));
   pollen = new THREE.Points(
@@ -338,12 +289,12 @@ function buildSky(scene) {
   }
 }
 
-/* the cloud shadows and the pollen belong to the open land under the sky */
+/* the pollen belongs to the open land under the sky */
 function isUnderSky(x, z) {
   if (inCrypt(x, z) || inForge(x, z) || !insideWorld(x, z, -8)) {
     return false;
   }
-  /* not over the drop of Greyfall Gorge, where they would hang in the air */
+  /* not over the drop of Greyfall Gorge, where it would hang in the air */
   return !(
     x > GORGE.west - 10 &&
     x < GORGE.east + 10 &&
@@ -352,19 +303,14 @@ function isUnderSky(x, z) {
   );
 }
 
-/** Per frame: the cloud shadows follow the camera and drift; the pollen floats round it by day. */
+/** Per frame: the pollen floats round the camera by day. */
 export function updateNature(dt, time) {
-  if (!shadows) {
+  if (!pollen) {
     return;
   }
   const { x, z } = cameraState.target;
   const light = daylight();
   const isOpen = isUnderSky(x, z);
-  shadows.visible = isOpen && light > 0.05;
-  shadows.position.x = x;
-  shadows.position.z = z;
-  shadows.material.uniforms.uTime.value = time;
-  shadows.material.uniforms.uStrength.value = 0.26 * light;
 
   pollen.visible = isOpen && light > 0.5 && !inForest(x, z);
   if (!pollen.visible) {
