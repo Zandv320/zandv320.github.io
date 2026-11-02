@@ -11,6 +11,7 @@ import { cameraState, inVillage, isFree } from "./world.js";
 import { daylight } from "./daylight.js";
 import { player, game } from "./game-state.js";
 import { ripple } from "./water-features.js";
+import { DETAIL } from "./sprites.js";
 
 /* ---------------------------------------------------------------- pictures ------------------------------------ */
 
@@ -396,7 +397,7 @@ export function updateWildlife(dt, time) {
       flocks.splice(k, 1);
     }
   }
-  if (flocks.length < FLOCKS && light > 0.3 && Math.random() < dt * 0.4) {
+  if (DETAIL && flocks.length < FLOCKS && light > 0.3 && Math.random() < dt * 0.4) {
     const flock = newFlock();
     if (flock) {
       flocks.push(flock);
@@ -405,6 +406,7 @@ export function updateWildlife(dt, time) {
   if (skyFlock) {
     updateSkyFlock(dt, time);
   } else if (
+    DETAIL &&
     light > 0.3 &&
     !inCrypt(cameraState.target.x, cameraState.target.z) &&
     !inForge(cameraState.target.x, cameraState.target.z)

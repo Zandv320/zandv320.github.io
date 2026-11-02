@@ -3,11 +3,12 @@
    after a reload; the window offers one. */
 import { isSoundOn, setSoundOn, getVolume, setVolume, sfx } from "./audio.js";
 import { IS_TOUCH, isVibrationOn, setVibrationOn, buzz } from "./feel.js";
-import { SMOOTH } from "./sprites.js";
+import { SMOOTH, DETAIL } from "./sprites.js";
 
 const NAMES_KEY = "eldoria.names";
 const SMOOTH_KEY = "eldoria.smooth";
 const PERF_KEY = "eldoria.perf";
+const DETAIL_KEY = "eldoria.detail";
 
 function read(key, fallback) {
   try {
@@ -32,7 +33,7 @@ export function createSettings() {
   const $ = (selector) => document.querySelector(selector);
   const panel = $("#settings");
   /* the graphics as they were at startup, to tell whether a reload is needed */
-  const startup = { smooth: SMOOTH, perf: read(PERF_KEY, "0") === "1" };
+  const startup = { smooth: SMOOTH, detail: DETAIL, perf: read(PERF_KEY, "0") === "1" };
   let isOpenNow = false;
   applyNames();
 
@@ -86,6 +87,15 @@ export function createSettings() {
       reload: true,
       get: () => (read(SMOOTH_KEY, null) === null ? SMOOTH : read(SMOOTH_KEY, "0") === "1"),
       set: (value) => write(SMOOTH_KEY, value ? "1" : "0"),
+    },
+    {
+      id: "detail",
+      label: "Rich world",
+      description:
+        "Grass and flowers, birds, and the sparks of fires and waterfalls. Off on phones by default.",
+      reload: true,
+      get: () => (read(DETAIL_KEY, null) === null ? DETAIL : read(DETAIL_KEY, "0") === "1"),
+      set: (value) => write(DETAIL_KEY, value ? "1" : "0"),
     },
     {
       id: "perf",

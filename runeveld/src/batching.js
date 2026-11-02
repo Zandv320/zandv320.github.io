@@ -54,7 +54,9 @@ const BILLBOARD_VERTEX = /* glsl */ `
     vec3 spot = instanceMatrix[3].xyz;
     float phase = spot.x * 0.37 + spot.z * 0.53;
     float gust = 0.55 + 0.45 * sin(uTime * 0.7 - spot.x * 0.09 - spot.z * 0.05);
-    float bend = (sin(uTime * 1.7 + phase) * 0.045 + sin(uTime * 3.1 + phase * 1.7) * 0.018) * gust * uSway;
+    /* an instance can sway less or not at all: its z scale (a flat picture does not use it) */
+    float swayHere = uSway * length(instanceMatrix[2].xyz);
+    float bend = (sin(uTime * 1.7 + phase) * 0.045 + sin(uTime * 3.1 + phase * 1.7) * 0.018) * gust * swayHere;
     float height = max(0.0, local.y);
     local.x += floor(bend * height * height * uPx + 0.5) / uPx;
   }
@@ -75,7 +77,7 @@ const BILLBOARD_VERTEX = /* glsl */ `
 `;
 
 /* Turn a material into a batched-billboard material. `lean`: 1 for a standing sprite, 0 for a flat shadow. */
-function makeBillboardMaterial(material, lean, sway = 0) {
+function makeBillboardMaterial(material, lean, sway = 0, isAtlas = false) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, sharedUniforms, {
       uLean: { value: lean },
@@ -84,11 +86,20 @@ function makeBillboardMaterial(material, lean, sway = 0) {
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform float uYaw;\nuniform float uTilt;\nuniform vec3 uRight;\nuniform vec3 uUp;\nuniform float uPx;\nuniform float uLean;\nuniform float uTime;\nuniform float uSway;",
+        "#include <common>\nuniform float uYaw;\nuniform float uTilt;\nuniform vec3 uRight;\nuniform vec3 uUp;\nuniform float uPx;\nuniform float uLean;\nuniform float uTime;\nuniform float uSway;" +
+          (isAtlas ? "\nattribute vec4 aTile;" : ""),
       )
       .replace("#include <project_vertex>", BILLBOARD_VERTEX);
+    if (isAtlas) {
+      /* each instance shows its own tile of the atlas: (x, y) its corner, (z, w) its size, in uv */
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <uv_vertex>",
+        "#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv = vMapUv * aTile.zw + aTile.xy;\n#endif",
+      );
+    }
   };
-  material.customProgramCacheKey = () => `eldoria-billboard-${lean}-${sway > 0 ? "sway" : "still"}`;
+  material.customProgramCacheKey = () =>
+    `eldoria-billboard-${lean}-${sway > 0 ? "sway" : "still"}${isAtlas ? "-atlas" : ""}`;
   return material;
 }
 
@@ -125,6 +136,40 @@ export function createBillboardBatch(texture, geometry, positions, yaw = 0, sway
   /* the shader turns and leans the picture: the bounds round its instances grow by its size, so it is culled only
      when wholly out of view */
   fitBounds(mesh, Math.max(geometry.parameters.width, geometry.parameters.height) + 1);
+  mesh.matrixAutoUpdate = false;
+  return mesh;
+}
+
+/**
+ * One InstancedMesh for many small billboards whose pictures share one atlas texture (the grass and flowers of
+ * nature.js): `items` [{x, z, width, height, tile: [u, v, du, dv], sway}] (sway 0 to 1, times `sway`).
+ */
+export function createAtlasBatch(texture, items, yaw = 0, sway = 0) {
+  const material = makeBillboardMaterial(
+    new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+    }),
+    1,
+    sway,
+    true,
+  );
+  const geometry = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
+  const sorted = sortFarFirst(items, yaw);
+  const tiles = new Float32Array(sorted.length * 4);
+  const mesh = new THREE.InstancedMesh(geometry, material, sorted.length);
+  const scale = new THREE.Matrix4();
+  sorted.forEach((item, i) => {
+    /* the z scale carries how much it sways (the flat picture has no depth to scale) */
+    scale.makeScale(item.width, item.height, Math.max(0.0001, item.sway));
+    mesh.setMatrixAt(i, matrix.makeTranslation(item.x, 0, item.z).multiply(scale));
+    tiles.set(item.tile, i * 4);
+  });
+  geometry.setAttribute("aTile", new THREE.InstancedBufferAttribute(tiles, 4));
+  mesh.instanceMatrix.needsUpdate = true;
+  fitBounds(mesh, 2);
   mesh.matrixAutoUpdate = false;
   return mesh;
 }

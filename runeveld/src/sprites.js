@@ -26,6 +26,20 @@ export const SMOOTH = (() => {
   return !IS_PHONE;
 })();
 
+/* A rich world: grass and flowers, birds, and the particles of fires, altars and waterfalls. They cost draw calls and
+   frame time, so phones start without them; a setting switches them on or off (applies after a reload). */
+export const DETAIL = (() => {
+  try {
+    const stored = localStorage.getItem("eldoria.detail");
+    if (stored === "1" || stored === "0") {
+      return stored === "1";
+    }
+  } catch (e) {
+    /* localStorage unavailable: fall back to the default */
+  }
+  return !IS_PHONE;
+})();
+
 /* Pixel size: how many screen (CSS) pixels one rendered pixel covers. 2 makes the sprites land roughly 1:1 on the
    pixel grid; 1 is full resolution. Adjustable in the admin panel.
    In smooth mode everything renders at full resolution: the 2x sprites are then 1:1 at a pixel scale of 32. */

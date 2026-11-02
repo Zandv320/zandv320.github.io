@@ -20,7 +20,7 @@ import * as THREE from "three";
 import { scene, camera, cameraState } from "./world.js";
 import { rarityOf } from "./rules/rarity.js";
 import { GLOW_SHAPE } from "./glow-points.js";
-import { SMOOTH } from "./sprites.js";
+import { SMOOTH, DETAIL } from "./sprites.js";
 
 /* per enchantment: the part it lights, glow (halo) and core colours, the light it casts at night (daylight.js) */
 const ELEMENTS = {
@@ -1126,8 +1126,8 @@ const placePoint = new THREE.Vector3();
  * `rate` times as many as from a weapon, and only while `active()` (when given) is true.
  */
 export function addFxPlace(place) {
-  /* the pixel art has no such light (smooth sprites off) */
-  if (!SMOOTH) {
+  /* the pixel art has no such light (smooth sprites off), nor a world kept plain (rich world off) */
+  if (!SMOOTH || !DETAIL) {
     return;
   }
   places.push({ ...place, carry: null });

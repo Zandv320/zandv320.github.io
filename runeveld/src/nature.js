@@ -3,10 +3,11 @@
      daisies), swaying in the wind (batching.js);
    - the forest floor of Whisperwood: ferns, and mushrooms here and there;
    - pollen and seeds floating in the sunlight over the fields.
-   The plants are pixel art drawn here, one instanced batch per picture and area, so thousands of them cost a handful
-   of draw calls. */
+   The plants are pixel art drawn here and packed into one atlas: one instanced batch per area of the land, so
+   thousands of them cost a draw call or two. Without a rich world (sprites.js DETAIL) none of this grows. */
 import * as THREE from "three";
-import { createBillboardBatch } from "./batching.js";
+import { createAtlasBatch } from "./batching.js";
+import { DETAIL } from "./sprites.js";
 import { glowPointsMaterial } from "./glow-points.js";
 import { daylight } from "./daylight.js";
 import { cameraState, tileType, inVillage } from "./world.js";
@@ -142,19 +143,43 @@ function mushroomPicture([cap, light]) {
 
 /* ---------------------------------------------------------------- planting ------------------------------------ */
 
-/* groups: picture → area → positions */
+/* the plants of each area of the land: area → [{picture, x, z}] */
 const beds = new Map();
 
 function plant(picture, x, z) {
-  if (!beds.has(picture)) {
-    beds.set(picture, new Map());
-  }
-  const areas = beds.get(picture);
   const area = `${Math.floor(x / AREA)},${Math.floor(z / AREA)}`;
-  if (!areas.has(area)) {
-    areas.set(area, []);
+  if (!beds.has(area)) {
+    beds.set(area, []);
   }
-  areas.get(area).push({ x, z });
+  beds.get(area).push({ picture, x, z });
+}
+
+/* All pictures side by side in one texture, a pixel apart so none bleeds into the next; returns the texture and
+   each picture's tile in it, [u, v, du, dv] (v up, as three.js flips the canvas). */
+function atlasOf(pictures) {
+  const width = pictures.reduce((sum, picture) => sum + picture.width + 1, 0);
+  const height = Math.max(...pictures.map((picture) => picture.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const tiles = new Map();
+  let x = 0;
+  for (const picture of pictures) {
+    ctx.drawImage(picture.texture.image, x, 0);
+    tiles.set(picture, [
+      x / width,
+      1 - picture.height / height,
+      picture.width / width,
+      picture.height / height,
+    ]);
+    x += picture.width + 1;
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return { texture, tiles };
 }
 
 /* meadow flowers grow in patches: a slow wave over the land, high where they bloom */
@@ -186,6 +211,9 @@ function isOpenGrass(x, z, isFree) {
 
 /** Plants the grass, the meadows and the forest floor (world.js calls this with its build context). */
 export function buildNature({ scene, isFree, seededRandom }) {
+  if (!DETAIL) {
+    return;
+  }
   const random = seededRandom(9090);
   const grasses = [1, 2, 3].map((seed) => grassPicture(seed));
   const flowers = [
@@ -249,15 +277,19 @@ export function buildNature({ scene, isFree, seededRandom }) {
     }
   }
 
-  for (const [picture, areas] of beds) {
-    const width = picture.width / PPU;
-    const height = picture.height / PPU;
-    const geometry = new THREE.PlaneGeometry(width, height).translate(0, height / 2, 0);
+  const { texture, tiles } = atlasOf([...grasses, ...flowers, ...ferns, ...mushrooms]);
+  for (const plants of beds.values()) {
+    const items = plants.map(({ picture, x, z }) => ({
+      x,
+      z,
+      width: picture.width / PPU,
+      height: picture.height / PPU,
+      tile: tiles.get(picture),
+      /* mushrooms stand still */
+      sway: mushrooms.includes(picture) ? 0 : 1,
+    }));
     /* small plants bend more for their size than a tree does */
-    const sway = mushrooms.includes(picture) ? 0 : 9;
-    for (const positions of areas.values()) {
-      scene.add(createBillboardBatch(picture.texture, geometry, positions, cameraState.yaw, sway));
-    }
+    scene.add(createAtlasBatch(texture, items, cameraState.yaw, 9));
   }
   beds.clear();
   buildSky(scene);
