@@ -20,6 +20,7 @@ import {
   createShadowBatch,
   mergeStaticGroups,
   updateBatchUniforms,
+  swayOf,
 } from "./batching.js";
 import * as builders from "./builders.js";
 import {
@@ -821,7 +822,7 @@ async function prop(name, x, z, { radius = 0, shadow = 0, scale = 0.65, dynamic 
   if (!dynamic) {
     const record = { name, x, z, scale };
     billboards.push(record);
-    staticBillboards.push({ texture, width, height, x, z, shadow });
+    staticBillboards.push({ texture, width, height, x, z, shadow, sway: swayOf(name) });
     return record;
   }
   const billboard = new Billboard(texture, width, height, { shadow });
@@ -917,7 +918,7 @@ function buildBillboardBatches() {
   const shadows = new Map();
   for (const item of staticBillboards) {
     const area = `${Math.floor(item.x / BATCH_AREA)},${Math.floor(item.z / BATCH_AREA)}`;
-    const key = `${item.texture.uuid}|${item.width.toFixed(4)}|${item.height.toFixed(4)}|${area}`;
+    const key = `${item.texture.uuid}|${item.width.toFixed(4)}|${item.height.toFixed(4)}|${item.sway}|${area}`;
     if (!groups.has(key)) {
       groups.set(key, { ...item, positions: [] });
     }
@@ -932,7 +933,9 @@ function buildBillboardBatches() {
   for (const group of groups.values()) {
     const geometry = new THREE.PlaneGeometry(group.width, group.height);
     geometry.translate(0, group.height / 2, 0);
-    scene.add(createBillboardBatch(group.texture, geometry, group.positions, cameraState.yaw));
+    scene.add(
+      createBillboardBatch(group.texture, geometry, group.positions, cameraState.yaw, group.sway),
+    );
   }
   for (const areaShadows of shadows.values()) {
     scene.add(

@@ -8,7 +8,8 @@
    - their blob shadows become one InstancedMesh per area
    - the meshes and outlines of the pixel-3D builds are merged per material and per area of the world (so the
      camera can still skip areas out of view), with the texture repeat baked into the uvs
-   The result looks identical; only the number of draw calls and objects drops. */
+   The result looks identical; only the number of draw calls and objects drops. Trees, bushes, flowers and grass sway
+   in the wind (their tops more than their feet, by whole pixels, in gusts that sweep across the land). */
 import * as THREE from "three";
 
 /* The camera state the billboard shader needs, shared by every batch; update once per frame. */
@@ -18,6 +19,7 @@ const sharedUniforms = {
   uRight: { value: new THREE.Vector3(1, 0, 0) },
   uUp: { value: new THREE.Vector3(0, 1, 0) },
   uPx: { value: 16 },
+  uTime: { value: 0 },
 };
 
 /** Copy the camera's yaw, tilt, screen axes and pixel scale into the shader uniforms. */
@@ -27,6 +29,18 @@ export function updateBatchUniforms(cameraState) {
   sharedUniforms.uRight.value.copy(cameraState.right);
   sharedUniforms.uUp.value.copy(cameraState.up);
   sharedUniforms.uPx.value = cameraState.px;
+  sharedUniforms.uTime.value = performance.now() / 1000;
+}
+
+/** How much a static billboard sways in the wind, by its picture's name (0: not at all). */
+export function swayOf(name) {
+  if (/^(tree|pine|palm)/.test(name)) {
+    return 1;
+  }
+  if (/^(bush|flowers|grass|fern|meadow)/.test(name)) {
+    return 1.4;
+  }
+  return 0;
 }
 
 /* The vertex transform of a batched billboard: the instance matrix holds the position (translation) and any
@@ -35,6 +49,15 @@ export function updateBatchUniforms(cameraState) {
    inside a group that turns. */
 const BILLBOARD_VERTEX = /* glsl */ `
   vec3 local = mat3(instanceMatrix) * transformed;
+  if (uSway > 0.0) {
+    /* the wind: a slow gust that sweeps across the land, and a quicker flutter; the top bends, the foot stays */
+    vec3 spot = instanceMatrix[3].xyz;
+    float phase = spot.x * 0.37 + spot.z * 0.53;
+    float gust = 0.55 + 0.45 * sin(uTime * 0.7 - spot.x * 0.09 - spot.z * 0.05);
+    float bend = (sin(uTime * 1.7 + phase) * 0.045 + sin(uTime * 3.1 + phase * 1.7) * 0.018) * gust * uSway;
+    float height = max(0.0, local.y);
+    local.x += floor(bend * height * height * uPx + 0.5) / uPx;
+  }
   float leanAngle = -uTilt * uLean;
   float leanCos = cos(leanAngle);
   float leanSin = sin(leanAngle);
@@ -52,17 +75,20 @@ const BILLBOARD_VERTEX = /* glsl */ `
 `;
 
 /* Turn a material into a batched-billboard material. `lean`: 1 for a standing sprite, 0 for a flat shadow. */
-function makeBillboardMaterial(material, lean) {
+function makeBillboardMaterial(material, lean, sway = 0) {
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, sharedUniforms, { uLean: { value: lean } });
+    Object.assign(shader.uniforms, sharedUniforms, {
+      uLean: { value: lean },
+      uSway: { value: sway },
+    });
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform float uYaw;\nuniform float uTilt;\nuniform vec3 uRight;\nuniform vec3 uUp;\nuniform float uPx;\nuniform float uLean;",
+        "#include <common>\nuniform float uYaw;\nuniform float uTilt;\nuniform vec3 uRight;\nuniform vec3 uUp;\nuniform float uPx;\nuniform float uLean;\nuniform float uTime;\nuniform float uSway;",
       )
       .replace("#include <project_vertex>", BILLBOARD_VERTEX);
   };
-  material.customProgramCacheKey = () => "eldoria-billboard-" + lean;
+  material.customProgramCacheKey = () => `eldoria-billboard-${lean}-${sway > 0 ? "sway" : "still"}`;
   return material;
 }
 
@@ -80,7 +106,7 @@ const matrix = new THREE.Matrix4();
  * One InstancedMesh for every static billboard with this picture. `geometry` is the billboard's plane (standing
  * on its feet), `positions` [{x, z}].
  */
-export function createBillboardBatch(texture, geometry, positions, yaw = 0) {
+export function createBillboardBatch(texture, geometry, positions, yaw = 0, sway = 0) {
   const material = makeBillboardMaterial(
     new THREE.MeshBasicMaterial({
       map: texture,
@@ -89,6 +115,7 @@ export function createBillboardBatch(texture, geometry, positions, yaw = 0) {
       side: THREE.DoubleSide,
     }),
     1,
+    sway,
   );
   const mesh = new THREE.InstancedMesh(geometry, material, positions.length);
   sortFarFirst(positions, yaw).forEach((position, i) => {
