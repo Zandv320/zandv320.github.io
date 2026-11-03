@@ -4770,6 +4770,14 @@ body.rpg-cursor #game[data-cursor="steer"] {
   font: 700 10px var(--ui);
   color: var(--gold);
 }
+/* a bound rune that is not on Q: a click puts it there */
+.rune-key.choose {
+  color: var(--dim);
+  font-size: 11px;
+}
+.rune-stone.bound {
+  cursor: pointer;
+}
 .rune-detail h5 {
   margin: 10px 0 4px;
   font: 600 11px var(--ui);

@@ -25,6 +25,7 @@ import {
   TROLL_HOLLOW,
 } from "./rules/frostmarch.js";
 import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
+import { GLACIER_ENTRY, glacierPoint } from "./rules/glacier.js";
 import { PROFESSIONS, MAX_PROFESSION_LEVEL, professionLevel } from "./rules/professions.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
 import { itemLevel } from "./rules/item-level.js";
@@ -532,6 +533,9 @@ export function createAdminPanel(ctx) {
         "Troll hollow",
         () => ctx.teleport(TROLL_HOLLOW.x + TROLL_HOLLOW.radius + 5, TROLL_HOLLOW.z),
       ],
+      ["Glacier Halls", () => ctx.teleport(...GLACIER_ENTRY)],
+      ["Mirror Hall", () => ctx.teleport(...glacierPoint(-26, 19))],
+      ["Heart of the Glacier", () => ctx.teleport(...glacierPoint(0, 0))],
     ]);
 
     /* ---------- monsters ---------- */

@@ -11,6 +11,7 @@ import { inCamp } from "./rules/ember.js";
 import { forgePoint } from "./rules/forge.js";
 import { TIDE_CAMP } from "./rules/tidecrown.js";
 import { SHELTER } from "./rules/frostmarch.js";
+import { glacierPoint } from "./rules/glacier.js";
 import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } from "./appearance.js";
 
 /* The villagers: looks, route (list of points; a single point = standing still) and lines.
@@ -851,6 +852,23 @@ const VILLAGERS = [
       "Torvald says I talk too much when I am cold. I am always cold.",
     ],
     after: { kari_bow: ["My bow! I will name my next arrow after you."] },
+  },
+  /* ---- the Glacier Halls (Saga III, chapter 16): Ulf, the sixth hunter, alive in the Ice Gate ---- */
+  {
+    name: "Hunter Ulf",
+    hair: "red",
+    outfit: "armor2",
+    route: [glacierPoint(2.5, 46.5), glacierPoint(4, 44)],
+    speed: 0.4,
+    pause: [10, 20],
+    lines: [
+      "They made me cut ice for them. Day and night. I counted the blocks to stay awake.",
+      "Torvald thinks I am dead? Good. Then nobody will make me carry anything.",
+      "Do not touch the walls. They are colder than they look, and they look very cold.",
+    ],
+    after: {
+      ulf_wyrm: ["The Wyrm is dead. I heard it from here. The whole glacier shook."],
+    },
   },
   /* Saga III: the skipper from Rimeholt, by his frosted ship along the west pier */
   {

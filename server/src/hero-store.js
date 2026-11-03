@@ -225,6 +225,9 @@ export class HeroStore extends DurableObject {
       case "advance":
         changed = progression.advanceClass(hero, id);
         break;
+      case "rune":
+        changed = progression.chooseRune(hero, id);
+        break;
       case "quest":
         changed = this.#questStep(hero, id, payload.step);
         break;

@@ -25,6 +25,7 @@ import {
   inCinderCamp,
   inEmberIsles,
   inForge,
+  inGlacier,
   inTidecrown,
   inTideCamp,
   inFrostmarch,
@@ -41,6 +42,7 @@ import { SHEETS, sheetTexture } from "./sheets.js";
 import { recolor, HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES } from "./appearance.js";
 import { Sprite2D } from "./sprites.js";
 import { LeviathanModel } from "./leviathan.js";
+import { RimeWyrmModel } from "./wyrm.js";
 import { scene, camera, cameraState, resolveCollision, isFree, inVillage } from "./world.js";
 import * as UI from "./ui.js";
 import {
@@ -105,10 +107,10 @@ export function ensureMonster(id) {
   const layers = spec.humanoid ? humanoidLayers(spec.humanoid) : null;
   const scale = spec.scale || (spec.humanoid && spec.humanoid.scale) || 1;
   const sheet = spec.humanoid ? SHEETS.hero : SHEETS[spec.sheet || monsterId];
-  const sprite =
-    spec.model === "leviathan"
-      ? new LeviathanModel()
-      : new Sprite2D(sheet, { shadow: 1.1 * scale, layers });
+  const MODELS = { leviathan: LeviathanModel, rime_wyrm: RimeWyrmModel };
+  const sprite = MODELS[spec.model]
+    ? new MODELS[spec.model]()
+    : new Sprite2D(sheet, { shadow: 1.1 * scale, layers });
   /* a monster of the later lands whose picture is not loaded yet shows as soon as it is */
   if (!spec.model && !sheet.texture && !layers) {
     sheetTexture(sheet).then((texture) => {
@@ -316,6 +318,9 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "frostmarch") {
     return inFrostmarch(x, z);
   }
+  if (spec.area === "glacier") {
+    return inGlacier(x, z);
+  }
   if (spec.area === "crownmere") {
     return byCrownmere(x, z);
   }
@@ -381,7 +386,7 @@ function reviveMonster(monster, [x, z]) {
   monster.label.el.hidden = false;
   monster.sprite.play("idle", true);
   /* the Leviathan comes back under the water, out of sight */
-  if (monster.sprite.submerge) {
+  if (monster.sprite.submerge && monster.sprite.startsUnder) {
     monster.sprite.submerge(true);
     monster.isSubmerged = true;
   }

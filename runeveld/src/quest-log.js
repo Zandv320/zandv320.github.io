@@ -146,7 +146,7 @@ export function createQuestLog(player, deps) {
         changed = true;
         reportProgress(id);
         logLevelMessage(
-          `${UI.escapeHtml(QUESTS[id].title)}: you woke ${UI.escapeHtml(goal.label)}. Return to ${UI.escapeHtml(turnInNpc(id))}.`,
+          `${UI.escapeHtml(QUESTS[id].title)}: ${goal.verb ? "done" : "you woke " + UI.escapeHtml(goal.label)}. Return to ${UI.escapeHtml(turnInNpc(id))}.`,
         );
       }
     }

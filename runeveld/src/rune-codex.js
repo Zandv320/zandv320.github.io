@@ -1,8 +1,10 @@
 /* Eldoria – the rune codex (the rune button in the menu, or U): the seven runes of the seals in a ring around a
    turning sigil. The runes the hero has bound glow in their own colour; the ones still out there are dark stones
-   with a question mark. Hovering a rune (or tapping it) shows its power and what it gives while it is bound. */
+   with a question mark. Hovering a rune (or tapping it) shows its power and what it gives while it is bound;
+   clicking a bound rune puts its power on Q. */
 import { RUNES, RUNE_IDS, RUNE_SLOTS, activeRune, runeBonusLines } from "./rules/runes.js";
 import { player } from "./game-state.js";
+import { chooseRune } from "./rune-powers.js";
 import { sfx } from "./audio.js";
 import { escapeHtml } from "./ui.js";
 
@@ -21,7 +23,7 @@ function runeStone(id, index) {
   }
   const rune = RUNES[id];
   return (
-    `<button class="rune-stone bound${id === activeRune(player.runes) ? " active" : ""}" data-rune="${id}" data-slot="${index}" style="${style};--rune:${rune.color}" aria-label="${escapeHtml(rune.name)}">` +
+    `<button class="rune-stone bound${id === activeRune(player.runes, player.rune) ? " active" : ""}" data-rune="${id}" data-slot="${index}" style="${style};--rune:${rune.color}" aria-label="${escapeHtml(rune.name)}">` +
     `<svg viewBox="0 0 40 40" aria-hidden="true">${GLYPHS[id] || `<text x="20" y="27" text-anchor="middle">${rune.icon}</text>`}</svg>` +
     "</button>"
   );
@@ -39,7 +41,9 @@ function detail(id) {
     .map((line) => `<li>${escapeHtml(line)}</li>`)
     .join("");
   const onQ =
-    id === activeRune(player.runes) ? '<span class="rune-key">On <kbd>Q</kbd></span>' : "";
+    id === activeRune(player.runes, player.rune)
+      ? '<span class="rune-key">On <kbd>Q</kbd></span>'
+      : '<span class="rune-key choose">Click to put on <kbd>Q</kbd></span>';
   return (
     `<div class="rune-detail" data-detail="${id}" style="--rune:${rune.color}">` +
     `<div class="rune-detail-head"><svg viewBox="0 0 40 40" aria-hidden="true">${GLYPHS[id] || ""}</svg>` +
@@ -107,8 +111,20 @@ export function createRuneCodex() {
   body.addEventListener("pointerover", (event) => select(event.target.closest(".rune-stone")));
   body.addEventListener("click", (event) => {
     const stone = event.target.closest(".rune-stone");
-    if (stone) {
-      select(stone);
+    if (!stone) {
+      return;
+    }
+    select(stone);
+    /* a bound rune, clicked: its power goes on Q */
+    if (stone.dataset.rune && chooseRune(stone.dataset.rune)) {
+      render();
+      const chosen = body.querySelector(`.rune-stone[data-rune="${stone.dataset.rune}"]`);
+      body
+        .querySelectorAll(".rune-stone.selected")
+        .forEach((other) => other.classList.remove("selected"));
+      chosen?.classList.add("selected");
+      showDetail(stone.dataset.rune);
+    } else {
       sfx.click();
     }
   });

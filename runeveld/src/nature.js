@@ -19,6 +19,7 @@ import {
   inNorthroad,
   inCrypt,
   inForge,
+  inGlacier,
   insideWorld,
   distanceToPath,
   KINGS_ROAD,
@@ -385,7 +386,7 @@ function buildSky(scene) {
 
 /* the pollen belongs to the open land under the sky */
 function isUnderSky(x, z) {
-  if (inCrypt(x, z) || inForge(x, z) || !insideWorld(x, z, -8)) {
+  if (inCrypt(x, z) || inForge(x, z) || inGlacier(x, z) || !insideWorld(x, z, -8)) {
     return false;
   }
   /* not over the drop of Greyfall Gorge, where it would hang in the air */

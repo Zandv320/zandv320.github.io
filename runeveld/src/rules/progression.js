@@ -616,7 +616,18 @@ export function turnInQuest(hero, id) {
   }
   if (reward.rune) {
     hero.runes = sanitizeRunes([...(hero.runes || []), reward.rune], hero.quests);
+    /* a rune just bound goes on the hotbar */
+    hero.rune = hero.runes.includes(reward.rune) ? reward.rune : hero.rune || null;
   }
+  return true;
+}
+
+/** Put this bound rune's power on the hotbar (the rune codex); true when it changed. */
+export function chooseRune(hero, id) {
+  if (!(hero.runes || []).includes(id) || hero.rune === id) {
+    return false;
+  }
+  hero.rune = id;
   return true;
 }
 
@@ -785,6 +796,7 @@ export function sanitizeHero(input) {
   }
   /* a rune only with the quest that restored its seal */
   hero.runes = sanitizeRunes(source.runes, hero.quests);
+  hero.rune = hero.runes.includes(source.rune) ? source.rune : null;
 
   const derived = derivedStatsOf(hero);
   hero.hp = clampInt(source.hp, 1, derived.hpMax, derived.hpMax);

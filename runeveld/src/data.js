@@ -566,6 +566,47 @@ export const ITEMS = {
     description:
       "The hide of an ice troll, scraped and smoked by Torvald's hunters. It smells, a little. It is very warm.",
   },
+  /* Saga III: the Rime Wyrm, in the Heart of the Glacier */
+  rimefang: {
+    name: "Rimefang",
+    slot: "weapon",
+    layer: "sword3",
+    look: { color: "#cfeeff", amount: 0.65, value: 1.25 },
+    atk: 64,
+    bonus: { str: 3, dex: 3 },
+    price: 10200,
+    icon: "⚔️",
+    forClass: "swordsman",
+    description:
+      "A fang of the Rime Wyrm, white and as long as a forearm, set in a hilt of black ice. Frost creeps along the blade when it is drawn.",
+  },
+  wyrmbone_staff: {
+    name: "Wyrmbone staff",
+    slot: "weapon",
+    layer: "staff3",
+    look: { color: "#e0f2fc", amount: 0.6, value: 1.25 },
+    atk: 16,
+    matk: 86,
+    bonus: { int: 4, dex: 2 },
+    price: 10200,
+    icon: "🪄",
+    forClass: "mage",
+    description:
+      "A rib of the Rime Wyrm, its spikes of ice still growing. It hums with the cold of the seal.",
+  },
+  wyrmscale_mantle: {
+    name: "Wyrmscale mantle",
+    slot: "cloak",
+    layer: "cloak3",
+    look: { color: "#dceaf6", amount: 0.85, value: 1.6 },
+    def: 18,
+    hp: 200,
+    bonus: { vit: 2, int: 1 },
+    price: 9400,
+    icon: "🧥",
+    description:
+      "White scales rimmed with blue, each the size of a coin, sewn onto fur. Snow will not settle on it.",
+  },
   troll_gold: {
     name: "Troll gold",
     price: 160,
@@ -2889,6 +2930,77 @@ export const WASTE_MONSTERS = {
 };
 Object.assign(MONSTERS, WASTE_MONSTERS);
 
+/* The Glacier Halls (rules/glacier.js, Saga III chapter 16): golems of the glacier and oozes of rime keep the halls,
+   each on its own spot (area 'glacier'); the Rime Wyrm, a 3D dragon (wyrm.js), lies coiled before the frost seal
+   (rules/bosses.js) */
+export const GLACIER_MONSTERS = {
+  glacier_golem: {
+    name: "Glacier Golem",
+    level: 43,
+    hp: 9200,
+    atk: 238,
+    exp: 1900,
+    zeny: [180, 300],
+    speed: 2,
+    aggressive: true,
+    range: 2,
+    aggroRange: 6.5,
+    sheet: "ash_golem",
+    tint: 0xbfe2ff,
+    scale: 1.6,
+    area: "glacier",
+    respawn: [45, 70],
+    materials: { arcane_dust: 0.4 },
+    loot: { grand_potion: 0.14, wyrmscale_mantle: 0.006 },
+  },
+  rime_ooze: {
+    name: "Rime Ooze",
+    level: 43,
+    hp: 7400,
+    atk: 230,
+    exp: 1700,
+    zeny: [170, 280],
+    speed: 2.2,
+    aggressive: true,
+    range: 5,
+    aggroRange: 7,
+    projectile: 0xcfeeff,
+    sheet: "ice_slime",
+    tint: 0xdcefff,
+    scale: 1.5,
+    area: "glacier",
+    respawn: [40, 60],
+    materials: { arcane_dust: 0.35 },
+    loot: { grand_potion: 0.14 },
+  },
+  rime_wyrm: {
+    name: "The Rime Wyrm",
+    title: "Guardian of the Frost Seal",
+    level: 44,
+    hp: 34000,
+    atk: 252,
+    exp: 12000,
+    zeny: [1800, 2800],
+    speed: 0,
+    aggressive: true,
+    range: 3.8,
+    aggroRange: 16,
+    /* a 3D dragon coiled on the ice; a blade reaches its head from beside it */
+    model: "rime_wyrm",
+    reach: 2.4,
+    lines: { enrage: "The Wyrm screams, and the whole glacier answers." },
+    area: "glacier",
+    respawn: [150, 210],
+    loot: {
+      rimefang: 0.22,
+      wyrmbone_staff: 0.22,
+      wyrmscale_mantle: 0.25,
+      grand_potion: 0.8,
+    },
+  },
+};
+Object.assign(MONSTERS, GLACIER_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -3022,6 +3134,10 @@ export const SPAWNS = [
   { monster: "unbound_cultist", count: 10 },
   { monster: "ice_troll", count: 8 },
   { monster: "hrimgar", count: 1 },
+  /* the Glacier Halls: one per spot in rules/glacier.js */
+  { monster: "glacier_golem", count: 4 },
+  { monster: "rime_ooze", count: 5 },
+  { monster: "rime_wyrm", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

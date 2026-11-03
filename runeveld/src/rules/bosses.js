@@ -9,7 +9,8 @@
    Events (all with the boss id):
      boss_telegraph {kind: 'charge', x0, z0, x1, z1, width, duration} or {kind: 'circle', x, z, radius, duration}
        a warning on the ground: where the blow will land; kind 'planks' is a lane like 'charge', but the boss
-       stays where it is and strikes; kind 'icicle' is a circle where spikes of ice burst up out of the ground
+       stays where it is and strikes; kind 'icicle' is a circle where spikes of ice burst up out of the ground,
+       kind 'hail' one where an icicle falls from the roof
      boss_charge   {x1, z1, duration}  the boss rushes to (x1, z1)
      boss_stunned  {duration}          it hit something and is dazed
      boss_summon   {}                  it calls for help (the helpers appear like any other monster)
@@ -28,6 +29,7 @@
 
 import { GORGE, onBridge, plankStretch, breakPlanks, mendBridge, BRIDGE } from "./gorge.js";
 import { surfaceSpotNear } from "./tidecrown.js";
+import { wyrmSpotNear } from "./glacier.js";
 
 /* the bosses and their moves; numbers in seconds, units and multiples of the boss's ATK */
 export const BOSSES = {
@@ -89,6 +91,17 @@ export const BOSSES = {
       range: 16,
     },
     summon: { below: 0.6, helper: "ice_troll", count: 2 },
+    enrage: { below: 0.25, cooldownFactor: 0.7, damageFactor: 1.25 },
+  },
+  /* the Heart of the Glacier (rules/glacier.js): its tail sweeps round it, its breath of ice runs down a lane until a
+     pillar stops it, icicles fall from the roof on whoever is near, and below 40 % it burrows into the ice and
+     breaks out again beside the one it hunts (the spot shows on the ground first) */
+  rime_wyrm: {
+    cleave: { every: [5.5, 7.5], windup: 1, radius: 3.8, damage: 1.8 },
+    blast: { every: [9, 12], windup: 1.8, length: 20, width: 3.6, damage: 2.7 },
+    hail: { every: [6, 8], windup: 1.5, radius: 2, damage: 1.6, range: 22 },
+    burrow: { below: 0.4, every: [12, 15], under: 2.6, warning: 1.2, radius: 2.8, damage: 2 },
+    summon: { below: 0.6, helper: "rime_ooze", count: 2 },
     enrage: { below: 0.25, cooldownFactor: 0.7, damageFactor: 1.25 },
   },
   /* the Forge of the First Flame (rules/forge.js): pools of lava burst under whoever stands still, a blast of fire
@@ -157,6 +170,7 @@ function brain(monster, now) {
       nextBlast: now + 5,
       nextTentacle: now + 2.5,
       nextSurge: now + 6,
+      nextBurrow: now + 4,
       /* a lake monster starts out of sight, and comes up a moment after someone is near */
       submerged: !!bossOf(monster.spec.key)?.surface,
       surfaceAt: now + 1.5,
@@ -225,6 +239,10 @@ export function bossTick(monster, target, dt, ctx) {
   /* nobody left to fight: heal, and start over (a dark room lights up again) */
   state.idleFor = target ? 0 : state.idleFor + dt;
   if (!state.move && state.idleFor > RESET_SECONDS && (health < 1 || state.isEnraged)) {
+    /* one that burrowed comes up where it went down */
+    if (state.submerged && !rules.surface) {
+      ctx.emit("boss_surface", { id: monster.id, x: monster.x, z: monster.z });
+    }
     monster.hp = monster.spec.hp;
     resetBoss(monster);
     ctx.emit("boss_reset", { id: monster.id });
@@ -368,6 +386,38 @@ export function bossTick(monster, target, dt, ctx) {
       }
       return true;
     }
+    if (move.kind === "burrowed") {
+      /* a moment before it breaks out, the spot shows on the ground: beside the one it hunts */
+      const burrow = rules.burrow;
+      if (!move.isWarned && now >= move.until - burrow.warning) {
+        const [x, z] = (target && wyrmSpotNear(target.x, target.z)) || [monster.x, monster.z];
+        move.isWarned = true;
+        move.x = x;
+        move.z = z;
+        ctx.emit("boss_telegraph", {
+          id: monster.id,
+          kind: "circle",
+          x,
+          z,
+          radius: burrow.radius,
+          duration: burrow.warning,
+        });
+      }
+      if (now >= move.until) {
+        monster.x = move.x ?? monster.x;
+        monster.z = move.z ?? monster.z;
+        state.submerged = false;
+        ctx.emit("boss_surface", { id: monster.id, x: monster.x, z: monster.z });
+        const hit = ctx.players.filter(
+          (player) =>
+            !player.isDead &&
+            Math.hypot(player.x - monster.x, player.z - monster.z) <= burrow.radius,
+        );
+        strike(monster, hit, burrow.damage, ctx);
+        state.move = null;
+      }
+      return true;
+    }
     if (move.kind === "cleave-windup") {
       if (now >= move.until) {
         const cleave = rules.cleave;
@@ -395,6 +445,17 @@ export function bossTick(monster, target, dt, ctx) {
   const dx = target.x - monster.x;
   const dz = target.z - monster.z;
   const distance = Math.hypot(dx, dz) || 1e-4;
+
+  /* burrowing: down into the ice, out of reach, and up again beside the one it hunts */
+  if (rules.burrow && health <= rules.burrow.below && now >= state.nextBurrow) {
+    const burrow = rules.burrow;
+    state.nextBurrow =
+      now + burrow.under + randomBetween(burrow.every) * rageFactors(monster).cooldown;
+    state.submerged = true;
+    state.move = { kind: "burrowed", until: now + burrow.under, isWarned: false };
+    ctx.emit("boss_submerge", { id: monster.id });
+    return true;
+  }
 
   /* the charge: from a few steps away, along a lane that shows on the ground first */
   if (rules.charge && now >= state.nextCharge && distance > 3 && distance < rules.charge.length) {
@@ -508,7 +569,8 @@ export function bossTick(monster, target, dt, ctx) {
     (rules.geysers && "geysers") ||
     (rules.bloodRunes && "bloodRunes") ||
     (rules.lavaPools && "lavaPools") ||
-    (rules.icicles && "icicles");
+    (rules.icicles && "icicles") ||
+    (rules.hail && "hail");
   if (volleyName && now >= state.nextRunes) {
     const volley = rules[volleyName];
     const spots = ctx.players
@@ -529,7 +591,7 @@ export function bossTick(monster, target, dt, ctx) {
       for (const [x, z] of spots) {
         ctx.emit("boss_telegraph", {
           id: monster.id,
-          kind: volleyName === "icicles" ? "icicle" : "circle",
+          kind: { icicles: "icicle", hail: "hail" }[volleyName] || "circle",
           x,
           z,
           radius: volley.radius,

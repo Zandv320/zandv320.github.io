@@ -90,7 +90,18 @@ export function bossTelegraph(data) {
   }
   group.add(...edges);
   scene.add(group);
-  warnings.push({ data, group, area, fill, edges, time: 0, fade: 0 });
+  const warning = { data, group, area, fill, edges, time: 0, fade: 0 };
+  warning.isFrost = bossById(data.id)?.spec.key === "rime_wyrm";
+  /* an icicle that will fall from the roof onto the circle */
+  if (data.kind === "hail") {
+    warning.stone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.4, 2.2, 6).rotateX(Math.PI).translate(0, 1.1, 0),
+      SPIKE_MATERIAL,
+    );
+    warning.stone.position.set(data.x, 12, data.z);
+    scene.add(warning.stone);
+  }
+  warnings.push(warning);
 
   const boss = bossById(data.id);
   if (boss) {
@@ -346,6 +357,9 @@ export function bossEnrage(data) {
 function removeWarning(index) {
   const warning = warnings[index];
   scene.remove(warning.group);
+  if (warning.stone) {
+    scene.remove(warning.stone);
+  }
   for (const mesh of warning.group.children) {
     mesh.material.dispose();
   }
@@ -360,9 +374,18 @@ export function bossSubmerge(data) {
   }
   boss.isSubmerged = true;
   boss.sprite.submerge(true);
-  playEffect("ripples", boss.x, boss.z, { size: 3, grounded: true });
+  const isIce = boss.spec.key === "rime_wyrm";
+  if (isIce) {
+    burst(boss.x, 0.6, boss.z, { color: 0xe4f4ff, count: 40, speed: 6, size: 4 });
+  } else {
+    playEffect("ripples", boss.x, boss.z, { size: 3, grounded: true });
+  }
   if (player.target === boss) {
-    UI.systemMessage("The Leviathan sinks under the water. Watch where it comes up!");
+    UI.systemMessage(
+      isIce
+        ? "The Rime Wyrm burrows into the ice. Watch where it breaks out!"
+        : "The Leviathan sinks under the water. Watch where it comes up!",
+    );
   }
 }
 
@@ -377,7 +400,12 @@ export function bossSurface(data) {
   boss.isSubmerged = false;
   boss.sprite.group.position.set(data.x, 0, data.z);
   boss.sprite.submerge(false);
-  playEffect("splash", data.x, data.z, { size: 3.4, grounded: true, tint: 0xbff4ee });
+  if (boss.spec.key === "rime_wyrm") {
+    iceSpikes(data.x, data.z, 2.6);
+    burst(data.x, 0.6, data.z, { color: 0xe4f4ff, count: 50, speed: 7, size: 4 });
+  } else {
+    playEffect("splash", data.x, data.z, { size: 3.4, grounded: true, tint: 0xbff4ee });
+  }
   if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
     sfx.bossRoar();
     shakeCamera(0.2, 0.4);
@@ -398,6 +426,11 @@ export function updateBossEffects(dt) {
     } else {
       fill.scale.setScalar(data.radius * progress);
     }
+    if (warning.stone && progress < 1) {
+      /* it hangs, shivering, then drops */
+      const fall = Math.max(0, (progress - 0.7) / 0.3);
+      warning.stone.position.y = 12 * (1 - fall * fall) + Math.sin(warning.time * 40) * 0.03;
+    }
     for (const edge of edges) {
       edge.material.opacity = 0.5 + 0.3 * Math.sin(warning.time * 18);
     }
@@ -415,12 +448,13 @@ export function updateBossEffects(dt) {
           shakeCamera(0.2, 0.2);
         }
       } else if (data.kind === "blast") {
-        /* fire roars down the lane, as far as the first pillar */
+        /* fire roars down the lane, as far as the first pillar (the Rime Wyrm's breath is ice) */
+        const isFrost = warning.isFrost;
         const length = Math.hypot(data.x1 - data.x0, data.z1 - data.z0);
         for (let step = 0; step <= length; step += 1.2) {
           const t = length ? step / length : 0;
           burst(data.x0 + (data.x1 - data.x0) * t, 0.6, data.z0 + (data.z1 - data.z0) * t, {
-            color: 0xff8a2a,
+            color: isFrost ? 0xd8f0ff : 0xff8a2a,
             count: 6,
             speed: 3,
             size: 3,
@@ -445,6 +479,15 @@ export function updateBossEffects(dt) {
         if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
           sfx.bossSlam();
           shakeCamera(0.3, 0.35);
+        }
+      } else if (data.kind === "hail") {
+        /* the icicle comes down and shatters */
+        scene.remove(warning.stone);
+        burst(data.x, 0.4, data.z, { color: 0xe4f4ff, count: 30, speed: 5, size: 3 });
+        iceSpikes(data.x, data.z, data.radius * 0.5);
+        if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
+          sfx.bossSlam();
+          shakeCamera(0.16, 0.2);
         }
       } else if (data.kind === "icicle") {
         /* spikes of ice burst up out of the snow, and shatter */

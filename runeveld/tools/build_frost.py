@@ -8,10 +8,12 @@ The slime pack folder is the unzipped craftpix slime mobs pack (it holds PNG/Sli
     ice_slime.png          the pack's first slime, unused so far, as clear blue ice
     ice_troll.png          Grumm the bridge troll (sprites/grumm.png) in the grey-white of old ice
     hrimgar.png            the same, darker and bluer: the trolls' chieftain
+    tex/ice_wall.png, ...  the Glacier Halls' walls and floors, drawn here pixel by pixel
     pine_snow.png, ...     the pines, rocks and bush of the fields with snow lying on every upward edge
     smooth/*.png           their 2x smoothed copies, like every other sprite
 """
 
+import math
 import pathlib
 import sys
 
@@ -91,6 +93,63 @@ def cold_leaves(image):
     return out
 
 
+def noise_value(x, y, seed):
+    """A fixed pseudo-random number in 0..1 for a pixel."""
+    n = (x * 374761393 + y * 668265263 + seed * 2147483647) & 0xFFFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177 & 0xFFFFFFFF
+    return (n ^ (n >> 16)) / 0xFFFFFFFF
+
+
+def ice_wall():
+    """Blocks of glacier ice in courses, each lit from the top left, rimmed dark blue, with white frost specks."""
+    size = 32
+    image = Image.new("RGBA", (size, size))
+    px = image.load()
+    for y in range(size):
+        for x in range(size):
+            course = y // 16
+            bx = (x + course * 8) % 16
+            by = y % 16
+            value = 0.55 + 0.25 * noise_value(x // 2, y // 2, 3)
+            if bx == 0 or by == 0:
+                color = (58, 92, 132)
+            elif bx == 1 or by == 1:
+                color = (226, 242, 252)
+            else:
+                shade = value - (bx + by) / 60
+                color = tuple(int(c) for c in (150 + 70 * shade, 196 + 50 * shade, 228 + 24 * shade))
+            if noise_value(x, y, 7) < 0.03:
+                color = (250, 253, 255)
+            px[x, y] = (*color, 255)
+    return image
+
+
+def ice_floor(dark=False):
+    """Ice underfoot, four units square: clear and pale, or (dark) black water seen through it; a few long cracks
+    wandering across it, faint (they wrap round, so the tile repeats without seams), a bubble here and there."""
+    size = 64
+    image = Image.new("RGBA", (size, size))
+    px = image.load()
+    for y in range(size):
+        for x in range(size):
+            value = noise_value(x // 6, y // 6, 11) * 0.5 + noise_value(x // 3, y // 3, 12) * 0.2
+            if dark:
+                color = (26 + 26 * value, 44 + 34 * value, 74 + 44 * value)
+            else:
+                color = (192 + 34 * value, 218 + 26 * value, 238 + 14 * value)
+            if noise_value(x, y, 19) < 0.006:
+                color = (150, 200, 232) if dark else (242, 250, 255)
+            px[x, y] = (*(int(c) for c in color), 255)
+    crack = (84, 128, 170) if dark else (150, 186, 216)
+    for seed, (x, y, angle, length) in enumerate([(5.0, 9.0, 0.5, 40), (38.0, 44.0, 2.6, 34), (50.0, 12.0, 4.1, 18)]):
+        for step in range(length):
+            px[int(x) % size, int(y) % size] = (*crack, 255)
+            angle += (noise_value(step, seed, 23) - 0.5) * 1.1
+            x += math.cos(angle)
+            y += math.sin(angle)
+    return image
+
+
 def main():
     slime_dir = pathlib.Path(sys.argv[1])
     out_dir = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "runeveld/sprites")
@@ -125,6 +184,12 @@ def main():
 
     for name in written:
         smooth(Image.open(out_dir / f"{name}.png")).save(smooth_dir / f"{name}.png")
+    # the Glacier Halls' walls and floors, among the builders' textures (builders.js TEXTURE_NAMES)
+    tex_dir = out_dir / "tex"
+    ice_wall().save(tex_dir / "ice_wall.png")
+    ice_floor().save(tex_dir / "ice_floor.png")
+    ice_floor(dark=True).save(tex_dir / "black_ice.png")
+    written += ["tex/ice_wall", "tex/ice_floor", "tex/black_ice"]
     print("written:", written)
 
 

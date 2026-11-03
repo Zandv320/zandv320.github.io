@@ -100,5 +100,7 @@ export function sanitizeRunes(list, quests = {}) {
   return RUNE_IDS.filter((id) => list.includes(id) && quests[RUNES[id].quest]?.state === "done");
 }
 
-/** The rune whose power is on the hotbar: the newest one bound, or null. */
-export const activeRune = (runes) => (runes && runes.length ? runes[runes.length - 1] : null);
+/** The rune whose power is on the hotbar (Q): the one the hero chose in the rune codex, else the newest one bound,
+    or null. */
+export const activeRune = (runes, chosen = null) =>
+  runes && runes.includes(chosen) ? chosen : runes && runes.length ? runes[runes.length - 1] : null;

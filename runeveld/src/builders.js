@@ -29,6 +29,10 @@ const TEXTURE_NAMES = [
   "iron",
   "carpet",
   "basalt",
+  /* the Glacier Halls (tools/build_frost.py) */
+  "ice_wall",
+  "ice_floor",
+  "black_ice",
 ];
 const OUTLINE_COLOR = 0x0c0f2a;
 

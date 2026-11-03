@@ -123,6 +123,14 @@ import {
 } from "./rules/frostmarch.js";
 import { buildFrostmarch, updateFrostmarch } from "./frostmarch.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
+import { GLACIER_ROOMS, glacierRoomAt, inGlacier } from "./rules/glacier.js";
+import {
+  buildGlacier,
+  glacierClickables,
+  clickGlacierObject,
+  updateGlacier,
+  isHeroInGlacier,
+} from "./glacier.js";
 import { FORGE_ROOMS, forgeRoomAt } from "./rules/forge.js";
 import {
   buildForge,
@@ -327,9 +335,11 @@ const ZONES = {
   ],
   frostmarch: [FROSTMARCH.name, "Snow to the edge of the world, and a village that keeps a fire."],
   waste: [WHITE_WASTE.name, "No roads, no shelter, no mercy. Stay near the fires."],
-  /* the stairs announce the crypt themselves (crypt.js), the Gate of Kharos the forge (forge.js) */
+  /* the stairs announce the crypt themselves (crypt.js), the Gate of Kharos the forge (forge.js), the dig the
+     Glacier Halls (glacier.js) */
   crypt: null,
   forge: null,
+  glacier: null,
 };
 
 /* the normal camera zoom and tilt; the character select screen uses its own until Enter World */
@@ -356,6 +366,7 @@ async function init() {
     buildTidecrown,
     buildFrostmarch,
     buildForge,
+    buildGlacier,
     buildLoginScene,
     buildWaterFeatures,
     buildLandmarks,
@@ -366,6 +377,7 @@ async function init() {
     ...cryptClickables(),
     ...sealClickables(),
     ...forgeClickables(),
+    ...glacierClickables(),
     ...tidecrownClickables(),
   );
   createMerchant();
@@ -568,6 +580,7 @@ function applyHeroRecord(hero) {
     bag: hero.bag,
     quests: hero.quests,
     runes: hero.runes || [],
+    rune: hero.rune || null,
     professions: hero.professions || {},
     buffs: hero.buffs || {},
   });
@@ -620,6 +633,7 @@ function restoreHero(hero) {
     player.quests = hero.quests;
   }
   player.runes = Array.isArray(hero.runes) ? hero.runes.filter((id) => RUNES[id]) : [];
+  player.rune = player.runes.includes(hero.rune) ? hero.rune : null;
   refreshRuneSlot();
   player.equipmentMods = {};
   for (const [slot, mods] of Object.entries(hero.equipmentMods || {})) {
@@ -1060,6 +1074,7 @@ function saveProgress() {
     bag: player.bag,
     quests: player.quests,
     runes: player.runes,
+    rune: player.rune,
     professions: player.professions,
     buffs: player.buffs,
     x,
@@ -1815,6 +1830,11 @@ function handleClick(clientX, clientY, mode = "select") {
       clickForgeObject(data.forgeObject);
       return;
     }
+    if (data.glacierObject) {
+      clearTarget();
+      clickGlacierObject(data.glacierObject);
+      return;
+    }
     if (data.sealObject) {
       clearTarget();
       clickSeal(data.sealObject);
@@ -2229,6 +2249,9 @@ function zoneAt(x, z) {
   if (inForge(x, z)) {
     return "forge";
   }
+  if (inGlacier(x, z)) {
+    return "glacier";
+  }
   if (inSaltmere(x, z, -1)) {
     return "saltmere";
   }
@@ -2357,6 +2380,10 @@ function zoneLabel(zone, x, z) {
     const room = FORGE_ROOMS[forgeRoomAt(x, z)];
     return (room && room.name) || "The Forge of the First Flame";
   }
+  if (zone === "glacier") {
+    const room = GLACIER_ROOMS[glacierRoomAt(x, z)];
+    return (room && room.name) || "The Glacier Halls";
+  }
   if (zone === "capital") {
     return inCastle(x, z) ? "Aurelia Castle" : CAPITAL.name;
   }
@@ -2406,6 +2433,7 @@ function stepWorld(dt, time) {
   updatePlayer(dt);
   updateCrypt(dt);
   updateForge(dt);
+  updateGlacier(dt, time);
   updateItemEffects();
   updateRunePowers();
   updateStorm(dt, time);
@@ -2565,7 +2593,7 @@ function step(dt) {
       renderer,
       movers,
       1 - daylight(),
-      isHeroInCrypt() || isHeroInForge(),
+      isHeroInCrypt() || isHeroInForge() || isHeroInGlacier(),
     );
   }
   if (game.effects) {
@@ -2581,7 +2609,7 @@ function step(dt) {
       color: [255, 240, 220],
       strength: 0.4,
     };
-    heroLightIn(isHeroInCrypt() || isHeroInForge(), heroLight);
+    heroLightIn(isHeroInCrypt() || isHeroInForge() || isHeroInGlacier(), heroLight);
     game.daylight.update(
       cameraState,
       game.isStarted && !player.isDead ? [heroLight, ...weaponLights()] : weaponLights(),

@@ -27,6 +27,7 @@ import {
   inCinderCamp,
   inEmberIsles,
   inForge,
+  inGlacier,
   inTidecrown,
   inTideCamp,
   inFrostmarch,
@@ -267,6 +268,9 @@ export function createSimulation(emit) {
     }
     if (spec.area === "frostmarch") {
       return inFrostmarch(x, z);
+    }
+    if (spec.area === "glacier") {
+      return inGlacier(x, z);
     }
     if (spec.area === "crownmere") {
       return byCrownmere(x, z);

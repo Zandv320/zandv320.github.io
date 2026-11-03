@@ -24,7 +24,7 @@ const INK = 0x0c0f2a;
 
 /* ---------- skins: pixel art drawn once on canvases ---------- */
 
-function canvasTexture(width, height, draw, { repeat = false } = {}) {
+export function canvasTexture(width, height, draw, { repeat = false } = {}) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -182,7 +182,7 @@ const RIGHT = new THREE.Vector3(1, 0, 0);
  * belly, so the skin's belly lies underneath. update(curve, grow) moves its points; `grow` thickens it (for the ink
  * outline drawn as a slightly larger tube turned inside out).
  */
-class Tube {
+export class Tube {
   constructor(segments, radial, r0, r1, material, { lengthPerRepeat = 1.6, profile = null } = {}) {
     this.segments = segments;
     this.radial = radial;
@@ -261,7 +261,7 @@ class Tube {
 }
 
 /* A strip of web standing up along a curve's back (the crest): from t0 to t1, `height(t)` tall, leaning back. */
-class Crest {
+export class Crest {
   constructor(tube, t0, t1, steps, height, material, lengthPerRepeat = 1.4) {
     this.tube = tube;
     this.t0 = t0;
@@ -321,7 +321,7 @@ class Crest {
 /* ---------- the head ---------- */
 
 /* an outline in ink along the hard edges of a static mesh */
-function inked(mesh, threshold = 30) {
+export function inked(mesh, threshold = 30) {
   mesh.add(
     new THREE.LineSegments(
       new THREE.EdgesGeometry(mesh.geometry, threshold),
@@ -332,7 +332,7 @@ function inked(mesh, threshold = 30) {
 }
 
 /* a box reshaped: the front (−z) narrowed and lowered by `taper`, the corners pulled in so it reads rounded */
-function shapedBox(w, h, d, { taper = 0.4, drop = 0.1, round = 0.18 } = {}) {
+export function shapedBox(w, h, d, { taper = 0.4, drop = 0.1, round = 0.18 } = {}) {
   const geometry = new THREE.BoxGeometry(w, h, d, 3, 2, 5);
   const position = geometry.attributes.position;
   for (let k = 0; k < position.count; k++) {
@@ -354,7 +354,7 @@ function shapedBox(w, h, d, { taper = 0.4, drop = 0.1, round = 0.18 } = {}) {
 
 /* An egg of a shape `w` wide, `h` high and `d` long, narrowed and lowered towards its front (−z) by `taper` and
    `drop`, its underside flattened by `flat`: rounded, but in facets like the rest of the world. */
-function shapedEgg(w, h, d, { taper = 0.45, drop = 0.15, flat = 0.4 } = {}) {
+export function shapedEgg(w, h, d, { taper = 0.45, drop = 0.15, flat = 0.4 } = {}) {
   const geometry = new THREE.SphereGeometry(1, 14, 10);
   const position = geometry.attributes.position;
   for (let k = 0; k < position.count; k++) {
@@ -375,7 +375,7 @@ function shapedEgg(w, h, d, { taper = 0.45, drop = 0.15, flat = 0.4 } = {}) {
 
 /* the ink outline of a rounded mesh: a copy a little larger, seen from inside */
 const inkMaterial = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
-function inkHull(mesh, grow = 0.05) {
+export function inkHull(mesh, grow = 0.05) {
   const hull = new THREE.Mesh(mesh.geometry, inkMaterial);
   mesh.geometry.computeBoundingBox();
   const size = new THREE.Vector3();
@@ -386,7 +386,7 @@ function inkHull(mesh, grow = 0.05) {
 }
 
 /* a horn: a cone bent back along a curve */
-function hornGeometry(length, radius) {
+export function hornGeometry(length, radius) {
   const curve = new THREE.QuadraticBezierCurve3(
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, length * 0.55, length * 0.35),
@@ -412,7 +412,7 @@ function hornGeometry(length, radius) {
 }
 
 /* a fan of web on spines (a frill), spread from its root at the origin out to `reach`, opening over `spread` */
-function fanGeometry(reach, spread, rays = 6) {
+export function fanGeometry(reach, spread, rays = 6) {
   const positions = [0, 0, 0];
   const uvs = [0.5, 0];
   const indices = [];
@@ -477,8 +477,8 @@ function taperedTube(curve, segments, radial, r0, r1) {
 
 /* ---------- the serpent ---------- */
 
-const lambert = (options) => new THREE.MeshLambertMaterial(options);
-const glow = (color) => new THREE.MeshBasicMaterial({ color });
+export const lambert = (options) => new THREE.MeshLambertMaterial(options);
+export const glow = (color) => new THREE.MeshBasicMaterial({ color });
 
 /* the neck's control points at rest, from under the water behind (+z) up and over to the head (−z) */
 const NECK_REST = [
@@ -586,6 +586,8 @@ export class LeviathanModel {
     this.head.add(this.mesh);
 
     this.height = 7.6 * SIZE;
+    /* it lives under the water: it starts there, and comes back there */
+    this.startsUnder = true;
     this.tintColor = 0xffffff;
     this.facing = new THREE.Vector2(0, 1);
     this.anim = "idle";

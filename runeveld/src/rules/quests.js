@@ -11,7 +11,9 @@
               'item'        hand in `count` of `item` (taken from the bag on turn-in)
               'visit'       talk to `npc`
               'reach'       come within `r` of (x, z); `label` describes the place in the tracker
-              'ritual'      wake the runes of a seal (`seal`) at (x, z) (seals.js); `label` as with 'reach'
+              'ritual'      wake the runes of a seal (`seal`) at (x, z) (seals.js); `label` as with 'reach'; or
+                            anything else that happens once in a place (the Glacier Halls' door and mirrors),
+                            with `verb` [to do, done] for the tracker
               'chase'       keep up with a fleeing `label` to the end of his route (maelis.js)
               'equip'       wear something in `slot`                   } checked against the hero's state
               'stat'        raise any stat once                        } (syncStateQuests in progression.js)
@@ -36,6 +38,7 @@ import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
 import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./landmarks.js";
 import { TIDE_SEAL } from "./tidecrown.js";
 import { PASS_FOOT, KARI_HOLLOW, LOST_BOW } from "./frostmarch.js";
+import { FROZEN_DOORS, MIRRORS } from "./glacier.js";
 
 const BELLOWS_HALL = forgePoint(24, 18);
 
@@ -73,6 +76,7 @@ export const CHAPTERS = {
   13: "Ice That Does Not Melt",
   14: "Rimeholt",
   15: "The White Waste",
+  16: "The Glacier Halls",
 };
 
 export const QUESTS = {
@@ -1598,8 +1602,6 @@ export const QUESTS = {
   },
   torvald_hrimgar: {
     giver: "Hunter Torvald",
-    final: true,
-    ending: "saga3_ch15",
     where: { monster: "hrimgar" },
     hint: "Hrimgar sits at the back of the Troll Hollow, on the Unbound's gold. Spikes of ice burst up where you stand: step out of the circles. Below half his health he tears blocks out of the ice and throws them, and he calls his trolls to him.",
     chapter: 15,
@@ -1614,6 +1616,109 @@ export const QUESTS = {
       "Hrimgar. Dead. ... I have lived my whole life afraid of that name. Here: the gold he sat on is yours, and the hollow is quiet. And now the road to the glacier is open, for us and for them. The Unbound have dug almost to their door in the ice. Whatever is behind it, you have to get there first.",
     goal: { type: "kill", monster: "hrimgar", count: 1 },
     reward: { exp: 26000, zeny: 14000, items: [{ id: "grand_potion", count: 8 }] },
+  },
+  /* ---- Saga III, chapter 16: the Glacier Halls (rules/glacier.js) ---- */
+  torvald_glacier: {
+    giver: "Hunter Torvald",
+    turnIn: "Hunter Ulf",
+    tutorial: "glacier_halls",
+    hint: "Follow the Unbound's trench north from their camp to the glacier, and click the dig in the ice to go in.",
+    chapter: 16,
+    main: true,
+    title: "Into the ice",
+    level: 42,
+    after: "torvald_hrimgar",
+    intro:
+      "The trolls are leaderless, the cultists are running back up their trench, and the hole they dug in the glacier stands open. Whatever they wanted in there, they have not reached it yet, or they would not still be digging. Go in. And if you find Ulf's body, bring me his knife. His mother will want it.",
+    progressText:
+      "Go into the Glacier Halls through the Unbound's dig at the head of their trench.",
+    completeText:
+      "Fire? No. A face. A Rimeholt face! ... I am Ulf. Yes, that Ulf. They dragged me in here to cut ice for them, and when they ran from your sword they left me tied to a crate. Give me a moment. I have not spoken to anyone who was not shouting in weeks.",
+    goal: { type: "visit", npc: "Hunter Ulf" },
+    reward: { exp: 22000, zeny: 10000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  ulf_doors: {
+    giver: "Hunter Ulf",
+    hint: "The door of ice stands across the passage north of the Ice Gate. Click the Ember Rune in the rune codex (U) to put it on Q, then face the door, close by, and call it.",
+    chapter: 16,
+    main: true,
+    title: "Ice that remembers fire",
+    level: 42,
+    after: "torvald_glacier",
+    intro:
+      "The cultists hacked at that door for days. Axes, picks, their purple fire: nothing. Their leader said only the true fire would open it, the first fire, and that it had been stolen from them. You carry something warm, southerner. I can feel it from here. Try it on the door.",
+    progressText: "Melt the door of ice north of the Ice Gate with the fire of your Ember Rune.",
+    completeText:
+      "It melted. Like butter on a stove. The cultists would weep to see it. Beyond is the Glass Hall: black ice over water, and things standing on it that are not statues.",
+    goal: {
+      type: "ritual",
+      seal: "thaw",
+      x: FROZEN_DOORS[0].x,
+      z: FROZEN_DOORS[0].z + 1.5,
+      label: "the door of ice",
+      verb: ["Melt", "Melted"],
+    },
+    reward: { exp: 22000, zeny: 10000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  ulf_golems: {
+    giver: "Hunter Ulf",
+    where: { monster: "glacier_golem" },
+    hint: "The Glacier Golems stand in the Glass Hall, north of the melted door. The Rime Oozes spit frost from a distance: close in on them.",
+    chapter: 16,
+    main: true,
+    title: "The Glass Hall",
+    level: 43,
+    after: "ulf_doors",
+    intro:
+      "The golems woke up when the cultists started digging, and they have not gone back to sleep. They do not chase you out of the hall, but they will not let you through it either. Four of them. And mind the oozes: they spit.",
+    progressText: "Destroy four Glacier Golems in the Glass Hall.",
+    completeText:
+      "The hall is quiet. I could hear the water under the ice just now, for the first time. West of it there is a room the cultists were afraid of. They called it the Hall of Faces.",
+    goal: { type: "kill", monster: "glacier_golem", count: 4 },
+    reward: { exp: 24000, zeny: 11000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  ulf_mirrors: {
+    giver: "Hunter Ulf",
+    hint: "The Mirror Hall lies west of the Glass Hall. Click the three mirrors of ice along its north wall, from the west one to the east one.",
+    chapter: 16,
+    main: true,
+    title: "What the ice remembers",
+    level: 43,
+    after: "ulf_golems",
+    intro:
+      "Three mirrors of ice in there, taller than a man. The cultists' leader stood in front of them for hours, and came out white. He said the ice shows what it remembers. Go and look. Then tell me what an old hunter should be afraid of.",
+    progressText: "Look into the three mirrors of the Mirror Hall, from west to east.",
+    completeText:
+      "A king who broke his own crown to put something to sleep. And one of his keepers walked north and knelt in the ice with her stone. ... The heart under the seal: that is her stone. That is what the man in black wants. And past the second door of ice, coiled round it, is the thing that keeps it.",
+    goal: {
+      type: "ritual",
+      seal: "mirrors",
+      x: MIRRORS[0][0],
+      z: MIRRORS[0][1] + 1.5,
+      label: "the three mirrors",
+      verb: ["Look into", "Looked into"],
+    },
+    reward: { exp: 24000, zeny: 11000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  ulf_wyrm: {
+    giver: "Hunter Ulf",
+    final: true,
+    ending: "saga3_ch16",
+    where: { monster: "rime_wyrm" },
+    hint: "Melt the second door of ice, at the north end of the Glass Hall, with your Ember Rune. The Rime Wyrm lies coiled before the frost seal. Step behind a pillar of ice when its breath comes; step out of the circles where icicles fall; below 40 % it burrows into the ice and breaks out beside you.",
+    chapter: 16,
+    main: true,
+    title: "The Rime Wyrm",
+    level: 44,
+    after: "ulf_mirrors",
+    intro:
+      "The keeper's guardian. White, and long, and older than Rimeholt. When the cultists opened the first door it screamed, and three of them never came back. The man in black is coming for that heart, southerner. Be there first, and be the one still standing.",
+    progressText:
+      "Melt the second door of ice and defeat the Rime Wyrm in the Heart of the Glacier.",
+    completeText:
+      "It is dead? ... I felt it from here: the floor jumped, and every crystal in the Ice Gate went dark and came back. Then quiet. Go back to the seal when you are ready. The keeper's stone is still there, waiting for a hand. And I think the man in black heard that scream too.",
+    goal: { type: "kill", monster: "rime_wyrm", count: 1 },
+    reward: { exp: 30000, zeny: 16000, items: [{ id: "grand_potion", count: 8 }] },
   },
   kari_bow: {
     giver: "Hunter Kari",
@@ -1911,7 +2016,8 @@ export function progressText(id, progress, monsterName, itemName) {
     return count ? `Visited ${goal.label}` : `Go to ${goal.label}`;
   }
   if (goal.type === "ritual") {
-    return count ? `Woke ${goal.label}` : `Wake ${goal.label}`;
+    const [verb, done] = goal.verb || ["Wake", "Woke"];
+    return count ? `${done} ${goal.label}` : `${verb} ${goal.label}`;
   }
   if (goal.type === "chase") {
     return count ? `Followed ${goal.label} to his boat` : `Chase ${goal.label}`;

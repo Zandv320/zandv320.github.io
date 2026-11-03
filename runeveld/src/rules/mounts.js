@@ -4,6 +4,7 @@
    twice as large and saddled. Pure data, shared by client and server. */
 import { inCrypt } from "./crypt.js";
 import { inForge } from "./forge.js";
+import { inGlacier } from "./glacier.js";
 
 /* the mounts: their sheets (sheets.js), under the rider and over them, the seats file (tools/build_mounts.py: per
    frame the pixel where the rider's hips go), and how much faster than on foot (a share: 0.6 is 60 % faster) */
@@ -26,4 +27,4 @@ export function mountOf(equipment, items) {
 }
 
 /** May a hero ride at (x, z)? Not down in the crypt or the forge. */
-export const canRideAt = (x, z) => !inCrypt(x, z) && !inForge(x, z);
+export const canRideAt = (x, z) => !inCrypt(x, z) && !inForge(x, z) && !inGlacier(x, z);

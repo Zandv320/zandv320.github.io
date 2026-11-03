@@ -37,6 +37,7 @@ import { hitStop, buzz, flyToHud, screenFlash } from "./feel.js";
 import { burst } from "./particles.js";
 import { inCrypt, CRYPT_ENTRY } from "./rules/crypt.js";
 import { inForge, FORGE_ENTRY } from "./rules/forge.js";
+import { inGlacier, GLACIER_ENTRY } from "./rules/glacier.js";
 import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
 import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
 import { inEmberIsles, CAMP_WAKE } from "./rules/ember.js";
@@ -649,6 +650,9 @@ function respawn() {
      Halfway Inn once they have slept there */
   if (inCrypt(player.x, player.z)) {
     [player.x, player.z] = CRYPT_ENTRY;
+  } else if (inGlacier(player.x, player.z)) {
+    /* in the Glacier Halls: in the Ice Gate, by Ulf */
+    [player.x, player.z] = GLACIER_ENTRY;
   } else if (inForge(player.x, player.z)) {
     /* in the forge: by the braziers of the Gate Hall */
     [player.x, player.z] = FORGE_ENTRY;

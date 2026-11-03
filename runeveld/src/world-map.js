@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { CRYPT_ROOMS, cryptFloorCells, inCrypt, CRYPT_EXIT } from "./rules/crypt.js";
 import { FORGE_ROOMS, forgeFloorCells, inForge, FORGE_EXIT } from "./rules/forge.js";
+import { GLACIER_ROOMS, glacierFloorCells, inGlacier, GLACIER_EXIT } from "./rules/glacier.js";
 import {
   FOREST,
   inForest,
@@ -628,6 +629,14 @@ export function createWorldMap(deps) {
       inside: inForge,
       wall: "#3a221c",
       floor: "#6a4636",
+    },
+    glacier: {
+      rooms: GLACIER_ROOMS,
+      cells: glacierFloorCells,
+      exit: GLACIER_EXIT,
+      inside: inGlacier,
+      wall: "#5a86b0",
+      floor: "#b8daf0",
     },
   };
   function ensureUndergroundLayer(key, scale) {

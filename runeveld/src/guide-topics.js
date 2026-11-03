@@ -158,12 +158,21 @@ export const GUIDE_TOPICS = {
       "Now and then a <b>whiteout</b> comes down: the snow blows sideways, you can barely see, the cold bites twice as hard, and the ice trolls come out of the snow from further off.",
     ],
   },
-  saga3_ch15: {
-    title: "Chapter 15 complete",
-    icons: ["troll_gold", "ui_quests"],
+  glacier_halls: {
+    title: "The Glacier Halls",
+    icons: ["ui_map", "ui_quests"],
     body: [
-      "Hrimgar is dead, and the Unbound have lost the trolls who kept their road. But they have dug almost to a door in the glacier, and the gold they paid with carries the crossed-out crown: Maelis has been behind it all from the very first bandit.",
-      "The <b>Glacier Halls</b>, behind that door in the ice, are the next part of <b>Saga III: The Long Winter</b>.",
+      "The keepers of the frost seal cut halls out of the glacier. Some passages are shut by <b>doors of ice</b>: put your <b>Ember Rune</b> on <kbd>Q</kbd> (click it in the rune codex, <kbd>U</kbd>), stand facing the door, close by, and call it. Fire is the one thing their ice remembers how to fear.",
+      "In the <b>Mirror Hall</b> three mirrors show what the ice remembers. Look into them from west to east.",
+      "The <b>Rime Wyrm</b> breathes ice down a lane: a pillar of ice stops it. Icicles fall where circles show on the ground, and when it is badly hurt it burrows into the ice and breaks out beside you.",
+    ],
+  },
+  saga3_ch16: {
+    title: "Chapter 16 complete",
+    icons: ["rimefang", "ui_quests"],
+    body: [
+      "The Rime Wyrm is dead and the Heart of the Glacier is still. The mirrors showed what the seals are: the seven stones of a broken crown, and one of them lies under the frost seal, in your reach.",
+      "Maelis heard the Wyrm's scream. Laying your hand on the frost seal is the last part of <b>Saga III: The Long Winter</b>, still to come.",
     ],
   },
 };
@@ -185,4 +194,5 @@ export const GUIDE_ORDER = [
   "sailing",
   "frostmarch",
   "white_waste",
+  "glacier_halls",
 ];

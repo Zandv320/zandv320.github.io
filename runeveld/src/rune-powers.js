@@ -3,6 +3,7 @@
    Emberbreath, a cone of the First Flame before the hero, and the Tide Rune's Undertow, a whirl of water that drags
    the monsters round the hero in and holds them. */
 import { RUNES, activeRune } from "./rules/runes.js";
+import { chooseRune as chooseRuneRule } from "./rules/progression.js";
 import { player, game, monsters, now, hpMax, derived, playEffect } from "./game-state.js";
 import { spellHit } from "./rules/combat.js";
 import { hitMonster, playOnce } from "./player.js";
@@ -11,6 +12,7 @@ import { groundRing } from "./skill-effects.js";
 import { burst, trail } from "./particles.js";
 import { screenFlash } from "./feel.js";
 import { sfx } from "./audio.js";
+import { meltWithFire } from "./glacier.js";
 import * as UI from "./ui.js";
 
 const MOON_COLOR = 0xc8b0ff;
@@ -20,7 +22,7 @@ const runeSlot = () => document.querySelector('#hotbar .slot[data-skill="rune"]'
 /** Shows the rune slot when the hero has a rune, with its power's icon and name. */
 export function refreshRuneSlot() {
   const slot = runeSlot();
-  const id = activeRune(player.runes);
+  const id = activeRune(player.runes, player.rune);
   slot.hidden = !id;
   if (!id) {
     return;
@@ -31,12 +33,26 @@ export function refreshRuneSlot() {
   slot.querySelector(".slot-name").textContent = rune.power;
 }
 
+/** Puts this bound rune's power on Q (a click in the rune codex), here and on the server. */
+export function chooseRune(id) {
+  if (!chooseRuneRule(player, id)) {
+    return false;
+  }
+  game.network.heroAction("rune", { id });
+  refreshRuneSlot();
+  sfx.chime();
+  UI.systemMessage(`${RUNES[id].power} (${RUNES[id].name}) is on Q now.`);
+  return true;
+}
+
 /** A rune was bound to the hero (the reward of the quest that restored its seal). */
 export function bindRune(id) {
   if (!RUNES[id] || player.runes.includes(id)) {
     return;
   }
   player.runes = [...player.runes, id];
+  /* the newest rune goes on Q; the codex can put another back */
+  player.rune = id;
   refreshRuneSlot();
   /* a new stone in the rune codex: a mark on its button until it is opened */
   document.querySelector("#runes-button")?.classList.add("attention");
@@ -54,7 +70,7 @@ export function bindRune(id) {
 
 /** Calls the power of the hero's rune (the Q key or the slot). */
 export function useRunePower() {
-  const id = activeRune(player.runes);
+  const id = activeRune(player.runes, player.rune);
   if (!id || player.isDead) {
     return;
   }
@@ -154,6 +170,8 @@ function emberbreath(rune) {
     }
   }
   burst(player.x + dx, 1, player.z + dz, { color: EMBER_COLOR, count: 24, speed: 5, size: 3 });
+  /* a door of ice in the Glacier Halls melts in it */
+  meltWithFire(player.x, player.z, dx, dz, rune.range, rune.angle);
   const stats = derived();
   setTimeout(() => {
     let isAnyHit = false;
@@ -214,7 +232,7 @@ export const isRunePowerActive = () =>
 
 /** Seconds until the rune power can be called again, as a share of its cooldown (for the slot's shade). */
 export function runeCooldownShare() {
-  const id = activeRune(player.runes);
+  const id = activeRune(player.runes, player.rune);
   return id ? ((player.cooldowns.rune || 0) - now()) / RUNES[id].cooldown : 0;
 }
 

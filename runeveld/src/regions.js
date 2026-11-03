@@ -18,6 +18,7 @@ import {
 import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/saltmere.js";
 import { inEmberIsles, inCinderCamp, emberSpotFor } from "./rules/ember.js";
 import { inForge, forgeSpotFor } from "./rules/forge.js";
+import { inGlacier, glacierSpotFor } from "./rules/glacier.js";
 import { inTidecrown, inTideCamp, byCrownmere, tidecrownSpotFor } from "./rules/tidecrown.js";
 import { inFrostmarch, isFrostSafe, frostSpotFor } from "./rules/frostmarch.js";
 
@@ -32,6 +33,7 @@ export {
   inEmberIsles,
   inCinderCamp,
   inForge,
+  inGlacier,
   inTidecrown,
   inTideCamp,
   byCrownmere,
@@ -257,7 +259,8 @@ export const fixedSpot = (key, id) =>
   emberSpotFor(key, id) ||
   forgeSpotFor(key, id) ||
   tidecrownSpotFor(key, id) ||
-  frostSpotFor(key, id);
+  frostSpotFor(key, id) ||
+  glacierSpotFor(key, id);
 
 /** Does this monster go back to its own spot after a fight (and give up on anyone who leads it too far)? */
 export const keepsHome = (spec) =>
@@ -268,7 +271,8 @@ export const keepsHome = (spec) =>
   spec.area === "ember" ||
   spec.area === "forge" ||
   spec.area === "tidecrown" ||
-  spec.area === "frostmarch";
+  spec.area === "frostmarch" ||
+  spec.area === "glacier";
 
 /** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere, the Ember Isles, the
     crypt or the forge), with a margin to the edge? The crypt and the forge need none: their walls are obstacles. */
@@ -283,7 +287,8 @@ export function insideWorld(x, z, margin = 1.5) {
     inTidecrown(x, z, margin) ||
     inFrostmarch(x, z, margin) ||
     inCrypt(x, z) ||
-    inForge(x, z)
+    inForge(x, z) ||
+    inGlacier(x, z)
   );
 }
 

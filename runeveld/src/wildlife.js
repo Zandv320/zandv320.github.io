@@ -6,7 +6,7 @@
    They are pixel-art sprites drawn here; nothing of this goes over the network, every player sees their own. */
 import * as THREE from "three";
 import { FISHING_PONDS } from "./rules/gather-nodes.js";
-import { inFields, inVale, inNorthroad, inForest, inCrypt, inForge } from "./regions.js";
+import { inFields, inVale, inNorthroad, inForest, inCrypt, inForge, inGlacier } from "./regions.js";
 import { cameraState, inVillage, isFree } from "./world.js";
 import { daylight } from "./daylight.js";
 import { player, game } from "./game-state.js";
@@ -409,7 +409,8 @@ export function updateWildlife(dt, time) {
     DETAIL &&
     light > 0.3 &&
     !inCrypt(cameraState.target.x, cameraState.target.z) &&
-    !inForge(cameraState.target.x, cameraState.target.z)
+    !inForge(cameraState.target.x, cameraState.target.z) &&
+    !inGlacier(cameraState.target.x, cameraState.target.z)
   ) {
     nextSkyFlock -= dt;
     if (nextSkyFlock <= 0) {

@@ -124,6 +124,7 @@ const THEME_OF = {
   forge: "ember",
   tidecrown: "deep",
   waste: "frostmarch",
+  glacier: "deep",
 };
 
 /* a note of the theme's scale, `degree` steps up from the root, `octave` octaves up */
