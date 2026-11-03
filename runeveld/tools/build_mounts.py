@@ -255,7 +255,7 @@ def tack_front(fox):
             put(front, side, y, LEATHER[0])
         for dx in (-1, 0, 1):
             put(front, side + dx, shoulder + 6, IRON[1 if dx else 2])
-    return back, front, (cx, y0 - 3)
+    return back, front, (cx, y0 + 4)
 
 
 def main():

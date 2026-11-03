@@ -20,6 +20,31 @@ const PPU = 16;
 /* how far before the animal the rider is drawn, and the front layer before the rider (along the view) */
 const RIDER_AHEAD = 0.03;
 const FRONT_AHEAD = 0.06;
+/* how far behind the rider a hand on the far side goes: behind the animal too */
+const FAR_SIDE = 0.12;
+
+/* The hand on the far side of the animal holds what it holds behind it: the weapon (right hand) riding to the left,
+   the shield (left hand) riding to the right. Those layers are moved back along the view, behind the animal; the
+   others stay where they are. `isRiding` false puts every layer back. */
+function sortHands(rider, isRiding, tilt) {
+  for (const layer of rider.layers) {
+    const data = layer.source?.userData || {};
+    const isFar =
+      isRiding &&
+      ((rider.direction === "left" && data.isWeapon) ||
+        (rider.direction === "right" && data.isShield));
+    if (isFar) {
+      layer.baseZ ??= layer.mesh.position.z;
+      layer.isFar = true;
+      layer.mesh.position.y = -Math.sin(tilt) * FAR_SIDE;
+      layer.mesh.position.z = layer.baseZ - Math.cos(tilt) * FAR_SIDE;
+    } else if (layer.isFar) {
+      layer.isFar = false;
+      layer.mesh.position.y = 0;
+      layer.mesh.position.z = layer.baseZ;
+    }
+  }
+}
 
 /** The mount in the hero's slot (a key of MOUNTS), or null. */
 export const heroMount = () => mountOf(player.equipment, ITEMS);
@@ -94,6 +119,7 @@ function updateRig(rig, rider, x, z, isMoving, dt) {
     up[1] * height + toward[1] * RIDER_AHEAD,
     z + right[2] * across + up[2] * height + toward[2] * RIDER_AHEAD,
   );
+  sortHands(rider, true, tilt);
 }
 
 /* a puff and a sound where the mount comes or goes */
@@ -147,6 +173,7 @@ export function dismount(message = "") {
     removeRig(heroRig);
     heroRig = null;
   }
+  sortHands(player.sprite, false, cameraState.tilt);
   if (player.sprite.shadow) {
     player.sprite.shadow.visible = true;
   }
@@ -202,6 +229,7 @@ export function removePeerMount(peer) {
   if (peer.rig) {
     removeRig(peer.rig);
     peer.rig = null;
+    sortHands(peer.sprite, false, cameraState.tilt);
   }
 }
 
