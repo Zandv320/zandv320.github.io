@@ -298,6 +298,37 @@ export const sfx = {
     noise(2.2, 0.07, { f0: 500, f1: 180, type: "lowpass", q: 0.4, attack: 0.9 });
     noise(1.2, 0.025, { f0: 2400, f1: 900, q: 0.5, attack: 0.6, delay: 0.7 });
   },
+  /* riding (mounts.js): a two-note whistle to call the mount */
+  whistle() {
+    if (!canPlay()) return;
+    tone("sine", 1250, 1650, 0.13, 0.09);
+    tone("sine", 1500, 2300, 0.2, 0.1, 0.17);
+    noise(0.32, 0.025, { f0: 3200, f1: 2600, q: 3, attack: 0.03 });
+  },
+  /* a fox's short bark as it lands under the rider */
+  yip() {
+    if (!canPlay()) return;
+    tone("triangle", 820, 1240, 0.07, 0.07);
+    tone("triangle", 980, 1400, 0.08, 0.06, 0.09);
+  },
+  /* a paw on the ground, soft; `volume` for the near and the far one */
+  paw(volume = 1) {
+    if (!canPlay()) return;
+    noise(0.05, 0.07 * volume, { f0: 420, f1: 160, type: "lowpass", q: 0.7 });
+    tone("sine", 120, 70, 0.05, 0.05 * volume);
+  },
+  /* three short sniffs at the ground */
+  sniff() {
+    if (!canPlay()) return;
+    for (let k = 0; k < 3; k++) {
+      noise(0.05, 0.035, { f0: 3800, f1: 2200, type: "highpass", q: 0.6, delay: k * 0.11 });
+    }
+  },
+  /* a tail swishing through the air */
+  swish() {
+    if (!canPlay()) return;
+    noise(0.2, 0.03, { f0: 1600, f1: 700, q: 0.7, attack: 0.05 });
+  },
   /* a gull's cry: two falling squeals */
   gull() {
     if (!canPlay()) return;

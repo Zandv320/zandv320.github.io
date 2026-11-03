@@ -12,6 +12,8 @@ import { Sprite2D } from "./sprites.js";
 import { scene, cameraState } from "./world.js";
 import { player, game, playEffect } from "./game-state.js";
 import { burst } from "./particles.js";
+import { fxBurst } from "./weapon-fx.js";
+import { SMOOTH } from "./sprites.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
 
@@ -67,13 +69,30 @@ for (const [key, spec] of Object.entries(MOUNTS)) {
     .catch(() => {});
 }
 
-/* A mount in the scene: its two layers, kept in step. */
-function createRig(key) {
+/* how long a mount's leap under its rider takes, and how far it comes from */
+const LEAP_SECONDS = 0.5;
+const LEAP_FROM = 2.4;
+
+const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+/* A mount in the scene: its two layers, kept in step; `isHero`: the hero's own (its sounds are heard). */
+function createRig(key, isHero) {
   const spec = MOUNTS[key];
   const back = new Sprite2D(SHEETS[spec.sheet], { shadow: spec.shadow });
   const front = new Sprite2D(SHEETS[spec.front], { shadow: 0 });
   scene.add(back.group, front.group);
-  return { key, back, front };
+  return {
+    key,
+    back,
+    front,
+    isHero,
+    /* the leap in: 0 when called, 1 once the rider is in the saddle */
+    leap: 0,
+    /* standing still: for how long, and when it next sniffs or wags */
+    stillFor: 0,
+    nextFidget: randomBetween(3, 6),
+    lastFrame: -1,
+  };
 }
 
 function removeRig(rig) {
@@ -82,13 +101,82 @@ function removeRig(rig) {
   rig.front.dispose();
 }
 
+/* What the animal does: walk while moving; standing, now and then sniff the ground or wag its tail. */
+function animateRig(rig, isMoving, dt) {
+  const { back } = rig;
+  if (isMoving) {
+    rig.stillFor = 0;
+    back.play("walk");
+    return;
+  }
+  rig.stillFor += dt;
+  const isFidgeting = back.animName === "sniff" || back.animName === "wag";
+  if (isFidgeting && !back.finished) {
+    return;
+  }
+  if (rig.stillFor > rig.nextFidget && rig.leap >= 1) {
+    const fidget = Math.random() < 0.5 ? "sniff" : "wag";
+    back.play(fidget, true);
+    rig.nextFidget = rig.stillFor + randomBetween(4, 9);
+    if (rig.isHero) {
+      if (fidget === "sniff") {
+        sfx.sniff();
+      } else {
+        sfx.swish();
+      }
+    }
+    return;
+  }
+  back.play("idle");
+}
+
+/* A paw comes down (the first and fourth frame of the run): a little dust behind it, and its sound. */
+function pawsDown(rig, x, z, facing) {
+  const { back } = rig;
+  if (back.animName !== "walk" || back.frame === rig.lastFrame) {
+    rig.lastFrame = back.frame;
+    return;
+  }
+  rig.lastFrame = back.frame;
+  if (back.frame % 3 !== 0) {
+    return;
+  }
+  const length = Math.hypot(facing.x, facing.y) || 1;
+  const behindX = x - (facing.x / length) * 0.9;
+  const behindZ = z - (facing.y / length) * 0.9;
+  if (SMOOTH) {
+    fxBurst("dust", behindX, 0.15, behindZ, { count: 8, spread: 0.4, speed: 0.7 });
+  } else {
+    burst(behindX, 0.15, behindZ, { color: 0xc8b08a, count: 4, speed: 1.2, size: 2, life: 0.5 });
+  }
+  if (rig.isHero) {
+    sfx.paw(back.frame === 0 ? 1 : 0.7);
+  }
+}
+
 /* Per frame: the animal where its rider is, facing their way, walking or standing; the rider in its saddle. */
 function updateRig(rig, rider, x, z, isMoving, dt) {
   const { back, front } = rig;
-  back.group.position.set(x, 0, z);
+  /* called: it leaps in from behind and lands under the rider, who hops up into the saddle */
+  rig.leap = Math.min(1, rig.leap + dt / LEAP_SECONDS);
+  const arc = Math.sin(Math.PI * rig.leap);
+  const away = (1 - rig.leap) ** 2 * LEAP_FROM;
+  const length = Math.hypot(rider.facing.x, rider.facing.y) || 1;
+  const foxX = x - (rider.facing.x / length) * away;
+  const foxZ = z - (rider.facing.y / length) * away;
+  const lift = arc * 0.7;
+  if (rig.leap >= 1 && !rig.hasLanded) {
+    rig.hasLanded = true;
+    if (rig.isHero) {
+      sfx.yip();
+    }
+    burst(x, 0.2, z, { color: 0xc8b08a, count: 10, speed: 2, size: 2.4 });
+  }
+  back.group.position.set(foxX, lift, foxZ);
   back.face(rider.facing.x, rider.facing.y);
-  back.play(isMoving ? "walk" : "idle");
+  animateRig(rig, isMoving, dt);
   back.update(dt, cameraState);
+  pawsDown(rig, x, z, rider.facing);
   /* the front layer shows the very same frame */
   front.face(rider.facing.x, rider.facing.y);
   front.play(back.animName);
@@ -101,9 +189,9 @@ function updateRig(rig, rider, x, z, isMoving, dt) {
   const up = [-Math.sin(tilt) * Math.sin(yaw), Math.cos(tilt), -Math.sin(tilt) * Math.cos(yaw)];
   const toward = [Math.cos(tilt) * Math.sin(yaw), Math.sin(tilt), Math.cos(tilt) * Math.cos(yaw)];
   front.group.position.set(
-    x + toward[0] * FRONT_AHEAD,
-    toward[1] * FRONT_AHEAD,
-    z + toward[2] * FRONT_AHEAD,
+    foxX + toward[0] * FRONT_AHEAD,
+    lift + toward[1] * FRONT_AHEAD,
+    foxZ + toward[2] * FRONT_AHEAD,
   );
   /* the rider's hips on the seat of this frame; their feet half a unit (eight pixels) below */
   const data = seats[rig.key];
@@ -114,17 +202,19 @@ function updateRig(rig, rider, x, z, isMoving, dt) {
   const [seatX, seatY] = frames[back.frame % frames.length];
   const across = (seatX + 0.5 - data.frame / 2) / PPU;
   const height = (data.frame - data.feet - (seatY + 0.5)) / PPU - 0.5;
+  /* while it leaps in, the rider hops up and comes down into the saddle as it lands */
+  const hop = rig.leap < 1 ? Math.sin(Math.PI * rig.leap) * 0.9 : 0;
   rider.group.position.set(
-    x + right[0] * across + up[0] * height + toward[0] * RIDER_AHEAD,
-    up[1] * height + toward[1] * RIDER_AHEAD,
-    z + right[2] * across + up[2] * height + toward[2] * RIDER_AHEAD,
+    foxX + right[0] * across + up[0] * height + toward[0] * RIDER_AHEAD,
+    lift + hop + up[1] * height + toward[1] * RIDER_AHEAD,
+    foxZ + right[2] * across + up[2] * height + toward[2] * RIDER_AHEAD,
   );
   sortHands(rider, true, tilt);
   /* nothing tipped towards the camera below a rider's feet: their blade hangs down the animal's flank */
   rider.setFold(false);
 }
 
-/* a puff and a sound where the mount comes or goes */
+/* a puff where the mount goes */
 function puff(x, z) {
   playEffect("smoke", x, z, { size: 1.8, grounded: true });
   burst(x, 0.8, z, { color: 0xf0d8b8, count: 16, speed: 2.6, size: 2.4 });
@@ -155,13 +245,12 @@ export function mountUp() {
   }
   player.isSitting = false;
   player.riding = key;
-  heroRig = createRig(key);
+  heroRig = createRig(key, true);
   if (player.sprite.shadow) {
     player.sprite.shadow.visible = false;
   }
   player.anim = "";
-  puff(player.x, player.z);
-  sfx.chime();
+  sfx.whistle();
 }
 
 /** Off the mount's back; `message` says why, when it was not the hero's own choice. */
@@ -218,8 +307,7 @@ export function updatePeerMount(peer, key, isMoving, dt) {
   if ((peer.rig?.key || null) !== wanted) {
     removePeerMount(peer);
     if (wanted) {
-      peer.rig = createRig(wanted);
-      puff(peer.x, peer.z);
+      peer.rig = createRig(wanted, false);
     }
   }
   if (peer.rig) {

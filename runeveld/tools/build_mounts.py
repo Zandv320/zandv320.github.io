@@ -71,12 +71,14 @@ def bottom_of(mask, x):
 # ---------- seen from the side (facing right; left is the mirror) ----------
 
 
-def tack_side(fox):
-    """Saddle a fox seen from the side, facing right. Returns (back layer, front layer, seat (x, y))."""
+def tack_side(fox, base=None):
+    """Saddle a fox seen from the side, facing right. Returns (back layer, front layer, seat (x, y)). `base` is the
+    bounding box of the fox standing still: the saddle keeps to it while the head or the tail moves."""
     back = fox.copy()
     front = np.zeros_like(fox)
     mask = opaque(fox)
-    x0, y0, x1, y1 = bbox(mask)
+    ax0, ay0, ax1, ay1 = bbox(mask)
+    x0, y0, x1, y1 = base or (ax0, ay0, ax1, ay1)
     width = x1 - x0
     # the saddle sits a little behind the middle: the tail is long, the head short
     cx = int(x0 + width * 0.56)
@@ -125,11 +127,11 @@ def tack_side(fox):
         put(back, cx + 8, y, INK if y > seat_top - 5 else back[y, cx + 8])
     # the bridle: a strap round the muzzle, a gold ring at the bit, the reins back to the pommel
     # the nose is the fox's rightmost point; the bit sits just behind it
-    head_x = x1
+    head_x = ax1
     rows = np.nonzero(mask[:, head_x])[0]
     mouth_y = int(rows.max()) + 1 if len(rows) else back_line - 6
     strap_x = head_x - 4
-    for y in range(y0, y1 + 1):
+    for y in range(ay0, ay1 + 1):
         if mask[y, strap_x] and abs(y - mouth_y) <= 5:
             put(back, strap_x, y, LEATHER[1])
     ring = (strap_x + 1, mouth_y)
@@ -184,11 +186,11 @@ def tack_side(fox):
 # ---------- seen from behind ----------
 
 
-def tack_back(fox):
+def tack_back(fox, base=None):
     back = fox.copy()
     front = np.zeros_like(fox)
     mask = opaque(fox)
-    x0, y0, x1, y1 = bbox(mask)
+    x0, y0, x1, y1 = base or bbox(mask)
     cx = (x0 + x1) // 2
     # the saddle on the middle of the back, behind the shoulders
     body_top = y0 + int((y1 - y0) * 0.42)
@@ -222,12 +224,13 @@ def tack_back(fox):
 # ---------- seen from the front ----------
 
 
-def tack_front(fox):
+def tack_front(fox, base=None):
     back = fox.copy()
     front = np.zeros_like(fox)
     mask = opaque(fox)
-    x0, y0, x1, y1 = bbox(mask)
-    cx = (x0 + x1) // 2
+    ax0, ay0, ax1, ay1 = bbox(mask)
+    x0, y0, x1, y1 = base or (ax0, ay0, ax1, ay1)
+    cx = seat_x = (x0 + x1) // 2
     # the blanket shows beside the shoulders, behind the head and chest
     shoulder = y0 + (y1 - y0) // 2
     row = np.nonzero(mask[shoulder])[0]
@@ -244,7 +247,9 @@ def tack_front(fox):
     # in front of the rider: the whole fox (its head and chest are nearer the camera than the saddle), with the
     # bridle across its nose and the stirrups hanging both sides
     front[mask] = fox[mask]
-    nose = y0 + (y1 - y0) // 3
+    # the bridle follows the head when it moves
+    nose = ay0 + (y1 - y0) // 3
+    cx = (ax0 + ax1) // 2
     for x in range(cx - 4, cx + 5):
         if mask[nose, x]:
             front[nose, x] = LEATHER[1]
@@ -255,7 +260,62 @@ def tack_front(fox):
             put(front, side, y, LEATHER[0])
         for dx in (-1, 0, 1):
             put(front, side + dx, shoulder + 6, IRON[1 if dx else 2])
-    return back, front, (cx, y0 + 4)
+    return back, front, (seat_x, y0 + 4)
+
+
+# ---------- standing still: sniffing the ground, wagging the tail, tilting the head ----------
+
+FIDGET_FRAMES = 6
+
+
+def moved(frame, region, offset):
+    """The frame with the pixels of `region` moved by offset(y, x) -> (dy, dx), drawn over the rest."""
+    out = frame.copy()
+    out[region] = 0
+    for y, x in zip(*np.nonzero(region), strict=True):
+        dy, dx = offset(y, x)
+        if 0 <= y + dy < FRAME and 0 <= x + dx < FRAME:
+            out[y + dy, x + dx] = frame[y, x]
+    return out
+
+
+def fidgets(frame, direction):
+    """For a fox standing still: {'sniff': frames, 'wag': frames}, FIDGET_FRAMES each."""
+    mask = opaque(frame)
+    x0, y0, x1, y1 = bbox(mask)
+    ys, xs = np.indices(mask.shape)
+    height = y1 - y0
+    result = {}
+    if direction == RIGHT:
+        width = x1 - x0
+        cx = int(x0 + width * 0.56)
+        back_line = int(np.median([top_of(mask, x) for x in range(cx - 4, cx + 5)]))
+        head = mask & (xs >= x0 + width * 0.68) & (ys <= back_line + 5)
+        tail_base = x0 + width * 0.3
+        tail = mask & (xs <= tail_base)
+        # nose down to the ground and back up, a little forward
+        sniff = [(0, 0), (1, 0), (2, 1), (3, 1), (2, 1), (1, 0)]
+        result["sniff"] = [moved(frame, head, lambda y, x, o=o: o) for o in sniff]
+        # the tail swings up and down, most at its tip
+        wag = [0, -2, -3, -2, 0, 2]
+        result["wag"] = [
+            moved(frame, tail, lambda y, x, a=a: (round(a * (tail_base - x) / (tail_base - x0)), 0)) for a in wag
+        ]
+    elif direction == DOWN:
+        head = mask & (ys <= y0 + height * 0.55)
+        result["sniff"] = [moved(frame, head, lambda y, x, d=d: (d, 0)) for d in (0, 1, 2, 2, 1, 0)]
+        # facing us the tail is out of sight: the head tilts to one side and the other, curious
+        result["wag"] = [moved(frame, head, lambda y, x, d=d: (0, d)) for d in (0, 1, 1, 0, -1, -1)]
+    else:
+        head = mask & (ys <= y0 + height * 0.3)
+        result["sniff"] = [moved(frame, head, lambda y, x, d=d: (d, 0)) for d in (0, 1, 1, 2, 1, 0)]
+        start = y0 + height * 0.62
+        tail = mask & (ys >= start)
+        result["wag"] = [
+            moved(frame, tail, lambda y, x, a=a: (0, round(a * (y - start) / (y1 - start))))
+            for a in (0, 1, 2, 1, -1, -2)
+        ]
+    return result
 
 
 def main():
@@ -263,19 +323,31 @@ def main():
     fox = np.array(Image.open(out_dir / "fox.png").convert("RGBA"))
     fox[fox[:, :, 3] == 0] = 0
     big = build_sprites.scale2x(fox)
-    back_sheet = np.zeros((8 * FRAME, COLUMNS * FRAME, 4), dtype=np.uint8)
+    back_sheet = np.zeros((16 * FRAME, COLUMNS * FRAME, 4), dtype=np.uint8)
     front_sheet = np.zeros_like(back_sheet)
     seats = {}
     feet_rows = []
-    for anim, first in (("idle", 0), ("walk", 4)):
+    # the frames of every row: the pack's idle and walk, and the fidgets made from the first idle frame
+    rows = {}
+    for direction in (DOWN, UP, RIGHT):
+        standing = big[direction * FRAME : (direction + 1) * FRAME, 0:FRAME]
+        moves = fidgets(standing, direction)
+        for anim, first in (("idle", 0), ("walk", 4)):
+            row = first + direction
+            rows[(anim, direction)] = [
+                big[row * FRAME : (row + 1) * FRAME, column * FRAME : (column + 1) * FRAME] for column in range(COLUMNS)
+            ]
+        rows[("sniff", direction)] = moves["sniff"]
+        rows[("wag", direction)] = moves["wag"]
+    for anim, first in (("idle", 0), ("walk", 4), ("sniff", 8), ("wag", 12)):
         for direction, name in ((DOWN, "down"), (UP, "up"), (RIGHT, "right")):
             row = first + direction
-            for column in range(COLUMNS):
-                frame = big[row * FRAME : (row + 1) * FRAME, column * FRAME : (column + 1) * FRAME]
+            base = bbox(opaque(rows[("idle", direction)][0]))
+            for column, frame in enumerate(rows[(anim, direction)]):
                 if not opaque(frame).any():
                     continue
                 tack = {DOWN: tack_front, UP: tack_back, RIGHT: tack_side}[direction]
-                back, front, seat = tack(frame)
+                back, front, seat = tack(frame, None if anim in ("idle", "walk") else base)
                 back_sheet[row * FRAME : (row + 1) * FRAME, column * FRAME : (column + 1) * FRAME] = back
                 front_sheet[row * FRAME : (row + 1) * FRAME, column * FRAME : (column + 1) * FRAME] = front
                 seats.setdefault(anim, {}).setdefault(name, []).append([int(seat[0]), int(seat[1])])

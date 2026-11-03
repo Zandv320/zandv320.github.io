@@ -144,6 +144,9 @@ function mountSheet(name) {
     anims: {
       idle: { row: 0, frames: 4, fps: 5 },
       walk: { row: 4, frames: 6, fps: 12 },
+      /* standing still for a while: nose to the ground, or the tail (seen from the front: the head tilting) */
+      sniff: { row: 8, frames: 6, fps: 7, once: true },
+      wag: { row: 12, frames: 6, fps: 9, once: true },
     },
   };
 }
