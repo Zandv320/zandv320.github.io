@@ -38,7 +38,7 @@ import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
 import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./landmarks.js";
 import { TIDE_SEAL } from "./tidecrown.js";
 import { PASS_FOOT, KARI_HOLLOW, LOST_BOW } from "./frostmarch.js";
-import { FROZEN_DOORS, MIRRORS } from "./glacier.js";
+import { FROZEN_DOORS, MIRRORS, FROST_SEAL } from "./glacier.js";
 
 const BELLOWS_HALL = forgePoint(24, 18);
 
@@ -77,6 +77,7 @@ export const CHAPTERS = {
   14: "Rimeholt",
   15: "The White Waste",
   16: "The Glacier Halls",
+  17: "The Heart in the Ice",
 };
 
 export const QUESTS = {
@@ -1702,8 +1703,6 @@ export const QUESTS = {
   },
   ulf_wyrm: {
     giver: "Hunter Ulf",
-    final: true,
-    ending: "saga3_ch16",
     where: { monster: "rime_wyrm" },
     hint: "Melt the second door of ice, at the north end of the Glass Hall, with your Ember Rune. The Rime Wyrm lies coiled before the frost seal. Step behind a pillar of ice when its breath comes; step out of the circles where icicles fall; below 40 % it burrows into the ice and breaks out beside you.",
     chapter: 16,
@@ -1719,6 +1718,90 @@ export const QUESTS = {
       "It is dead? ... I felt it from here: the floor jumped, and every crystal in the Ice Gate went dark and came back. Then quiet. Go back to the seal when you are ready. The keeper's stone is still there, waiting for a hand. And I think the man in black heard that scream too.",
     goal: { type: "kill", monster: "rime_wyrm", count: 1 },
     reward: { exp: 30000, zeny: 16000, items: [{ id: "grand_potion", count: 8 }] },
+  },
+  /* ---- Saga III, chapter 17: the heart in the ice (rules/glacier.js) ---- */
+  ulf_seal: {
+    giver: "Hunter Ulf",
+    hint: "Walk to the frost seal on its altar at the north end of the Heart of the Glacier, and click it.",
+    chapter: 17,
+    main: true,
+    title: "The heart in the ice",
+    level: 44,
+    after: "ulf_wyrm",
+    intro:
+      "The keeper's stone is under that altar, and the seal is cracking, Selwyn's chart says so. Lay your hand on it. If the old seals know the hands that mend them, it will know yours. And southerner: whatever happens, do not let go.",
+    progressText:
+      "Wake the frost seal on its altar in the Heart of the Glacier, then go back to Hunter Ulf.",
+    completeText:
+      "I heard it, all the way out here: the ice breaking, and then a voice. A laugh. He is in there, isn't he? Behind the seal. He let the cultists dig, he let the Wyrm wait, and he let you open the last wall for him. Go, before he has his hand on that heart!",
+    goal: {
+      type: "ritual",
+      seal: "frost",
+      x: FROST_SEAL[0],
+      z: FROST_SEAL[1] + 2,
+      r: 4,
+      label: "the frost seal",
+    },
+    reward: { exp: 26000, zeny: 12000, items: [{ id: "grand_potion", count: 6 }] },
+  },
+  ulf_maelis: {
+    giver: "Hunter Ulf",
+    where: { monster: "maelis" },
+    hint: "Maelis waits in the Keeper's Vault, behind the broken wall at the back of the Heart. He steps through smoke behind you, lays runes under your feet (step out of the circles), and uses the hearts he stole: a lane of fire, and from 60 % a wave of the tide.",
+    chapter: 17,
+    main: true,
+    title: "Maelis the Unbound",
+    level: 45,
+    after: "ulf_seal",
+    intro:
+      "The man in black. In the vault behind the seal, with his hand stretched out for the keeper's stone. You have chased him across the sea and back, southerner. This time he cannot sail away. Stop him.",
+    progressText:
+      "Defeat Maelis in the Keeper's Vault behind the frost seal, then go back to Hunter Ulf.",
+    completeText:
+      "He ran? Gone in his own smoke, bleeding, and without the stone! The first heart he never got. ... Feel that: the cold has gone soft. The seal knows you now, southerner. Its rune is yours. Now go home to Rimeholt. Sigrun will want to hear this from your own mouth, and so will every child in the village.",
+    goal: { type: "kill", monster: "maelis", count: 1 },
+    reward: {
+      exp: 34000,
+      zeny: 20000,
+      rune: "frost",
+      items: [{ id: "grand_potion", count: 8 }],
+    },
+  },
+  sigrun_friend: {
+    giver: "Hunter Ulf",
+    turnIn: "Elder Sigrun",
+    hint: "Go back through the dug-out pass to Rimeholt. Elder Sigrun waits by the fire before the longhouse.",
+    chapter: 17,
+    main: true,
+    title: "A friend of Rimeholt",
+    level: 45,
+    after: "ulf_maelis",
+    intro:
+      "Torvald and I will bring the others home. Go ahead of us, and tell Sigrun her hunters are coming back, all six. All six! I will never tire of saying that.",
+    progressText: "Go back to Elder Sigrun in Rimeholt.",
+    completeText:
+      "All six. ... Forgive an old woman. Come here. In Rimeholt we have a word for someone who brings our people home through the snow, and it is the same word as brother, and sister. You are that now. And a friend of Rimeholt does not walk: take one of Brann's sledge wolves. She has chosen you already, look at her.",
+    goal: { type: "visit", npc: "Elder Sigrun" },
+    reward: { exp: 18000, zeny: 10000, items: [{ id: "sledge_wolf", count: 1 }] },
+  },
+  sigrun_selwyn: {
+    giver: "Elder Sigrun",
+    turnIn: "Archmage Selwyn",
+    final: true,
+    ending: "saga3_end",
+    hint: "Sail the Gull's Promise back to Saltmere and take the Northroad south to Aurelia. Archmage Selwyn waits by the keep in the castle courtyard.",
+    chapter: 17,
+    main: true,
+    title: "The long winter ends",
+    level: 45,
+    after: "sigrun_friend",
+    intro:
+      "Your king and his mage must hear what you saw in the mirrors: a crown of seven stones, broken to put something to sleep. Go south, friend of Rimeholt, and tell them the north kept its stone. Then come back in summer. We have one, sometimes. For a day.",
+    progressText: "Go back to Archmage Selwyn in the castle courtyard of Aurelia.",
+    completeText:
+      "The frost mark on my chart: look. It burned white last night and has been bright ever since. You did it. ... A crown of seven stones, and a king who broke it. Of course. Of course! The seals are not seven things, they are one. And the heart of it... no. Not yet. Look at this first: a letter from Pell, at Northwatch. His runestone has not stopped humming for three nights, and there are storms over the Northroad that do not move with the wind. The storm seal, hero. And this time Maelis knows the way.",
+    goal: { type: "visit", npc: "Archmage Selwyn" },
+    reward: { exp: 24000, zeny: 15000, items: [{ id: "grand_potion", count: 6 }] },
   },
   kari_bow: {
     giver: "Hunter Kari",

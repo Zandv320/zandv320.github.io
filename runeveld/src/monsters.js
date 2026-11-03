@@ -26,6 +26,7 @@ import {
   inEmberIsles,
   inForge,
   inGlacier,
+  inVault,
   inTidecrown,
   inTideCamp,
   inFrostmarch,
@@ -36,6 +37,7 @@ import { isStorm, isWhiteout } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
 import { sfx } from "./audio.js";
+import { burst } from "./particles.js";
 import { chargeDust } from "./boss-effects.js";
 import { setSanctumDark } from "./crypt.js";
 import { SHEETS, sheetTexture } from "./sheets.js";
@@ -321,6 +323,9 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "glacier") {
     return inGlacier(x, z);
   }
+  if (spec.area === "vault") {
+    return inVault(x, z);
+  }
   if (spec.area === "crownmere") {
     return byCrownmere(x, z);
   }
@@ -352,13 +357,24 @@ export function monsterDied(monster) {
   monster.aggroTarget = null;
   const respawnRange = monster.spec.respawn || RESPAWN_SECONDS;
   monster.respawnTimer = randomBetween(respawnRange[0], respawnRange[1]);
-  monster.sprite.play("death", true);
-  monster.hideAt = now() + 1.6;
-  if (Math.hypot(monster.x - player.x, monster.z - player.z) < 14) {
-    sfx.monsterDeath();
-  }
-  if (game.effects) {
-    playEffect("smoke", monster.x, monster.z, { size: 1.6, grounded: true, delay: 0.9 });
+  /* one who never dies (Maelis) breaks off and is gone in his smoke, a parting word in the air */
+  if (monster.spec.flees) {
+    monster.hideAt = now();
+    playEffect("smoke", monster.x, monster.z, { size: 2.6, grounded: true });
+    burst(monster.x, 1, monster.z, { color: 0xb49cff, count: 40, speed: 5, size: 4 });
+    if (Math.hypot(monster.x - player.x, monster.z - player.z) < 20 && monster.spec.lines?.flee) {
+      UI.announce(monster.spec.name, monster.spec.lines.flee);
+      sfx.bossIntro();
+    }
+  } else {
+    monster.sprite.play("death", true);
+    monster.hideAt = now() + 1.6;
+    if (Math.hypot(monster.x - player.x, monster.z - player.z) < 14) {
+      sfx.monsterDeath();
+    }
+    if (game.effects) {
+      playEffect("smoke", monster.x, monster.z, { size: 1.6, grounded: true, delay: 0.9 });
+    }
   }
   if (player.target === monster) {
     player.target = null;

@@ -167,12 +167,13 @@ export const GUIDE_TOPICS = {
       "The <b>Rime Wyrm</b> breathes ice down a lane: a pillar of ice stops it. Icicles fall where circles show on the ground, and when it is badly hurt it burrows into the ice and breaks out beside you.",
     ],
   },
-  saga3_ch16: {
-    title: "Chapter 16 complete",
-    icons: ["rimefang", "ui_quests"],
+  saga3_end: {
+    title: "Saga III complete",
+    icons: ["crossed_crown_pendant", "ui_quests"],
     body: [
-      "The Rime Wyrm is dead and the Heart of the Glacier is still. The mirrors showed what the seals are: the seven stones of a broken crown, and one of them lies under the frost seal, in your reach.",
-      "Maelis heard the Wyrm's scream. Laying your hand on the frost seal is the last part of <b>Saga III: The Long Winter</b>, still to come.",
+      "Maelis fled the Keeper's Vault without the frost seal's heart, and the frost seal knows your hand. Rimeholt calls you family, and a sledge wolf runs at your side. That is the end of <b>Saga III: The Long Winter</b>.",
+      "The <b>Frost Rune</b> is bound to you: open the rune codex (<kbd>U</kbd>) and click a rune to choose which one is on <kbd>Q</kbd>. Your sledge wolf goes in the mount slot (<kbd>H</kbd> to ride).",
+      "Storms that do not move with the wind hang over the Northroad, and Pell's runestone will not stop humming. The storm seal is where <b>Saga IV</b> will begin.",
     ],
   },
 };

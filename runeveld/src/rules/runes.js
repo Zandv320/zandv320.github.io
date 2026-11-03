@@ -1,5 +1,6 @@
-/* Eldoria – game rules: the rune powers of Saga II, "The Shattered Runes". Each of the seven seals that the hero
-   sets right binds its rune to them: a power for every class, on a slot of its own on the hotbar (Q). A rune comes
+/* Eldoria – game rules: the rune powers of the seven seals (from Saga II, "The Shattered Runes"). Each seal that
+   the hero sets right binds its rune to them: a power for every class, on a slot of its own on the hotbar (Q); the
+   rune codex chooses which one is there. A rune comes
    only with the quest that restores its seal (`quest`), so a record from outside cannot just claim one.
    Pure data and functions, shared by client and server. */
 
@@ -51,6 +52,21 @@ export const RUNES = {
     healMax: 0.2,
     bonus: { hp: 120, sp: 60, bonus: { vit: 2, int: 1, dex: 1 } },
     color: "#7fe0d4",
+  },
+  frost: {
+    name: "Frost Rune",
+    power: "Hoarfrost",
+    icon: "❄️",
+    quest: "ulf_maelis",
+    description:
+      "A ring of ice bursts out round you: every monster in it is frozen solid for 3 seconds and hit for six times your ATK or MATK.",
+    cooldown: 45,
+    /* the ring: how far it reaches, how long it holds, the damage as a multiple of the hero's best attack */
+    radius: 6,
+    hold: 3,
+    mult: 6,
+    bonus: { hp: 120, def: 6, bonus: { vit: 2, dex: 1 } },
+    color: "#9fd8ff",
   },
 };
 

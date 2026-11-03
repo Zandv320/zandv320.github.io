@@ -17,6 +17,15 @@ export const MOUNTS = {
     shadow: 2.4,
     speed: 0.6,
   },
+  /* Rimeholt's thanks (Saga III): a frost wolf of the sledge teams, under Rimeholt's red */
+  sledge_wolf: {
+    name: "Sledge Wolf",
+    sheet: "wolf_mount",
+    front: "wolf_mount_front",
+    seats: "sprites/wolf_mount.json",
+    shadow: 2.4,
+    speed: 0.65,
+  },
 };
 
 /** The mount of the item in the hero's mount slot, or null. */

@@ -86,6 +86,8 @@ export function useRunePower() {
     emberbreath(rune);
   } else if (id === "tide") {
     undertow(rune);
+  } else if (id === "frost") {
+    hoarfrost(rune);
   }
 }
 
@@ -138,6 +140,54 @@ function undertow(rune) {
     UI.floatingText(player.x, player.sprite.height + 0.6, player.z, camera, `+${heal}`, "heal");
   }
   UI.floatingText(player.x, player.sprite.height + 0.4, player.z, camera, "Undertow", "skill");
+}
+
+const FROST_COLOR = 0x9fd8ff;
+
+/* Hoarfrost: a ring of ice bursts out round the hero; whatever it catches is frozen solid, and hurt */
+function hoarfrost(rune) {
+  playOnce("attack", 0.6);
+  sfx.bossSlam();
+  shakeCamera(0.2, 0.35);
+  screenFlash("170, 220, 255");
+  groundRing(player.x, player.z, FROST_COLOR, 0.3, rune.radius, 0.7, 0.9);
+  /* spikes of ice round the ring, the far ones a moment later */
+  for (let k = 0; k < 12; k++) {
+    const angle = (k / 12) * Math.PI * 2;
+    for (const share of [0.45, 0.85]) {
+      const x = player.x + Math.sin(angle) * rune.radius * share;
+      const z = player.z + Math.cos(angle) * rune.radius * share;
+      setTimeout(() => {
+        playEffect("ice_shards", x, z, { size: 1.2, grounded: true, tint: 0xcfefff });
+        trail(x, 0.5, z, FROST_COLOR);
+      }, share * 160);
+    }
+  }
+  const time = now();
+  const caught = [...monsters.values()].filter(
+    (monster) =>
+      !monster.isDead &&
+      !monster.isSubmerged &&
+      monster.sprite.group.visible &&
+      Math.hypot(monster.x - player.x, monster.z - player.z) <= rune.radius,
+  );
+  if (!caught.length) {
+    UI.systemMessage(`${rune.power} caught nothing.`);
+  }
+  const stats = derived();
+  for (const monster of caught) {
+    monster.frozenUntil = time + rune.hold;
+    playEffect("frost", monster.x, monster.z, { size: 1.8, y: monster.sprite.height * 0.4 });
+    hitMonster(
+      monster,
+      spellHit({ matk: Math.max(stats.atk, stats.matk), mult: rune.mult }),
+      "hoarfrost",
+    );
+  }
+  if (caught.length) {
+    game.network.send("freeze", { ids: caught.map((monster) => monster.id), duration: rune.hold });
+  }
+  UI.floatingText(player.x, player.sprite.height + 0.4, player.z, camera, "Hoarfrost", "skill");
 }
 
 const EMBER_COLOR = 0xff8a2a;

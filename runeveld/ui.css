@@ -4681,6 +4681,14 @@ body.rpg-cursor #game[data-cursor="steer"] {
 .rune-detail-head svg .glyph-core {
   fill: #fff4d0;
 }
+/* a glyph drawn in lines (the Frost Rune's snowflake) */
+.rune-stone svg .glyph-line,
+.rune-detail-head svg .glyph-line {
+  fill: none;
+  stroke: var(--rune);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .rune-detail-head h4 {
   margin: 0;
 }

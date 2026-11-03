@@ -724,6 +724,10 @@ const VILLAGERS = [
       sigrun_hunters: [
         "Purple cloaks in the snow, and my hunters gone. When the wind turns, we dig out the pass.",
       ],
+      sigrun_friend: [
+        "Sister, brother, friend of Rimeholt: sit by my fire whenever you like.",
+        "The glacier is quiet at night now. I sleep like a child.",
+      ],
     },
   },
   {
@@ -1016,6 +1020,10 @@ const VILLAGERS = [
       eyvind_shard: [
         "The frost mark on my chart is paler every night. I have stopped looking at it after supper.",
         "I have wrapped that shard in three cloths and a lead box, and my fingers still ache.",
+      ],
+      sigrun_selwyn: [
+        "Seven stones of one crown. I have been reading the chart upside down for thirty years.",
+        "Pell writes every day now. Every day the storms are worse.",
       ],
     },
   },

@@ -92,6 +92,8 @@ export function bossTelegraph(data) {
   scene.add(group);
   const warning = { data, group, area, fill, edges, time: 0, fade: 0 };
   warning.isFrost = bossById(data.id)?.spec.key === "rime_wyrm";
+  /* Maelis's runes burst purple */
+  warning.isRune = bossById(data.id)?.spec.key === "maelis";
   /* an icicle that will fall from the roof onto the circle */
   if (data.kind === "hail") {
     warning.stone = new THREE.Mesh(
@@ -442,7 +444,11 @@ export function updateBossEffects(dt) {
       warning.fade = 1e-4;
       fill.material.opacity = 0.6;
       if (data.kind === "circle") {
-        ringBurst(data.x, data.z, data.radius, { color: 0xffb08a, count: 40, size: 3 });
+        ringBurst(data.x, data.z, data.radius, {
+          color: warning.isRune ? 0xc8a0ff : 0xffb08a,
+          count: 40,
+          size: 3,
+        });
         if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
           sfx.bossSlam();
           shakeCamera(0.2, 0.2);

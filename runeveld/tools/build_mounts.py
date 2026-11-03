@@ -318,9 +318,24 @@ def fidgets(frame, direction):
     return result
 
 
+# the mounts: (name, the animal's sheet, the colours of its saddle blanket)
+MOUNTS = [
+    ("fox_mount", "fox.png", ((30, 44, 92, 255), (44, 66, 128, 255), (64, 92, 164, 255))),
+    # the sledge wolf of Rimeholt (Saga III): the frost wolf (tools/build_frost.py), in Rimeholt's red
+    ("wolf_mount", "frost_wolf.png", ((88, 22, 26, 255), (138, 36, 38, 255), (182, 64, 56, 255))),
+]
+
+
 def main():
     out_dir = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "runeveld/sprites")
-    fox = np.array(Image.open(out_dir / "fox.png").convert("RGBA"))
+    for mount, source, cloth in MOUNTS:
+        build_mount(out_dir, mount, source, cloth)
+
+
+def build_mount(out_dir, mount, source, cloth):
+    global CLOTH
+    CLOTH = cloth
+    fox = np.array(Image.open(out_dir / source).convert("RGBA"))
     fox[fox[:, :, 3] == 0] = 0
     big = build_sprites.scale2x(fox)
     back_sheet = np.zeros((16 * FRAME, COLUMNS * FRAME, 4), dtype=np.uint8)
@@ -364,16 +379,16 @@ def main():
                     seats[anim].setdefault("left", []).append([FRAME - 1 - int(seat[0]), int(seat[1])])
     # the feet: the commonest bottom row (seen from behind the tail hangs lower, nearer the camera)
     feet = FRAME - 1 - max(set(feet_rows), key=feet_rows.count)
-    Image.fromarray(back_sheet, "RGBA").save(out_dir / "fox_mount.png")
-    Image.fromarray(front_sheet, "RGBA").save(out_dir / "fox_mount_front.png")
-    (out_dir / "fox_mount.json").write_text(
+    Image.fromarray(back_sheet, "RGBA").save(out_dir / f"{mount}.png")
+    Image.fromarray(front_sheet, "RGBA").save(out_dir / f"{mount}_front.png")
+    (out_dir / f"{mount}.json").write_text(
         json.dumps({"frame": FRAME, "feet": feet, "seats": seats}, separators=(",", ":"))
     )
     smooth_dir = out_dir / "smooth"
     smooth_dir.mkdir(exist_ok=True)
-    for name in ("fox_mount.png", "fox_mount_front.png"):
-        build_sprites.smooth(Image.open(out_dir / name)).save(smooth_dir / name)
-    print("fox mount: feet", feet, "seats", {k: len(v) for k, v in seats.items()})
+    for sheet in (f"{mount}.png", f"{mount}_front.png"):
+        build_sprites.smooth(Image.open(out_dir / sheet)).save(smooth_dir / sheet)
+    print(mount, "feet", feet, "seats", {k: len(v) for k, v in seats.items()})
 
 
 if __name__ == "__main__":

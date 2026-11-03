@@ -21,6 +21,8 @@ const ROOMS = {
   mirrorHall: { name: "The Mirror Hall", rect: [-37, 8, -19, 30] },
   heartPassage: { rect: [-3, 2, 3, 10] },
   heart: { name: "The Heart of the Glacier", rect: [-18, -28, 18, 2] },
+  /* behind the seal, under the ice that the seal's waking opens (chapter 17): where Maelis waits for its heart */
+  vault: { name: "The Keeper's Vault", rect: [-7, -40, 7, -28] },
 };
 
 const [ORIGIN_X, ORIGIN_Z] = GLACIER_ORIGIN;
@@ -111,6 +113,16 @@ export const MIRRORS = [
 /* the frost seal at the north end of the Heart, and where the Wyrm lies coiled before it */
 export const FROST_SEAL = glacierPoint(0, -24);
 export const WYRM_HOME = glacierPoint(0, -13);
+/* the wall of ice between the Heart and the Keeper's Vault: it opens for each hero once they have woken the seal */
+export const VAULT_WALL = (() => {
+  const [x, z] = glacierPoint(0, -28.3);
+  return { x, z, width: 14, quest: "ulf_seal" };
+})();
+/* where Maelis waits in the vault */
+export const MAELIS_HOME = glacierPoint(0, -35);
+
+/** Is (x, z) in the Keeper's Vault? */
+export const inVault = (x, z) => glacierRoomAt(x, z) === "vault";
 
 /* the monsters' own spots, in glacier coordinates: SPAWNS in data.js has as many of each */
 const SPOTS = {
@@ -128,6 +140,7 @@ const SPOTS = {
     [11, 21],
   ],
   rime_wyrm: [[0, -13]],
+  maelis: [[0, -35]],
 };
 
 /** The spot in the world of the glacier monster with world id `<key>#<n>`, with a little play; null for others. */
@@ -138,7 +151,7 @@ export function glacierSpotFor(key, id) {
   }
   const index = Number(String(id).split("#")[1]) || 0;
   const [x, z] = glacierPoint(...spots[index % spots.length]);
-  const jitter = key === "rime_wyrm" ? 0 : 0.5;
+  const jitter = key === "rime_wyrm" || key === "maelis" ? 0 : 0.5;
   return [x + (Math.random() - 0.5) * jitter, z + (Math.random() - 0.5) * jitter];
 }
 

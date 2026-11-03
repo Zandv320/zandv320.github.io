@@ -607,6 +607,28 @@ export const ITEMS = {
     description:
       "White scales rimmed with blue, each the size of a coin, sewn onto fur. Snow will not settle on it.",
   },
+  /* Saga III: torn from Maelis's coat in the Keeper's Vault */
+  crossed_crown_pendant: {
+    name: "Crossed-crown pendant",
+    slot: "necklace",
+    hp: 140,
+    sp: 80,
+    bonus: { str: 2, int: 2 },
+    price: 7000,
+    icon: "📿",
+    description:
+      "A crown struck through, in black iron, on a broken chain. Maelis wore it under his coat. It is warm, and it should not be.",
+  },
+  sledge_wolf: {
+    name: "Sledge wolf",
+    slot: "mount",
+    mount: "sledge_wolf",
+    level: 44,
+    price: 5000,
+    icon: "🐺",
+    description:
+      "A frost wolf of Rimeholt's sledge teams, under a saddle and Rimeholt's red. It runs across ice as if it were a meadow, and it has never once felt the cold.",
+  },
   troll_gold: {
     name: "Troll gold",
     price: 160,
@@ -3001,6 +3023,37 @@ export const GLACIER_MONSTERS = {
 };
 Object.assign(MONSTERS, GLACIER_MONSTERS);
 
+/* Maelis himself, in the Keeper's Vault behind the frost seal (rules/glacier.js, Saga III chapter 17): a boss of
+   runes, smoke and the stolen hearts (rules/bosses.js). He never dies: beaten, he breaks off and is gone in his
+   smoke (`flees`), and comes back to the vault for the next hero who wakes the seal. */
+export const VAULT_MONSTERS = {
+  maelis: {
+    name: "Maelis the Unbound",
+    title: "Breaker of Seals",
+    level: 45,
+    hp: 30000,
+    atk: 258,
+    exp: 14000,
+    zeny: [2000, 3000],
+    speed: 3.2,
+    aggressive: true,
+    range: 7,
+    aggroRange: 9,
+    projectile: 0xb49cff,
+    humanoid: { outfit: "armor2", hair: "black", weapon: "runestaff1", scale: 1.15 },
+    tint: 0xc8b8ff,
+    flees: true,
+    lines: {
+      enrage: "You are stronger than they told me. It changes nothing.",
+      flee: "Enough! Keep your little heart, hero. I already hold two, and the next ones are not under any ice.",
+    },
+    area: "vault",
+    respawn: [90, 140],
+    loot: { crossed_crown_pendant: 0.35, grand_potion: 1 },
+  },
+};
+Object.assign(MONSTERS, VAULT_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -3138,6 +3191,7 @@ export const SPAWNS = [
   { monster: "glacier_golem", count: 4 },
   { monster: "rime_ooze", count: 5 },
   { monster: "rime_wyrm", count: 1 },
+  { monster: "maelis", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

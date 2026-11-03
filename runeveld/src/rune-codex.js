@@ -10,6 +10,8 @@ import { escapeHtml } from "./ui.js";
 
 /* each rune's sign, drawn in a 40 × 40 box */
 const GLYPHS = {
+  frost:
+    '<path class="glyph-line" d="M20 3v34M5.3 11.5l29.4 17M5.3 28.5l29.4 -17" stroke-width="3"/><path class="glyph-line" d="M16 6l4 4l4 -4M16 34l4 -4l4 4M6 16l5 -1l-1.5 -5M34 24l-5 1l1.5 5M6 24l5 1l-1.5 5M34 16l-5 -1l1.5 -5" stroke-width="2"/><circle class="glyph-core" cx="20" cy="20" r="3"/>',
   moon: '<path d="M25 6a15 15 0 1 0 9 26a12 12 0 1 1 -9 -26z"/><circle cx="29" cy="11" r="1.6"/><circle cx="33" cy="18" r="1"/>',
   ember:
     '<path d="M20 4c2 7 10 10 10 20a10 10 0 0 1 -20 0c0 -5 3 -8 5 -11c0 4 2 6 4 6c-1 -5 -1 -10 1 -15z"/><path class="glyph-core" d="M20 20c1 3 4 5 4 8a4 4 0 0 1 -8 0c0 -3 3 -5 4 -8z"/>',

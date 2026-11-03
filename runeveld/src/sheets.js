@@ -247,6 +247,9 @@ export const SHEETS = {
      over the rider's legs */
   fox_mount: mountSheet("fox_mount"),
   fox_mount_front: mountSheet("fox_mount_front"),
+  /* the sledge wolf of Rimeholt: the same, from the frost wolf */
+  wolf_mount: mountSheet("wolf_mount"),
+  wolf_mount_front: mountSheet("wolf_mount_front"),
   crypt_thrall: cryptSheet("crypt_thrall", {}),
   grave_witch: cryptSheet("grave_witch", { height: 28 }),
   crimson_count: cryptSheet("crimson_count", { height: 27 }),

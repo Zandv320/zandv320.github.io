@@ -17,13 +17,15 @@ import {
   MIRRORS,
   FROST_SEAL,
   WYRM_HOME,
+  VAULT_WALL,
   glacierFloorCells,
   glacierPoint,
   glacierRoomAt,
   inGlacier,
 } from "./rules/glacier.js";
 import { GLACIER_DIG } from "./rules/frostmarch.js";
-import { player, game, ADMIN } from "./game-state.js";
+import { QUESTS } from "./rules/quests.js";
+import { player, game, ADMIN, playEffect } from "./game-state.js";
 import { scene, camera, cameraState, shakeCamera } from "./world.js";
 import { burst } from "./particles.js";
 import { groundRing } from "./skill-effects.js";
@@ -41,6 +43,8 @@ const USE_DISTANCE = 2.6;
 
 const state = {
   walls: [],
+  seal: null,
+  isWaking: false,
   lights: [],
   objects: [],
   doors: [],
@@ -281,6 +285,7 @@ export function buildGlacier({ prop, place, obstacles, pending }) {
   /* the Heart: the frost seal on its altar, four stones with frost runes round it */
   place(builders.altar(), ...FROST_SEAL, { radius: 1.6 });
   const glyph = frostGlyph();
+  const runes = [];
   for (let k = 0; k < 4; k++) {
     const angle = Math.PI / 4 + (k / 4) * Math.PI * 2;
     const x = FROST_SEAL[0] + Math.cos(angle) * 2.8;
@@ -291,8 +296,34 @@ export function buildGlacier({ prop, place, obstacles, pending }) {
     scene.add(stone);
     obstacles.push({ x, z, r: 0.5 });
     stone.userData.glyph.material.color.set(0x5a8ab0);
+    runes.push({ x, z, face: stone.userData.glyph });
   }
-  addLight(...FROST_SEAL, { y: 1.2, radius: 7, strength: 0.5 });
+  state.seal = { runes, light: addLight(...FROST_SEAL, { y: 1.2, radius: 7, strength: 0.5 }) };
+  /* behind the altar, the wall of dark ice to the Keeper's Vault: the seal's waking opens it, not fire */
+  const vault = frozenDoor(VAULT_WALL.width);
+  vault.scale.y = 1.25;
+  vault.position.set(VAULT_WALL.x, 0, VAULT_WALL.z);
+  scene.add(vault);
+  const vaultObstacle = {
+    x: VAULT_WALL.x,
+    z: VAULT_WALL.z,
+    r: VAULT_WALL.width / 2,
+    box: { hw: VAULT_WALL.width / 2, hd: 0.45, cos: 1, sin: 0 },
+    isDoor: true,
+  };
+  obstacles.push(vaultObstacle);
+  state.doors.push({
+    id: "vault",
+    ...VAULT_WALL,
+    mesh: vault,
+    obstacle: vaultObstacle,
+    isOpen: false,
+    melt: 0,
+    bySeal: true,
+  });
+  addObject("door", VAULT_WALL.x, VAULT_WALL.z + 0.8, [VAULT_WALL.width, 3.6, 1], {
+    door: state.doors.at(-1),
+  });
   /* the Heart's own pale light, over the coil of the Wyrm */
   addLight(...WYRM_HOME, { y: 3, radius: 12, color: [200, 232, 255], strength: 0.75 });
   for (const [x, z] of [
@@ -353,7 +384,11 @@ function useObject(object) {
       travel([GLACIER_DIG[0], GLACIER_DIG[1] + 1.5], "The White Waste", "Wind, and the sky again.");
       return;
     case "door":
-      if (!object.door.isOpen) {
+      if (!object.door.isOpen && object.door.bySeal) {
+        UI.systemMessage(
+          "The ice behind the altar is thick and dark, and something moves in it, slowly, like a shadow under a frozen lake.",
+        );
+      } else if (!object.door.isOpen) {
         UI.systemMessage(
           "A door of ice, a frost rune glowing in it. Hammers would only chip it. Ice that a seal made remembers one thing it fears: fire. (Put your Ember Rune on Q in the rune codex, U, then face the door and call it.)",
         );
@@ -363,9 +398,7 @@ function useObject(object) {
       lookInMirror(object.index);
       return;
     case "seal":
-      UI.systemMessage(
-        "Four stones with frost runes round the altar, their light low and blue. Under the ice of the altar something white pulses, slowly, like a heart.",
-      );
+      touchSeal();
       return;
   }
 }
@@ -377,7 +410,9 @@ const isQuestDone = (id) => player.quests?.[id]?.state === "done";
 /* the doors as the hero left them: open for good once the quest that passes them is done */
 function restoreProgress() {
   for (const door of state.doors) {
-    if (!door.isOpen && isQuestDone(door.quest)) {
+    /* the vault's wall stays open once the seal has woken, even before the hero has told Ulf */
+    const isWoken = door.bySeal && player.quests?.[door.quest]?.count > 0;
+    if (!door.isOpen && (isQuestDone(door.quest) || isWoken)) {
       openDoor(door, true);
     }
   }
@@ -399,7 +434,7 @@ function openDoor(door, isRestoring) {
     a door of ice in it melts. */
 export function meltWithFire(x, z, dx, dz, range, angle) {
   for (const door of state.doors) {
-    if (door.isOpen) {
+    if (door.isOpen || door.bySeal) {
       continue;
     }
     const mx = door.x - x;
@@ -451,6 +486,74 @@ function updateDoors(dt) {
       door.mesh.visible = false;
     }
   }
+}
+
+/* ---------------------------------------------------------------- the frost seal ----------------------------- */
+
+/* Is the frost seal's ritual waiting for this hero? */
+const isRitualWaiting = () =>
+  Object.entries(player.quests || {}).some(([id, record]) => {
+    const goal = QUESTS[id]?.goal;
+    return (
+      record.state === "active" && !record.count && goal?.type === "ritual" && goal.seal === "frost"
+    );
+  });
+
+/* the hero lays a hand on the altar: the four frost runes wake one by one, and the ice behind it breaks open */
+function touchSeal() {
+  if (state.isWaking) {
+    return;
+  }
+  if (!isRitualWaiting()) {
+    UI.systemMessage(
+      (player.runes || []).includes("frost")
+        ? "The frost runes glow under your hand. The seal holds, and its heart is still in the ice."
+        : "Four stones with frost runes round the altar, their light low and blue. Under the ice of the altar something white pulses, slowly, like a heart.",
+    );
+    return;
+  }
+  state.isWaking = true;
+  player.destination = null;
+  UI.systemMessage(
+    "You lay your hand on the altar. The cold runs up your arm like water, and the frost runes stir.",
+  );
+  state.seal.runes.forEach((rune, k) => {
+    setTimeout(
+      () => {
+        rune.face.material.color.set(0xffffff);
+        groundRing(rune.x, rune.z, ICE_BLUE, 0.2, 1.2, 0.7, 0.9);
+        playEffect("frost", rune.x, rune.z, { size: 1.6, grounded: true });
+        burst(rune.x, 1, rune.z, { color: 0xdff2fc, count: 12, speed: 3 });
+        sfx.chime();
+        UI.systemMessage(["The first rune wakes.", "The second.", "The third.", "The fourth."][k]);
+      },
+      600 + k * 700,
+    );
+  });
+  setTimeout(
+    () => {
+      groundRing(FROST_SEAL[0], FROST_SEAL[1], ICE_BLUE, 0.5, 7, 1.2, 0.9);
+      state.seal.light.base = 1;
+      shakeCamera(0.3, 0.8);
+      sfx.bossSlam();
+      UI.announce(
+        "The Frost Seal",
+        "The runes wake, and the wall of ice behind the altar splits from top to bottom.",
+      );
+      const vault = state.doors.find((door) => door.bySeal);
+      openDoor(vault, false);
+      game.questLog.onRitual("frost");
+      state.isWaking = false;
+    },
+    600 + 4 * 700 + 400,
+  );
+  setTimeout(
+    () => {
+      sfx.bossIntro();
+      UI.announce("Maelis", "Thank you, little hero. That wall has kept me waiting for a month.");
+    },
+    600 + 4 * 700 + 3200,
+  );
 }
 
 /* ---------------------------------------------------------------- the mirrors -------------------------------- */

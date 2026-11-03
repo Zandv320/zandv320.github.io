@@ -18,7 +18,7 @@ import {
 import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/saltmere.js";
 import { inEmberIsles, inCinderCamp, emberSpotFor } from "./rules/ember.js";
 import { inForge, forgeSpotFor } from "./rules/forge.js";
-import { inGlacier, glacierSpotFor } from "./rules/glacier.js";
+import { inGlacier, inVault, glacierSpotFor } from "./rules/glacier.js";
 import { inTidecrown, inTideCamp, byCrownmere, tidecrownSpotFor } from "./rules/tidecrown.js";
 import { inFrostmarch, isFrostSafe, frostSpotFor } from "./rules/frostmarch.js";
 
@@ -34,6 +34,7 @@ export {
   inCinderCamp,
   inForge,
   inGlacier,
+  inVault,
   inTidecrown,
   inTideCamp,
   byCrownmere,
@@ -272,7 +273,8 @@ export const keepsHome = (spec) =>
   spec.area === "forge" ||
   spec.area === "tidecrown" ||
   spec.area === "frostmarch" ||
-  spec.area === "glacier";
+  spec.area === "glacier" ||
+  spec.area === "vault";
 
 /** Is (x, z) inside the world (the fields, the forest, the vale, the Northroad, Saltmere, the Ember Isles, the
     crypt or the forge), with a margin to the edge? The crypt and the forge need none: their walls are obstacles. */

@@ -104,6 +104,17 @@ export const BOSSES = {
     summon: { below: 0.6, helper: "rime_ooze", count: 2 },
     enrage: { below: 0.25, cooldownFactor: 0.7, damageFactor: 1.25 },
   },
+  /* the Keeper's Vault behind the frost seal (rules/glacier.js): Maelis himself. He steps through smoke to behind
+     whoever he fights, lays runes on the ground under them, and uses the hearts he has taken: a lane of the First
+     Flame's fire, and from 60 % a wave of the tide. When he falls he does not die: he breaks off and is gone
+     (data.js `flees`) */
+  maelis: {
+    smoke: { every: [8, 11], below: 1 },
+    runeTraps: { every: [6, 8], windup: 1.3, radius: 1.8, damage: 1.5, range: 14 },
+    blast: { every: [10, 13], windup: 1.6, length: 16, width: 3, damage: 2.4 },
+    surge: { below: 0.6, every: [11, 14], windup: 1.7, length: 16, width: 4, damage: 2.4 },
+    enrage: { below: 0.3, cooldownFactor: 0.7, damageFactor: 1.2 },
+  },
   /* the Forge of the First Flame (rules/forge.js): pools of lava burst under whoever stands still, a blast of fire
      runs down a lane until a pillar stops it, and below 30 % his shell of cooled stone breaks: faster, harder */
   ember_warden: {
@@ -523,6 +534,17 @@ export function bossTick(monster, target, dt, ctx) {
     return true;
   }
 
+  /* a wave of the tide (Maelis, with the tide seal's heart): like the blast, a lane until something stops it */
+  if (rules.surge && !rules.surface && health <= rules.surge.below && now >= state.nextSurge) {
+    const surge = rules.surge;
+    state.nextSurge =
+      now + surge.windup + randomBetween(surge.every) * rageFactors(monster).cooldown;
+    monster.faceX = dx / distance;
+    monster.faceZ = dz / distance;
+    laneMove(monster, "surge", monster.x, monster.z, dx / distance, dz / distance, surge, now, ctx);
+    return true;
+  }
+
   /* the planks: with the target on the bridge, a stretch of the deck under it shows red, then breaks */
   const isOverGorge =
     onBridge(target.x, target.z) && target.z < GORGE.south && target.z > GORGE.north;
@@ -570,7 +592,8 @@ export function bossTick(monster, target, dt, ctx) {
     (rules.bloodRunes && "bloodRunes") ||
     (rules.lavaPools && "lavaPools") ||
     (rules.icicles && "icicles") ||
-    (rules.hail && "hail");
+    (rules.hail && "hail") ||
+    (rules.runeTraps && "runeTraps");
   if (volleyName && now >= state.nextRunes) {
     const volley = rules[volleyName];
     const spots = ctx.players
