@@ -101,6 +101,14 @@ const THEMES = {
     beat: 0.8,
     voices: { pad: 0.8, arp: 0.25, bell: 0.3, drone: 1 },
   },
+  /* the Frostmarch: slow and high, bells over a cold drone, like breath in the air */
+  frostmarch: {
+    root: 82.41, // E
+    scale: DORIAN,
+    chords: [0, 5, 3, 0],
+    beat: 1.05,
+    voices: { pad: 0.6, arp: 0.2, bell: 0.9, drone: 0.7 },
+  },
   deep: {
     root: 49, // G, low
     scale: MINOR,

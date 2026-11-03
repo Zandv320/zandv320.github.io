@@ -103,6 +103,16 @@ import {
   tidecrownClickables,
   clickTidecrownObject,
 } from "./tidecrown.js";
+import {
+  FROSTMARCH,
+  RIMEHOLT,
+  RIME_FIRE,
+  PASS,
+  inFrostmarch,
+  onBayIce,
+  onRimeJetty,
+} from "./rules/frostmarch.js";
+import { buildFrostmarch, updateFrostmarch } from "./frostmarch.js";
 import { CRYPT_ROOMS, cryptRoomAt } from "./rules/crypt.js";
 import { FORGE_ROOMS, forgeRoomAt } from "./rules/forge.js";
 import {
@@ -306,6 +316,7 @@ const ZONES = {
     TIDECROWN.name,
     "An island that was not there a week ago. The sea has not let go of it.",
   ],
+  frostmarch: [FROSTMARCH.name, "Snow to the edge of the world, and a village that keeps a fire."],
   /* the stairs announce the crypt themselves (crypt.js), the Gate of Kharos the forge (forge.js) */
   crypt: null,
   forge: null,
@@ -333,6 +344,7 @@ async function init() {
     buildSea,
     buildEmberIsles,
     buildTidecrown,
+    buildFrostmarch,
     buildForge,
     buildLoginScene,
     buildWaterFeatures,
@@ -459,6 +471,8 @@ function createWorldLights() {
     /* the camp fires in Cinder Cove and on Tidecrown */
     [...inCamp(2, 2), 1],
     [TIDE_CAMP.x, TIDE_CAMP.z, 0.9],
+    /* and before the longhouse in Rimeholt */
+    [...RIME_FIRE, 1.1],
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
@@ -2208,6 +2222,9 @@ function zoneAt(x, z) {
   if (inTidecrown(x, z, -1)) {
     return "tidecrown";
   }
+  if (inFrostmarch(x, z, -1)) {
+    return "frostmarch";
+  }
   if (inGreySea(x, z)) {
     return "sea";
   }
@@ -2227,6 +2244,19 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "frostmarch") {
+    if (
+      Math.hypot(x - RIMEHOLT.x, z - RIMEHOLT.z) < RIMEHOLT.radius ||
+      onBayIce(x, z, -2) ||
+      onRimeJetty(x, z, -2)
+    ) {
+      return RIMEHOLT.name;
+    }
+    if (Math.hypot(x - PASS.x, z - PASS.z) < 24) {
+      return "The Snowed Pass";
+    }
+    return x < RIMEHOLT.x ? "The West Shore" : "The East Shore";
+  }
   if (zone === "tidecrown") {
     if (
       Math.hypot(x - TIDE_CAMP.x, z - TIDE_CAMP.z) < TIDE_CAMP.radius + 6 ||
@@ -2260,6 +2290,9 @@ function zoneLabel(zone, x, z) {
     }
     if (Math.hypot(x - TIDECROWN.x, z - TIDECROWN.z) < TIDECROWN.radius + 30) {
       return TIDECROWN.name;
+    }
+    if (z < -1340) {
+      return z < -1475 ? "Off " + RIMEHOLT.name : "The Floes";
     }
     const islet = ISLETS.find((isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius + 18);
     return islet ? islet.name : "The Grey Sea";
@@ -2354,6 +2387,7 @@ function stepWorld(dt, time) {
   updateSea(dt, time);
   updateEmberIsles(dt, time);
   updateTidecrown(dt, time);
+  updateFrostmarch(dt, time);
   updateWildlife(dt, time);
   updateChase(dt);
   if (game.host) {

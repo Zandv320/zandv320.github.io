@@ -35,6 +35,7 @@ import { EMBER_LANDS } from "./ember.js";
 import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
 import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./landmarks.js";
 import { TIDE_SEAL } from "./tidecrown.js";
+import { PASS_FOOT } from "./frostmarch.js";
 
 const BELLOWS_HALL = forgePoint(24, 18);
 
@@ -70,6 +71,7 @@ export const CHAPTERS = {
   11: "The Forge of the First Flame",
   12: "The Grey Sea Rises",
   13: "Ice That Does Not Melt",
+  14: "Rimeholt",
 };
 
 export const QUESTS = {
@@ -1427,8 +1429,6 @@ export const QUESTS = {
   aldemar_north: {
     giver: "King Aldemar",
     turnIn: "Captain Mara Holt",
-    final: true,
-    ending: "saga3_ch13",
     where: { monster: "rune_construct" },
     hint: "Rune constructs still guard Maelis' old warehouses in Saltmere's east quarter and the mole to the lighthouse. Their shards fall when they break. Bring them to Captain Mara Holt at the east pier.",
     chapter: 13,
@@ -1444,6 +1444,117 @@ export const QUESTS = {
       "Six shards, and Ysolde has already been at my bow with her chisels. Runes all along the stem, glowing blue: she swears the ice will slide off like water off a gull. Eyvind will lead the way, he knows the floes. As soon as the charts are ready, we sail north. Further north than anyone from Saltmere has ever been. Ha!",
     goal: { type: "item", item: "rune_shard", count: 6 },
     reward: { exp: 12000, zeny: 7000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  /* ---- Saga III, chapter 14: Rimeholt (rules/frostmarch.js) ---- */
+  mara_floes: {
+    giver: "Captain Mara Holt",
+    turnIn: "Elder Sigrun",
+    tutorial: "frostmarch",
+    hint: "Click the Gull's Promise at the east pier to take the helm. Sail north past the Ember Isles and Tidecrown until the floes: a wide lane runs straight north between them to the frozen bay of Rimeholt. Moor in the golden circle by the jetty, then find Elder Sigrun by the fire before the longhouse.",
+    chapter: 14,
+    main: true,
+    title: "Through the floes",
+    level: 38,
+    after: "aldemar_north",
+    intro:
+      "Eyvind stays here to mend his ship, but his mate took their longboat home last night to tell them we are coming. Eyvind says the floes start where the charts stop, and that there is a lane through them, straight north, if you hold your nerve. So you take her. I will be in my cabin with my leg up, listening to the ice scrape my new runes. Moor at the jetty and find their elder. Sigrun. He says she does not smile.",
+    progressText:
+      "Sail the Gull's Promise north through the floes to Rimeholt, moor at the jetty, and speak to Elder Sigrun by the fire.",
+    completeText:
+      "The King of the south sends a hero, and Eyvind's mate came ahead to say his skipper vouches for you with his whole crew. Very well. You may sleep by our fire. Whether Rimeholt trusts you is another matter: that, you will have to earn. Sit. Get warm. And do not touch the fish on the racks.",
+    goal: { type: "visit", npc: "Elder Sigrun" },
+    reward: { exp: 13000, zeny: 6000, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  sigrun_trust: {
+    giver: "Elder Sigrun",
+    where: { npc: "Ice-fisher Olav" },
+    hint: "Click a hole in the ice of the bay to fish there; any rod will do. Rimefish bite at all of them but the two by the jetty.",
+    chapter: 14,
+    main: true,
+    title: "Southerners",
+    level: 39,
+    after: "mara_floes",
+    intro:
+      "In Rimeholt nobody eats who does not fish. The holes in the bay are open, the rimefish are under them, and Olav will laugh at you, which is how he says hello. Five rimefish, for the pot. Then we will talk about why you are really here.",
+    progressText: "Catch five rimefish through the holes in the ice of the bay.",
+    completeText:
+      "Five. Small ones, but five. Tove, put them on. ... Now. Eyvind says your king wants the glacier's heart before a man in black takes it. Brann has something to say about that, and about the wolves. Listen to him.",
+    goal: { type: "gather", item: "rimefish", count: 5 },
+    reward: { exp: 14000, zeny: 6500, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  brann_wolves: {
+    giver: "Hunter Brann",
+    where: { monster: "frost_wolf" },
+    hint: "The frost wolves roam the snowfields east of Rimeholt, between the shore and the ridge. Take the trodden way east out of the village.",
+    chapter: 14,
+    main: true,
+    title: "The sledge-masters",
+    level: 39,
+    after: "sigrun_trust",
+    intro:
+      "Without dogs there are no sledges, and without sledges nobody gets to the glacier, not you, not me, not your man in black. The frost wolves have taken four of our dogs this month. They never came this far down before. Ten of them, east of the village, and our dogs sleep again.",
+    progressText: "Defeat ten frost wolves on the snowfields east of Rimeholt.",
+    completeText:
+      "Ten. You fight like somebody who has never been cold, and you are learning. Keep the pelts, Ragna will make you something that does not look southern. Now, about my brother.",
+    goal: { type: "kill", monster: "frost_wolf", count: 10 },
+    reward: { exp: 16000, zeny: 7500, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  sigrun_hunters: {
+    giver: "Elder Sigrun",
+    final: true,
+    ending: "saga3_ch14",
+    where: { npc: "Elder Sigrun" },
+    hint: "Follow the trodden way north from the fire, up through the pines, to the pass in the ridge. Look for tracks at the foot of the drift.",
+    chapter: 14,
+    main: true,
+    title: "The hunting party",
+    level: 40,
+    after: "brann_wolves",
+    intro:
+      "Brann's brother took six hunters through the pass to the White Waste, eleven days ago. They should have been back in five. Then the snow came down and closed the pass behind them. Go up to the drift. Tell me what the snow says.",
+    progressText:
+      "Follow the way north to the snowed pass and look at the tracks at the foot of the drift. Then go back to Elder Sigrun.",
+    completeText:
+      "Boots. Our hunters' boots, going in, and none coming out. And over them, newer, many more: long strides, and threads of purple caught on the rocks. Purple. Eyvind's mate told me what your man in black calls his people. The Unbound. They went through before the snow, and my hunters went after them. When the wind turns, we dig. And you come with us.",
+    goal: {
+      type: "reach",
+      x: PASS_FOOT[0],
+      z: PASS_FOOT[1],
+      r: 6,
+      label: "the tracks at the snowed pass",
+    },
+    reward: { exp: 18000, zeny: 9000, items: [{ id: "grand_potion", count: 6 }] },
+  },
+  /* side quests in Rimeholt */
+  ragna_pelts: {
+    giver: "Furrier Ragna",
+    where: { monster: "frost_wolf" },
+    hint: "Frost wolves on the snowfields east of the village drop their pelts.",
+    title: "Pelts for the cold",
+    level: 39,
+    after: "mara_floes",
+    intro:
+      "You came north in that? Bring me eight frost wolf pelts and I will make you a cloak that keeps the wind off the ice out. You will thank me on the glacier. Everybody does.",
+    progressText: "Bring Furrier Ragna eight frost pelts.",
+    completeText:
+      "There. Wolf on the outside, sheep on the inside, and my stitches in between. Now you look like somebody who will live.",
+    goal: { type: "item", item: "frost_pelt", count: 8 },
+    reward: { exp: 9000, zeny: 2000, items: [{ id: "frostfur_cloak", count: 1 }] },
+  },
+  olav_slimes: {
+    giver: "Ice-fisher Olav",
+    where: { monster: "ice_slime" },
+    hint: "The ice slimes creep over the shore west of Rimeholt. Take the trodden way west out of the village.",
+    title: "Slime on the ice",
+    level: 39,
+    after: "mara_floes",
+    intro:
+      "Blue slimes, west along the shore. They creep out over the ice at night and freeze our holes shut from below. Eight of them, and I will teach you where the big rimefish sleep.",
+    progressText: "Destroy eight ice slimes on the shore west of Rimeholt.",
+    completeText:
+      "Eight! The holes stay open now. Here: the big ones sleep under the jetty, where the ice is thin. Do not tell Tove.",
+    goal: { type: "kill", monster: "ice_slime", count: 8 },
+    reward: { exp: 12000, zeny: 5000, items: [{ id: "grand_potion", count: 4 }] },
   },
   tamsin_nets: {
     giver: "Fisherman Tamsin",

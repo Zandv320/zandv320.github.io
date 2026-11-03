@@ -212,6 +212,8 @@ export const RESOURCES = {
     node: "herb_starpetal",
   },
   minnow: { profession: "fishing", level: 1, exp: 10, time: 4, respawn: 15, node: "ripples" },
+  /* under the ice of Rimeholt's bay (Saga III): anyone with a rod catches them */
+  rimefish: { profession: "fishing", level: 1, exp: 16, time: 4.5, respawn: 18, node: "ripples" },
   trout: { profession: "fishing", level: 12, exp: 28, time: 4.5, respawn: 20, node: "ripples" },
   pike: { profession: "fishing", level: 22, exp: 48, time: 5, respawn: 25, node: "ripples" },
   golden_carp: {

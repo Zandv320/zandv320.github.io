@@ -697,6 +697,121 @@ const VILLAGERS = [
     ],
     after: { netta_trout: ["Your trout sold before noon. Come back with more!"] },
   },
+  /* ---- Rimeholt, on the Frostmarch (Saga III, chapter 14): a fishing village on stilts round a frozen bay ---- */
+  {
+    name: "Elder Sigrun",
+    hair: "silver",
+    outfit: "armor1",
+    tunicColor: "blue",
+    route: [
+      [-141, -1528.5],
+      [-137.5, -1527.6],
+    ],
+    speed: 0.5,
+    pause: [8, 16],
+    lines: [
+      "Southerners. Every hundred winters one comes north, and every time the ice breaks after.",
+      "Sit by the fire. Not too close. Your boots will steam and you will think you are warm.",
+      "The glacier has been talking at night. Ice should not talk.",
+    ],
+    night: [
+      "Look up. The sky burns green on cold nights. My mother said it was the dead, keeping watch.",
+    ],
+    after: {
+      mara_floes: ["You may stay, southerner. The fire does not ask where you were born."],
+      sigrun_hunters: [
+        "Purple cloaks in the snow, and my hunters gone. When the wind turns, we dig out the pass.",
+      ],
+    },
+  },
+  {
+    name: "Hunter Brann",
+    hair: "brown",
+    outfit: "armor2",
+    weapon: "sword2",
+    route: [
+      [-118, -1526],
+      [-113.5, -1528.5],
+    ],
+    speed: 0.8,
+    pause: [5, 10],
+    lines: [
+      "The frost wolves used to keep to the glacier. Now they come down to the dog pens.",
+      "Walk where the snow is trodden. Fresh snow hides the cracks.",
+      "My brother led the hunting party. He knows the White Waste better than anyone.",
+    ],
+    after: { brann_wolves: ["The dogs sleep again. So do I, nearly."] },
+  },
+  {
+    name: "Furrier Ragna",
+    hair: "red",
+    outfit: "armor2",
+    route: [
+      [-100.5, -1520.6],
+      [-103.2, -1521.4],
+    ],
+    speed: 0.6,
+    pause: [6, 12],
+    shop: "rimeholt_furrier",
+    lines: [
+      "You are shivering. That is your body asking for a better coat.",
+      "Frost wolf fur. Nothing else keeps out the wind off the ice.",
+      "Southern cloaks! Pretty. Thin as a promise.",
+    ],
+    after: { ragna_pelts: ["Wearing my cloak? Good. Now you look like somebody who will live."] },
+  },
+  {
+    name: "Ice-fisher Olav",
+    hair: "blond",
+    outfit: "armor1",
+    tunicColor: "grey",
+    headgear: "cap",
+    route: [[-147, -1500.9]],
+    facing: [0, 1],
+    work: "fish",
+    workFacing: [0, 1],
+    lines: [
+      "Shh. Rimefish hear everything. Even thinking.",
+      "Keep the hole open, keep the line moving, keep your fingers. In that order.",
+      "Something big swam under the ice last week. It was not a fish.",
+    ],
+    after: {
+      olav_slimes: ["The ice is mine again. The slimes can go and be cold somewhere else."],
+    },
+  },
+  {
+    name: "Tove",
+    hair: "blond",
+    outfit: "armor1",
+    tunicColor: "red",
+    route: [
+      [-144, -1519.5],
+      [-136, -1518.5],
+      [-138.5, -1514.5],
+    ],
+    loop: true,
+    speed: 1.7,
+    pause: [1, 4],
+    lines: [
+      "Are you really from the south? Is it true the snow there is green?",
+      "I can hold my breath under the ice for ten counts. Olav says I must not.",
+      "Grandmother Sigrun is not angry. She just looks like that.",
+    ],
+    night: ["I am not cold. I am just shaking."],
+  },
+  {
+    name: "Old Halla",
+    hair: "silver",
+    outfit: "armor1",
+    tunicColor: "cream",
+    route: [[-142.8, -1523.6]],
+    facing: [1, 0],
+    lines: [
+      "When I was a girl the glacier was a day's walk off. Now it is half a day.",
+      "The old kings came north once. They left a crown of stones in the ice and never came back for it.",
+      "Rimefish, raw, frozen, sliced thin. You will learn to like it or you will learn to be hungry.",
+    ],
+  },
   /* Saga III: the skipper from Rimeholt, by his frosted ship along the west pier */
   {
     name: "Skipper Eyvind",

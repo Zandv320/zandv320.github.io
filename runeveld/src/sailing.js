@@ -15,6 +15,8 @@ import { setMooredGullVisible } from "./saltmere.js";
 import { setCoveGullVisible } from "./ember.js";
 import { setTideGullVisible } from "./tidecrown.js";
 import { TIDECROWN } from "./rules/tidecrown.js";
+import { setRimeGullVisible } from "./frostmarch.js";
+import { RIME_BERTH } from "./rules/frostmarch.js";
 import { createWake } from "./sea.js";
 import { sfx } from "./audio.js";
 import * as UI from "./ui.js";
@@ -28,6 +30,8 @@ let wake = null;
 let bumpedAt = 0;
 let toldIsles = false;
 let toldTidecrown = false;
+let toldFloes = false;
+let toldRimeholt = false;
 
 /* the Gull's Promise as she sails: the same build as at her berth */
 const gullsPromise = () =>
@@ -57,6 +61,7 @@ function showMooredGulls(isVisible) {
   setMooredGullVisible(isVisible);
   setCoveGullVisible(isVisible);
   setTideGullVisible(isVisible);
+  setRimeGullVisible(isVisible);
 }
 
 /* the golden circles on the water round every berth, shown while sailing: sail into one to moor */
@@ -196,9 +201,19 @@ export function updateSailing(dt) {
     let turn = goal - state.heading;
     turn = Math.atan2(Math.sin(turn), Math.cos(turn));
     const rate = SAILING.turnRate * (0.35 + (0.65 * state.speed) / SAILING.speed);
-    const step = Math.sign(turn) * Math.min(Math.abs(turn), rate * dt);
+    /* when the near way round is blocked (a jetty on one side, ice on the other), she comes round the far way,
+       and keeps to it until she points nearly where she should */
+    if (state.sweep && Math.abs(turn) < 0.6) {
+      state.sweep = 0;
+    }
+    const step = state.sweep
+      ? state.sweep * rate * dt
+      : Math.sign(turn) * Math.min(Math.abs(turn), rate * dt);
     if (canSail(state.x, state.z, state.heading + step)) {
       state.heading += step;
+    } else if (!state.sweep && canSail(state.x, state.z, state.heading - step)) {
+      state.sweep = -Math.sign(step);
+      state.heading -= step;
     }
     state.turning = Math.sign(turn) * Math.min(1, Math.abs(turn));
     /* the sails fill more the closer the bow is to the course */
@@ -277,6 +292,20 @@ export function updateSailing(dt) {
     toldTidecrown = true;
     UI.systemMessage(
       "Tidecrown: a ring of land round a grey lake, its rocks still wet from the deep. A pier stands on the south coast: sail into the golden circle beside it to moor.",
+    );
+  }
+
+  /* the floes, and the frozen coast behind them: the same, the first time she comes near */
+  if (!toldFloes && state.z < -1350) {
+    toldFloes = true;
+    UI.systemMessage(
+      "Ice ahead: floes drifting as far as the eye goes. Steer between them; a lane runs straight north to Rimeholt.",
+    );
+  }
+  if (!toldRimeholt && Math.hypot(state.x - RIME_BERTH.x, state.z - RIME_BERTH.z) < 60) {
+    toldRimeholt = true;
+    UI.systemMessage(
+      "Rimeholt: houses on stilts round a frozen bay, smoke going straight up into the cold. Sail into the golden circle by the jetty to moor.",
     );
   }
 

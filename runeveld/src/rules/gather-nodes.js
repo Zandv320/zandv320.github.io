@@ -5,6 +5,7 @@
    its trees away from the nodes and ponds (forest.js). */
 import { RESOURCES } from "./professions.js";
 import { cryptPoint } from "./crypt.js";
+import { ICE_HOLES } from "./frostmarch.js";
 
 /* New ponds for fishing: [x, z, radius]. The world builds them (world.js, forest.js). */
 export const FISHING_PONDS = [
@@ -80,6 +81,12 @@ const NODE_TABLE = [
   ["sea_pier_middle", "trout", -156, -398],
   ["sea_quay_east", "pike", -139, -388.5],
   ["sea_pier_east", "golden_carp", -131, -400],
+  /* the holes in the ice of Rimeholt's bay (rules/frostmarch.js ICE_HOLES) */
+  ...["rimefish", "rimefish", "rimefish", "pike", "rimefish", "golden_carp"].map((resource, k) => [
+    `rime_hole_${k + 1}`,
+    resource,
+    ...ICE_HOLES[k],
+  ]),
 ];
 
 /* {id, resource, x, z, profession} by id */

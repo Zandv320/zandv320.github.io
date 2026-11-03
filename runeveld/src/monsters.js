@@ -27,6 +27,8 @@ import {
   inForge,
   inTidecrown,
   inTideCamp,
+  inFrostmarch,
+  inRimeholt,
   byCrownmere,
 } from "./regions.js";
 import { isStorm } from "./rules/weather.js";
@@ -311,6 +313,9 @@ function isHuntingGround(spec, x, z) {
   if (spec.area === "tidecrown") {
     return inTidecrown(x, z);
   }
+  if (spec.area === "frostmarch") {
+    return inFrostmarch(x, z);
+  }
   if (spec.area === "crownmere") {
     return byCrownmere(x, z);
   }
@@ -318,13 +323,14 @@ function isHuntingGround(spec, x, z) {
 }
 
 /** Safe places: inside the palisade of Runeveld, inside the walls of Aurelia, Saltmere but for its warehouses, and
-    the camps in Cinder Cove and on Tidecrown. */
+    the camps in Cinder Cove and on Tidecrown, and Rimeholt. */
 export const isSafe = (x, z) =>
   inVillage(x, z) ||
   inCapital(x, z) ||
   isSaltmereSafe(x, z) ||
   inCinderCamp(x, z) ||
-  inTideCamp(x, z);
+  inTideCamp(x, z) ||
+  inRimeholt(x, z);
 
 /** A monster died: death animation, smoke, and (on the host) the respawn timer. */
 export function monsterDied(monster) {

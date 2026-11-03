@@ -22,6 +22,16 @@ import {
 } from "./rules/ember.js";
 import { VALE, FOREST, CAPITAL, NORTHROAD } from "./regions.js";
 import {
+  FROSTMARCH,
+  frostCoast,
+  SHORE,
+  ridgeZ,
+  RIME_BAY,
+  RIME_JETTY,
+  RIMEHOLT,
+  FLOES,
+} from "./rules/frostmarch.js";
+import {
   TIDECROWN,
   TIDECROWN_REACH,
   tidecrownCoast,
@@ -31,11 +41,11 @@ import {
   CAUSEWAY,
 } from "./rules/tidecrown.js";
 
-/* The bounds of the world map: from the mainland's southern fields to beyond the Ember Isles. */
+/* The bounds of the world map: from the mainland's southern fields to the shore of the Frostmarch. */
 export const WORLD = {
   x0: GREY_SEA.x0 - 40,
   x1: GREY_SEA.x1 + 40,
-  z0: Math.floor(EMBER_ISLES.z - EMBER_REACH - 25),
+  z0: -1690,
   z1: 110,
 };
 
@@ -48,6 +58,13 @@ export const ZOOM_REGIONS = [
     x1: EMBER_ISLES.x + EMBER_REACH + 8,
     z0: EMBER_ISLES.z - EMBER_REACH - 8,
     z1: EMBER_ISLES.z + EMBER_REACH + 8,
+  },
+  {
+    name: FROSTMARCH.name,
+    x0: SHORE.west - 20,
+    x1: SHORE.east + 20,
+    z0: -1680,
+    z1: -1440,
   },
 ];
 
@@ -127,6 +144,7 @@ export function drawWorldBase(g, scale, worldX0, worldZ0, ratio) {
   }
   drawEmberIsles(g, view);
   drawTidecrown(g, view);
+  drawFrostmarch(g, view);
 }
 
 /* ---------- the ocean: deeper further out, a faint grid, waves drawn in the old way ---------- */
@@ -190,10 +208,94 @@ function isNearLand(x, z, margin) {
       return true;
     }
   }
+  if (FLOES.some((floe) => Math.hypot(x - floe.x, z - floe.z) < floe.radius + margin)) {
+    return true;
+  }
   return (
     Math.hypot(x - EMBER_ISLES.x, z - EMBER_ISLES.z) < EMBER_REACH + margin ||
-    Math.hypot(x - TIDECROWN.x, z - TIDECROWN.z) < TIDECROWN_REACH + margin
+    Math.hypot(x - TIDECROWN.x, z - TIDECROWN.z) < TIDECROWN_REACH + margin ||
+    Math.hypot(x - FROSTMARCH.x, z - FROSTMARCH.z) <
+      frostCoast(Math.atan2(x - FROSTMARCH.x, z - FROSTMARCH.z)) + margin
   );
+}
+
+/* The Frostmarch: a long snowy coast, the floes off it, the frozen bay of Rimeholt, the ridge and the woods beyond */
+function drawFrostmarch(g, { px, pz, scale, ratio }) {
+  const coast = (grow, color) => {
+    g.fillStyle = color;
+    g.beginPath();
+    for (let k = 0; k <= 720; k++) {
+      const angle = (k / 720) * Math.PI * 2;
+      const r = frostCoast(angle) + grow;
+      const x = px(FROSTMARCH.x + Math.sin(angle) * r);
+      const z = pz(FROSTMARCH.z + Math.cos(angle) * r);
+      if (k === 0) {
+        g.moveTo(x, z);
+      } else {
+        g.lineTo(x, z);
+      }
+    }
+    g.closePath();
+    g.fill();
+  };
+  coast(10, PALETTE.shallow);
+  coast(4, PALETTE.shoal);
+  coast(0, "#9aa6b2");
+  coast(-2.5, "#e8eef4");
+  /* the floes */
+  g.fillStyle = "#eef4f8";
+  for (const floe of FLOES) {
+    g.beginPath();
+    g.arc(px(floe.x), pz(floe.z), Math.max(1.2 * ratio, floe.radius * scale), 0, Math.PI * 2);
+    g.fill();
+  }
+  /* the frozen bay and the jetty */
+  g.fillStyle = "#bcdcee";
+  g.beginPath();
+  g.ellipse(
+    px(RIME_BAY.x),
+    pz(RIME_BAY.z),
+    RIME_BAY.rx * scale,
+    RIME_BAY.rz * scale,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  g.fill();
+  g.fillStyle = "#6b4a2a";
+  g.fillRect(
+    px(RIME_JETTY.x - RIME_JETTY.halfWidth),
+    pz(RIME_JETTY.north),
+    Math.max(1, RIME_JETTY.halfWidth * 2 * scale),
+    (RIME_JETTY.south - RIME_JETTY.north) * scale,
+  );
+  /* the woods beyond the ridge, then the ridge itself */
+  g.fillStyle = "#3e5a52";
+  g.beginPath();
+  g.moveTo(px(SHORE.west - 30), pz(ridgeZ(SHORE.west - 30) - 4));
+  for (let x = SHORE.west - 30; x <= SHORE.east + 30; x += 6) {
+    g.lineTo(px(x), pz(ridgeZ(x) - 4));
+  }
+  g.lineTo(px(SHORE.east + 30), pz(-1700));
+  g.lineTo(px(SHORE.west - 30), pz(-1700));
+  g.closePath();
+  g.fill();
+  g.strokeStyle = "#5e6878";
+  g.lineWidth = Math.max(2 * ratio, 4 * scale);
+  g.beginPath();
+  for (let x = SHORE.west - 20; x <= SHORE.east + 20; x += 4) {
+    if (x === SHORE.west - 20) {
+      g.moveTo(px(x), pz(ridgeZ(x) - 1));
+    } else {
+      g.lineTo(px(x), pz(ridgeZ(x) - 1));
+    }
+  }
+  g.stroke();
+  /* Rimeholt's houses, as dark marks round the bay */
+  g.fillStyle = "#5a4636";
+  g.beginPath();
+  g.arc(px(RIMEHOLT.x), pz(RIMEHOLT.z - 8), Math.max(2 * ratio, 3 * scale), 0, Math.PI * 2);
+  g.fill();
 }
 
 /* Tidecrown: sand and salt-worn grass round the grey lake, the crown of rocks, the causeway and the seal's islet */
@@ -672,7 +774,10 @@ const NAMES = [
     z: land.center[1] + (land === EMBER_LANDS.gate ? -10 : 0),
     size: 6,
   })),
-  { text: "Uncharted waters", x: WORLD.x0 + 110, z: WORLD.z0 + 40, size: 9, region: true },
+  { text: FROSTMARCH.name, x: -60, z: -1615, size: 12, region: true },
+  { text: RIMEHOLT.name, x: RIMEHOLT.x, z: RIMEHOLT.z - 20, size: 7, major: true },
+  { text: "The Floes", x: 40, z: -1395, size: 7 },
+  { text: "Uncharted waters", x: -365, z: -1545, size: 9, region: true },
 ];
 
 /** The names on the map, over everything else: sized with the map, never too small to read or too big. */

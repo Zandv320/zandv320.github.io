@@ -140,12 +140,21 @@ export const GUIDE_TOPICS = {
       "The story goes on at once in <b>Saga III: The Long Winter</b>. Selwyn has news from Saltmere: a ship has come in from the far north.",
     ],
   },
-  saga3_ch13: {
-    title: "Chapter 13 complete",
-    icons: ["rune_shard", "ui_quests"],
+  frostmarch: {
+    title: "The Frostmarch",
+    icons: ["ui_map", "ui_quests"],
     body: [
-      "The frost seal is breaking by itself, and the King has sent you north to reach its heart before Maelis does. The <b>Gull's Promise</b> has a warded bow, and Skipper Eyvind will show her the way through the floes.",
-      "The charts of the far north are still being drawn: the voyage to <b>Rimeholt</b> and the Frostmarch is the next part of <b>Saga III: The Long Winter</b>.",
+      "North of the Ember Isles and Tidecrown the sea fills with <b>floes</b>. Steer between them: a wide lane runs straight north to <b>Rimeholt</b>, on the frozen bay of the Frostmarch's coast.",
+      "Rimeholt is safe: no monster comes near its fire, and if you fall on the shore you wake beside it. You can walk out on the bay's ice, and <b>fish through the holes</b> in it with any rod.",
+      "Furrier Ragna sells furs against the cold. The <b>frost wolves</b> hunt the snowfields east of the village; <b>ice slimes</b> creep over the shore to the west.",
+    ],
+  },
+  saga3_ch14: {
+    title: "Chapter 14 complete",
+    icons: ["frost_pelt", "ui_quests"],
+    body: [
+      "Rimeholt has taken you in. But the hunting party never came back from the White Waste, and the Unbound went through the pass before the snow closed it.",
+      "The pass is still snowed shut. When the wind turns, Rimeholt digs it out: the <b>White Waste</b>, beyond the ridge, is the next part of <b>Saga III: The Long Winter</b>.",
     ],
   },
 };
@@ -165,4 +174,5 @@ export const GUIDE_ORDER = [
   "riding",
   "northroad",
   "sailing",
+  "frostmarch",
 ];

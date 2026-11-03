@@ -13,11 +13,12 @@ import { player, clickables } from "./game-state.js";
 import { BERTH, HULL, ROCKS, ISLETS, EMBER_ISLES, isletReach } from "./rules/sea.js";
 import { emberShore } from "./rules/ember.js";
 import { TIDECROWN, tidecrownCoast } from "./rules/tidecrown.js";
+import { FROSTMARCH, frostCoast, RIME_BAY, FLOES } from "./rules/frostmarch.js";
 import { sfx } from "./audio.js";
 import { IS_PHONE } from "./sprites.js";
 
 /* the sea reaches this far: past the Grey Sea's edges (rules/sea.js), so it fills the view wherever a ship sails */
-const SEA = { x0: -560, x1: 260, z1: SALTMERE.z0, z0: -1500 };
+const SEA = { x0: -560, x1: 260, z1: SALTMERE.z0, z0: -1660 };
 /* the quay wall goes down this far below the land */
 const QUAY_DEPTH = 1.8;
 
@@ -657,6 +658,18 @@ const SHALLOWS = [
   ),
   ...coastCircles(EMBER_ISLES.x, EMBER_ISLES.z, emberShore, 96, 14),
   ...coastCircles(TIDECROWN.x, TIDECROWN.z, tidecrownCoast, 48, 10),
+  /* the Frostmarch: only its south coast faces the sea */
+  ...coastCircles(FROSTMARCH.x, FROSTMARCH.z, frostCoast, 360, 12).filter(([, z]) => z > SEA.z0),
+  /* the floes off it, and the frozen bay before Rimeholt, along its seaward edge */
+  ...FLOES.map((floe) => [floe.x, floe.z, floe.radius * 0.7]),
+  ...Array.from({ length: 15 }, (_, k) => {
+    const t = (k / 14) * Math.PI;
+    return [
+      RIME_BAY.x + Math.cos(t) * RIME_BAY.rx * 0.85,
+      RIME_BAY.z + Math.sin(t) * RIME_BAY.rz * 0.7,
+      5,
+    ];
+  }),
 ];
 
 /* The water of the sea, drawn on the GPU in the game's pixels: clear turquoise over the shallows along the quay and

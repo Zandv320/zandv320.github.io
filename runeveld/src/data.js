@@ -502,6 +502,28 @@ export const ITEMS = {
       "A sliver of blue stone that glows where a rune was cut in it. Maelis' constructs are made of them.",
   },
   /* Saga III: the far north */
+  frost_pelt: {
+    name: "Frost pelt",
+    price: 90,
+    icon: "🐺",
+    stack: 99,
+    description:
+      "White fur so thick a hand vanishes in it. In Rimeholt they say a frost wolf never feels the cold, only the hunger.",
+  },
+  frostfur_cloak: {
+    name: "Frostfur cloak",
+    slot: "cloak",
+    layer: "cloak6",
+    look: { color: "#e4edf5", amount: 0.65 },
+    level: 38,
+    def: 11,
+    hp: 150,
+    bonus: { vit: 2 },
+    price: 5200,
+    icon: "🧥",
+    description:
+      "Frost wolf fur on the outside, sheep's wool on the inside, and Ragna's stitches holding it all together. The wind off the ice just gives up.",
+  },
   everfrost_shard: {
     name: "Everfrost shard",
     price: 0,
@@ -1609,6 +1631,14 @@ export const ITEMS = {
     stack: 99,
     description: "Rare and bright. Alchemists pay well.",
   },
+  rimefish: {
+    name: "Rimefish",
+    price: 12,
+    icon: "🐟",
+    stack: 99,
+    description:
+      "A pale little fish from under the ice, with frost-blue fins. The people of Rimeholt eat it raw, frozen, sliced thin.",
+  },
   minnow: {
     name: "Minnow",
     price: 5,
@@ -1924,6 +1954,13 @@ export const SHOPS = {
       "sea_boots",
       "harbor_charm",
     ],
+  },
+  /* Rimeholt, on the Frostmarch: Ragna the furrier */
+  rimeholt_furrier: {
+    name: "Furrier Ragna",
+    greeting:
+      '"Furs for southerners. You will want the thickest one, whatever you think now. Everybody does by the second night."',
+    items: ["frostfur_cloak", "fur_mantle", "grand_potion", "orange_potion", "cooked_pike"],
   },
   /* the camp in Cinder Cove: what is left in Tamsin's boat */
   cinder_cove: {
@@ -2694,6 +2731,47 @@ export const TIDECROWN_MONSTERS = {
 };
 Object.assign(MONSTERS, TIDECROWN_MONSTERS);
 
+/* The Frostmarch (rules/frostmarch.js, Saga III chapter 14): frost wolves on the snowfields east of Rimeholt and
+   ice slimes on the shore to the west, each on its own spot (area 'frostmarch') */
+export const FROST_MONSTERS = {
+  frost_wolf: {
+    name: "Frost Wolf",
+    level: 38,
+    hp: 5600,
+    atk: 196,
+    exp: 1300,
+    zeny: [130, 230],
+    speed: 3.8,
+    aggressive: true,
+    range: 1.4,
+    aggroRange: 6.5,
+    scale: 1.3,
+    area: "frostmarch",
+    respawn: [35, 55],
+    night: { aggroFactor: 1.5, speedFactor: 1.1 },
+    materials: { frost_pelt: 0.6, raw_meat: 0.3 },
+    loot: { grand_potion: 0.1, fur_mantle: 0.02, frostfur_cloak: 0.008 },
+  },
+  ice_slime: {
+    name: "Ice Slime",
+    level: 39,
+    hp: 6200,
+    atk: 204,
+    exp: 1400,
+    zeny: [140, 240],
+    speed: 2.1,
+    aggressive: true,
+    range: 1.4,
+    aggroRange: 6,
+    scale: 1.35,
+    area: "frostmarch",
+    respawn: [35, 55],
+    materials: { arcane_dust: 0.3 },
+    loot: { grand_potion: 0.12, orange_potion: 0.15 },
+  },
+};
+Object.assign(MONSTERS, FROST_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -2821,6 +2899,9 @@ export const SPAWNS = [
   { monster: "drowned_sailor", count: 10 },
   { monster: "tide_ooze", count: 8 },
   { monster: "grey_leviathan", count: 1 },
+  /* the Frostmarch: one per spot in rules/frostmarch.js */
+  { monster: "frost_wolf", count: 12 },
+  { monster: "ice_slime", count: 10 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

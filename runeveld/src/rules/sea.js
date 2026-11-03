@@ -5,11 +5,12 @@
 import { SALTMERE, PIERS, MOLE } from "./saltmere.js";
 import { EMBER_ISLES, COVE_BERTH, COVE_LANDING, nearEmberLand } from "./ember.js";
 import { TIDECROWN, TIDE_BERTH, TIDE_LANDING, nearTidecrown } from "./tidecrown.js";
+import { FROSTMARCH, RIME_BERTH, RIME_LANDING, nearFrostmarch, nearFloe } from "./frostmarch.js";
 
-export { EMBER_ISLES, TIDECROWN };
+export { EMBER_ISLES, TIDECROWN, FROSTMARCH };
 
-/* where a ship may sail: the sea north of Saltmere's quay */
-export const GREY_SEA = { name: "The Grey Sea", x0: -430, x1: 130, z0: -1440, z1: SALTMERE.z0 };
+/* where a ship may sail: the sea north of Saltmere's quay, up to the coast of the Frostmarch (Saga III) */
+export const GREY_SEA = { name: "The Grey Sea", x0: -430, x1: 130, z0: -1560, z1: SALTMERE.z0 };
 
 /* how a ship handles: top speed (units per second), how fast it gathers way and loses it, and how fast it turns
    (radians per second at full speed; slower when slow) */
@@ -28,6 +29,7 @@ export const BERTHS = [
   { ...BERTH, id: "saltmere", landing: BERTH_LANDING },
   { ...COVE_BERTH, id: "cinder_cove", landing: COVE_LANDING },
   { ...TIDE_BERTH, id: "tidecrown", landing: TIDE_LANDING },
+  { ...RIME_BERTH, id: "rimeholt", landing: RIME_LANDING },
 ];
 
 /* sea stacks: [x, z, radius] */
@@ -108,7 +110,12 @@ export function isOpenWater(x, z, room = HULL.radius) {
       return false;
     }
   }
-  return !nearEmberLand(x, z, room) && !nearTidecrown(x, z, room);
+  return (
+    !nearEmberLand(x, z, room) &&
+    !nearTidecrown(x, z, room) &&
+    !nearFrostmarch(x, z, room) &&
+    !nearFloe(x, z, room)
+  );
 }
 
 /** The three points along a hull at (x, z) with this heading (bow to (-sin, -cos)), for running into things. */

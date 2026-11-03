@@ -29,6 +29,8 @@ import {
   inForge,
   inTidecrown,
   inTideCamp,
+  inFrostmarch,
+  inRimeholt,
   byCrownmere,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
@@ -67,14 +69,15 @@ const KNOCKBACK_SCALE = 0.6;
 
 const randomBetween = (min, max) => min + Math.random() * (max - min);
 const inVillage = (x, z) => Math.abs(x) < VILLAGE_HALF_SIZE && Math.abs(z) < VILLAGE_HALF_SIZE;
-/* players in the village, the capital, Saltmere (but for its warehouses) or the camps in Cinder Cove and on
-   Tidecrown cannot be attacked */
+/* players in the village, the capital, Saltmere (but for its warehouses), the camps in Cinder Cove and on Tidecrown
+   or Rimeholt cannot be attacked */
 const isSafe = (x, z) =>
   inVillage(x, z) ||
   inCapital(x, z) ||
   isSaltmereSafe(x, z) ||
   inCinderCamp(x, z) ||
-  inTideCamp(x, z);
+  inTideCamp(x, z) ||
+  inRimeholt(x, z);
 const nowSeconds = () => Date.now() / 1000;
 
 function gameHour() {
@@ -261,6 +264,9 @@ export function createSimulation(emit) {
     }
     if (spec.area === "tidecrown") {
       return inTidecrown(x, z);
+    }
+    if (spec.area === "frostmarch") {
+      return inFrostmarch(x, z);
     }
     if (spec.area === "crownmere") {
       return byCrownmere(x, z);

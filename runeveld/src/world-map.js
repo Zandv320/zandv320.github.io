@@ -47,6 +47,18 @@ import {
   TIDE_PIER,
 } from "./rules/tidecrown.js";
 import {
+  FROSTMARCH,
+  frostCoast,
+  onFrostLand,
+  SHORE,
+  ridgeZ,
+  RIME_BAY,
+  RIME_JETTY,
+  RIME_HOUSES,
+  RIMEHOLT,
+  FLOES,
+} from "./rules/frostmarch.js";
+import {
   WORLD,
   ZOOM_REGIONS,
   mainlandCoast,
@@ -1025,6 +1037,11 @@ export function createWorldMap(deps) {
     );
 
   const regionNameAt = (x, z) => {
+    if (onFrostLand(x, z, -6)) {
+      return Math.hypot(x - RIMEHOLT.x, z - RIMEHOLT.z) < RIMEHOLT.radius + 10
+        ? RIMEHOLT.name
+        : FROSTMARCH.name;
+    }
     if (z < mainlandCoast(x)) {
       const islet = ISLETS.find(
         (isle) => Math.hypot(x - isle.x, z - isle.z) < isle.radius * 1.5 + 4,
@@ -1339,6 +1356,72 @@ export function createWorldMap(deps) {
       TIDE_PIER.halfWidth * 2 * scale,
       (TIDE_PIER.south - TIDE_PIER.north) * scale,
     );
+    /* the Frostmarch: its snowy shore, the woods beyond the ridge, the frozen bay, the jetty, Rimeholt's houses, and
+       the floes off the coast */
+    if (worldZ0 + minimap.height / scale < -1290) {
+      drawFrostmarchDetail(context, px, pz, scale, circle);
+    }
+  }
+
+  function drawFrostmarchDetail(context, px, pz, scale, circle) {
+    context.fillStyle = "#e8eef4";
+    context.beginPath();
+    for (let k = 0; k <= 720; k++) {
+      const angle = (k / 720) * Math.PI * 2;
+      const r = frostCoast(angle);
+      const x = px(FROSTMARCH.x + Math.sin(angle) * r);
+      const z = pz(FROSTMARCH.z + Math.cos(angle) * r);
+      if (k === 0) {
+        context.moveTo(x, z);
+      } else {
+        context.lineTo(x, z);
+      }
+    }
+    context.fill();
+    context.fillStyle = "#3e5a52";
+    context.beginPath();
+    context.moveTo(px(SHORE.west - 40), pz(ridgeZ(SHORE.west - 40) - 2));
+    for (let x = SHORE.west - 40; x <= SHORE.east + 40; x += 4) {
+      context.lineTo(px(x), pz(ridgeZ(x) - 2));
+    }
+    context.lineTo(px(SHORE.east + 40), pz(-1760));
+    context.lineTo(px(SHORE.west - 40), pz(-1760));
+    context.fill();
+    context.fillStyle = "#bcdcee";
+    context.beginPath();
+    context.ellipse(
+      px(RIME_BAY.x),
+      pz(RIME_BAY.z),
+      RIME_BAY.rx * scale,
+      RIME_BAY.rz * scale,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+    context.fillStyle = "#8a6a42";
+    context.fillRect(
+      px(RIME_JETTY.x - RIME_JETTY.halfWidth),
+      pz(RIME_JETTY.north),
+      RIME_JETTY.halfWidth * 2 * scale,
+      (RIME_JETTY.south - RIME_JETTY.north) * scale,
+    );
+    for (const house of RIME_HOUSES) {
+      context.save();
+      context.translate(px(house.x), pz(house.z));
+      context.rotate(-house.rotation);
+      context.fillStyle = "#6a5444";
+      context.fillRect(
+        (-house.w / 2) * scale,
+        (-house.d / 2) * scale,
+        house.w * scale,
+        house.d * scale,
+      );
+      context.restore();
+    }
+    for (const floe of FLOES) {
+      circle(floe.x, floe.z, floe.radius, "#eef4f8");
+    }
   }
 
   return {

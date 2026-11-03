@@ -12,6 +12,7 @@ import { stormStrength, setStormOverride } from "./rules/weather.js";
 import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
 import { CAMP_WAKE, MOUNT_KHAROS, EMBER_LANDS } from "./rules/ember.js";
 import { TIDE_WAKE, CAUSEWAY } from "./rules/tidecrown.js";
+import { RIME_WAKE, PASS_FOOT } from "./rules/frostmarch.js";
 import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
 import { PROFESSIONS, MAX_PROFESSION_LEVEL, professionLevel } from "./rules/professions.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
@@ -507,6 +508,10 @@ export function createAdminPanel(ctx) {
       ["Heart of Kharos", () => ctx.teleport(...forgePoint(0, -2))],
       ["Tidecrown", () => ctx.teleport(...TIDE_WAKE)],
       ["Crownmere", () => ctx.teleport(CAUSEWAY.x, CAUSEWAY.south - 1)],
+      ["Rimeholt", () => ctx.teleport(...RIME_WAKE)],
+      ["East shore", () => ctx.teleport(-50, -1560)],
+      ["West shore", () => ctx.teleport(-240, -1555)],
+      ["Snowed pass", () => ctx.teleport(...PASS_FOOT)],
     ]);
 
     /* ---------- monsters ---------- */

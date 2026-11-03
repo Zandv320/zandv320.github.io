@@ -41,6 +41,7 @@ import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
 import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
 import { inEmberIsles, CAMP_WAKE } from "./rules/ember.js";
 import { inTidecrown, TIDE_WAKE } from "./rules/tidecrown.js";
+import { inFrostmarch, RIME_WAKE } from "./rules/frostmarch.js";
 import { inGreySea } from "./rules/sea.js";
 import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
@@ -659,6 +660,9 @@ function respawn() {
   } else if (inTidecrown(player.x, player.z, -2) && player.quests.edda_rising?.state === "done") {
     /* on Tidecrown: by the fire at the landing, once Keeper Ondine has found them */
     [player.x, player.z] = TIDE_WAKE;
+  } else if (inFrostmarch(player.x, player.z, -2) && player.quests.mara_floes?.state === "done") {
+    /* on the Frostmarch: by the fire in Rimeholt, once Elder Sigrun has let them stay */
+    [player.x, player.z] = RIME_WAKE;
   } else if (
     (inSaltmere(player.x, player.z, -2) ||
       inGreySea(player.x, player.z) ||

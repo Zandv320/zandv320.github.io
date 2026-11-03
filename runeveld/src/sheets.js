@@ -240,6 +240,8 @@ export const SHEETS = {
      larger */
   stag: animalSheet("stag", { walk: 6, attack: 6, scale: 1 / 15, height: 26 }),
   wolf: animalSheet("wolf", { walk: 6, attack: 6, scale: 1 / 13, height: 22 }),
+  /* the Frostmarch (tools/build_frost.py): the wolf in white and ice blue */
+  frost_wolf: animalSheet("frost_wolf", { walk: 6, attack: 6, scale: 1 / 13, height: 22 }),
   dire_boar: animalSheet("dire_boar", { walk: 6, attack: 5, scale: 1 / 11, height: 26 }),
   /* the riding fox (tools/build_mounts.py): the fox twice as large and saddled, under the rider, and what of it is
      over the rider's legs */
@@ -268,6 +270,16 @@ export const SHEETS = {
     idle: 6,
     walk: 8,
     attack: 9,
+    hurt: 5,
+    death: 10,
+    feet: 24,
+    height: 20,
+  }),
+  /* the Frostmarch: the slime pack's first slime, as clear blue ice */
+  ice_slime: cryptSheet("ice_slime", {
+    idle: 6,
+    walk: 8,
+    attack: 10,
     hurt: 5,
     death: 10,
     feet: 24,
