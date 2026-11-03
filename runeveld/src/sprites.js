@@ -288,6 +288,8 @@ export class Sprite2D {
     this.punch = 0;
     this.crouch = 0;
     this.crouchTarget = 0;
+    /* what hangs below the feet is tipped towards the camera (foldBelowFeet); not for a rider in a saddle */
+    this.fold = true;
     /* the tool of a work animation: a mesh in front of the body and one behind it */
     this.tool = null;
     /* called with (animation name, frame) whenever the frame changes */
@@ -461,6 +463,26 @@ export class Sprite2D {
     }
   }
 
+  /** Tips what hangs below the feet towards the camera (on the ground), or leaves it straight (in a saddle: there
+      is no ground under the feet, and a tipped blade would come out in front of the mount). */
+  setFold(isOn) {
+    if (this.fold === isOn) {
+      return;
+    }
+    this.fold = isOn;
+    const data = this.geometry.userData;
+    data.foldTilt = null;
+    if (!isOn) {
+      data.feetZ = 0;
+      data.bottomZ = 0;
+      const position = this.geometry.attributes.position;
+      for (let k = 0; k < 4; k++) {
+        position.setZ(k, 0);
+      }
+      position.needsUpdate = true;
+    }
+  }
+
   /* Squeeze the legs: 0 standing, 1 legs gone. Moves the hip row of the geometry down and the top along with it;
      the feet row and what hangs below it stay. */
   _applyCrouch() {
@@ -608,7 +630,9 @@ export class Sprite2D {
     }
     this.group.rotation.y = cameraState.yaw;
     const tiltX = -cameraState.tilt * LEAN;
-    foldBelowFeet(this.geometry, cameraState.tilt);
+    if (this.fold) {
+      foldBelowFeet(this.geometry, cameraState.tilt);
+    }
     this.mesh.rotation.x = tiltX;
     for (const layer of this.layers) {
       layer.mesh.rotation.x = tiltX;

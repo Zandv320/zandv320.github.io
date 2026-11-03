@@ -120,6 +120,8 @@ function updateRig(rig, rider, x, z, isMoving, dt) {
     z + right[2] * across + up[2] * height + toward[2] * RIDER_AHEAD,
   );
   sortHands(rider, true, tilt);
+  /* nothing tipped towards the camera below a rider's feet: their blade hangs down the animal's flank */
+  rider.setFold(false);
 }
 
 /* a puff and a sound where the mount comes or goes */
@@ -174,6 +176,7 @@ export function dismount(message = "") {
     heroRig = null;
   }
   sortHands(player.sprite, false, cameraState.tilt);
+  player.sprite.setFold(true);
   if (player.sprite.shadow) {
     player.sprite.shadow.visible = true;
   }
@@ -230,6 +233,7 @@ export function removePeerMount(peer) {
     removeRig(peer.rig);
     peer.rig = null;
     sortHands(peer.sprite, false, cameraState.tilt);
+    peer.sprite.setFold(true);
   }
 }
 
