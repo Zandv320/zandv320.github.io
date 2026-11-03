@@ -10,6 +10,7 @@ import { isNight } from "./daylight.js";
 import { inCamp } from "./rules/ember.js";
 import { forgePoint } from "./rules/forge.js";
 import { TIDE_CAMP } from "./rules/tidecrown.js";
+import { SHELTER } from "./rules/frostmarch.js";
 import { HAIR_SOURCE, HAIR_PALETTES, TUNIC_SOURCE, TUNIC_PALETTES, recolor } from "./appearance.js";
 
 /* The villagers: looks, route (list of points; a single point = standing still) and lines.
@@ -740,7 +741,10 @@ const VILLAGERS = [
       "Walk where the snow is trodden. Fresh snow hides the cracks.",
       "My brother led the hunting party. He knows the White Waste better than anyone.",
     ],
-    after: { brann_wolves: ["The dogs sleep again. So do I, nearly."] },
+    after: {
+      brann_wolves: ["The dogs sleep again. So do I, nearly."],
+      brann_pass: ["My brother is alive. Tell him he owes me a dog."],
+    },
   },
   {
     name: "Furrier Ragna",
@@ -811,6 +815,42 @@ const VILLAGERS = [
       "The old kings came north once. They left a crown of stones in the ice and never came back for it.",
       "Rimefish, raw, frozen, sliced thin. You will learn to like it or you will learn to be hungry.",
     ],
+  },
+  /* ---- Torvald's shelter in the White Waste (Saga III, chapter 15): the hunters who came back ---- */
+  {
+    name: "Hunter Torvald",
+    hair: "brown",
+    outfit: "armor2",
+    weapon: "sword2",
+    route: [
+      [SHELTER.x - 1.5, SHELTER.z + 3.2],
+      [SHELTER.x + 2.5, SHELTER.z + 3.8],
+    ],
+    speed: 0.6,
+    pause: [7, 14],
+    lines: [
+      "Six of us went in after the purple cloaks. Five of us are sitting at this fire.",
+      "The trolls never came this far south. Somebody is paying them.",
+      "Keep near a fire. The Waste does not kill you all at once; it waits.",
+    ],
+    night: ["Listen. That is not the wind. That is the glacier, moving."],
+    after: {
+      torvald_hrimgar: ["Hrimgar is dead and the road to the glacier is open. Gods help us."],
+    },
+  },
+  {
+    name: "Hunter Kari",
+    hair: "blond",
+    outfit: "armor1",
+    tunicColor: "green",
+    route: [[SHELTER.x + 4.6, SHELTER.z - 0.6]],
+    facing: [-1, 0],
+    lines: [
+      "I lost my bow out on Stillwater when the whiteout came. I nearly lost my feet too.",
+      "The ice on the lake sings at night. Do not answer it.",
+      "Torvald says I talk too much when I am cold. I am always cold.",
+    ],
+    after: { kari_bow: ["My bow! I will name my next arrow after you."] },
   },
   /* Saga III: the skipper from Rimeholt, by his frosted ship along the west pier */
   {

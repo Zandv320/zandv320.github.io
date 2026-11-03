@@ -27,7 +27,26 @@ import {
   inIceHole,
   inFrostmarch,
   FLOES,
+  RIDGE_DEPTH,
+  PASS_CUT,
+  WHITE_WASTE,
+  glacierZ,
+  GLACIER_DIG,
+  SHELTER,
+  UNBOUND_CAMP,
+  CAMP_BRAZIERS,
+  TROLL_HOLLOW,
+  HRIMGAR_HOME,
+  onStillwater,
+  LOST_BOW,
+  KARI_HOLLOW,
+  WARM_FIRES,
+  WARM_REACH,
+  inWhiteWaste,
+  warmthDistance,
 } from "./rules/frostmarch.js";
+import { whiteoutStrength } from "./rules/weather.js";
+import * as UI from "./ui.js";
 import { HULL } from "./rules/sea.js";
 import { WATER_Y } from "./rules/saltmere.js";
 import { applyGroundFilter, addShadowCatcher, scene, cameraState } from "./world.js";
@@ -51,8 +70,10 @@ export function buildFrostmarch({ prop, place, pending, seededRandom, obstacles 
   buildVillage({ prop, place, pending, random, obstacles });
   buildRidge(random, obstacles);
   buildScenery({ prop, pending, random });
+  buildWaste({ prop, place, pending, random, obstacles });
   buildFloes(random);
   buildSnowfall();
+  buildOverlays();
 }
 
 /* ---------- the ground: snow, trodden ways, shingle, the bay's ice; painted pixel by pixel, sixteen to a unit ---------- */
@@ -88,7 +109,7 @@ const FORGET_REACH = 190;
 const PAINT_BUDGET = IS_PHONE ? 4 : 7;
 const URGENT_BUDGET = IS_PHONE ? 20 : 30;
 /* the painted part: the shore and the bay */
-const PAINTED = { x0: SHORE.west - 12, x1: SHORE.east + 12, z0: -1664, z1: -1480 };
+const PAINTED = { x0: WHITE_WASTE.west - 12, x1: WHITE_WASTE.east + 12, z0: -1868, z1: -1480 };
 
 const SNOW_LIGHT = [247, 250, 253];
 const SNOW_SHADOW = [206, 221, 238];
@@ -173,11 +194,26 @@ function groundAt(x, z) {
     }
     return { kind: "ice", edge: bayShare(x, z) > 0.86 };
   }
+  if (onStillwater(x, z)) {
+    return { kind: "ice", edge: !onStillwater(x, z, -2.2) };
+  }
   const dx = x - FROSTMARCH.x;
   const dz = z - FROSTMARCH.z;
   const inland = frostCoast(Math.atan2(dx, dz)) - Math.hypot(dx, dz);
   if (inland < 0) {
     return null;
+  }
+  /* the foot of the glacier: old blue ice under a crust of snow */
+  if (z < glacierZ(x) + 5 + noise(x * 0.3, z * 0.3) * 2) {
+    return { kind: "glacier" };
+  }
+  /* where the trolls and the Unbound live, the snow is trampled grey */
+  const ragged = noise(x * 0.25, z * 0.25) * 5;
+  if (
+    Math.hypot(x - TROLL_HOLLOW.x, z - TROLL_HOLLOW.z) < TROLL_HOLLOW.radius - 5 + ragged ||
+    Math.hypot(x - UNBOUND_CAMP.x, z - UNBOUND_CAMP.z) < UNBOUND_CAMP.radius - 5 + ragged
+  ) {
+    return { kind: "trampled" };
   }
   const wobble = noise(x * 0.2, z * 0.2);
   if (inland < 1.3 + wobble * 1.6) {
@@ -197,6 +233,27 @@ function pixelColor(ground, gx, gy) {
       /* black water, a little lighter where it moves in the middle */
       const depth = noise(wx * 4, wz * 4);
       return depth > 0.7 ? [44, 74, 104] : [22, 40, 62];
+    }
+    case "glacier": {
+      /* pale old ice, crevasses of deep blue running through it, snow lying in the hollows */
+      if (noise(wx * 0.4, wz * 0.4) > 0.6) {
+        return snowPixel(wx, wz, speck, 0.3);
+      }
+      const crevasse = Math.abs(noise(wx * 0.35 + 3, wz * 0.9) - 0.5);
+      if (crevasse < 0.02) {
+        return [70, 120, 170];
+      }
+      return mix([176, 214, 236], [222, 240, 250], noise(wx * 0.6, wz * 0.6) * 0.8 + speck * 0.2);
+    }
+    case "trampled": {
+      /* snow trodden flat and grey, with grit, scraps and dark melt here and there */
+      if (speck < 0.03) {
+        return PACKED[3];
+      }
+      if (noise(wx * 0.5, wz * 0.5) > 0.68) {
+        return [138, 136, 140];
+      }
+      return noise(wx * 1.2, wz * 1.2) > 0.45 ? PACKED[1] : PACKED[0];
     }
     case "rim":
       /* chipped ice, heaped round the hole */
@@ -751,11 +808,11 @@ const ROCK_SNOW = new THREE.MeshLambertMaterial({ color: 0xf0f5fa, flatShading: 
 
 /* boulders along a line, as two instanced meshes (rock, and the snow on top) per stretch, so the stretches go into
    their cells (culling.js) */
-function boulders(points, random) {
+function boulders(points, random, rockMaterial = ROCK, capMaterial = ROCK_SNOW) {
   const rock = new THREE.DodecahedronGeometry(1, 0);
   const cap = new THREE.DodecahedronGeometry(1, 0);
-  const rocks = new THREE.InstancedMesh(rock, ROCK, points.length);
-  const caps = new THREE.InstancedMesh(cap, ROCK_SNOW, points.length);
+  const rocks = new THREE.InstancedMesh(rock, rockMaterial, points.length);
+  const caps = new THREE.InstancedMesh(cap, capMaterial, points.length);
   const spot = new THREE.Object3D();
   points.forEach(([x, z, size, height], k) => {
     spot.position.set(x, height * 0.35, z);
@@ -815,6 +872,7 @@ function buildRidge(random, obstacles) {
   /* the pass: a drift of snow from wall to wall, too deep to wade, with a marker pole stuck in it */
   /* a heap of mounds, the highest in the middle, blown up against the rocks on both sides */
   const driftMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f6fb, flatShading: true });
+  const drift = new THREE.Group();
   for (const [dx, dz, rx, height, rz] of [
     [0, -2.5, 4.5, 4.2, 4],
     [-4, -1, 3.6, 3.2, 3.4],
@@ -828,8 +886,9 @@ function buildRidge(random, obstacles) {
     mound.scale.set(rx, height, rz);
     mound.position.set(PASS.x + dx, -height * 0.25, PASS.z - 2 + dz);
     mound.rotation.y = dx;
-    scene.add(mound);
+    drift.add(mound);
   }
+  scene.add(drift);
   const pole = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 2.4, 0.12).translate(0, 1.2, 0),
     builders.material("wood_dark", 0.2, 2.4),
@@ -843,7 +902,57 @@ function buildRidge(random, obstacles) {
   );
   rag.position.set(PASS.x + 1.95, 3.35, PASS.z + 1.6);
   scene.add(rag);
-  obstacles.push({ x: PASS.x, z: PASS.z - 1, r: PASS.halfWidth + 1 });
+  /* the drift stops a hero until Rimeholt has dug it out for them (updatePass) */
+  const driftObstacle = { x: PASS.x, z: PASS.z - 1, r: PASS.halfWidth + 1 };
+  obstacles.push(driftObstacle);
+  /* and dug out: banks of snow thrown up along both walls, shovels left standing in them */
+  const cut = new THREE.Group();
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < 4; k++) {
+      const bank = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6), driftMaterial);
+      bank.scale.set(1.6, 1.6 + (k % 2) * 0.5, 2.6);
+      bank.position.set(
+        PASS.x + side * (PASS_CUT.halfWidth + 0.6),
+        -0.3,
+        PASS_CUT.south - 2 - k * ((PASS_CUT.south - PASS_CUT.north - 3) / 3),
+      );
+      cut.add(bank);
+    }
+  }
+  const shaft = builders.material("wood_dark", 0.1, 1.6);
+  for (const [dx, dz, lean] of [
+    [-PASS_CUT.halfWidth + 0.4, -3, 0.3],
+    [PASS_CUT.halfWidth - 0.5, -7, -0.25],
+  ]) {
+    const shovel = new THREE.Group();
+    const handle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 1.5, 0.07).translate(0, 0.75, 0),
+      shaft,
+    );
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.42, 0.04).translate(0, -0.12, 0),
+      builders.material("iron", 0.3, 0.4),
+    );
+    shovel.add(handle, blade);
+    shovel.position.set(PASS.x + dx, 0.3, PASS.z + dz);
+    shovel.rotation.z = lean;
+    cut.add(shovel);
+  }
+  cut.visible = false;
+  scene.add(cut);
+  state.pass = { drift, cut, obstacle: driftObstacle, isOpen: false };
+}
+
+/** The pass for this hero: open once they have read the hunters' tracks and Rimeholt has dug it out. */
+function updatePass() {
+  const isOpen = player.quests?.sigrun_hunters?.state === "done";
+  const pass = state.pass;
+  if (pass && pass.isOpen !== isOpen) {
+    pass.isOpen = isOpen;
+    pass.drift.visible = !isOpen;
+    pass.cut.visible = isOpen;
+    pass.obstacle.isOpen = isOpen;
+  }
 }
 
 /* ---------- pines, rocks and bushes in the snow ---------- */
@@ -880,12 +989,16 @@ function buildScenery({ prop, pending, random }) {
       );
     }
   }
-  /* a dark wall of pines over the ridge, the edge of the forests of the White Waste */
+  /* a dark wall of pines along the back of the ridge, the edge of the White Waste; the pass stays open */
   for (let x = SHORE.west - 30; x < SHORE.east + 30; x += 3.2) {
+    if (Math.abs(x - PASS.x) < PASS.halfWidth + 3) {
+      continue;
+    }
     for (const row of [0, 1]) {
-      const z = ridgeZ(x) - 9 - row * 4 - random() * 3;
+      const z = ridgeZ(x) - RIDGE_DEPTH + 2 - row * 3 - random() * 2;
       pending.push(
         prop(random() < 0.6 ? "pine_snow" : "pine2_snow", x + random() * 2, z, {
+          radius: 0.45,
           shadow: 1.4,
           scale: 1.1 + random() * 0.4,
         }),
@@ -1010,11 +1123,14 @@ function updateSnowfall(dt, time) {
   }
   const { x, z } = cameraState.target;
   flakes.position.set(x, 0, z);
+  /* in a whiteout over the Waste the wind drives the snow almost flat */
+  const wind = 1 + state.whiteout * 14;
+  const fall = 1 + state.whiteout * 2.5;
   const half = SNOW_BOX.width / 2;
   for (let k = 0; k < FLAKES; k++) {
     const i = k * 3;
-    positions[i] += (Math.sin(time * 0.7 + drift[k]) * 0.6 + 0.5) * dt;
-    positions[i + 1] -= (1.6 + (k % 5) * 0.25) * dt;
+    positions[i] += (Math.sin(time * 0.7 + drift[k]) * 0.6 + 0.5) * wind * dt;
+    positions[i + 1] -= (1.6 + (k % 5) * 0.25) * fall * dt;
     positions[i + 2] += Math.cos(time * 0.5 + drift[k]) * 0.3 * dt;
     if (positions[i + 1] < 0) {
       positions[i + 1] += SNOW_BOX.height;
@@ -1040,6 +1156,8 @@ export function updateFrostmarch(dt, time) {
   if (isNear || painter.job) {
     paintGround();
   }
+  updatePass();
+  updateWeather(dt);
   updateSnowfall(dt, time);
   if (!isNear) {
     return;
@@ -1053,4 +1171,352 @@ export function updateFrostmarch(dt, time) {
     });
     floes.instanceMatrix.needsUpdate = true;
   }
+}
+
+/* ---------- the White Waste: the shelter, the frozen lake, the Unbound's camp, the trolls' hollow, the glacier ---------- */
+
+const ICE_CLIFF = new THREE.MeshLambertMaterial({ color: 0x9fcbe6, flatShading: true });
+const ICE_CAP = new THREE.MeshLambertMaterial({ color: 0xeef6fb, flatShading: true });
+const DARK_ROCK = new THREE.MeshLambertMaterial({ color: 0x545e6e, flatShading: true });
+
+function buildWaste({ prop, place, pending, random, obstacles }) {
+  buildGlacier(random);
+  buildShelter({ prop, place, pending, random, obstacles });
+  buildHollow({ prop, pending, random, obstacles });
+  buildUnboundCamp({ prop, place, pending, random });
+  /* the hunters' two old watch-fires (main.js lights them), a ring of stones round each */
+  for (const [fx, fz] of WARM_FIRES.slice(1, 3)) {
+    place(builders.campfire(), fx, fz, { radius: 0.9 });
+    for (let k = 0; k < 5; k++) {
+      const angle = (k / 5) * Math.PI * 2 + 0.4;
+      pending.push(
+        prop("rock_snow", fx + Math.sin(angle) * 2.4, fz + Math.cos(angle) * 2.4, {
+          radius: 0.3,
+          shadow: 0.5,
+          scale: 0.45,
+        }),
+      );
+    }
+  }
+  /* the bow lying out on the lake's ice, and the snow hollow the last hunter dug */
+  const bow = new THREE.Group();
+  const limb = new THREE.Mesh(
+    new THREE.TorusGeometry(0.75, 0.05, 4, 12, Math.PI * 0.9).rotateX(-Math.PI / 2),
+    builders.material("wood_dark", 0.2, 1.5),
+  );
+  const string = new THREE.Mesh(
+    new THREE.BoxGeometry(1.48, 0.02, 0.02),
+    new THREE.MeshBasicMaterial({ color: 0xe8e2d0 }),
+  );
+  string.position.z = -0.08;
+  bow.add(limb, string);
+  bow.position.set(LOST_BOW[0], 0.06, LOST_BOW[1]);
+  bow.rotation.y = 0.6;
+  scene.add(bow);
+  const [hx, hz] = KARI_HOLLOW;
+  const den = builders.tent(2.4, 2.6, "cloth_green");
+  den.scale.y = 0.55;
+  place(den, hx, hz, { rotation: 0.9, radius: 1.2 });
+  const heap = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 10, 6),
+    new THREE.MeshLambertMaterial({ color: 0xf0f6fb, flatShading: true }),
+  );
+  heap.scale.set(2.6, 1.1, 2);
+  heap.position.set(hx - 1.6, -0.2, hz - 1.4);
+  scene.add(heap);
+  buildWasteScenery({ prop, pending, random });
+}
+
+/* the face of the glacier: a wall of blue ice blocks with snow on their tops, and the Unbound's dig into it */
+function buildGlacier(random) {
+  let stretch = [];
+  for (let x = WHITE_WASTE.west - 30; x <= WHITE_WASTE.east + 30; x += 3.2) {
+    if (Math.abs(x - GLACIER_DIG[0]) < 4.5) {
+      continue;
+    }
+    for (const row of [0, 1, 2]) {
+      const size = 3 + random() * 1.8;
+      stretch.push([
+        x + (random() - 0.5) * 2,
+        glacierZ(x) - 0.5 - row * 4 + (random() - 0.5) * 1.5,
+        size,
+        size * (1.6 + random() * 0.8 + row * 0.5),
+      ]);
+    }
+    if (stretch.length >= 54) {
+      boulders(stretch, random, ICE_CLIFF, ICE_CAP);
+      stretch = [];
+    }
+  }
+  if (stretch.length) {
+    boulders(stretch, random, ICE_CLIFF, ICE_CAP);
+  }
+  /* the dig: a black mouth cut into the ice, propped with timber */
+  const [dx, dz] = GLACIER_DIG;
+  const mouth = new THREE.Mesh(
+    new THREE.CircleGeometry(2.6, 16, 0, Math.PI),
+    new THREE.MeshBasicMaterial({ color: 0x0c1626 }),
+  );
+  mouth.position.set(dx, 0.02, dz - 4.2);
+  scene.add(mouth);
+  const wood = builders.material("wood_dark", 0.3, 3);
+  for (const side of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 0.3).translate(0, 1.5, 0), wood);
+    post.position.set(dx + side * 2.5, 0, dz - 4);
+    scene.add(post);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.32, 0.34), wood);
+  beam.position.set(dx, 3, dz - 4);
+  scene.add(beam);
+}
+
+/* Torvald's shelter: an overhang of rock to the north, a lean-to of hides, the fire (main.js lights it) */
+function buildShelter({ prop, place, pending, random, obstacles }) {
+  const { x, z } = SHELTER;
+  const overhang = [];
+  for (let k = 0; k < 7; k++) {
+    const angle = Math.PI * (0.6 + (k / 6) * 0.8);
+    const size = 2.4 + random() * 1.2;
+    const [bx, bz] = [x + Math.sin(angle) * 8, z + Math.cos(angle) * 8];
+    overhang.push([bx, bz, size, size * 1.5]);
+    obstacles.push({ x: bx, z: bz, r: size * 0.85 });
+  }
+  boulders(overhang, random, DARK_ROCK);
+  place(builders.tent(3.6, 3.2, "cloth_green"), x - 3.5, z - 3, { rotation: 0.3, radius: 1.8 });
+  place(hideFrame(), x + 4, z - 3.5, { rotation: -0.4 });
+  place(sledge(), x + 5.5, z + 1, { rotation: 1.2, radius: 0.9 });
+  place(builders.barrel(), x - 5.6, z + 1, { radius: 0.45 });
+  place(builders.bench(), x + 1, z + 3.6, { rotation: 0 });
+  pending.push(prop("lantern", x - 2, z + 4.5, { radius: 0.25 }));
+}
+
+/* the trolls' hollow: a ring of dark rock open to the east, caves in its walls, bones and gold on its floor */
+function buildHollow({ prop, pending, random, obstacles }) {
+  const { x, z, radius, gap } = TROLL_HOLLOW;
+  const ring = [];
+  for (let k = 0; k < 64; k++) {
+    const bearing = (k / 64) * Math.PI * 2;
+    if (
+      Math.abs(Math.atan2(Math.sin(bearing - Math.PI / 2), Math.cos(bearing - Math.PI / 2))) < gap
+    ) {
+      continue;
+    }
+    for (const row of [0, 1]) {
+      const distance = radius + row * 3.5 + (random() - 0.5);
+      const size = 2.2 + random() * 1.4 + row * 0.5;
+      const bx = x + Math.sin(bearing) * distance;
+      const bz = z + Math.cos(bearing) * distance;
+      ring.push([bx, bz, size, size * (1.5 + random() * 0.6)]);
+      if (row === 0) {
+        obstacles.push({ x: bx, z: bz, r: size * 0.9 });
+      }
+    }
+  }
+  for (let start = 0; start < ring.length; start += 54) {
+    boulders(ring.slice(start, start + 54), random, DARK_ROCK);
+  }
+  /* cave mouths in the inner wall, black, facing the middle */
+  const dark = new THREE.MeshBasicMaterial({ color: 0x0b0f18, side: THREE.DoubleSide });
+  for (const bearing of [Math.PI * 0.95, Math.PI * 1.35, Math.PI * 0.2]) {
+    const mouth = new THREE.Mesh(new THREE.CircleGeometry(1.9, 14, 0, Math.PI), dark);
+    const distance = radius - 1.6;
+    mouth.position.set(x + Math.sin(bearing) * distance, 0.02, z + Math.cos(bearing) * distance);
+    mouth.rotation.y = bearing + Math.PI;
+    scene.add(mouth);
+  }
+  /* what the trolls keep: bones, and the Unbound's gold in a heap behind their chieftain */
+  for (let k = 0; k < 9; k++) {
+    const angle = random() * Math.PI * 2;
+    const distance = 4 + random() * (radius - 8);
+    pending.push(
+      prop(
+        ["ember_ribs", "ember_skull", "ember_ram_skull"][k % 3],
+        x + Math.sin(angle) * distance,
+        z + Math.cos(angle) * distance,
+        { shadow: 0.5, scale: 0.6 },
+      ),
+    );
+  }
+  const gold = new THREE.MeshLambertMaterial({ color: 0xe8c050, emissive: 0x3a2a00 });
+  const [gx, gz] = HRIMGAR_HOME;
+  for (let k = 0; k < 14; k++) {
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 8), gold);
+    coin.position.set(
+      gx - 4 + (random() - 0.5) * 2.4,
+      0.04 + (k % 4) * 0.05,
+      gz + (random() - 0.5) * 2.4,
+    );
+    coin.rotation.set(random() * 0.6, 0, random() * 0.6);
+    scene.add(coin);
+  }
+}
+
+/* the Unbound's camp: purple tents round three braziers (main.js lights them, purple), crates, their banner, and the
+   trench they dig north to the glacier */
+function buildUnboundCamp({ prop, place, pending, random }) {
+  const { x, z } = UNBOUND_CAMP;
+  /* their cloth: a deep purple, plain (the game's cloths are striped) */
+  const purple = new THREE.MeshLambertMaterial({
+    color: 0x6a3f9c,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+  });
+  for (const [dx, dz, turn] of [
+    [-10, -2, 0.5],
+    [9, -3, -0.4],
+    [-6, 8, 2.6],
+    [7, 9, -2.4],
+  ]) {
+    const tent = builders.tent(3.2, 3.4, "cloth_red");
+    tent.traverse((part) => {
+      if (part.isMesh && part.geometry.type === "PlaneGeometry") {
+        part.material = purple;
+      }
+    });
+    place(tent, x + dx, z + dz, { rotation: turn, radius: 1.8 });
+  }
+  for (const [bx, bz] of CAMP_BRAZIERS) {
+    place(builders.brazier(), bx, bz, { radius: 0.4 });
+  }
+  const flag = builders.flag(3, "cloth_red");
+  /* builders.flag: the pole, then the banner */
+  flag.children[1].material = purple;
+  place(flag, x + 1, z - 4, { radius: 0.2 });
+  place(builders.writingDesk(), x + 3, z + 2, { rotation: 0.4, radius: 0.8 });
+  for (const [dx, dz] of [
+    [-3, -7],
+    [4, -8],
+    [12, 3],
+  ]) {
+    pending.push(prop("crypt_crates", x + dx, z + dz, { radius: 0.7, scale: 0.9 }));
+  }
+  place(sledge(), x - 12, z + 4, { rotation: 1.4, radius: 0.9 });
+}
+
+/* pines in groves, rocks and bushes over the Waste, clear of everything built there */
+function buildWasteScenery({ prop, pending, random }) {
+  const taken = [];
+  const isClear = (x, z, room) =>
+    inWhiteWaste(x, z, 2) &&
+    z > glacierZ(x) + 10 &&
+    rimePathDistance(x, z) > 2.8 &&
+    !onStillwater(x, z, 3) &&
+    Math.hypot(x - SHELTER.x, z - SHELTER.z) > SHELTER.radius + 4 &&
+    Math.hypot(x - UNBOUND_CAMP.x, z - UNBOUND_CAMP.z) > UNBOUND_CAMP.radius + 4 &&
+    Math.hypot(x - TROLL_HOLLOW.x, z - TROLL_HOLLOW.z) > TROLL_HOLLOW.radius + 7 &&
+    Math.hypot(x - KARI_HOLLOW[0], z - KARI_HOLLOW[1]) > 6 &&
+    WARM_FIRES.every(([fx, fz]) => Math.hypot(x - fx, z - fz) > 5) &&
+    taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + room);
+  const put = (name, x, z, options, room) => {
+    if (!isClear(x, z, room)) {
+      return;
+    }
+    taken.push([x, z, room]);
+    pending.push(prop(name, x, z, options));
+  };
+  for (let grove = 0; grove < 14; grove++) {
+    const cx = WHITE_WASTE.west + 10 + random() * (WHITE_WASTE.east - WHITE_WASTE.west - 20);
+    const cz = glacierZ(cx) + 16 + random() * 160;
+    for (let k = 0; k < 14; k++) {
+      const around = random() * Math.PI * 2;
+      const distance = Math.sqrt(random()) * 8;
+      put(
+        random() < 0.6 ? "pine_snow" : "pine2_snow",
+        cx + Math.sin(around) * distance,
+        cz + Math.cos(around) * distance,
+        { radius: 0.45, shadow: 1.6, scale: 1 + random() * 0.35 },
+        1.8,
+      );
+    }
+  }
+  for (let k = 0; k < 150; k++) {
+    const x = WHITE_WASTE.west + random() * (WHITE_WASTE.east - WHITE_WASTE.west);
+    const z = glacierZ(x) + 8 + random() * 200;
+    const roll = random();
+    if (roll < 0.25) {
+      put(
+        random() < 0.5 ? "pine_snow" : "pine2_snow",
+        x,
+        z,
+        { radius: 0.45, shadow: 1.6, scale: 1 },
+        2.4,
+      );
+    } else if (roll < 0.75) {
+      put(random() < 0.5 ? "rock_snow" : "rock2_snow", x, z, { radius: 0.3, shadow: 0.6 }, 1);
+    } else {
+      put("bush_snow", x, z, { shadow: 0.7, scale: 0.6 + random() * 0.2 }, 1);
+    }
+  }
+}
+
+/* ---------- the weather of the Waste: whiteouts, and the cold ---------- */
+
+/* the cold: 0 (warm) .. 1 (frozen through). It creeps in away from a fire in the White Waste, twice as fast in a
+   whiteout and half as fast in a cloak of fur; at a fire it goes out again */
+const CHILL_SECONDS = 100;
+const WARM_SECONDS = 6;
+/* at its worst the cold slows a hero this much */
+const COLD_SLOW = 0.25;
+/* cloaks that keep the cold out */
+const WARM_CLOAKS = ["frostfur_cloak", "rimehide_mantle", "fur_mantle", "trollhide_cloak"];
+
+state.whiteout = 0;
+state.cold = 0;
+state.coldWarned = 0;
+
+/* a white veil over the screen in a whiteout (clear round the hero), and frost creeping in from the screen's edges
+   with the cold */
+function buildOverlays() {
+  const canvas = document.querySelector("canvas");
+  const veil = document.createElement("div");
+  veil.style.cssText =
+    "position:fixed;inset:0;pointer-events:none;opacity:0;" +
+    "background:radial-gradient(circle at 50% 50%, rgba(236,243,250,0) 14%, rgba(236,243,250,0.82) 52%, rgba(236,243,250,0.97) 85%)";
+  const frost = document.createElement("div");
+  frost.style.cssText =
+    "position:fixed;inset:0;pointer-events:none;opacity:0;" +
+    "box-shadow:inset 0 0 120px 40px rgba(170,215,245,0.85), inset 0 0 30px 6px rgba(255,255,255,0.9)";
+  const parent = canvas && canvas.parentNode ? canvas.parentNode : document.body;
+  const after = canvas ? canvas.nextSibling : null;
+  parent.insertBefore(veil, after);
+  parent.insertBefore(frost, after);
+  state.veil = veil;
+  state.frost = frost;
+}
+
+/** How much the cold slows the hero: a factor for their speed (1 when warm). */
+export const coldFactor = () => 1 - COLD_SLOW * Math.max(0, (state.cold - 0.4) / 0.6);
+
+function updateWeather(dt) {
+  const inWaste = inWhiteWaste(player.x, player.z, -2);
+  const target = inWhiteWaste(cameraState.target.x, cameraState.target.z, -6)
+    ? whiteoutStrength()
+    : 0;
+  state.whiteout += (target - state.whiteout) * Math.min(1, dt * 0.8);
+  state.veil.style.opacity = (state.whiteout * 0.9).toFixed(3);
+  /* the cold */
+  const isWarm = warmthDistance(player.x, player.z) < WARM_REACH;
+  if (!inWaste || isWarm || player.isDead || player.ship) {
+    state.cold = Math.max(0, state.cold - dt / (isWarm ? WARM_SECONDS : WARM_SECONDS * 3));
+  } else {
+    const isWrapped = WARM_CLOAKS.includes(player.equipment && player.equipment.cloak);
+    const rate = (1 + state.whiteout) * (isWrapped ? 0.5 : 1);
+    state.cold = Math.min(1, state.cold + (dt / CHILL_SECONDS) * rate);
+  }
+  state.frost.style.opacity = Math.max(0, (state.cold - 0.25) / 0.75).toFixed(3);
+  /* a word when it starts to bite, and when it is bad */
+  const level = state.cold >= 0.95 ? 2 : state.cold >= 0.45 ? 1 : 0;
+  if (level > state.coldWarned) {
+    UI.systemMessage(
+      level === 2
+        ? "You are frozen to the bone and can barely walk. Get to a fire!"
+        : "The cold of the Waste is getting into you. A fire would help; so would a fur cloak.",
+    );
+  }
+  if (level === 0 && state.coldWarned && isWarm) {
+    UI.systemMessage("The fire's warmth comes back into your hands.");
+  }
+  state.coldWarned = level === 0 ? 0 : Math.max(state.coldWarned, level);
 }

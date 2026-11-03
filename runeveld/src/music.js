@@ -118,7 +118,13 @@ const THEMES = {
   },
 };
 /* areas that share a theme */
-const THEME_OF = { sea: "saltmere", crypt: "deep", forge: "ember", tidecrown: "deep" };
+const THEME_OF = {
+  sea: "saltmere",
+  crypt: "deep",
+  forge: "ember",
+  tidecrown: "deep",
+  waste: "frostmarch",
+};
 
 /* a note of the theme's scale, `degree` steps up from the root, `octave` octaves up */
 function noteOf(theme, degree, octave = 0) {

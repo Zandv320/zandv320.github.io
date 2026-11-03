@@ -57,6 +57,13 @@ import {
   RIME_HOUSES,
   RIMEHOLT,
   FLOES,
+  WHITE_WASTE,
+  glacierZ,
+  STILLWATER,
+  TROLL_HOLLOW,
+  UNBOUND_CAMP,
+  SHELTER,
+  inWhiteWaste,
 } from "./rules/frostmarch.js";
 import {
   WORLD,
@@ -1037,6 +1044,14 @@ export function createWorldMap(deps) {
     );
 
   const regionNameAt = (x, z) => {
+    if (inWhiteWaste(x, z, -4)) {
+      for (const place of [SHELTER, UNBOUND_CAMP, TROLL_HOLLOW]) {
+        if (Math.hypot(x - place.x, z - place.z) < place.radius + 4) {
+          return place.name;
+        }
+      }
+      return WHITE_WASTE.name;
+    }
     if (onFrostLand(x, z, -6)) {
       return Math.hypot(x - RIMEHOLT.x, z - RIMEHOLT.z) < RIMEHOLT.radius + 10
         ? RIMEHOLT.name
@@ -1378,15 +1393,51 @@ export function createWorldMap(deps) {
       }
     }
     context.fill();
-    context.fillStyle = "#3e5a52";
+    /* the ridge, then the glacier at the Waste's north edge */
+    context.fillStyle = "#6e7888";
     context.beginPath();
-    context.moveTo(px(SHORE.west - 40), pz(ridgeZ(SHORE.west - 40) - 2));
+    context.moveTo(px(SHORE.west - 40), pz(ridgeZ(SHORE.west - 40)));
     for (let x = SHORE.west - 40; x <= SHORE.east + 40; x += 4) {
-      context.lineTo(px(x), pz(ridgeZ(x) - 2));
+      context.lineTo(px(x), pz(ridgeZ(x)));
     }
-    context.lineTo(px(SHORE.east + 40), pz(-1760));
-    context.lineTo(px(SHORE.west - 40), pz(-1760));
+    for (let x = SHORE.east + 40; x >= SHORE.west - 40; x -= 4) {
+      context.lineTo(px(x), pz(ridgeZ(x) - 12));
+    }
     context.fill();
+    context.fillStyle = "#b4d4e8";
+    context.beginPath();
+    context.moveTo(px(WHITE_WASTE.west - 40), pz(glacierZ(WHITE_WASTE.west - 40) + 2));
+    for (let x = WHITE_WASTE.west - 40; x <= WHITE_WASTE.east + 40; x += 4) {
+      context.lineTo(px(x), pz(glacierZ(x) + 2));
+    }
+    context.lineTo(px(WHITE_WASTE.east + 40), pz(-1920));
+    context.lineTo(px(WHITE_WASTE.west - 40), pz(-1920));
+    context.fill();
+    context.fillStyle = "#cde6f2";
+    context.beginPath();
+    context.ellipse(
+      px(STILLWATER.x),
+      pz(STILLWATER.z),
+      STILLWATER.rx * scale,
+      STILLWATER.rz * scale,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+    context.strokeStyle = "#4e5868";
+    context.lineWidth = Math.max(2, 4 * scale);
+    context.beginPath();
+    context.arc(
+      px(TROLL_HOLLOW.x),
+      pz(TROLL_HOLLOW.z),
+      TROLL_HOLLOW.radius * scale,
+      Math.PI * 0.5 + TROLL_HOLLOW.gap,
+      Math.PI * 2.5 - TROLL_HOLLOW.gap,
+    );
+    context.stroke();
+    circle(UNBOUND_CAMP.x, UNBOUND_CAMP.z, 4, "#8a5ab8");
+    circle(SHELTER.x, SHELTER.z, 3, "#6a5444");
     context.fillStyle = "#bcdcee";
     context.beginPath();
     context.ellipse(

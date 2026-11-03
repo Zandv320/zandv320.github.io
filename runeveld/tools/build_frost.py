@@ -6,6 +6,8 @@ The slime pack folder is the unzipped craftpix slime mobs pack (it holds PNG/Sli
 
     frost_wolf.png         the wolf (sprites/wolf.png) in white and ice blue
     ice_slime.png          the pack's first slime, unused so far, as clear blue ice
+    ice_troll.png          Grumm the bridge troll (sprites/grumm.png) in the grey-white of old ice
+    hrimgar.png            the same, darker and bluer: the trolls' chieftain
     pine_snow.png, ...     the pines, rocks and bush of the fields with snow lying on every upward edge
     smooth/*.png           their 2x smoothed copies, like every other sprite
 """
@@ -20,6 +22,8 @@ from build_sprites import frames_in_row, smooth, stack_animations  # noqa: E402
 
 # a ramp from shadow to highlight: frost-blue to white
 ICE_RAMP = [(46, 62, 96), (86, 118, 160), (138, 172, 212), (190, 216, 240), (236, 246, 255)]
+TROLL_RAMP = [(52, 60, 78), (98, 112, 132), (150, 166, 184), (204, 216, 228), (244, 248, 252)]
+HRIMGAR_RAMP = [(24, 34, 62), (48, 74, 120), (92, 132, 182), (164, 200, 232), (236, 246, 255)]
 SLIME_RAMP = [(30, 64, 110), (52, 112, 170), (96, 170, 220), (160, 214, 244), (232, 248, 255)]
 
 
@@ -32,14 +36,17 @@ def ramp_color(ramp, value):
     return tuple(int(a[i] + (b[i] - a[i]) * f) for i in range(3))
 
 
-def recolor(image, ramp, keep_dark=40, lift=0.0):
-    """Every pixel to the ramp by its brightness; the dark outline stays as it is."""
+def recolor(image, ramp, keep_dark=40, lift=0.0, keep_warm=False):
+    """Every pixel to the ramp by its brightness; the dark outline stays as it is, and with `keep_warm` so do the
+    warm browns and reds (wood, leather, eyes)."""
     out = image.copy()
     px = out.load()
     for y in range(out.height):
         for x in range(out.width):
             r, g, b, a = px[x, y]
             if a == 0 or max(r, g, b) < keep_dark:
+                continue
+            if keep_warm and r > g + 12 and r > b + 40:
                 continue
             value = (0.3 * r + 0.55 * g + 0.15 * b) / 255
             px[x, y] = (*ramp_color(ramp, value * 1.15 + lift), a)
@@ -92,6 +99,12 @@ def main():
 
     recolor(Image.open(out_dir / "wolf.png").convert("RGBA"), ICE_RAMP, lift=0.12).save(out_dir / "frost_wolf.png")
     written.append("frost_wolf")
+
+    # the ice trolls: Grumm the bridge troll in the grey-white of old ice; their chieftain Hrimgar darker, bluer
+    grumm = Image.open(out_dir / "grumm.png").convert("RGBA")
+    recolor(grumm, TROLL_RAMP, lift=-0.14, keep_warm=True).save(out_dir / "ice_troll.png")
+    recolor(grumm, HRIMGAR_RAMP, lift=-0.08, keep_warm=True).save(out_dir / "hrimgar.png")
+    written += ["ice_troll", "hrimgar"]
 
     sheets = [
         Image.open(slime_dir / "PNG/Slime1/Without_shadow" / f"Slime1_{anim}_without_shadow.png").convert("RGBA")

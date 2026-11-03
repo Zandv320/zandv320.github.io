@@ -28,3 +28,33 @@ export function stormStrength(ms = Date.now()) {
 }
 
 export const isStorm = (ms = Date.now()) => stormStrength(ms) > 0.5;
+
+/* ---------- the whiteouts over the White Waste (Saga III): the same, on a clock of their own ---------- */
+
+export const WHITEOUT_CYCLE_MINUTES = 11;
+export const WHITEOUT_MINUTES = 3;
+/* so they do not blow at the same time as the storms on the Northroad */
+const WHITEOUT_OFFSET_MINUTES = 6;
+
+let whiteoutOverride = null; /* admin: a fixed strength 0..1, or null */
+
+/** Admin: force the whiteout to `strength` (0..1), or pass null to follow the clock again. */
+export function setWhiteoutOverride(strength) {
+  whiteoutOverride = strength;
+}
+
+/** How thick the snow blows over the White Waste now: 0 (still) .. 1 (whiteout). */
+export function whiteoutStrength(ms = Date.now()) {
+  if (whiteoutOverride !== null) {
+    return whiteoutOverride;
+  }
+  const minute = (ms / 60000 + WHITEOUT_OFFSET_MINUTES) % WHITEOUT_CYCLE_MINUTES;
+  if (minute >= WHITEOUT_MINUTES) {
+    return 0;
+  }
+  const rise = Math.min(1, minute / RAMP_MINUTES);
+  const fall = Math.min(1, (WHITEOUT_MINUTES - minute) / RAMP_MINUTES);
+  return Math.min(rise, fall);
+}
+
+export const isWhiteout = (ms = Date.now()) => whiteoutStrength(ms) > 0.5;

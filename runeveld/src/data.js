@@ -524,6 +524,56 @@ export const ITEMS = {
     description:
       "Frost wolf fur on the outside, sheep's wool on the inside, and Ragna's stitches holding it all together. The wind off the ice just gives up.",
   },
+  /* Saga III: Hrimgar, the chieftain of the ice trolls */
+  hrimgars_maul: {
+    name: "Hrimgar's maul",
+    slot: "weapon",
+    layer: "hammer1",
+    look: { color: "#bfe4f6", amount: 0.6, value: 1.2 },
+    atk: 60,
+    def: 4,
+    bonus: { str: 4, vit: 2 },
+    price: 9400,
+    icon: "🔨",
+    forClass: "swordsman",
+    description:
+      "A lump of glacier ice bound to a troll's thighbone with gold wire. It never melts, and it never stops being cold.",
+  },
+  frostbound_staff: {
+    name: "Frostbound staff",
+    slot: "weapon",
+    layer: "staff3",
+    look: { color: "#a8dcf4", amount: 0.65, value: 1.2 },
+    atk: 15,
+    matk: 80,
+    bonus: { int: 4, dex: 1 },
+    price: 9400,
+    icon: "🪄",
+    forClass: "mage",
+    description:
+      "Hrimgar's shaman stick: black wood under a skin of ice that grows back when you chip it off.",
+  },
+  rimehide_mantle: {
+    name: "Rimehide mantle",
+    slot: "cloak",
+    layer: "cloak1",
+    look: { color: "#cfe2ee", amount: 0.8, value: 1.4 },
+    def: 16,
+    hp: 180,
+    bonus: { vit: 2 },
+    price: 8400,
+    icon: "🧥",
+    description:
+      "The hide of an ice troll, scraped and smoked by Torvald's hunters. It smells, a little. It is very warm.",
+  },
+  troll_gold: {
+    name: "Troll gold",
+    price: 160,
+    icon: "🪙",
+    stack: 99,
+    description:
+      "Thick gold coins with a crown struck through on one side. The Unbound paid the trolls well.",
+  },
   everfrost_shard: {
     name: "Everfrost shard",
     price: 0,
@@ -2772,6 +2822,73 @@ export const FROST_MONSTERS = {
 };
 Object.assign(MONSTERS, FROST_MONSTERS);
 
+/* The White Waste beyond the ridge (rules/frostmarch.js, Saga III chapter 15): the Unbound round their camp, the ice
+   trolls in their hollow and Hrimgar, their chieftain, at its back (rules/bosses.js) */
+export const WASTE_MONSTERS = {
+  unbound_cultist: {
+    name: "Unbound Cultist",
+    level: 41,
+    hp: 6400,
+    atk: 212,
+    exp: 1500,
+    zeny: [150, 260],
+    speed: 2.6,
+    aggressive: true,
+    range: 6,
+    aggroRange: 7.5,
+    projectile: 0xb07cff,
+    humanoid: { tunicColor: "violet", weapon: "runestaff1", hair: "black", scale: 1.05 },
+    area: "frostmarch",
+    respawn: [35, 55],
+    materials: { arcane_dust: 0.35 },
+    loot: { grand_potion: 0.12, troll_gold: 0.15 },
+  },
+  ice_troll: {
+    name: "Ice Troll",
+    level: 41,
+    hp: 8200,
+    atk: 228,
+    exp: 1750,
+    zeny: [170, 280],
+    speed: 2.4,
+    aggressive: true,
+    range: 2,
+    aggroRange: 6.5,
+    scale: 1.6,
+    area: "frostmarch",
+    respawn: [40, 60],
+    /* in a whiteout they come out of the snow from further off, and quicker */
+    whiteout: { aggroFactor: 1.6, speedFactor: 1.15 },
+    materials: { raw_meat: 0.4 },
+    loot: { troll_gold: 0.6, grand_potion: 0.12, rimehide_mantle: 0.01 },
+  },
+  hrimgar: {
+    name: "Hrimgar",
+    title: "Chieftain of the Ice Trolls",
+    level: 42,
+    hp: 26000,
+    atk: 236,
+    exp: 8400,
+    zeny: [1400, 2200],
+    speed: 2.5,
+    aggressive: true,
+    range: 2.6,
+    aggroRange: 9,
+    scale: 2.6,
+    lines: { enrage: "HRIMGAR WAS PAID! HRIMGAR KEEPS THE ROAD!" },
+    area: "frostmarch",
+    respawn: [150, 210],
+    loot: {
+      hrimgars_maul: 0.22,
+      frostbound_staff: 0.22,
+      rimehide_mantle: 0.25,
+      troll_gold: 1,
+      grand_potion: 0.8,
+    },
+  },
+};
+Object.assign(MONSTERS, WASTE_MONSTERS);
+
 /* The Sunken Crypt under the old altar (rules/crypt.js), level 13 to 17. Its monsters keep to their own spots in the
    rooms (area 'crypt'). The witch fights from a distance with bolts (`projectile`, its colour). */
 export const CRYPT_MONSTERS = {
@@ -2902,6 +3019,9 @@ export const SPAWNS = [
   /* the Frostmarch: one per spot in rules/frostmarch.js */
   { monster: "frost_wolf", count: 12 },
   { monster: "ice_slime", count: 10 },
+  { monster: "unbound_cultist", count: 10 },
+  { monster: "ice_troll", count: 8 },
+  { monster: "hrimgar", count: 1 },
 ];
 
 /* Respawn delay in seconds, [min, max]; a monster's own `respawn` overrides it. */

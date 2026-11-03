@@ -30,6 +30,84 @@ export const PASS = { x: -140, z: ridgeZ(-140), halfWidth: 5 };
 /* what a hero follows the hunters' tracks to: the foot of the drift in the pass */
 export const PASS_FOOT = [PASS.x, PASS.z + 9];
 
+/* ---------- the White Waste, beyond the ridge (chapter 15) ---------- */
+
+/* how deep the ridge's rocks reach north of its line; the White Waste begins beyond them */
+export const RIDGE_DEPTH = 12;
+/* the way through the pass, between its rock walls: open ground once Rimeholt has dug out the drift (for each hero
+   once they have read the hunters' tracks; until then the drift stands in it, frostmarch.js) */
+export const PASS_CUT = {
+  x: PASS.x,
+  halfWidth: PASS.halfWidth - 0.5,
+  north: PASS.z - RIDGE_DEPTH - 2,
+  south: PASS.z + 1,
+};
+/** Is (x, z) in the cut through the pass, at least `margin` from its walls? */
+export const onPassCut = (x, z, margin = 0) =>
+  Math.abs(x - PASS_CUT.x) < PASS_CUT.halfWidth - margin &&
+  z > PASS_CUT.north &&
+  z < PASS_CUT.south;
+
+export const WHITE_WASTE = { name: "The White Waste", west: -320, east: 40 };
+/** Where the White Waste ends in the north (z), at this x: the face of the glacier. */
+export const glacierZ = (x) => -1852 + 8 * Math.sin(x * 0.03) + 5 * Math.sin(x * 0.011 + 2);
+/* where the Unbound dig into the glacier (the Glacier Halls lie behind it) */
+export const GLACIER_DIG = [-40, glacierZ(-40) + 5];
+
+/* Torvald's shelter just beyond the pass: an overhang of rock, a fire, the hunters who came back */
+export const SHELTER = { name: "Torvald's Shelter", x: -150, z: -1690, radius: 10 };
+export const SHELTER_FIRE = [SHELTER.x + 1, SHELTER.z + 1];
+export const SHELTER_WAKE = [SHELTER.x + 3.5, SHELTER.z + 2.5];
+/* the Unbound's camp in the north-east, at the head of the trench they dig to the glacier */
+export const UNBOUND_CAMP = { name: "The Unbound Camp", x: -40, z: -1772, radius: 16 };
+export const CAMP_BRAZIERS = [
+  [-48, -1766],
+  [-31, -1767],
+  [-40, -1781],
+];
+/* the trolls' hollow in the west: a ring of rock walls, open to the east */
+export const TROLL_HOLLOW = { name: "The Troll Hollow", x: -250, z: -1748, radius: 24, gap: 0.45 };
+/* the frozen lake in the middle of the Waste, and what lies out on its ice */
+export const STILLWATER = { name: "Stillwater", x: -125, z: -1778, rx: 26, rz: 13 };
+export const LOST_BOW = [STILLWATER.x + 7, STILLWATER.z + 2];
+/* where the last of the hunting party dug in, out in the snow north-east of the lake */
+export const KARI_HOLLOW = [-82, -1812];
+/* the fires a hero can warm at (cold: frostmarch.js): the shelter's, two old watch-fires the hunters keep, and
+   the Unbound's braziers */
+export const WARM_FIRES = [SHELTER_FIRE, [-212, -1704], [-64, -1712], ...CAMP_BRAZIERS];
+export const WARM_REACH = 6;
+
+/* the trodden ways of the Waste: from the pass to the shelter, on to the lake and the camp; west to the hollow */
+export const WASTE_PATHS = [
+  [
+    [PASS.x, PASS_CUT.south],
+    [PASS.x, PASS_CUT.north],
+    [-147, -1676],
+    [SHELTER.x + 4, SHELTER.z + 4],
+  ],
+  [
+    [SHELTER.x + 5, SHELTER.z - 2],
+    [-120, -1712],
+    [-90, -1730],
+    [-64, -1712],
+  ],
+  [
+    [-90, -1730],
+    [-72, -1752],
+    [UNBOUND_CAMP.x - 8, UNBOUND_CAMP.z + 8],
+  ],
+  [
+    [UNBOUND_CAMP.x, UNBOUND_CAMP.z - 6],
+    [GLACIER_DIG[0], GLACIER_DIG[1]],
+  ],
+  [
+    [SHELTER.x - 5, SHELTER.z],
+    [-185, -1700],
+    [-212, -1704],
+    [TROLL_HOLLOW.x + TROLL_HOLLOW.radius + 6, TROLL_HOLLOW.z],
+  ],
+];
+
 /* the frozen bay in front of Rimeholt: an oval of ice across the coast, half over the sea */
 export const RIME_BAY = { x: -140, z: -1508, rx: 38, rz: 13 };
 /* the holes the fishers keep open in the ice: [x, z] (the fishing spots in rules/gather-nodes.js) */
@@ -103,7 +181,7 @@ export const RIME_PATHS = [
 /** How far (x, z) lies from the nearest trodden way. */
 export function rimePathDistance(x, z) {
   let best = Infinity;
-  for (const path of RIME_PATHS) {
+  for (const path of [...RIME_PATHS, ...WASTE_PATHS]) {
     for (let k = 0; k < path.length - 1; k++) {
       const [ax, az] = path[k];
       const [bx, bz] = path[k + 1];
@@ -141,10 +219,25 @@ export const onRimeJetty = (x, z, margin = 0) =>
   z > RIME_JETTY.north - 2 &&
   z < RIME_JETTY.south - margin;
 
+/** Is (x, z) in the White Waste, beyond the ridge and short of the glacier, at least `margin` from its edges? */
+export function inWhiteWaste(x, z, margin = 0) {
+  if (x < WHITE_WASTE.west + margin || x > WHITE_WASTE.east - margin) {
+    return false;
+  }
+  if (z > ridgeZ(x) - RIDGE_DEPTH - margin || z < glacierZ(x) + 4 + margin) {
+    return false;
+  }
+  return onFrostLand(x, z, 1.2 + margin);
+}
+
 /** Can a hero walk at (x, z) on the Frostmarch: the shore between the cliffs and the ridge, the bay's ice, the
-    jetty? (Houses, rocks and trees are obstacles of their own, frostmarch.js.) */
+    jetty, the cut through the pass and the White Waste beyond? (Houses, rocks and trees are obstacles of their own,
+    frostmarch.js.) */
 export function inFrostmarch(x, z, margin = 0) {
   if (onRimeJetty(x, z, margin * 0.5) || onBayIce(x, z, margin * 0.5)) {
+    return true;
+  }
+  if (onPassCut(x, z, margin * 0.5) || inWhiteWaste(x, z, margin)) {
     return true;
   }
   if (x < SHORE.west + margin || x > SHORE.east - margin || z < ridgeZ(x) + margin) {
@@ -153,9 +246,23 @@ export function inFrostmarch(x, z, margin = 0) {
   return onFrostLand(x, z, 1.2 + margin);
 }
 
-/** Is (x, z) in Rimeholt, where no monster comes (the village and its jetty)? */
+/** Is (x, z) in Rimeholt (the village and its jetty)? */
 export const inRimeholt = (x, z) =>
   Math.hypot(x - RIMEHOLT.x, z - RIMEHOLT.z) < RIMEHOLT.radius || onRimeJetty(x, z, -1);
+
+/** Is (x, z) somewhere on the Frostmarch where no monster comes: Rimeholt, or Torvald's shelter? */
+export const isFrostSafe = (x, z) =>
+  inRimeholt(x, z) || Math.hypot(x - SHELTER.x, z - SHELTER.z) < SHELTER.radius;
+
+/** Is (x, z) out on the ice of Stillwater? */
+export const onStillwater = (x, z, grow = 0) =>
+  ((x - STILLWATER.x) / (STILLWATER.rx + grow)) ** 2 +
+    ((z - STILLWATER.z) / (STILLWATER.rz + grow)) ** 2 <
+  1;
+
+/** How far (x, z) is from the nearest fire a hero can warm at. */
+export const warmthDistance = (x, z) =>
+  Math.min(...WARM_FIRES.map(([fx, fz]) => Math.hypot(x - fx, z - fz)));
 
 /* ---------- the floes: ice drifting off the coast, which a ship steers between ---------- */
 
@@ -225,10 +332,36 @@ function shoreSpots(count, seed, x0, x1, z0, z1) {
   return spots;
 }
 
+/* `count` spots in a ring from `inner` to `outer` round (x, z), spread out, clear of the ways */
+function ringSpots(count, seed, x, z, inner, outer, room = 4) {
+  const spots = [];
+  for (let k = 0; spots.length < count && k < count * 80; k++) {
+    const angle = hash(seed, k) * Math.PI * 2;
+    const distance = inner + hash(k, seed) * (outer - inner);
+    const sx = x + Math.sin(angle) * distance;
+    const sz = z + Math.cos(angle) * distance;
+    if (
+      inWhiteWaste(sx, sz, 2) &&
+      rimePathDistance(sx, sz) > 2.5 &&
+      spots.every(([px, pz]) => Math.hypot(sx - px, sz - pz) > room)
+    ) {
+      spots.push([sx, sz]);
+    }
+  }
+  return spots;
+}
+
+/* Hrimgar keeps to the back of the hollow, the far side from its mouth */
+export const HRIMGAR_HOME = [TROLL_HOLLOW.x - 11, TROLL_HOLLOW.z];
+
 const SPOTS = {
   /* the frost wolves hunt the snowfields east of the village, the ice slimes creep over the shore to the west */
   frost_wolf: shoreSpots(12, 31, -96, 8, -1625, -1525),
   ice_slime: shoreSpots(10, 47, -290, -186, -1615, -1515),
+  /* the Unbound keep watch round their camp; the ice trolls sit in their hollow, before their chieftain */
+  unbound_cultist: ringSpots(10, 59, UNBOUND_CAMP.x, UNBOUND_CAMP.z, 8, 22),
+  ice_troll: ringSpots(8, 71, TROLL_HOLLOW.x + 4, TROLL_HOLLOW.z, 3, 13, 5),
+  hrimgar: [HRIMGAR_HOME],
 };
 
 /** The spot of the monster with this id ("frost_wolf#2") on the Frostmarch, or null for one that is not of it. */
@@ -239,7 +372,9 @@ export function frostSpotFor(key, id) {
   }
   const index = Number(String(id).split("#")[1]) || 0;
   const [x, z] = spots[index % spots.length];
-  return [x + (Math.random() - 0.5), z + (Math.random() - 0.5)];
+  /* the chieftain stays exactly where he was put; the others shuffle a little */
+  const jitter = key === "hrimgar" ? 0 : 1;
+  return [x + (Math.random() - 0.5) * jitter, z + (Math.random() - 0.5) * jitter];
 }
 
 /** How many monsters of this kind keep watch on the Frostmarch (one per spot). */

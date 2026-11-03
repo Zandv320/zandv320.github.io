@@ -247,6 +247,48 @@ export function bossPlanks(data) {
   }
 }
 
+/* spikes of ice standing up out of a circle for a moment (updateIceSpikes sinks and removes them) */
+const spikes = [];
+const SPIKE_MATERIAL = new THREE.MeshLambertMaterial({
+  color: 0xcfe9ff,
+  emissive: 0x1a3550,
+  flatShading: true,
+  transparent: true,
+});
+function iceSpikes(x, z, radius) {
+  const group = new THREE.Group();
+  for (let k = 0; k < 9; k++) {
+    const angle = (k / 9) * Math.PI * 2 + Math.random() * 0.5;
+    const distance = k === 0 ? 0 : radius * (0.35 + Math.random() * 0.5);
+    const height = 0.9 + Math.random() * 1.1;
+    const spike = new THREE.Mesh(
+      new THREE.ConeGeometry(0.16 + Math.random() * 0.12, height, 5).translate(0, height / 2, 0),
+      SPIKE_MATERIAL,
+    );
+    spike.position.set(Math.sin(angle) * distance, 0, Math.cos(angle) * distance);
+    spike.rotation.set((Math.random() - 0.5) * 0.5, 0, (Math.random() - 0.5) * 0.5);
+    group.add(spike);
+  }
+  group.position.set(x, 0, z);
+  group.scale.y = 0.01;
+  scene.add(group);
+  spikes.push({ group, time: 0 });
+}
+function updateIceSpikes(dt) {
+  for (let i = spikes.length - 1; i >= 0; i--) {
+    const spike = spikes[i];
+    spike.time += dt;
+    /* up fast, a moment standing, then sinking back into the snow */
+    const t = spike.time;
+    spike.group.scale.y = t < 0.12 ? t / 0.12 : t < 0.9 ? 1 : Math.max(0.01, 1 - (t - 0.9) / 0.5);
+    if (t > 1.4) {
+      scene.remove(spike.group);
+      spike.group.traverse((part) => part.geometry && part.geometry.dispose());
+      spikes.splice(i, 1);
+    }
+  }
+}
+
 /** boss_boulder: a rock flies from the boss's hands to the circle shown on the ground (missiles.js). */
 export function bossBoulder(data) {
   const boss = bossById(data.id);
@@ -254,7 +296,9 @@ export function bossBoulder(data) {
     boss.sprite.play("attack", true);
     boss.attackAnimUntil = now() + 0.5;
   }
-  throwBoulder(data.x0, data.z0, data.x1, data.z1, data.duration);
+  /* Hrimgar's are blocks of glacier ice */
+  const color = boss && boss.spec.key === "hrimgar" ? 0xcfe8f6 : undefined;
+  throwBoulder(data.x0, data.z0, data.x1, data.z1, data.duration, color);
 }
 
 /** boss_reset: nobody left to fight it, so it healed and starts over (the troll mends his bridge). */
@@ -343,6 +387,7 @@ export function bossSurface(data) {
 /** Fills the warnings on the ground; once the blow lands, a warning flashes and fades. */
 export function updateBossEffects(dt) {
   updateTentacles(dt);
+  updateIceSpikes(dt);
   for (let i = warnings.length - 1; i >= 0; i--) {
     const warning = warnings[i];
     const { data, area, fill, edges } = warning;
@@ -400,6 +445,14 @@ export function updateBossEffects(dt) {
         if (distanceToPlayer(data.x0, data.z0) < HEARING_DISTANCE) {
           sfx.bossSlam();
           shakeCamera(0.3, 0.35);
+        }
+      } else if (data.kind === "icicle") {
+        /* spikes of ice burst up out of the snow, and shatter */
+        iceSpikes(data.x, data.z, data.radius);
+        burst(data.x, 0.5, data.z, { color: 0xdff2fc, count: 26, speed: 5, size: 3 });
+        if (distanceToPlayer(data.x, data.z) < HEARING_DISTANCE) {
+          sfx.bossSlam();
+          shakeCamera(0.18, 0.2);
         }
       } else if (data.kind === "geyser") {
         /* the water bursts up out of the ground */

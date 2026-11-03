@@ -8,11 +8,22 @@ import * as UI from "./ui.js";
 import { SMOOTH } from "./sprites.js";
 import { CRYPT_ENTRY, CRYPT_STAIRS, cryptPoint } from "./rules/crypt.js";
 import { SAGAS, CHAPTERS, QUESTS, MAIN_QUESTS, chaptersOf } from "./rules/quests.js";
-import { stormStrength, setStormOverride } from "./rules/weather.js";
+import {
+  stormStrength,
+  setStormOverride,
+  whiteoutStrength,
+  setWhiteoutOverride,
+} from "./rules/weather.js";
 import { NORTHROAD, BRIDGE, GORGE, SALTMERE } from "./regions.js";
 import { CAMP_WAKE, MOUNT_KHAROS, EMBER_LANDS } from "./rules/ember.js";
 import { TIDE_WAKE, CAUSEWAY } from "./rules/tidecrown.js";
-import { RIME_WAKE, PASS_FOOT } from "./rules/frostmarch.js";
+import {
+  RIME_WAKE,
+  PASS_FOOT,
+  SHELTER_WAKE,
+  UNBOUND_CAMP,
+  TROLL_HOLLOW,
+} from "./rules/frostmarch.js";
 import { FORGE_ENTRY, forgePoint } from "./rules/forge.js";
 import { PROFESSIONS, MAX_PROFESSION_LEVEL, professionLevel } from "./rules/professions.js";
 import { RARITIES, rarityOf } from "./rules/rarity.js";
@@ -512,6 +523,15 @@ export function createAdminPanel(ctx) {
       ["East shore", () => ctx.teleport(-50, -1560)],
       ["West shore", () => ctx.teleport(-240, -1555)],
       ["Snowed pass", () => ctx.teleport(...PASS_FOOT)],
+      ["Torvald's shelter", () => ctx.teleport(...SHELTER_WAKE)],
+      [
+        "Unbound camp",
+        () => ctx.teleport(UNBOUND_CAMP.x, UNBOUND_CAMP.z + UNBOUND_CAMP.radius + 4),
+      ],
+      [
+        "Troll hollow",
+        () => ctx.teleport(TROLL_HOLLOW.x + TROLL_HOLLOW.radius + 5, TROLL_HOLLOW.z),
+      ],
     ]);
 
     /* ---------- monsters ---------- */
@@ -550,6 +570,12 @@ export function createAdminPanel(ctx) {
       "Storm on the Northroad",
       () => stormStrength() > 0.5,
       (isOn) => setStormOverride(isOn ? 1 : null),
+    );
+    toggleSwitch(
+      group,
+      "Whiteout over the White Waste",
+      () => whiteoutStrength() > 0.5,
+      (isOn) => setWhiteoutOverride(isOn ? 1 : null),
     );
     slider(
       group,

@@ -9,7 +9,7 @@
    Events (all with the boss id):
      boss_telegraph {kind: 'charge', x0, z0, x1, z1, width, duration} or {kind: 'circle', x, z, radius, duration}
        a warning on the ground: where the blow will land; kind 'planks' is a lane like 'charge', but the boss
-       stays where it is and strikes
+       stays where it is and strikes; kind 'icicle' is a circle where spikes of ice burst up out of the ground
      boss_charge   {x1, z1, duration}  the boss rushes to (x1, z1)
      boss_stunned  {duration}          it hit something and is dazed
      boss_summon   {}                  it calls for help (the helpers appear like any other monster)
@@ -74,6 +74,22 @@ export const BOSSES = {
       range: 14,
     },
     enrage: { below: 0.25, cooldownFactor: 0.75, damageFactor: 1.2 },
+  },
+  /* the Troll Hollow in the White Waste (rules/frostmarch.js): spikes of ice burst up under whoever is near, and
+     from below half health he tears blocks out of the ice and throws them */
+  hrimgar: {
+    cleave: { every: [6, 8], windup: 1.1, radius: 3.4, damage: 1.9 },
+    icicles: { every: [6.5, 8.5], windup: 1.4, radius: 2, damage: 1.6, range: 16 },
+    boulders: {
+      below: 0.5,
+      every: [5.5, 7.5],
+      windup: 1.4,
+      radius: 1.9,
+      damage: 1.7,
+      range: 16,
+    },
+    summon: { below: 0.6, helper: "ice_troll", count: 2 },
+    enrage: { below: 0.25, cooldownFactor: 0.7, damageFactor: 1.25 },
   },
   /* the Forge of the First Flame (rules/forge.js): pools of lava burst under whoever stands still, a blast of fire
      runs down a lane until a pillar stops it, and below 30 % his shell of cooled stone breaks: faster, harder */
@@ -484,13 +500,15 @@ export function bossTick(monster, target, dt, ctx) {
     return true;
   }
 
-  /* a volley: blood runes or pools of lava (from the start) or boulders (when low on health), a circle under every
-     player nearby that bursts a moment later; boulders fly there from the boss's hands */
+  /* a volley: blood runes, pools of lava or spikes of ice (from the start), or boulders (when low on health: they
+     take over), a circle under every player nearby that bursts a moment later; boulders fly there from the boss's
+     hands */
   const volleyName =
+    (rules.boulders && health <= rules.boulders.below && "boulders") ||
     (rules.geysers && "geysers") ||
     (rules.bloodRunes && "bloodRunes") ||
     (rules.lavaPools && "lavaPools") ||
-    (rules.boulders && health <= rules.boulders.below && "boulders");
+    (rules.icicles && "icicles");
   if (volleyName && now >= state.nextRunes) {
     const volley = rules[volleyName];
     const spots = ctx.players
@@ -511,7 +529,7 @@ export function bossTick(monster, target, dt, ctx) {
       for (const [x, z] of spots) {
         ctx.emit("boss_telegraph", {
           id: monster.id,
-          kind: "circle",
+          kind: volleyName === "icicles" ? "icicle" : "circle",
           x,
           z,
           radius: volley.radius,

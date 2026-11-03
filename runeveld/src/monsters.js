@@ -28,10 +28,10 @@ import {
   inTidecrown,
   inTideCamp,
   inFrostmarch,
-  inRimeholt,
+  isFrostSafe,
   byCrownmere,
 } from "./regions.js";
-import { isStorm } from "./rules/weather.js";
+import { isStorm, isWhiteout } from "./rules/weather.js";
 import { isNight } from "./daylight.js";
 import { bossOf, bossTick, resetBoss, rageFactors } from "./rules/bosses.js";
 import { sfx } from "./audio.js";
@@ -323,14 +323,14 @@ function isHuntingGround(spec, x, z) {
 }
 
 /** Safe places: inside the palisade of Runeveld, inside the walls of Aurelia, Saltmere but for its warehouses, and
-    the camps in Cinder Cove and on Tidecrown, and Rimeholt. */
+    the camps in Cinder Cove and on Tidecrown, Rimeholt and Torvald's shelter. */
 export const isSafe = (x, z) =>
   inVillage(x, z) ||
   inCapital(x, z) ||
   isSaltmereSafe(x, z) ||
   inCinderCamp(x, z) ||
   inTideCamp(x, z) ||
-  inRimeholt(x, z);
+  isFrostSafe(x, z);
 
 /** A monster died: death animation, smoke, and (on the host) the respawn timer. */
 export function monsterDied(monster) {
@@ -627,7 +627,11 @@ export function hostTick(dt) {
       continue;
     }
     /* at night some hunt harder, in a storm the storm wolves */
-    const nightFactors = (isNight() && spec.night) || (isStorm() && spec.storm) || null;
+    const nightFactors =
+      (isNight() && spec.night) ||
+      (isStorm() && spec.storm) ||
+      (isWhiteout() && spec.whiteout) ||
+      null;
     const target = findTarget(monster, players, nightFactors);
     monster.attackCooldown = Math.max(0, monster.attackCooldown - dt);
     /* bosses have moves of their own (rules/bosses.js); the same rules as on the server */

@@ -41,7 +41,8 @@ import { inNorthroad, inSaltmere, GORGE } from "./regions.js";
 import { SALTY_GULL_DOOR } from "./rules/saltmere.js";
 import { inEmberIsles, CAMP_WAKE } from "./rules/ember.js";
 import { inTidecrown, TIDE_WAKE } from "./rules/tidecrown.js";
-import { inFrostmarch, RIME_WAKE } from "./rules/frostmarch.js";
+import { inFrostmarch, inWhiteWaste, RIME_WAKE, SHELTER_WAKE } from "./rules/frostmarch.js";
+import { coldFactor } from "./frostmarch.js";
 import { inGreySea } from "./rules/sea.js";
 import { updateSailing } from "./sailing.js";
 import { INN_DOOR } from "./northroad.js";
@@ -285,7 +286,7 @@ export function updatePlayer(dt) {
       game.dialogue.close();
     }
     /* faster on a mount (mounts.js) */
-    const step = heroClass().speed * (1 + mountSpeed()) * ADMIN.speed * dt;
+    const step = heroClass().speed * (1 + mountSpeed()) * coldFactor() * ADMIN.speed * dt;
     let newX;
     let newZ;
     if (ADMIN.noclip) {
@@ -660,6 +661,9 @@ function respawn() {
   } else if (inTidecrown(player.x, player.z, -2) && player.quests.edda_rising?.state === "done") {
     /* on Tidecrown: by the fire at the landing, once Keeper Ondine has found them */
     [player.x, player.z] = TIDE_WAKE;
+  } else if (inWhiteWaste(player.x, player.z, -2) && player.quests.brann_pass?.state === "done") {
+    /* in the White Waste: by the fire in Torvald's shelter, once they have found him */
+    [player.x, player.z] = SHELTER_WAKE;
   } else if (inFrostmarch(player.x, player.z, -2) && player.quests.mara_floes?.state === "done") {
     /* on the Frostmarch: by the fire in Rimeholt, once Elder Sigrun has let them stay */
     [player.x, player.z] = RIME_WAKE;

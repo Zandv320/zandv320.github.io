@@ -19,7 +19,7 @@ import { SALTMERE, inSaltmere, isSaltmereSafe, saltmereSpotFor } from "./rules/s
 import { inEmberIsles, inCinderCamp, emberSpotFor } from "./rules/ember.js";
 import { inForge, forgeSpotFor } from "./rules/forge.js";
 import { inTidecrown, inTideCamp, byCrownmere, tidecrownSpotFor } from "./rules/tidecrown.js";
-import { inFrostmarch, inRimeholt, frostSpotFor } from "./rules/frostmarch.js";
+import { inFrostmarch, isFrostSafe, frostSpotFor } from "./rules/frostmarch.js";
 
 export {
   inCrypt,
@@ -36,7 +36,7 @@ export {
   inTideCamp,
   byCrownmere,
   inFrostmarch,
-  inRimeholt,
+  isFrostSafe,
 };
 
 /* Half width of the ground map around the village. */

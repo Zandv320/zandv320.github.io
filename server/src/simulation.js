@@ -30,7 +30,7 @@ import {
   inTidecrown,
   inTideCamp,
   inFrostmarch,
-  inRimeholt,
+  isFrostSafe,
   byCrownmere,
 } from "../../runeveld/src/regions.js";
 import { createCollision, unpackObstacle } from "../../runeveld/src/rules/collision.js";
@@ -41,7 +41,7 @@ import {
   rageFactors,
   isSubmerged,
 } from "../../runeveld/src/rules/bosses.js";
-import { isStorm } from "../../runeveld/src/rules/weather.js";
+import { isStorm, isWhiteout } from "../../runeveld/src/rules/weather.js";
 
 /* half the width of the starting village, where monsters never go (matches world.js) */
 const VILLAGE_HALF_SIZE = 22;
@@ -69,15 +69,15 @@ const KNOCKBACK_SCALE = 0.6;
 
 const randomBetween = (min, max) => min + Math.random() * (max - min);
 const inVillage = (x, z) => Math.abs(x) < VILLAGE_HALF_SIZE && Math.abs(z) < VILLAGE_HALF_SIZE;
-/* players in the village, the capital, Saltmere (but for its warehouses), the camps in Cinder Cove and on Tidecrown
-   or Rimeholt cannot be attacked */
+/* players in the village, the capital, Saltmere (but for its warehouses), the camps in Cinder Cove and on Tidecrown,
+   Rimeholt or Torvald's shelter cannot be attacked */
 const isSafe = (x, z) =>
   inVillage(x, z) ||
   inCapital(x, z) ||
   isSaltmereSafe(x, z) ||
   inCinderCamp(x, z) ||
   inTideCamp(x, z) ||
-  inRimeholt(x, z);
+  isFrostSafe(x, z);
 const nowSeconds = () => Date.now() / 1000;
 
 function gameHour() {
@@ -531,7 +531,10 @@ export function createSimulation(emit) {
       }
       /* at night some hunt harder, in a storm the storm wolves */
       const nightFactors =
-        (isNight() && monster.spec.night) || (isStorm() && monster.spec.storm) || null;
+        (isNight() && monster.spec.night) ||
+        (isStorm() && monster.spec.storm) ||
+        (isWhiteout() && monster.spec.whiteout) ||
+        null;
       const target = findTarget(monster, players, nightFactors);
       monster.cooldown = Math.max(0, monster.cooldown - dt);
       /* bosses have moves of their own (rules/bosses.js) */

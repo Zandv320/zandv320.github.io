@@ -30,6 +30,12 @@ import {
   RIME_JETTY,
   RIMEHOLT,
   FLOES,
+  WHITE_WASTE,
+  glacierZ,
+  STILLWATER,
+  TROLL_HOLLOW,
+  UNBOUND_CAMP,
+  SHELTER,
 } from "./rules/frostmarch.js";
 import {
   TIDECROWN,
@@ -45,7 +51,7 @@ import {
 export const WORLD = {
   x0: GREY_SEA.x0 - 40,
   x1: GREY_SEA.x1 + 40,
-  z0: -1690,
+  z0: -1900,
   z1: 110,
 };
 
@@ -63,7 +69,7 @@ export const ZOOM_REGIONS = [
     name: FROSTMARCH.name,
     x0: SHORE.west - 20,
     x1: SHORE.east + 20,
-    z0: -1680,
+    z0: -1880,
     z1: -1440,
   },
 ];
@@ -269,17 +275,51 @@ function drawFrostmarch(g, { px, pz, scale, ratio }) {
     Math.max(1, RIME_JETTY.halfWidth * 2 * scale),
     (RIME_JETTY.south - RIME_JETTY.north) * scale,
   );
-  /* the woods beyond the ridge, then the ridge itself */
-  g.fillStyle = "#3e5a52";
+  /* the White Waste beyond the ridge: the glacier along its north, Stillwater, the trolls' hollow, the camp and the
+     shelter */
+  g.fillStyle = "#b4d4e8";
   g.beginPath();
-  g.moveTo(px(SHORE.west - 30), pz(ridgeZ(SHORE.west - 30) - 4));
-  for (let x = SHORE.west - 30; x <= SHORE.east + 30; x += 6) {
-    g.lineTo(px(x), pz(ridgeZ(x) - 4));
+  g.moveTo(px(WHITE_WASTE.west - 30), pz(glacierZ(WHITE_WASTE.west - 30) + 2));
+  for (let x = WHITE_WASTE.west - 30; x <= WHITE_WASTE.east + 30; x += 6) {
+    g.lineTo(px(x), pz(glacierZ(x) + 2));
   }
-  g.lineTo(px(SHORE.east + 30), pz(-1700));
-  g.lineTo(px(SHORE.west - 30), pz(-1700));
+  g.lineTo(px(WHITE_WASTE.east + 30), pz(-1900));
+  g.lineTo(px(WHITE_WASTE.west - 30), pz(-1900));
   g.closePath();
   g.fill();
+  g.fillStyle = "#cde6f2";
+  g.beginPath();
+  g.ellipse(
+    px(STILLWATER.x),
+    pz(STILLWATER.z),
+    STILLWATER.rx * scale,
+    STILLWATER.rz * scale,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  g.fill();
+  g.strokeStyle = "#4e5868";
+  g.lineWidth = Math.max(2 * ratio, 5 * scale);
+  g.beginPath();
+  g.arc(
+    px(TROLL_HOLLOW.x),
+    pz(TROLL_HOLLOW.z),
+    TROLL_HOLLOW.radius * scale,
+    Math.PI * 0.5 + TROLL_HOLLOW.gap,
+    Math.PI * 2.5 - TROLL_HOLLOW.gap,
+  );
+  g.stroke();
+  for (const [place, color] of [
+    [UNBOUND_CAMP, "#8a5ab8"],
+    [SHELTER, "#6a5444"],
+  ]) {
+    g.fillStyle = color;
+    g.beginPath();
+    g.arc(px(place.x), pz(place.z), Math.max(2 * ratio, 4 * scale), 0, Math.PI * 2);
+    g.fill();
+  }
+  /* the ridge */
   g.strokeStyle = "#5e6878";
   g.lineWidth = Math.max(2 * ratio, 4 * scale);
   g.beginPath();
@@ -774,7 +814,22 @@ const NAMES = [
     z: land.center[1] + (land === EMBER_LANDS.gate ? -10 : 0),
     size: 6,
   })),
-  { text: FROSTMARCH.name, x: -60, z: -1615, size: 12, region: true },
+  { text: FROSTMARCH.name, x: -60, z: -1610, size: 12, region: true },
+  { text: WHITE_WASTE.name, x: -200, z: -1800, size: 10, region: true },
+  { text: STILLWATER.name, x: STILLWATER.x, z: STILLWATER.z + STILLWATER.rz + 6, size: 5 },
+  {
+    text: TROLL_HOLLOW.name,
+    x: TROLL_HOLLOW.x,
+    z: TROLL_HOLLOW.z + TROLL_HOLLOW.radius + 8,
+    size: 5,
+  },
+  {
+    text: UNBOUND_CAMP.name,
+    x: UNBOUND_CAMP.x,
+    z: UNBOUND_CAMP.z + UNBOUND_CAMP.radius + 6,
+    size: 5,
+  },
+  { text: "The Glacier", x: -150, z: -1868, size: 6 },
   { text: RIMEHOLT.name, x: RIMEHOLT.x, z: RIMEHOLT.z - 20, size: 7, major: true },
   { text: "The Floes", x: 40, z: -1395, size: 7 },
   { text: "Uncharted waters", x: -365, z: -1545, size: 9, region: true },

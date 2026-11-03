@@ -285,6 +285,9 @@ export const SHEETS = {
     feet: 24,
     height: 20,
   }),
+  /* the White Waste's ice trolls and their chieftain: Grumm in the colours of old ice */
+  ice_troll: cryptSheet("ice_troll", GOBLIN_FRAMES),
+  hrimgar: cryptSheet("hrimgar", { ...GOBLIN_FRAMES, height: 32 }),
   fire_imp: cryptSheet("fire_imp", GOBLIN_FRAMES),
   ash_golem: cryptSheet("ash_golem", GOBLIN_FRAMES),
   /* the Forge of the First Flame's guardian: the goblin chief as charred stone and fire */

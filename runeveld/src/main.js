@@ -108,7 +108,16 @@ import {
   RIMEHOLT,
   RIME_FIRE,
   PASS,
+  SHELTER,
+  UNBOUND_CAMP,
+  TROLL_HOLLOW,
+  STILLWATER,
+  WHITE_WASTE,
+  WARM_FIRES,
+  CAMP_BRAZIERS,
   inFrostmarch,
+  inWhiteWaste,
+  onStillwater,
   onBayIce,
   onRimeJetty,
 } from "./rules/frostmarch.js";
@@ -317,6 +326,7 @@ const ZONES = {
     "An island that was not there a week ago. The sea has not let go of it.",
   ],
   frostmarch: [FROSTMARCH.name, "Snow to the edge of the world, and a village that keeps a fire."],
+  waste: [WHITE_WASTE.name, "No roads, no shelter, no mercy. Stay near the fires."],
   /* the stairs announce the crypt themselves (crypt.js), the Gate of Kharos the forge (forge.js) */
   crypt: null,
   forge: null,
@@ -471,13 +481,19 @@ function createWorldLights() {
     /* the camp fires in Cinder Cove and on Tidecrown */
     [...inCamp(2, 2), 1],
     [TIDE_CAMP.x, TIDE_CAMP.z, 0.9],
-    /* and before the longhouse in Rimeholt */
+    /* and before the longhouse in Rimeholt, and the fires of the White Waste */
     [...RIME_FIRE, 1.1],
+    ...WARM_FIRES.slice(0, 3).map(([x, z]) => [x, z, 1]),
   ];
   for (const [x, z, size] of fires) {
     playEffect("fire", x, z, { size, grounded: true, loop: true });
     addFxPlace({ element: "hearth", x, y: 0.3 * size, z, spread: 0.22 * size, rate: 0.8 * size });
     lights.push({ x, z, y: 0.8, radius: 3.5 * size, color: [255, 160, 80], strength: 0.9 });
+  }
+  /* the Unbound's braziers burn purple */
+  for (const [x, z] of CAMP_BRAZIERS) {
+    playEffect("fire", x, z, { size: 0.8, y: 1.05, grounded: true, loop: true, tint: 0xd8b0ff });
+    lights.push({ x, z, y: 1.6, radius: 4, color: [190, 130, 255], strength: 0.9 });
   }
   /* the fire baskets of the start screens' stone circle: the fire in the bowl */
   for (const { x, z, y, size } of LOGIN_FIRES) {
@@ -2222,6 +2238,9 @@ function zoneAt(x, z) {
   if (inTidecrown(x, z, -1)) {
     return "tidecrown";
   }
+  if (inWhiteWaste(x, z, -1)) {
+    return "waste";
+  }
   if (inFrostmarch(x, z, -1)) {
     return "frostmarch";
   }
@@ -2244,6 +2263,14 @@ function zoneAt(x, z) {
 }
 
 function zoneLabel(zone, x, z) {
+  if (zone === "waste") {
+    for (const place of [SHELTER, UNBOUND_CAMP, TROLL_HOLLOW]) {
+      if (Math.hypot(x - place.x, z - place.z) < place.radius + 6) {
+        return place.name;
+      }
+    }
+    return onStillwater(x, z, 4) ? STILLWATER.name : WHITE_WASTE.name;
+  }
   if (zone === "frostmarch") {
     if (
       Math.hypot(x - RIMEHOLT.x, z - RIMEHOLT.z) < RIMEHOLT.radius ||

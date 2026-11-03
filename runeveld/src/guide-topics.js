@@ -149,12 +149,21 @@ export const GUIDE_TOPICS = {
       "Furrier Ragna sells furs against the cold. The <b>frost wolves</b> hunt the snowfields east of the village; <b>ice slimes</b> creep over the shore to the west.",
     ],
   },
-  saga3_ch14: {
-    title: "Chapter 14 complete",
-    icons: ["frost_pelt", "ui_quests"],
+  white_waste: {
+    title: "The White Waste",
+    icons: ["ui_map", "ui_quests"],
     body: [
-      "Rimeholt has taken you in. But the hunting party never came back from the White Waste, and the Unbound went through the pass before the snow closed it.",
-      "The pass is still snowed shut. When the wind turns, Rimeholt digs it out: the <b>White Waste</b>, beyond the ridge, is the next part of <b>Saga III: The Long Winter</b>.",
+      "Beyond the pass lies the <b>White Waste</b>, and it is <b>cold</b>. Away from a fire the cold creeps into you: frost gathers at the edges of your sight, and when it is bad you walk slower. A fur cloak keeps half of it out.",
+      "<b>Fires</b> warm you: Torvald's shelter just past the pass, the hunters' two watch-fires, even the Unbound's braziers. If you fall in the Waste you wake at the shelter.",
+      "Now and then a <b>whiteout</b> comes down: the snow blows sideways, you can barely see, the cold bites twice as hard, and the ice trolls come out of the snow from further off.",
+    ],
+  },
+  saga3_ch15: {
+    title: "Chapter 15 complete",
+    icons: ["troll_gold", "ui_quests"],
+    body: [
+      "Hrimgar is dead, and the Unbound have lost the trolls who kept their road. But they have dug almost to a door in the glacier, and the gold they paid with carries the crossed-out crown: Maelis has been behind it all from the very first bandit.",
+      "The <b>Glacier Halls</b>, behind that door in the ice, are the next part of <b>Saga III: The Long Winter</b>.",
     ],
   },
 };
@@ -175,4 +184,5 @@ export const GUIDE_ORDER = [
   "northroad",
   "sailing",
   "frostmarch",
+  "white_waste",
 ];

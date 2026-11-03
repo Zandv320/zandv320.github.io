@@ -35,7 +35,7 @@ import { EMBER_LANDS } from "./ember.js";
 import { forgePoint, GREAT_FORGE, FIRE_SEAL } from "./forge.js";
 import { WATCHTOWER, SHRINE, FAIRY_RING, LOOKOUT } from "./landmarks.js";
 import { TIDE_SEAL } from "./tidecrown.js";
-import { PASS_FOOT } from "./frostmarch.js";
+import { PASS_FOOT, KARI_HOLLOW, LOST_BOW } from "./frostmarch.js";
 
 const BELLOWS_HALL = forgePoint(24, 18);
 
@@ -72,6 +72,7 @@ export const CHAPTERS = {
   12: "The Grey Sea Rises",
   13: "Ice That Does Not Melt",
   14: "Rimeholt",
+  15: "The White Waste",
 };
 
 export const QUESTS = {
@@ -1501,8 +1502,6 @@ export const QUESTS = {
   },
   sigrun_hunters: {
     giver: "Elder Sigrun",
-    final: true,
-    ending: "saga3_ch14",
     where: { npc: "Elder Sigrun" },
     hint: "Follow the trodden way north from the fire, up through the pines, to the pass in the ridge. Look for tracks at the foot of the drift.",
     chapter: 14,
@@ -1524,6 +1523,117 @@ export const QUESTS = {
       label: "the tracks at the snowed pass",
     },
     reward: { exp: 18000, zeny: 9000, items: [{ id: "grand_potion", count: 6 }] },
+  },
+  /* ---- Saga III, chapter 15: the White Waste (rules/frostmarch.js) ---- */
+  brann_pass: {
+    giver: "Hunter Brann",
+    turnIn: "Hunter Torvald",
+    tutorial: "white_waste",
+    where: { npc: "Hunter Torvald" },
+    hint: "Take the trodden way north from Rimeholt's fire, up through the dug-out pass. Torvald's shelter lies just beyond it, under an overhang of rock. Keep near the fires: the cold gets into you out in the Waste.",
+    chapter: 15,
+    main: true,
+    title: "Whiteout",
+    level: 40,
+    after: "sigrun_hunters",
+    intro:
+      "The wind turned in the night and we dug till our hands bled. The pass is open. Smoke on the other side: a fire, under the rocks where my brother always camps. Somebody is alive. Go, before the next whiteout comes down. When the snow blows sideways, find a fire and stay at it.",
+    progressText: "Go through the pass and find Hunter Torvald at his shelter in the White Waste.",
+    completeText:
+      "Brann sent a southerner? Then things are worse in Rimeholt than here. Sit. Five of us came back to this fire. The sixth, Ulf, went after the purple cloaks alone when the snow closed the pass. He thought he could follow them to wherever they were going.",
+    goal: { type: "visit", npc: "Hunter Torvald" },
+    reward: { exp: 17000, zeny: 8000, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  torvald_ulf: {
+    giver: "Hunter Torvald",
+    where: { npc: "Hunter Torvald" },
+    hint: "Ulf's snow den lies north-east of Stillwater, the frozen lake in the middle of the Waste. Go past the lake, keep to the fires, and look for a half-buried tent.",
+    chapter: 15,
+    main: true,
+    title: "The sixth hunter",
+    level: 40,
+    after: "brann_pass",
+    intro:
+      "Ulf dug in north-east of Stillwater, I am sure of it: that is where he always waits out a storm. Go and look. If he is there, bring him back. If he is not, read the snow for me.",
+    progressText: "Find Ulf's snow den north-east of Stillwater, then go back to Hunter Torvald.",
+    completeText:
+      "Empty, and his spear left behind. Ulf would never leave his spear. Boots all round it: many, heavy, in a ring. They took him. Purple threads on the tent flap. ... The Unbound are camped up by the glacier, digging. If he is alive, he is there.",
+    goal: { type: "reach", x: KARI_HOLLOW[0], z: KARI_HOLLOW[1], r: 4, label: "Ulf's snow den" },
+    reward: { exp: 18000, zeny: 8500, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  torvald_cultists: {
+    giver: "Hunter Torvald",
+    where: { monster: "unbound_cultist" },
+    hint: "The Unbound camp lies north-east, past Stillwater, at the head of the trench they dig to the glacier. Their purple braziers burn warm: the cold cannot touch you beside them.",
+    chapter: 15,
+    main: true,
+    title: "Purple in the snow",
+    level: 41,
+    after: "torvald_ulf",
+    intro:
+      "Hunters do not make war. But they took one of us. Eight of the purple cloaks, and the rest will think twice before they come down to the shore. Watch their hands: they throw something that burns cold.",
+    progressText: "Defeat eight Unbound Cultists round their camp by the glacier.",
+    completeText:
+      "Eight. And you found this on one of them? A map. Their trench, the glacier, and a mark in the ice: a door. And here, west, by the rocks: the trolls' hollow, with a sum of gold written beside it. They are paying the trolls to keep the road. And Ulf's spear is marked on it, as a trophy. He is dead, then. ... Go on. I will tell Brann.",
+    goal: { type: "kill", monster: "unbound_cultist", count: 8 },
+    reward: { exp: 20000, zeny: 9500, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  torvald_gold: {
+    giver: "Hunter Torvald",
+    where: { monster: "ice_troll" },
+    hint: "The Troll Hollow lies west of the shelter: a ring of dark rock, open to the east. The trolls carry the Unbound's gold. In a whiteout they come out of the snow from further off.",
+    chapter: 15,
+    main: true,
+    title: "Paid in gold",
+    level: 41,
+    after: "torvald_cultists",
+    intro:
+      "Trolls do not want gold. Trolls want meat, and to be left alone. If they guard a road for somebody, somebody frightened them first, and then paid them. Bring me their gold, six coins, and we will see whose face is on it.",
+    progressText:
+      "Bring Hunter Torvald six pieces of troll gold from the ice trolls of the Troll Hollow.",
+    completeText:
+      "No face. A crown, struck through. The same as on the bandits' badges in the south, Brann says. So it was him all along, your man in black, from the very first bandit on your road. ... Hrimgar, their chieftain, sits on the rest of it at the back of the hollow. As long as he lives, the trolls keep the road for the Unbound.",
+    goal: { type: "item", item: "troll_gold", count: 6 },
+    reward: { exp: 21000, zeny: 10000, items: [{ id: "grand_potion", count: 5 }] },
+  },
+  torvald_hrimgar: {
+    giver: "Hunter Torvald",
+    final: true,
+    ending: "saga3_ch15",
+    where: { monster: "hrimgar" },
+    hint: "Hrimgar sits at the back of the Troll Hollow, on the Unbound's gold. Spikes of ice burst up where you stand: step out of the circles. Below half his health he tears blocks out of the ice and throws them, and he calls his trolls to him.",
+    chapter: 15,
+    main: true,
+    title: "Hrimgar",
+    level: 42,
+    after: "torvald_gold",
+    intro:
+      "Hrimgar is old, and big, and he has never lost a fight. Every hunter in Rimeholt knows to walk around his hollow. You are not from Rimeholt. Go and end it, and the road to the glacier is ours before it is theirs.",
+    progressText: "Defeat Hrimgar, chieftain of the ice trolls, at the back of the Troll Hollow.",
+    completeText:
+      "Hrimgar. Dead. ... I have lived my whole life afraid of that name. Here: the gold he sat on is yours, and the hollow is quiet. And now the road to the glacier is open, for us and for them. The Unbound have dug almost to their door in the ice. Whatever is behind it, you have to get there first.",
+    goal: { type: "kill", monster: "hrimgar", count: 1 },
+    reward: { exp: 26000, zeny: 14000, items: [{ id: "grand_potion", count: 8 }] },
+  },
+  kari_bow: {
+    giver: "Hunter Kari",
+    hint: "Stillwater is the frozen lake in the middle of the Waste, north-east of the shelter. The bow lies out on its ice, a little east of the middle.",
+    title: "Snowblind",
+    level: 40,
+    after: "brann_pass",
+    intro:
+      "When the whiteout came down on us I dropped my bow out on Stillwater, and I could not see my own hands to find it. It is still out there, under the snow. Will you look? I would go, but Torvald says I am not to leave this fire until I stop shaking.",
+    progressText: "Find Kari's bow out on the ice of Stillwater, then bring it back to her.",
+    completeText:
+      "My bow! The string is frozen stiff, but it will thaw. Thank you, southerner. Here: hunters share what they have.",
+    goal: {
+      type: "reach",
+      x: LOST_BOW[0],
+      z: LOST_BOW[1],
+      r: 2.5,
+      label: "Kari's bow on Stillwater",
+    },
+    reward: { exp: 11000, zeny: 5000, items: [{ id: "grand_potion", count: 4 }] },
   },
   /* side quests in Rimeholt */
   ragna_pelts: {

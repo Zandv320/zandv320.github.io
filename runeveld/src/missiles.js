@@ -31,10 +31,10 @@ function spearMesh() {
   return group;
 }
 
-function boulderMesh() {
+function boulderMesh(color) {
   const mesh = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.55, 0),
-    new THREE.MeshLambertMaterial({ color: 0x8c8a86, flatShading: true }),
+    new THREE.MeshLambertMaterial({ color, flatShading: true }),
   );
   mesh.castShadow = true;
   return mesh;
@@ -48,9 +48,10 @@ export function throwSpear(x0, z0, target, onLand) {
   flights.push({ mesh, x0, z0, target, time: 0, duration, arc: 0.9, height: 1, onLand });
 }
 
-/** A boulder from (x0, z0), high through the air, down on (x1, z1) after `duration` seconds. */
-export function throwBoulder(x0, z0, x1, z1, duration) {
-  const mesh = boulderMesh();
+/** A boulder from (x0, z0), high through the air, down on (x1, z1) after `duration` seconds; `color` for a block of
+    ice instead of stone. */
+export function throwBoulder(x0, z0, x1, z1, duration, color = 0x8c8a86) {
+  const mesh = boulderMesh(color);
   scene.add(mesh);
   flights.push({
     mesh,
