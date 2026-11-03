@@ -136,7 +136,16 @@ export const GUIDE_TOPICS = {
     icons: ["runebearer_mantle", "ui_quests"],
     body: [
       "The Grey Leviathan is still, and the seals of moon, fire and tide know your hand. But Maelis carries the hearts of fire and tide, and Selwyn's answer changes everything: the seals were never walls. They feed the Hollow, to keep it asleep. That is the end of <b>Saga II: The Shattered Runes</b>.",
-      "Three runes are bound to you: open the <b>rune overview</b> (<kbd>U</kbd>) to see what they give. Four seals are still out there, in lands no chart of ours has a name for. That is where <b>Saga III</b> will begin.",
+      "Three runes are bound to you: open the <b>rune overview</b> (<kbd>U</kbd>) to see what they give. Four seals are still out there, in lands no chart of ours has a name for.",
+      "The story goes on at once in <b>Saga III: The Long Winter</b>. Selwyn has news from Saltmere: a ship has come in from the far north.",
+    ],
+  },
+  saga3_ch13: {
+    title: "Chapter 13 complete",
+    icons: ["rune_shard", "ui_quests"],
+    body: [
+      "The frost seal is breaking by itself, and the King has sent you north to reach its heart before Maelis does. The <b>Gull's Promise</b> has a warded bow, and Skipper Eyvind will show her the way through the floes.",
+      "The charts of the far north are still being drawn: the voyage to <b>Rimeholt</b> and the Frostmarch is the next part of <b>Saga III: The Long Winter</b>.",
     ],
   },
 };

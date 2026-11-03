@@ -2,8 +2,8 @@
    No DOM and no game state; a hero's progress is an object {[id]: {state: 'active'|'done', count}} that the
    server keeps just as well as the client.
 
-   The main story runs through the sagas (SAGAS): Saga I, "The Crossed-Out Crown" (chapters 1 to 5), and Saga II,
-   "The Shattered Runes" (from chapter 6). Its quests have `main: true` and come in order, each one opening the next
+   The main story runs through the sagas (SAGAS): Saga I, "The Crossed-Out Crown" (chapters 1 to 5), Saga II,
+   "The Shattered Runes" (chapters 6 to 12), and Saga III, "The Long Winter" (from chapter 13). Its quests have `main: true` and come in order, each one opening the next
    (`after`). The chapters are in CHAPTERS. The other quests are side quests; the main story never needs them,
    although a level gate can make them a good way to grow.
 
@@ -42,6 +42,7 @@ const BELLOWS_HALL = forgePoint(24, 18);
 export const SAGAS = [
   { title: "Saga I", name: "The Crossed-Out Crown", firstChapter: 1 },
   { title: "Saga II", name: "The Shattered Runes", firstChapter: 6 },
+  { title: "Saga III", name: "The Long Winter", firstChapter: 13 },
 ];
 
 /** The saga a chapter belongs to. */
@@ -68,6 +69,7 @@ export const CHAPTERS = {
   10: "The Ember Isles",
   11: "The Forge of the First Flame",
   12: "The Grey Sea Rises",
+  13: "Ice That Does Not Melt",
 };
 
 export const QUESTS = {
@@ -1349,6 +1351,99 @@ export const QUESTS = {
       "Fed them? ... Stand. You will not want to be sitting for this. The seals were never walls. They are mouths: each one feeds the Hollow a little of the land it sits in. Moonlight, fire, the tide. Just enough to keep it asleep. Maelis is not breaking our cage. He is starving what is inside it. And if he is right that it wakes anyway... The King must hear all of it. Tonight. You did well. Take this: the King meant you to have it the day you brought the Moon Rune home, and I kept forgetting.",
     goal: { type: "visit", npc: "Archmage Selwyn" },
     reward: { exp: 12000, zeny: 8000, items: [{ id: "runebearer_mantle", count: 1 }] },
+  },
+  /* ---- Saga III, chapter 13: ice that does not melt. Nothing changes in the lands the hero already knows (other
+     heroes are elsewhere in the story): the north comes south only as a ship, her skipper and a shard of ice. ---- */
+  selwyn_eyvind: {
+    giver: "Archmage Selwyn",
+    turnIn: "Skipper Eyvind",
+    hint: "Take the Northroad north to Saltmere. The ship from the north lies white with frost between the west and the middle pier; her skipper waits on the west pier.",
+    chapter: 13,
+    main: true,
+    title: "A ship from the north",
+    level: 37,
+    after: "ondine_selwyn",
+    intro:
+      "The King will call his council, and he wants you at it. But first, this came by gull from Harbormaster Quill: a ship has put in at Saltmere from the far north, from a place called Rimeholt. In the middle of summer there is rime on her rigging, and her skipper asks for the court mage. I cannot leave the King tonight. You go.",
+    progressText: "Find Skipper Eyvind on the west pier of Saltmere, by the ship white with frost.",
+    completeText:
+      "The King's man? Good. Eyvind, of Rimeholt. We sailed nineteen days to get here, and the ice followed us the whole way. Look at her: frost on every rope, in summer. And look at my crew. Then you will understand why I did not wait for a better welcome.",
+    goal: { type: "visit", npc: "Skipper Eyvind" },
+    reward: { exp: 9000, zeny: 4000, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  eyvind_crew: {
+    giver: "Skipper Eyvind",
+    where: { npc: "Chandler Bess" },
+    hint: "Chandler Bess in Saltmere sells Pike stew, and Fisherman Tamsin in Cinder Cove too. A cook can make it from pike.",
+    chapter: 13,
+    main: true,
+    title: "Frostbitten",
+    level: 37,
+    after: "selwyn_eyvind",
+    intro:
+      "My crew have had the cold in them since the floes. Not ordinary cold: it does not leave by the fire. Old Sigrun at home would say hot food first and questions after. Six pots of stew, as thick as you can find. Then I will show you what we pulled out of the ice.",
+    progressText: "Bring Skipper Eyvind six Pike stews for his frozen crew.",
+    completeText:
+      "Listen to them: laughing, below decks. First time since the floes. You have a friend in Rimeholt now, southerner, whether Rimeholt likes it or not.",
+    goal: { type: "item", item: "cooked_pike", count: 6 },
+    reward: { exp: 10000, zeny: 4500, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  eyvind_shard: {
+    giver: "Skipper Eyvind",
+    turnIn: "Archmage Selwyn",
+    gives: [{ id: "everfrost_shard", count: 1 }],
+    hint: "Take the Northroad south to Aurelia. Archmage Selwyn waits by the keep in the castle courtyard.",
+    chapter: 13,
+    main: true,
+    title: "Ice that does not melt",
+    level: 37,
+    after: "eyvind_crew",
+    intro:
+      "This came up in our nets, three days out from home, where the floes were thickest. It burns your hand like a coal and it will not melt: not in the galley fire, not in the sun, not in my pocket. In Rimeholt they say the glacier is cracking, and things come out of the cracks. Take it to your court mage.",
+    progressText:
+      "Bring the Everfrost shard to Archmage Selwyn in the castle courtyard of Aurelia.",
+    completeText:
+      "Put it there. No, not on the chart! ... I held it in my brazier for an hour, and then I called up the Ember Rune in my mind and pressed it to the shard. Nothing. Fire that remembers the First Flame, and it does not even weep. This is not ice. It is a piece of a seal. The frost seal: one of the two marks on my chart that were pale before Maelis ever came. It is breaking, by itself. Come. The King must hear it from you.",
+    goal: { type: "item", item: "everfrost_shard", count: 1 },
+    reward: { exp: 10000, zeny: 5000, items: [{ id: "grand_potion", count: 3 }] },
+  },
+  selwyn_council: {
+    giver: "Archmage Selwyn",
+    turnIn: "King Aldemar",
+    hint: "Walk up the steps of the keep in the castle courtyard. The King stands before its doors.",
+    chapter: 13,
+    main: true,
+    title: "A seat at the table",
+    level: 38,
+    after: "eyvind_shard",
+    intro:
+      "The council sits now: the King, Captain Aldric, the Steward and I. They have heard me talk about mouths and seals all night and they are tired of me. They are not tired of you. Tell them what you saw on the lake, and what came south in Eyvind's nets.",
+    progressText: "Speak to King Aldemar before the keep.",
+    completeText:
+      "So. The seals feed the thing beneath us, a stranger in black wants it starved, and now one seal breaks of its own accord. My father would have sent an army. I will send you. If the frost seal opens, its heart lies there for whoever reaches it first. Let that be us, for once.",
+    goal: { type: "visit", npc: "King Aldemar" },
+    reward: { exp: 11000, zeny: 6000, items: [{ id: "grand_potion", count: 4 }] },
+  },
+  aldemar_north: {
+    giver: "King Aldemar",
+    turnIn: "Captain Mara Holt",
+    final: true,
+    ending: "saga3_ch13",
+    where: { monster: "rune_construct" },
+    hint: "Rune constructs still guard Maelis' old warehouses in Saltmere's east quarter and the mole to the lighthouse. Their shards fall when they break. Bring them to Captain Mara Holt at the east pier.",
+    chapter: 13,
+    main: true,
+    title: "North, before the ice cracks",
+    level: 38,
+    after: "selwyn_council",
+    intro:
+      "Captain Holt has sailed for my crown before, and she will sail for it again: north, to this Rimeholt, past the floes. Her ship needs a bow that the ice cannot crack. The runecarvers of Saltmere can ward the wood, if they have the stone to do it with. Maelis left plenty of that in his warehouses. Go.",
+    progressText:
+      "Six rune shards for the warding of the Gull's Promise, from the constructs in Saltmere's east warehouses and on the mole. Bring them to Captain Mara Holt.",
+    completeText:
+      "Six shards, and Ysolde has already been at my bow with her chisels. Runes all along the stem, glowing blue: she swears the ice will slide off like water off a gull. Eyvind will lead the way, he knows the floes. As soon as the charts are ready, we sail north. Further north than anyone from Saltmere has ever been. Ha!",
+    goal: { type: "item", item: "rune_shard", count: 6 },
+    reward: { exp: 12000, zeny: 7000, items: [{ id: "grand_potion", count: 5 }] },
   },
   tamsin_nets: {
     giver: "Fisherman Tamsin",

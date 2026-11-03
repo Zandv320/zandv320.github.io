@@ -319,9 +319,10 @@ export function buildSaltmere({ scene, prop, place, pending, seededRandom, obsta
     buildPier(scene, pier, random);
   }
   buildMole(scene, place, obstacles, random);
-  /* along the west pier two merchantmen, between the piers fishing boats, by the east pier the Gull's Promise */
+  /* along the west pier a merchantman and Eyvind's ship from Rimeholt (Saga III), white with frost; between the
+     piers fishing boats, by the east pier the Gull's Promise */
   moor(scene, builders.ship({ length: 15, beam: 4.8 }), -180, -396, 0.04);
-  moor(scene, builders.ship({ length: 12, beam: 4.2, masts: 1 }), -166.5, -397, -0.03);
+  moor(scene, rimeShip(random), -166.5, -397, -0.03);
   moor(scene, builders.rowingBoat(4, 1.6), -148.6, -394, 0.1);
   moor(scene, builders.rowingBoat(3.6, 1.5), -155.4, -397, -0.12);
   moor(scene, builders.rowingBoat(3.4, 1.4), -148.4, -400, 0.05);
@@ -537,6 +538,89 @@ export function setMooredGullVisible(isVisible) {
     mooredGull.visible = isVisible;
     mooredGull.userData.boardHit.visible = isVisible;
   }
+}
+
+/* Skipper Eyvind's ship from Rimeholt: a northern trader that sailed through the floes and kept their cold. Frost
+   on every board and rope (its own copies of the materials, so no other ship turns white): the warm wood goes grey
+   and blue. Snow lies on the decks and along the rails, and icicles hang under the rails and the stern. */
+function rimeShip(random) {
+  const length = 12;
+  const beam = 4.2;
+  const deckHeight = 1.3;
+  const vessel = builders.ship({ length, beam, masts: 1, hullColor: 0x4a5866 });
+  const rime = new THREE.Color(0xe4f1fa);
+  /* the wood's own texture is warm: take out most of its red, then let a blue glow come through */
+  const cold = new THREE.Color(0.55, 0.72, 1);
+  vessel.traverse((part) => {
+    const material = part.material;
+    if (!material || !material.color || material.isMeshBasicMaterial) {
+      return;
+    }
+    part.material = material.clone();
+    if (part.isLineSegments || part.isLine) {
+      part.material.color.lerp(rime, 0.7);
+    } else {
+      part.material.color.multiply(cold).lerp(rime, 0.18);
+      if (part.material.emissive) {
+        part.material.emissive.setHex(0x22384f);
+      }
+    }
+  });
+  /* snow in drifts on the main deck and the quarterdeck */
+  const snow = new THREE.MeshLambertMaterial({ color: 0xf4f9ff });
+  const drifts = [
+    [0, deckHeight + 0.02, -length * 0.3, 1.6],
+    [-beam * 0.25, deckHeight + 0.02, -length * 0.05, 1.2],
+    [beam * 0.22, deckHeight + 0.02, length * 0.12, 1],
+    [0.3, deckHeight + 1.18, length * 0.38, 1.1],
+  ];
+  for (const [x, y, z, size] of drifts) {
+    const drift = new THREE.Mesh(new THREE.SphereGeometry(size, 10, 4), snow);
+    drift.scale.set(1, 0.07, 0.7 + random() * 0.3);
+    drift.position.set(x, y, z);
+    drift.rotation.y = random() * Math.PI;
+    vessel.add(drift);
+  }
+  /* along the rails amidships a ridge of snow, and icicles under it, longest in the middle; more icicles hang from
+     the edge of the quarterdeck over the stern windows (builders.ship: the quarterdeck ends at 0.49 of the length,
+     1.1 above the deck, 0.74 of the beam wide) */
+  const ridges = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, 0.08, 1), snow, 2);
+  const icicles = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(0.05, 1, 5).rotateX(Math.PI).translate(0, -0.5, 0),
+    new THREE.MeshLambertMaterial({ color: 0xcfe9ff, emissive: 0x1a3550 }),
+    52,
+  );
+  const place = new THREE.Object3D();
+  let count = 0;
+  const hang = (x, y, z, size) => {
+    place.position.set(x, y, z);
+    place.scale.set(1, size, 1);
+    place.updateMatrix();
+    icicles.setMatrixAt(count++, place.matrix);
+  };
+  for (const [index, side] of [-1, 1].entries()) {
+    place.position.set(side * (beam / 2 - 0.06), deckHeight + 0.49, 0);
+    place.scale.set(1, 1, length * 0.6);
+    place.updateMatrix();
+    ridges.setMatrixAt(index, place.matrix);
+    for (let k = 0; k < 20; k++) {
+      const t = k / 19;
+      const z = (t - 0.5) * length * 0.6 + (random() - 0.5) * 0.2;
+      hang(
+        side * (beam / 2 + 0.03),
+        deckHeight + 0.42,
+        z,
+        0.18 + (1 - Math.abs(t - 0.5) * 2) * 0.35 * (0.5 + random()),
+      );
+    }
+  }
+  const sternWidth = beam * 0.74;
+  for (let k = 0; k < 12; k++) {
+    const x = (k / 11 - 0.5) * sternWidth * 0.95;
+    hang(x, deckHeight + 1.12, length * 0.49 + 0.12, 0.2 + random() * 0.35);
+  }
+  vessel.add(ridges, icicles);
+  return vessel;
 }
 
 /* a stone post on the quay to tie ships to */

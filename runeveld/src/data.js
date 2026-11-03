@@ -501,6 +501,14 @@ export const ITEMS = {
     description:
       "A sliver of blue stone that glows where a rune was cut in it. Maelis' constructs are made of them.",
   },
+  /* Saga III: the far north */
+  everfrost_shard: {
+    name: "Everfrost shard",
+    price: 0,
+    icon: "🧊",
+    description:
+      "A splinter of blue-white ice from Skipper Eyvind's nets. It burns the hand like a coal and will not melt, in any fire.",
+  },
   /* Saga II: the Ember Isles */
   imp_horn: {
     name: "Imp horn",

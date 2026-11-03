@@ -376,7 +376,13 @@ const VILLAGERS = [
       "Every bandit on my road is an insult to my crown.",
     ],
     night: ["Even kings lie awake."],
-    after: { corvin_audience: ["Ah, the one who broke the crossed-out crown."] },
+    after: {
+      corvin_audience: ["Ah, the one who broke the crossed-out crown."],
+      selwyn_council: [
+        "Ice that will not melt, in summer. My father would have laughed. I am not laughing.",
+        "Bring me that heart before the stranger in black does.",
+      ],
+    },
   },
   {
     name: "Steward Corvin",
@@ -603,7 +609,13 @@ const VILLAGERS = [
       "I have sailed past the last lighthouse twice. Came back once. Ha.",
       "Mind the ropes, landlubber.",
     ],
-    after: { mara_ship: ["She is ready. So am I. Are you?"] },
+    after: {
+      mara_ship: ["She is ready. So am I. Are you?"],
+      aldemar_north: [
+        "Runes on my bow! She looks like a temple. Sails like a gull still, mind.",
+        "North past the floes. My grandmother said the sea up there freezes so hard you can walk to the end of the world.",
+      ],
+    },
   },
   {
     name: "Warden Tobin",
@@ -684,6 +696,29 @@ const VILLAGERS = [
       "Gulls. Thieves with wings.",
     ],
     after: { netta_trout: ["Your trout sold before noon. Come back with more!"] },
+  },
+  /* Saga III: the skipper from Rimeholt, by his frosted ship along the west pier */
+  {
+    name: "Skipper Eyvind",
+    hair: "red",
+    outfit: "armor2",
+    headgear: "cap",
+    route: [
+      [-173.2, -394],
+      [-173.2, -399.5],
+    ],
+    speed: 0.7,
+    pause: [6, 12],
+    lines: [
+      "Nineteen days from Rimeholt, and the ice followed us the whole way.",
+      "In summer the sun never sets up north. This year it never warmed us either.",
+      "Do not touch the ropes. They bite.",
+    ],
+    night: ["At home the sky is green on nights like this. Yours is so dark."],
+    after: {
+      eyvind_crew: ["My crew sing again. Badly, but they sing."],
+      aldemar_north: ["North, then! I will show your captain the way through the floes."],
+    },
   },
   {
     name: "Fisherman Hendrik",
@@ -804,6 +839,10 @@ const VILLAGERS = [
       ondine_selwyn: [
         "Mouths, not walls. I have read that chart a thousand times, and never once read it right.",
         "The King did not sleep last night. Neither did I. Neither, I suspect, did you.",
+      ],
+      eyvind_shard: [
+        "The frost mark on my chart is paler every night. I have stopped looking at it after supper.",
+        "I have wrapped that shard in three cloths and a lead box, and my fingers still ache.",
       ],
     },
   },
